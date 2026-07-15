@@ -1,0 +1,91 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+coverage.xml
+htmlcov/
+
+# IDE / OS
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+
+# Runtime and personal data
+data/
+runtime/
+storage/
+database/
+backups/
+exports/
+logs/
+temp/
+tmp/
+source-documents/
+real-documents/
+personal-data/
+private-fixtures/
+local-acceptance/
+ocr-models/
+*.db
+*.sqlite
+*.sqlite3
+*.db-wal
+*.db-shm
+
+# Secrets and keys
+.env
+.env.*
+!.env.example
+*.key
+*.pem
+*.pfx
+*.p12
+*.crt
+*.cer
+
+# Real or accidental image uploads are ignored by default.
+*.jpg
+*.jpeg
+*.png
+*.webp
+*.heic
+*.heif
+*.bmp
+*.gif
+*.tif
+*.tiff
+
+# Explicitly allow synthetic test images only here.
+!tests/fixtures/synthetic/
+!tests/fixtures/synthetic/**
+
+# Excel files are ignored by default.
+*.xls
+*.xlsx
+*.xlsm
+
+# Explicitly allow approved templates and golden fixtures.
+!resources/templates/**/*.xls
+!resources/templates/**/*.xlsx
+!resources/templates/**/*.xlsm
+!tests/golden/**/*.xls
+!tests/golden/**/*.xlsx
+!tests/golden/**/*.xlsm
+
+# Build artifacts
+dist/
+build-output/
+*.exe
+*.msi
+*.dmg
+*.app
+
+# Temporary Office files
+~$*.xls
+~$*.xlsx
+~$*.xlsm
