@@ -79,3 +79,28 @@ Export читает immutable ApplicationSnapshot.
 **Статус:** ACCEPTED
 
 Реальные документы запрещены в ChatGPT/Codex/Git/CI. Приемка выполняется локально.
+
+## ADR-014 — Temporary public repository during bootstrap
+
+**Status:** ACCEPTED
+**Date:** 2026-07-15
+
+The repository remains public temporarily by explicit product-owner decision during bootstrap.
+
+This temporary exception applies only to non-sensitive documentation, application bootstrap code, synthetic source-code tests that contain no document-derived data, and ordinary development configuration.
+
+This exception does not permit real documents, document photographs, scans, document-derived screenshots, or any personal data.
+
+This exception does not permit terminal templates, including cleaned or anonymized templates.
+
+This exception does not permit template-derived golden Excel files.
+
+This exception does not permit PII, databases, database journals, logs, backups, OCR outputs, MRZ payloads, private fixtures, local acceptance fixtures, secrets, keys, passwords, certificates or tokens.
+
+`resources/templates` must remain without terminal files while the repository is public.
+
+Before any template or document-derived fixture is committed, repository visibility and the approved security contour must be reviewed again and the files must be separately approved.
+
+This decision does not change the offline and local-only runtime architecture.
+
+The privacy gate remains open.
