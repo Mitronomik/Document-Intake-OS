@@ -70,3 +70,33 @@ src/document_intake/
 ## Безопасный старт
 
 До OCR необходимо реализовать ручной контур: импорт, неизменяемые оригиналы, подготовка JPEG, ручная проверка, снимок заявки и три Excel-адаптера.
+
+## Development setup
+
+PR-001 uses Python 3.12 and `uv` for dependency management. The bootstrap contains only the package skeleton and a minimal PySide6 shell; it does not implement OCR, persistence, image processing, Excel export, or business workflows.
+
+### Local commands
+
+```bash
+uv sync --all-extras --dev
+ruff check .
+ruff format --check .
+mypy src
+pytest
+```
+
+### Run the bootstrap desktop shell
+
+```bash
+uv run document-intake
+```
+
+For headless smoke checks, set Qt to offscreen mode before starting the application:
+
+```bash
+QT_QPA_PLATFORM=offscreen uv run python -m document_intake
+```
+
+### Data and fixtures
+
+Only synthetic/no-document test fixtures are allowed in the repository and CI. Do not commit real documents, production databases, filled workbooks, screenshots containing personal data, OCR payloads, or local acceptance artifacts.

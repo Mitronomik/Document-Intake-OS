@@ -1,7 +1,7 @@
 # Progress
 
 **Обновлено:** 2026-07-15  
-**Статус:** PRE-IMPLEMENTATION
+**Статус:** PR-001 BOOTSTRAPPED
 
 ## Завершено
 
@@ -14,13 +14,13 @@
 - [x] JPEG limit 1,90 MiB;
 - [x] OCR draft + operator verification;
 - [x] Konversta integration исключена из MVP;
-- [x] подготовлен пакет Markdown-документации.
+- [x] подготовлен пакет Markdown-документации;
+- [x] PR-001 repository bootstrap: Python 3.12 skeleton, uv metadata, minimal PySide6 entry point, smoke test and CI checks.
 
 ## Не начато
 
 - [ ] private repository;
 - [ ] cleaned templates;
-- [ ] PR-001;
 - [ ] domain code;
 - [ ] storage;
 - [ ] image pipeline;
@@ -37,8 +37,7 @@ Visitors terminal name, TSP format, participant limits, completeness matrix, mer
 1. перенести документы в private repo;
 2. добавить cleaned templates;
 3. подтвердить Q-001–Q-007;
-4. выполнить PR-001;
-5. провести audit;
-6. перейти к PR-002/003.
+4. провести audit;
+5. перейти к PR-002/003.
 
 M0 пока не закрыт из-за терминальных вопросов.
