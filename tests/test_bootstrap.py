@@ -34,6 +34,23 @@ def test_package_importable() -> None:
     assert package.__version__ == "0.1.0"
 
 
+def test_architecture_package_layout_importable() -> None:
+    module_names = (
+        "document_intake.domain.enums",
+        "document_intake.domain.errors",
+        "document_intake.application",
+        "document_intake.persistence",
+        "document_intake.storage",
+        "document_intake.image_pipeline",
+        "document_intake.recognition",
+        "document_intake.terminal_adapters",
+        "document_intake.ui",
+    )
+
+    for module_name in module_names:
+        assert importlib.import_module(module_name).__name__ == module_name
+
+
 def test_minimal_qt_window_builds() -> None:
     application = build_application(["document-intake-test"])
     window = build_main_window()
