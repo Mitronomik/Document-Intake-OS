@@ -9,7 +9,7 @@
 5. Excel-шаблоны являются внешними контрактами.
 6. Экспорт выполняется только из снимка заявки.
 7. Сбой адаптера не повреждает БД и оригиналы.
-8. MVP — простой модульный монолит для одного рабочего места.
+8. MVP — простой модульный монолит для одного рабочего места; ADR-017 fixes the first MVP topology as one Windows 11 x64 workstation with one active operator session at a time.
 9. Windows-зависимости изолируются в адаптерах.
 
 ## 2. Контекст
@@ -27,6 +27,11 @@ flowchart LR
 ```
 
 Программной связи с «Конверстой» в MVP нет.
+
+## 2.1. MVP workstation topology
+
+ADR-017 fixes the first MVP topology as one Windows 11 x64 workstation with one active operator session at a time. The MVP does not assume a shared multi-workstation database, network-shared application storage, concurrent application writers or cross-workstation synchronization. SQLite may be evaluated for this single-workstation topology. Filesystem ownership and locking may assume one active application session. Future local accounts are not prohibited, but authentication, passwords, inactivity timeout and recovery remain deferred to PR-031. This documentation gate does not implement SQLite, storage, users or authentication.
+
 
 ## 3. Слои
 

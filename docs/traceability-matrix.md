@@ -37,3 +37,17 @@
 ## Правило изменения
 
 Изменение требования обновляет source document, decision log, acceptance criteria, tests and this matrix.
+
+
+## Gate and decision traceability
+
+| Gate item | Source | Status | Verification |
+|---|---|---|---|
+| PR-003 completion | ADR-016 | COMPLETED at `ad5782045473d3ef5eb0a097cc8f6982bab821c7` | documentation baseline test |
+| M1 Safe Repository | ADR-016 | ACCEPTED | documentation baseline test |
+| M0 Requirements Locked | ADR-016 | DECISION APPROVED during GATE-M0 PR; recorded in `main` only after merge and human acceptance | documentation baseline test |
+| PR-004 authorization boundary | ADR-016 | Limited to PR-004 Core Domain after gate merge and acceptance | documentation baseline test |
+| PR-005/PR-006 encryption staging | ADR-016 / Q-010 | UNAUTHORIZED until separate security ADR | documentation baseline test |
+| MVP workstation topology | ADR-017 / Q-008 | One Windows 11 x64 workstation with one active operator session at a time | documentation baseline test |
+| Terminal-specific staged questions | Q-001–Q-005 | External confirmation required before target adapter/export PRs | documentation baseline test |
+| Local evidence staged questions | Q-012–Q-015 | Evidence remains outside Git, Codex and CI | documentation baseline test |

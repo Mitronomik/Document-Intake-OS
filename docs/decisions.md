@@ -174,3 +174,131 @@ ADR-015 does not decide:
 - OCR technology;
 - database implementation;
 - filesystem storage implementation.
+
+## ADR-016 — M0 Gate, Privacy Boundary and PR-004 Authorization
+
+**Status:** ACCEPTED
+**Date:** 2026-07-16
+
+### Context
+
+GitHub PR #4 merged PR-003 at commit `ad5782045473d3ef5eb0a097cc8f6982bab821c7`.
+The product owner accepted PR-003 and accepted M1 Safe Repository. ADR-014 remains in
+force for the temporarily public repository, and ADR-015 remains in force for the
+completed repository-safety sequencing decision.
+
+M0 still required a requirements-lock decision because terminal-specific questions,
+local-evidence questions and security-staging questions were still listed as open.
+PR-004 is limited to Core Domain: entities, value objects, enums, transitions,
+verification policy and snapshot invariants. It does not require real documents,
+terminal templates, databases, OCR payloads, Excel files or private acceptance
+fixtures.
+
+### Decision
+
+1. PR-003 is completed and merged through GitHub PR #4 at
+   `ad5782045473d3ef5eb0a097cc8f6982bab821c7`.
+2. M1 Safe Repository is accepted.
+3. `REPOSITORY PRIVACY BOUNDARY — ACCEPTED FOR NON-SENSITIVE CODE` is accepted.
+   While the repository remains temporarily public, it may contain only
+   non-sensitive application source code, non-sensitive documentation, ordinary
+   development configuration and fully fictional synthetic source-code tests that
+   contain no document-derived data.
+4. The public repository must not contain real documents or document photographs,
+   personal data, anonymized or cleaned real documents, terminal templates,
+   template-derived golden files, template-derived screenshots, manifests,
+   checksums or mappings, databases or journals, OCR or MRZ payloads, private or
+   local acceptance fixtures, operational logs or backups, secrets, keys,
+   certificates or tokens.
+5. `SENSITIVE-DATA / PRIVATE-CONTOUR GATE — OPEN` remains open. Real terminal
+   templates and local acceptance materials remain outside Git, Codex and CI.
+6. The open sensitive-data/private-contour gate does not block PR-004 because
+   PR-004 requires no sensitive input. It continues to block every task that
+   requires real documents, terminal templates, template-derived artifacts or
+   private acceptance materials.
+7. Terminal-specific questions may be staged to downstream gates for M0 and
+   PR-004 authorization only when all of the following are recorded:
+
+   * the question remains present;
+   * it has an explicit status;
+   * its required evidence or confirmation is identified;
+   * its owner is identified;
+   * its target PR or milestone is identified;
+   * implementation depending on that answer remains blocked until evidence
+     exists;
+   * no placeholder terminal value is invented.
+8. M0 Requirements Locked is accepted for the non-sensitive code/documentation
+   contour.
+9. Authorization is limited to PR-004 — Core Domain.
+10. During the GATE-M0 PR, PR-004 remains blocked until this gate PR is merged and
+    human acceptance confirms the recorded decision in `main`.
+11. PR-005, PR-006, PR-007 and every later implementation task remain
+    unauthorized.
+12. Q-010 remains open and blocks PR-005 and PR-006 from storing production
+    personal data until a separate accepted security ADR resolves the sequencing
+    conflict between mandatory encrypted database/filesystem storage, persistence
+    and filesystem implementation, and encryption currently planned later under
+    PR-030.
+13. No encryption technology is selected by this ADR.
+
+### Consequences
+
+- M0 is accepted only after this GATE-M0 PR is merged and human acceptance records
+  the decision in `main`.
+- PR-004 may be prepared after the gate PR is merged and accepted, but PR-004 is
+  not started by this gate PR.
+- PR-005 and PR-006 remain blocked pending a separate security ADR for encryption
+  staging.
+- Terminal adapters remain blocked by their external confirmations.
+- OCR work remains blocked by local evidence requirements.
+- No real documents, terminal templates, template-derived artifacts, private
+  fixtures or local acceptance artifacts are added to the repository.
+
+### Non-decisions
+
+ADR-016 does not decide encryption technology, retention periods,
+terminal-specific values, Excel strategy, OCR technology, PR-005, PR-006, PR-007
+or any later implementation task.
+
+## ADR-017 — MVP Workstation Topology
+
+**Status:** ACCEPTED
+**Date:** 2026-07-16
+
+### Context
+
+The architecture states that the MVP is a simple modular monolith for one
+workstation, while the technical specification still asked whether the first
+version needs one computer or multiple operators in a local network. ADR-010
+remains proposed until workstation and encryption decisions are made.
+
+### Decision
+
+The first MVP topology is one Windows 11 x64 workstation with one active operator session at a time.
+
+Consequences for the first MVP:
+
+- no shared multi-workstation database;
+- no network-shared application storage;
+- no concurrent application writers;
+- no cross-workstation synchronization;
+- SQLite may be evaluated for this single-workstation topology;
+- filesystem ownership and locking may assume one active application session;
+- future local accounts are not prohibited;
+- authentication, passwords, inactivity timeout and recovery remain deferred to
+  PR-031;
+- this decision does not implement SQLite, storage, users or authentication.
+
+### Consequences
+
+- Q-008 is accepted by ADR-017.
+- PR-004 may use the single-workstation, one-active-session assumption for domain
+  invariants that need a topology boundary.
+- Persistence, filesystem storage, local users and authentication remain future
+  implementation tasks and are not implemented by this ADR.
+
+### Non-decisions
+
+ADR-017 does not select encryption technology, implement SQLite, implement
+filesystem storage, implement local accounts, implement authentication or
+authorize shared multi-workstation data.

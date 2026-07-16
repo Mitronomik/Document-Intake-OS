@@ -2,43 +2,41 @@
 
 ## M0 — Requirements locked
 
-Результат: ТЗ, очищенные шаблоны, open questions, decisions and repository docs.
+Result: requirements package, open-question status model, accepted decisions and repository documentation.
 
-Gate: scope MVP подтвержден, реальные документы исключены из облачного контура, терминальные блокеры закрыты.
+Gate: MVP scope is confirmed, real documents are excluded from the cloud/public development contour, the repository privacy boundary is accepted for non-sensitive code, terminal-specific blockers are either externally confirmed or staged to downstream gates under ADR-016, and no placeholder terminal values are invented.
 
-M0 remains open and its gate remains unchanged. ADR-015 permits only the PR-001 through PR-003 repository-safety workstream to proceed while M0 is open. Completion of M1 repository-safety work does not imply completion of M0.
+GATE-M0 is in review. ADR-016 records the approved M0 decision for this PR, but PR-004 remains blocked until the GATE-M0 PR is merged and human acceptance confirms the decision in `main`.
 
 ## M1 — Safe repository
 
 PR-001–003.
 
-Результат: воспроизводимая среда, CI, AGENTS, privacy guardrails and minimal UI.
+Result: reproducible environment, CI, AGENTS, privacy guardrails and minimal UI.
 
-M1 is not marked completed by PR-003. M1 can be considered complete only after PR-003 is merged and human acceptance confirms the repository-safety workstream.
+M1 is accepted by the product owner after PR-003 was completed and merged through GitHub PR #4 at `ad5782045473d3ef5eb0a097cc8f6982bab821c7`.
 
 ## M2 — Local data core
 
 PR-004–007.
 
-Результат: domain, SQLite, immutable storage and audit.
+Result: domain, SQLite, immutable storage and audit.
 
-Gate: original нельзя изменить, verification policy тестируется, migrations воспроизводимы.
-
-M2 cannot begin until M0 is accepted and M1 repository-safety work is accepted. Completion of PR-003 does not automatically authorize M2.
+PR-004 — Core Domain is the only implementation task authorized by the approved M0 decision, and only after the GATE-M0 PR is merged and human acceptance confirms the decision in `main`. PR-005, PR-006, PR-007 and every later implementation task remain unauthorized. PR-005 and PR-006 remain blocked until a separate accepted security ADR resolves Q-010 encryption staging.
 
 ## M3 — Manual image workflow
 
 PR-008–013.
 
-Результат: import, quality, crop/perspective, multiple docs, merge and JPEG ≤1.90 MiB.
+Result: import, quality, crop/perspective, multiple docs, merge and JPEG ≤1.90 MiB.
 
-Gate: типовые реальные фото локально готовятся без потери originals.
+Gate: типовые реальные фото локально готовятся без потери originals. Local evidence remains outside Git, Codex and CI.
 
 ## M4 — Manual end-to-end MVP
 
 PR-014–018.
 
-Результат: batches, classification, cards, verification, application and snapshot.
+Result: batches, classification, cards, verification, application and snapshot.
 
 Gate: приложение полезно без OCR.
 
@@ -46,33 +44,33 @@ Gate: приложение полезно без OCR.
 
 PR-019–023.
 
-Результат: Visitors, MGS, TSP and export package.
+Result: Visitors, MGS, TSP and export package.
 
-Gate: все формы открываются без repair и проходят terminal upload.
+Gate: all terminal-specific external confirmations required by Q-001 through Q-005 and Q-015 exist, no placeholder terminal values are invented, all workbooks open without repair and real terminal upload is verified locally outside Git, Codex and CI.
 
 ## M6 — OCR assistance
 
 PR-024–029.
 
-Результат: local runtime, MRZ, passports/ID, vehicle documents, review UI and migration assistance.
+Result: local runtime, MRZ, passports/ID, vehicle documents, review UI and migration assistance.
 
-Gate: field-level metrics измерены, critical errors не обходят оператора.
+Gate: field-level metrics are measured on local evidence outside Git, Codex and CI, and critical errors do not bypass the operator.
 
 ## M7 — Production hardening
 
 PR-030–035.
 
-Результат: encryption, users, backup, installer, security tests and RC.
+Result: encryption, users, backup, installer, security tests and RC.
 
 Gate: offline local acceptance and release decision.
 
 ## Future
 
-- macOS build;
+- macOS build after Windows stabilization;
 - дополнительные документы;
 - несколько рабочих мест;
 - новые терминалы;
-- официальная интеграция только при наличии разрешенного API.
+- официальная интеграция only if an allowed API is separately approved.
 
 ## Не делать преждевременно
 

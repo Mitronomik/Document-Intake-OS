@@ -35,6 +35,7 @@ REQUIRED_DOCUMENTS = (
     "docs/tasks/PR-001-repository-bootstrap.md",
     "docs/tasks/PR-002-documentation-baseline.md",
     "docs/tasks/PR-003-ci-privacy-guardrails.md",
+    "docs/tasks/GATE-M0-requirements-lock.md",
 )
 
 CANONICAL_SOURCE_ORDER = (
@@ -175,37 +176,182 @@ def test_readme_and_agents_use_canonical_source_order() -> None:
         )
 
 
-def test_lifecycle_state_is_current_and_not_closed() -> None:
+def test_lifecycle_state_records_gate_m0_review_state() -> None:
     decisions = (REPO_ROOT / "docs/decisions.md").read_text(encoding="utf-8")
     progress = (REPO_ROOT / "docs/progress.md").read_text(encoding="utf-8")
     handoff = (REPO_ROOT / "docs/handoff.md").read_text(encoding="utf-8")
     roadmap = (REPO_ROOT / "docs/roadmap.md").read_text(encoding="utf-8")
     implementation_plan = (REPO_ROOT / "docs/implementation-plan.md").read_text(encoding="utf-8")
-    combined_current = "\n".join([progress, handoff, roadmap, implementation_plan])
-    adr_015 = _adr_section(decisions, "## ADR-015 — M0/M1 repository-safety sequencing")
+    task = (REPO_ROOT / "docs/tasks/GATE-M0-requirements-lock.md").read_text(encoding="utf-8")
+    combined_current = "\n".join([progress, handoff, roadmap, implementation_plan, task])
+    adr_016 = _adr_section(
+        decisions, "## ADR-016 — M0 Gate, Privacy Boundary and PR-004 Authorization"
+    )
+    adr_017 = _adr_section(decisions, "## ADR-017 — MVP Workstation Topology")
 
-    assert "## ADR-015 — M0/M1 repository-safety sequencing" in adr_015
-    assert "**Status:** ACCEPTED" in adr_015
-    assert "**Date:** 2026-07-16" in adr_015
-    assert "PR-002 completed and merged through GitHub PR #3" in progress
-    assert "PR-003 IN REVIEW" in progress
-    assert "PR-003 COMPLETED" not in progress
-    assert "M0 remains open" in progress
-    assert "M0 remains open" in handoff
-    assert "privacy gate remains open" in progress
-    assert "privacy gate remains open" in handoff
-    assert "M0/M1 lifecycle sequencing remains unresolved" not in combined_current
-    assert (
-        "M2 cannot begin until M0 is accepted and M1 repository-safety work is accepted" in roadmap
-    )
-    assert "PR-004 and later tasks remain blocked until M0 and M1 are accepted" in (
-        implementation_plan
-    )
-    assert "M0 COMPLETED" not in progress
-    assert "M1 COMPLETED" not in progress
-    assert "M0 is completed" not in combined_current
-    assert "M1 is completed" not in combined_current
+    assert "## ADR-016 — M0 Gate, Privacy Boundary and PR-004 Authorization" in adr_016
+    assert "**Status:** ACCEPTED" in adr_016
+    assert "**Date:** 2026-07-16" in adr_016
+    assert "## ADR-017 — MVP Workstation Topology" in adr_017
+    assert "**Status:** ACCEPTED" in adr_017
+    assert "**Date:** 2026-07-16" in adr_017
+    assert "PR-003 COMPLETED" in progress
+    assert "ad5782045473d3ef5eb0a097cc8f6982bab821c7" in combined_current
+    assert "M1 ACCEPTED" in progress
+    assert "M0 DECISION APPROVED, NOT YET RECORDED IN MAIN" in progress
+    assert "GATE-M0 IN REVIEW" in progress
+    assert "PR-004 BLOCKED UNTIL GATE-M0 PR MERGE AND HUMAN ACCEPTANCE" in progress
+    assert "Authorization is limited to PR-004 — Core Domain" in task
+    assert "PR-005 and PR-006 remain entirely unauthorized" in task
+    assert "PR-005 and PR-006 remain blocked" in roadmap
+    assert "SENSITIVE-DATA / PRIVATE-CONTOUR GATE — OPEN" in progress
+    assert "REPOSITORY PRIVACY BOUNDARY — ACCEPTED FOR NON-SENSITIVE CODE" in progress
+    assert "PR-004 implementation is not started" in progress
+    assert "PR-004 is not started" not in combined_current
     assert "privacy gate closed" not in combined_current.lower()
+    assert "PR-004 IN PROGRESS" not in combined_current
+    assert "PR-005: AUTHORIZED" not in combined_current
+    assert "PR-006: AUTHORIZED" not in combined_current
+
+
+def _question_section(markdown: str, question_id: str) -> str:
+    heading = f"### {question_id}"
+    lines = markdown.splitlines()
+    start = None
+    for index, line in enumerate(lines):
+        if line.strip() == heading:
+            start = index
+            break
+    assert start is not None, f"Missing open-question heading: {heading}"
+
+    section_lines: list[str] = []
+    for line in lines[start:]:
+        if section_lines and line.startswith("### Q-"):
+            break
+        section_lines.append(line)
+    return "\n".join(section_lines)
+
+
+def _question_status(section: str) -> str:
+    match = re.search(r"^\*\*Status:\*\* ([A-Z_]+)$", section, flags=re.MULTILINE)
+    assert match is not None, "Question section is missing exactly formatted status"
+    return match.group(1)
+
+
+def test_open_questions_q001_through_q020_remain_present_with_valid_statuses() -> None:
+    open_questions = (REPO_ROOT / "docs/open-questions.md").read_text(encoding="utf-8")
+
+    expected_statuses = {
+        "Q-001": "EXTERNAL_CONFIRMATION_REQUIRED",
+        "Q-002": "EXTERNAL_CONFIRMATION_REQUIRED",
+        "Q-003": "EXTERNAL_CONFIRMATION_REQUIRED",
+        "Q-004": "EXTERNAL_CONFIRMATION_REQUIRED",
+        "Q-005": "EXTERNAL_CONFIRMATION_REQUIRED",
+        "Q-006": "DEFERRED",
+        "Q-007": "DEFERRED",
+        "Q-008": "ACCEPTED",
+        "Q-009": "DEFERRED",
+        "Q-010": "OPEN",
+        "Q-011": "DEFERRED",
+        "Q-012": "LOCAL_EVIDENCE_REQUIRED",
+        "Q-013": "LOCAL_EVIDENCE_REQUIRED",
+        "Q-014": "LOCAL_EVIDENCE_REQUIRED",
+        "Q-015": "LOCAL_EVIDENCE_REQUIRED",
+        "Q-016": "DEFERRED",
+        "Q-017": "DEFERRED",
+        "Q-018": "DEFERRED",
+        "Q-019": "SUPERSEDED",
+        "Q-020": "DEFERRED",
+    }
+    valid_statuses = {
+        "OPEN",
+        "ACCEPTED",
+        "DEFERRED",
+        "EXTERNAL_CONFIRMATION_REQUIRED",
+        "LOCAL_EVIDENCE_REQUIRED",
+        "SUPERSEDED",
+    }
+
+    for question_id, expected_status in expected_statuses.items():
+        section = _question_section(open_questions, question_id)
+        statuses = re.findall(r"^\*\*Status:\*\* ([A-Z_]+)$", section, flags=re.MULTILINE)
+        assert statuses == [expected_status], f"{question_id} has invalid statuses: {statuses}"
+        assert statuses[0] in valid_statuses
+
+
+def test_open_question_status_metadata_is_complete() -> None:
+    open_questions = (REPO_ROOT / "docs/open-questions.md").read_text(encoding="utf-8")
+
+    external_questions = {"Q-001", "Q-002", "Q-003", "Q-004", "Q-005"}
+    local_evidence_questions = {"Q-012", "Q-013", "Q-014", "Q-015"}
+    deferred_questions = {
+        "Q-006",
+        "Q-007",
+        "Q-009",
+        "Q-011",
+        "Q-016",
+        "Q-017",
+        "Q-018",
+        "Q-020",
+    }
+
+    for question_id in external_questions:
+        section = _question_section(open_questions, question_id)
+        assert _question_status(section) == "EXTERNAL_CONFIRMATION_REQUIRED"
+        assert "**Required evidence:**" in section
+        assert "**Owner:**" in section
+        assert "**Target:**" in section
+        assert "**Implementation block:**" in section
+        assert "**Placeholder rule:**" in section
+
+    for question_id in local_evidence_questions:
+        section = _question_section(open_questions, question_id)
+        assert _question_status(section) == "LOCAL_EVIDENCE_REQUIRED"
+        assert "**Required evidence:**" in section
+        assert "**Target:**" in section
+        assert "outside Git, Codex and CI" in section
+
+    for question_id in deferred_questions:
+        section = _question_section(open_questions, question_id)
+        assert _question_status(section) == "DEFERRED"
+        assert "**Target:**" in section
+
+
+def test_gate_m0_specific_question_requirements_are_recorded() -> None:
+    open_questions = (REPO_ROOT / "docs/open-questions.md").read_text(encoding="utf-8")
+    decisions = (REPO_ROOT / "docs/decisions.md").read_text(encoding="utf-8")
+    technical_spec = (REPO_ROOT / "docs/technical-specification.md").read_text(encoding="utf-8")
+    architecture = (REPO_ROOT / "docs/architecture.md").read_text(encoding="utf-8")
+
+    q008 = _question_section(open_questions, "Q-008")
+    q010 = _question_section(open_questions, "Q-010")
+    q019 = _question_section(open_questions, "Q-019")
+
+    assert _question_status(q008) == "ACCEPTED"
+    assert "**Decision reference:** ADR-017" in q008
+    assert "one Windows 11 x64 workstation with one active operator session" in q008
+    assert "one Windows 11 x64 workstation with one active operator session" in decisions
+    assert "one Windows 11 x64 workstation with one active operator session" in architecture
+
+    assert _question_status(q010) == "OPEN"
+    assert "separate accepted security ADR" in q010
+    assert "blocks PR-005 and PR-006" in q010
+    assert "No encryption technology is selected" in decisions
+
+    assert _question_status(q019) == "SUPERSEDED"
+    assert "ADR-002 and NFR-02" in q019
+    assert "Windows 11 x64 is first" in q019
+    assert "macOS initial-release question superseded by ADR-002 and NFR-02" in (technical_spec)
+
+
+def test_terminal_staging_rule_prevents_placeholder_values() -> None:
+    task = (REPO_ROOT / "docs/tasks/GATE-M0-requirements-lock.md").read_text(encoding="utf-8")
+    open_questions = (REPO_ROOT / "docs/open-questions.md").read_text(encoding="utf-8")
+
+    assert "no placeholder terminal value is invented" in task
+    for question_id in ["Q-001", "Q-002", "Q-003", "Q-004", "Q-005"]:
+        section = _question_section(open_questions, question_id)
+        assert "**Placeholder rule:**" in section
 
 
 def test_open_questions_q001_through_q020_remain_present() -> None:

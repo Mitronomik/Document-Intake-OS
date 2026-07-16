@@ -37,24 +37,26 @@ Conflicts must be reported instead of resolved silently.
 
 Modular monolith: domain, application, persistence, storage, image pipeline, recognition, terminal adapters and UI.
 
+ADR-017 fixes the first MVP topology as one Windows 11 x64 workstation with one active operator session at a time. This does not implement SQLite, storage, users or authentication.
+
 ## Текущий этап
 
-PR-001 and PR-002 are completed. ADR-015 resolves repository-safety sequencing for PR-001 through PR-003 only.
+PR-001 and PR-002 are completed. PR-003 is completed and merged through GitHub PR #4 at `ad5782045473d3ef5eb0a097cc8f6982bab821c7`. M1 Safe Repository is accepted by the product owner.
 
-PR-003 is the current task and remains under review until it is merged and accepted. M0 remains open because terminal questions and the privacy gate remain open. The privacy gate remains open. M1 is not completed before PR-003 merge and human acceptance.
+GATE-M0 is in review. M0 decision is approved in this PR, but not yet recorded in `main`. PR-004 remains blocked until the GATE-M0 PR is merged and human acceptance confirms the decision in `main`.
 
-M2 and product implementation remain blocked until M0 is accepted and M1 repository-safety work is accepted.
+ADR-016 accepts the repository privacy boundary for non-sensitive code and documentation while keeping the sensitive-data/private-contour gate open. Real documents, personal data, terminal templates, template-derived artifacts, private fixtures and local acceptance evidence remain outside Git, Codex and CI.
 
-## PR-003 boundaries
+## Authorization boundary
 
-PR-003 records ADR-015 and adds repository-safety guardrails only. It does not use real documents or terminal templates, and it does not add fixtures.
+GATE-M0 does not start PR-004. After this PR is merged and accepted, the next repository update may prepare PR-004 — Core Domain only.
 
-No OCR, domain, persistence, storage, image processing, UI workflow or Excel implementation should start in PR-003. Real documents, document-derived fixtures, terminal templates, cleaned or anonymized terminal templates and template-derived golden Excel files remain outside the public repository.
+PR-005 and PR-006 remain unauthorized until a separate accepted security ADR resolves Q-010 encryption staging. PR-007 and later tasks remain unauthorized by GATE-M0.
 
 ## Риски
 
-`.xls`, MGS Power Query, comments/validations, handwritten migration cards, encryption, PII logs, critical field bypass and insufficient samples.
+`.xls`, MGS Power Query, comments/validations, handwritten migration cards, encryption staging, PII logs, critical field bypass and insufficient local OCR samples.
 
 ## Продолжение
 
-Before each task, read the authoritative sources, check the applicable gate, form a single PR contract and preserve unresolved questions unless an accepted ADR explicitly resolves them. The next safe step is PR-003 review and acceptance; do not start PR-004 until M0 and M1 acceptance allow it.
+Before each task, read the authoritative sources, check the applicable gate, form a single PR contract and preserve unresolved questions unless an accepted ADR explicitly resolves them. The next safe step is GATE-M0 review, CI, merge and human acceptance; do not start PR-004 until that happens.
