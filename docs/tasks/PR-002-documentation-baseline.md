@@ -95,7 +95,7 @@ PR-002 does not implement PR-003 privacy guardrails, secret scanning, large-file
 6. Markdown links in fenced code blocks are ignored.
 7. `README.md` and `AGENTS.md` use the same source priority.
 8. Conflicts must be reported rather than silently resolved.
-9. `docs/handoff.md` reflects the current M1/PR-002 state.
+9. `docs/handoff.md` reflects PR-002 as the current repository-safety task without asserting formal M1 entry while M0 remains open.
 10. PR-001 is not identified as current, next, under review or incomplete.
 11. `docs/progress.md` records `PR-002 IN REVIEW`.
 12. PR-002 is not marked completed.
@@ -125,7 +125,7 @@ Add `tests/test_documentation_baseline.py` with clear, independently named tests
 - required documentation file existence;
 - relative Markdown links in `README.md`, `AGENTS.md` and `docs/**/*.md`, ignoring fenced code blocks, external links, `mailto:` links and anchor-only links;
 - canonical authoritative-source order in the dedicated source-priority sections of `README.md` and `AGENTS.md`;
-- lifecycle state: PR-002 is in review, PR-002 is not completed, handoff is not pre-implementation, PR-001 is not current/next/under review/incomplete, PR-002 is current, PR-003 is next after acceptance, M0 and privacy gate are not closed;
+- lifecycle state: PR-002 is in review, PR-002 is not completed, handoff is not pre-implementation, PR-001 is not current/next/under review/incomplete, M0 remains open, the privacy gate remains open or unresolved, formal M1 entry is not asserted, an explicit sequencing decision is required, and PR-003 is blocked until PR-002 acceptance and that decision;
 - Q-001 through Q-020 headings remain present in `docs/open-questions.md`.
 
 ## Manual verification
@@ -180,6 +180,18 @@ PR-002 remains `IN REVIEW` until it is merged and accepted. PR-002 must not be m
 ## Rules for unresolved questions
 
 PR-002 does not answer Q-001 through Q-020. Those questions remain unresolved unless a separate accepted ADR explicitly states otherwise.
+
+## Conflict reported during audit
+
+PR-002 reports an unresolved M0/M1 lifecycle-sequencing conflict and does not resolve it. The conflict is:
+
+- `docs/implementation-plan.md` says the next major stage begins only after the current gate is accepted;
+- `docs/roadmap.md` groups PR-001 through PR-003 under M1 Safe Repository;
+- the M0 gate requires terminal blockers to be closed;
+- `docs/progress.md` and `docs/handoff.md` state that M0, terminal questions and the privacy gate remain open;
+- no accepted ADR currently allows formal M1 entry before the M0 gate is closed.
+
+Formal M1 entry is therefore not asserted in PR-002. The sequencing of M0 and the PR-001–PR-003 repository-safety work requires an explicit product-owner decision. PR-003 must not begin before PR-002 acceptance and that sequencing decision. PR-002 does not add an ADR or make that product-owner decision.
 
 ## Security and privacy restrictions
 

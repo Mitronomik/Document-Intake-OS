@@ -39,11 +39,11 @@ Modular monolith: domain, application, persistence, storage, image pipeline, rec
 
 ## Текущий этап
 
-Project phase: M1 Safe Repository.
+PR-001 is completed and merged. PR-002 is the current repository-safety task and remains under review until it is merged and accepted.
 
-PR-001 is completed and merged. PR-002 is the current task and remains under review until it is merged and accepted. PR-003 is the next planned task after PR-002 acceptance.
+M0 remains open because terminal questions and the privacy gate remain unresolved. Formal M1 entry is not asserted while the M0 gate remains unresolved.
 
-M0 remains open because terminal questions and the privacy gate remain unresolved.
+The sequencing of M0 and the PR-001–PR-003 repository-safety work requires an explicit product-owner decision. PR-003 must not begin before PR-002 acceptance and that sequencing decision.
 
 ## PR-002 boundaries
 

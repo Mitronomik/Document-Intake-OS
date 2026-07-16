@@ -179,11 +179,18 @@ def test_lifecycle_state_is_current_and_not_closed() -> None:
         assert forbidden_state not in handoff
         assert forbidden_state not in progress
 
-    assert "PR-002 is the current task" in handoff
-    assert "PR-003 is the next planned task after PR-002 acceptance" in handoff
-    assert "PR-003 must not start before PR-002 acceptance" in progress
+    assert "PR-002 is the current repository-safety task" in handoff
     assert "M0 remains open" in progress
+    assert "M0 remains open" in handoff
     assert "privacy gate remains open" in progress
+    assert "privacy gate remain unresolved" in handoff
+    assert "Formal M1 entry is not asserted" in handoff
+    assert "Project phase: M1 Safe Repository" not in handoff
+    assert "requires an explicit product-owner decision" in handoff
+    assert "PR-003 must not begin before PR-002 acceptance" in handoff
+    assert "that sequencing decision" in handoff
+    assert "PR-003 must not start before PR-002 acceptance" in progress
+    assert "M0/M1 lifecycle sequencing remains unresolved" in progress
     assert "M0 COMPLETED" not in progress
     assert "privacy gate closed" not in progress.lower()
 
