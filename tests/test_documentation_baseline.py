@@ -354,6 +354,131 @@ def test_terminal_staging_rule_prevents_placeholder_values() -> None:
         assert "**Placeholder rule:**" in section
 
 
+def test_adr_014_is_only_partially_superseded_by_template_policy() -> None:
+    decisions = (REPO_ROOT / "docs/decisions.md").read_text(encoding="utf-8")
+    adr_014 = _adr_section(decisions, "## ADR-014 — Temporary public repository during bootstrap")
+
+    assert "**Status:** ACCEPTED" in adr_014
+    assert "**Partially superseded by:** ADR-016" in adr_014
+    assert "approved non-sensitive terminal templates" in adr_014
+    assert "This exception does not permit real documents" in adr_014
+    assert "any personal data" in adr_014
+    assert "PII, databases, database journals, logs, backups" in adr_014
+    assert "OCR outputs, MRZ payloads" in adr_014
+    assert "secrets, keys, passwords, certificates or tokens" in adr_014
+    assert "unapproved terminal templates" in adr_014
+    assert "## ADR-014 — Temporary public repository during bootstrap" in adr_014
+    assert "SUPERSEDED" not in adr_014
+
+
+def test_adr_016_records_template_artifact_policy_and_restrictions() -> None:
+    decisions = (REPO_ROOT / "docs/decisions.md").read_text(encoding="utf-8")
+    adr_016 = _adr_section(
+        decisions, "## ADR-016 — M0 Gate, Privacy Boundary and PR-004 Authorization"
+    )
+
+    assert "three real terminal Excel templates" in adr_016
+    assert "non-sensitive project contract files" in adr_016
+    assert "do not contain personal data" in adr_016
+    assert "do not contain real application rows" in adr_016
+    assert "do not contain document images" in adr_016
+    assert "private keys or secret tokens" in adr_016
+    assert "cleaned or anonymized template copies" in adr_016
+    assert "binary golden files" in adr_016
+    assert "screenshots" in adr_016
+    assert "checksums" in adr_016
+    assert "manifests" in adr_016
+    assert "machine-generated mappings" in adr_016
+    assert "manually maintained mappings" in adr_016
+    assert "structural metadata" in adr_016
+    assert "synthetic output workbooks" in adr_016
+    assert "workbook format, sheet names, headers, comments" in adr_016
+    assert "validations, named ranges, tables, styles" in adr_016
+    assert "merged cells, external connections" in adr_016
+    assert "adapter mappings" in adr_016
+    assert "No encryption technology is selected" in adr_016
+
+
+def test_adr_016_template_artifacts_cannot_contain_personal_data_or_secrets() -> None:
+    decisions = (REPO_ROOT / "docs/decisions.md").read_text(encoding="utf-8")
+    adr_016 = _adr_section(
+        decisions, "## ADR-016 — M0 Gate, Privacy Boundary and PR-004 Authorization"
+    )
+
+    assert "no permitted template artifact may contain real personal" in adr_016
+    assert "real application records" in adr_016
+    assert "real document images" in adr_016
+    assert "OCR/MRZ payloads from real documents" in adr_016
+    assert "secrets or credentials" in adr_016
+    assert "Golden files produced from real application data remain prohibited" in adr_016
+    assert "A mapping artifact must not contain real application data or secret values" in adr_016
+    assert "Screenshots containing personal data remain prohibited" in adr_016
+    assert "A manifest must not contain credentials, personal data" in adr_016
+
+
+def test_adr_016_records_transitional_enforcement_before_template_artifacts() -> None:
+    decisions = (REPO_ROOT / "docs/decisions.md").read_text(encoding="utf-8")
+    task = (REPO_ROOT / "docs/tasks/GATE-M0-requirements-lock.md").read_text(encoding="utf-8")
+    adr_016 = _adr_section(
+        decisions, "## ADR-016 — M0 Gate, Privacy Boundary and PR-004 Authorization"
+    )
+
+    for text in (adr_016, task):
+        assert "current repository scanner and `.gitignore` remain intentionally more" in text
+        assert "separate repository-policy implementation PR" in text
+        assert "scripts/check_repository_policy.py" in text
+        assert "tests/test_repository_policy.py" in text
+        assert "resources/templates/README.md" in text
+        assert "docs/security.md" in text
+        assert "docs/testing-strategy.md" in text
+        assert "docs/development-workflow.md" in text
+        assert "The future enforcement PR does not block PR-004" in text
+        assert "No template artifact is added by GATE-M0" in text
+
+
+def test_pr_5_adds_no_template_or_template_derived_binary_artifact() -> None:
+    tracked_files = set(subprocess_run_git_ls_files())
+    forbidden_suffixes = {
+        ".xls",
+        ".xlsx",
+        ".xlsm",
+        ".xlsb",
+        ".xlt",
+        ".xltx",
+        ".xltm",
+        ".png",
+        ".jpg",
+        ".jpeg",
+        ".webp",
+        ".bmp",
+        ".gif",
+        ".tif",
+        ".tiff",
+    }
+
+    template_paths = [path for path in tracked_files if path.startswith("resources/templates/")]
+    assert template_paths == ["resources/templates/README.md"]
+    binary_artifacts = [
+        path for path in tracked_files if Path(path).suffix.lower() in forbidden_suffixes
+    ]
+    assert not binary_artifacts, "Unexpected tracked template/binary artifacts: " + ", ".join(
+        sorted(binary_artifacts)
+    )
+
+
+def subprocess_run_git_ls_files() -> list[str]:
+    import subprocess
+
+    result = subprocess.run(
+        ["git", "ls-files"],
+        cwd=REPO_ROOT,
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    return result.stdout.splitlines()
+
+
 def test_open_questions_q001_through_q020_remain_present() -> None:
     open_questions = (REPO_ROOT / "docs/open-questions.md").read_text(encoding="utf-8")
 
