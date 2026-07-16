@@ -25,103 +25,30 @@ This is the merge commit of GitHub PR #4, which delivered PR-003.
 
 Accepted.
 
-M0 may be accepted and PR-004 may proceed while the repository remains temporarily public under ADR-014 as partially superseded by ADR-016.
+M0 may be accepted and PR-004 may proceed while the repository remains temporarily public under ADR-014. The accepted public-repository state is `REPOSITORY PRIVACY BOUNDARY — ACCEPTED FOR NON-SENSITIVE CODE`.
 
-`REPOSITORY PRIVACY BOUNDARY — ACCEPTED FOR NON-SENSITIVE CODE` remains accepted.
+The public repository may contain only:
 
-`SENSITIVE-DATA / PRIVATE-CONTOUR GATE — OPEN` remains open for real documents, personal data, real operational databases, real exports, logs, backups, OCR/MRZ outputs from real documents, private acceptance datasets, credentials and secrets.
+- non-sensitive application source code;
+- non-sensitive documentation;
+- ordinary development configuration;
+- fully fictional synthetic source-code tests that contain no document-derived data.
 
-### Product-owner terminal-template classification
+The public repository must not contain:
 
-The three real terminal Excel templates are classified by the product owner as non-sensitive project contract files.
+- real documents or document photographs;
+- personal data;
+- anonymized or cleaned real documents;
+- terminal templates;
+- template-derived golden files;
+- template-derived screenshots, manifests, checksums or mappings;
+- databases or journals;
+- OCR or MRZ payloads;
+- private or local acceptance fixtures;
+- operational logs or backups;
+- secrets, keys, certificates or tokens.
 
-The product owner confirms that these template files:
-
-- do not contain personal data;
-- do not contain real application rows;
-- do not contain document images;
-- do not contain authentication credentials, private keys or secret tokens;
-- are authorized for use and storage in the project repository.
-
-Permitted artifact classes are:
-
-1. the three real Excel terminal templates;
-2. cleaned or anonymized copies of those templates;
-3. binary golden files derived from those templates;
-4. screenshots or rendered images of those templates;
-5. real template checksum values;
-6. extracted template manifests;
-7. machine-generated mappings extracted from those templates;
-8. new mapping files derived from the approved terminal templates;
-9. structural metadata, including workbook format, sheet names, headers, comments, validations, named ranges, tables, styles, merged cells, external connections and adapter mappings.
-
-These artifacts are not considered personal data merely because they are derived from a terminal template.
-
-No separate product-owner analysis or decision is required for each checksum, manifest, screenshot, binary golden file or mapping artifact when all of the following are true:
-
-- it is derived only from one of the three approved terminal templates;
-- it contains no real driver, vehicle or application data;
-- it contains no real document image;
-- it contains no secret or credential;
-- synthetic test values, when present, are fully fictional;
-- the artifact does not introduce data from another unapproved source.
-
-This decision does not authorize arbitrary new terminal templates from other terminals. A new source terminal template outside the currently approved three-template set requires a separate product-owner decision.
-
-### Data-content restrictions
-
-The repository must still prohibit:
-
-- real passports, identity cards, migration cards, work permits and vehicle documents;
-- photographs or scans of real documents;
-- real driver, vehicle, organization or application records;
-- databases containing real or operational data;
-- SQLite journals and database snapshots;
-- exports produced from real applications;
-- logs containing personal or operational data;
-- backups containing personal or operational data;
-- OCR outputs or MRZ payloads produced from real documents;
-- screenshots containing personal data;
-- golden files populated with real data;
-- manifests containing personal data;
-- mappings containing personal data;
-- secrets;
-- API tokens;
-- passwords;
-- private keys;
-- certificates containing private credentials;
-- connection credentials;
-- confidential third-party materials that the project is not authorized to publish.
-
-The determining boundary is content and authorization, not merely the `.xls` or `.xlsx` extension.
-
-### ADR-014 relationship
-
-ADR-014 remains accepted for personal data, real documents, operational databases, logs, backups, OCR/MRZ outputs, private acceptance datasets, credentials and secrets.
-
-ADR-016 explicitly supersedes only the parts of ADR-014 that categorically prohibited the approved terminal templates, cleaned template copies, template-derived golden files, template screenshots, template checksum values, template manifests and template mappings.
-
-ADR-014 is not fully superseded.
-
-### Transitional enforcement state
-
-The product policy permits approved non-sensitive terminal templates and template-derived technical artifacts. The current repository scanner and `.gitignore` remain intentionally more restrictive until a separate repository-policy implementation PR is reviewed and merged.
-
-Before the first actual Excel template, screenshot, golden file, manifest or generated mapping is committed, a separate repository-policy implementation PR must update:
-
-- `scripts/check_repository_policy.py`;
-- `tests/test_repository_policy.py`;
-- `.gitignore`;
-- `resources/templates/README.md`;
-- `docs/security.md`;
-- `docs/testing-strategy.md`;
-- `docs/development-workflow.md`.
-
-That future PR must define approved template paths, approved derivative paths, golden-file locations, screenshot locations, manifest and mapping locations, provenance rules, synthetic-data-only golden-file rules and continued blocking of real documents, PII, databases, logs, backups and secrets.
-
-The future enforcement PR does not block PR-004. It blocks only the first commit of the newly permitted template artifacts.
-
-No template artifact is added by GATE-M0.
+`SENSITIVE-DATA / PRIVATE-CONTOUR GATE — OPEN` remains open. Real terminal templates and local acceptance materials remain outside Git, Codex and CI. The open sensitive-data gate does not block PR-004 because PR-004 requires no sensitive input. It continues to block every task that requires real documents, terminal templates, template-derived artifacts or private acceptance materials.
 
 ### M0-02 — MVP workstation topology
 
@@ -199,7 +126,7 @@ This rule does not answer the terminal question. It stages the question to the c
 
 ## Scope
 
-Allowed changes are documentation and documentation-baseline tests only. No runtime code, dependencies, fixtures, templates, databases, real or anonymized documents, private acceptance artifacts or repository-policy scanner changes are included. No template artifact is added by GATE-M0.
+Allowed changes are documentation and documentation-baseline tests only. No runtime code, dependencies, fixtures, templates, databases, real or anonymized documents, private acceptance artifacts or repository-policy scanner changes are included.
 
 ## Verification
 

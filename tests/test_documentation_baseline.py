@@ -1,4 +1,4 @@
-"""Documentation-baseline contract tests for PR-002."""
+"""Documentation-baseline contract tests for PR-002 and GATE-M0."""
 
 from __future__ import annotations
 
@@ -120,6 +120,30 @@ def _adr_section(markdown: str, heading: str) -> str:
     return "\n".join(section_lines)
 
 
+def _question_section(markdown: str, question_id: str) -> str:
+    heading = f"### {question_id}"
+    lines = markdown.splitlines()
+    start = None
+    for index, line in enumerate(lines):
+        if line.strip() == heading:
+            start = index
+            break
+    assert start is not None, f"Missing open-question heading: {heading}"
+
+    section_lines: list[str] = []
+    for line in lines[start:]:
+        if section_lines and line.startswith("### Q-"):
+            break
+        section_lines.append(line)
+    return "\n".join(section_lines)
+
+
+def _question_status(section: str) -> str:
+    match = re.search(r"^\*\*Status:\*\* ([A-Z_]+)$", section, flags=re.MULTILINE)
+    assert match is not None, "Question section is missing exactly formatted status"
+    return match.group(1)
+
+
 def test_required_documentation_files_exist() -> None:
     missing = [path for path in REQUIRED_DOCUMENTS if not (REPO_ROOT / path).is_file()]
     assert not missing, "Missing required documentation files: " + ", ".join(missing)
@@ -212,30 +236,6 @@ def test_lifecycle_state_records_gate_m0_review_state() -> None:
     assert "PR-004 IN PROGRESS" not in combined_current
     assert "PR-005: AUTHORIZED" not in combined_current
     assert "PR-006: AUTHORIZED" not in combined_current
-
-
-def _question_section(markdown: str, question_id: str) -> str:
-    heading = f"### {question_id}"
-    lines = markdown.splitlines()
-    start = None
-    for index, line in enumerate(lines):
-        if line.strip() == heading:
-            start = index
-            break
-    assert start is not None, f"Missing open-question heading: {heading}"
-
-    section_lines: list[str] = []
-    for line in lines[start:]:
-        if section_lines and line.startswith("### Q-"):
-            break
-        section_lines.append(line)
-    return "\n".join(section_lines)
-
-
-def _question_status(section: str) -> str:
-    match = re.search(r"^\*\*Status:\*\* ([A-Z_]+)$", section, flags=re.MULTILINE)
-    assert match is not None, "Question section is missing exactly formatted status"
-    return match.group(1)
 
 
 def test_open_questions_q001_through_q020_remain_present_with_valid_statuses() -> None:
@@ -341,7 +341,7 @@ def test_gate_m0_specific_question_requirements_are_recorded() -> None:
     assert _question_status(q019) == "SUPERSEDED"
     assert "ADR-002 and NFR-02" in q019
     assert "Windows 11 x64 is first" in q019
-    assert "macOS initial-release question superseded by ADR-002 and NFR-02" in (technical_spec)
+    assert "macOS initial-release question superseded by ADR-002 and NFR-02" in technical_spec
 
 
 def test_terminal_staging_rule_prevents_placeholder_values() -> None:
@@ -352,131 +352,6 @@ def test_terminal_staging_rule_prevents_placeholder_values() -> None:
     for question_id in ["Q-001", "Q-002", "Q-003", "Q-004", "Q-005"]:
         section = _question_section(open_questions, question_id)
         assert "**Placeholder rule:**" in section
-
-
-def test_adr_014_is_only_partially_superseded_by_template_policy() -> None:
-    decisions = (REPO_ROOT / "docs/decisions.md").read_text(encoding="utf-8")
-    adr_014 = _adr_section(decisions, "## ADR-014 — Temporary public repository during bootstrap")
-
-    assert "**Status:** ACCEPTED" in adr_014
-    assert "**Partially superseded by:** ADR-016" in adr_014
-    assert "approved non-sensitive terminal templates" in adr_014
-    assert "This exception does not permit real documents" in adr_014
-    assert "any personal data" in adr_014
-    assert "PII, databases, database journals, logs, backups" in adr_014
-    assert "OCR outputs, MRZ payloads" in adr_014
-    assert "secrets, keys, passwords, certificates or tokens" in adr_014
-    assert "unapproved terminal templates" in adr_014
-    assert "## ADR-014 — Temporary public repository during bootstrap" in adr_014
-    assert "SUPERSEDED" not in adr_014
-
-
-def test_adr_016_records_template_artifact_policy_and_restrictions() -> None:
-    decisions = (REPO_ROOT / "docs/decisions.md").read_text(encoding="utf-8")
-    adr_016 = _adr_section(
-        decisions, "## ADR-016 — M0 Gate, Privacy Boundary and PR-004 Authorization"
-    )
-
-    assert "three real terminal Excel templates" in adr_016
-    assert "non-sensitive project contract files" in adr_016
-    assert "do not contain personal data" in adr_016
-    assert "do not contain real application rows" in adr_016
-    assert "do not contain document images" in adr_016
-    assert "private keys or secret tokens" in adr_016
-    assert "cleaned or anonymized template copies" in adr_016
-    assert "binary golden files" in adr_016
-    assert "screenshots" in adr_016
-    assert "checksums" in adr_016
-    assert "manifests" in adr_016
-    assert "machine-generated mappings" in adr_016
-    assert "manually maintained mappings" in adr_016
-    assert "structural metadata" in adr_016
-    assert "synthetic output workbooks" in adr_016
-    assert "workbook format, sheet names, headers, comments" in adr_016
-    assert "validations, named ranges, tables, styles" in adr_016
-    assert "merged cells, external connections" in adr_016
-    assert "adapter mappings" in adr_016
-    assert "No encryption technology is selected" in adr_016
-
-
-def test_adr_016_template_artifacts_cannot_contain_personal_data_or_secrets() -> None:
-    decisions = (REPO_ROOT / "docs/decisions.md").read_text(encoding="utf-8")
-    adr_016 = _adr_section(
-        decisions, "## ADR-016 — M0 Gate, Privacy Boundary and PR-004 Authorization"
-    )
-
-    assert "no permitted template artifact may contain real personal" in adr_016
-    assert "real application records" in adr_016
-    assert "real document images" in adr_016
-    assert "OCR/MRZ payloads from real documents" in adr_016
-    assert "secrets or credentials" in adr_016
-    assert "Golden files produced from real application data remain prohibited" in adr_016
-    assert "A mapping artifact must not contain real application data or secret values" in adr_016
-    assert "Screenshots containing personal data remain prohibited" in adr_016
-    assert "A manifest must not contain credentials, personal data" in adr_016
-
-
-def test_adr_016_records_transitional_enforcement_before_template_artifacts() -> None:
-    decisions = (REPO_ROOT / "docs/decisions.md").read_text(encoding="utf-8")
-    task = (REPO_ROOT / "docs/tasks/GATE-M0-requirements-lock.md").read_text(encoding="utf-8")
-    adr_016 = _adr_section(
-        decisions, "## ADR-016 — M0 Gate, Privacy Boundary and PR-004 Authorization"
-    )
-
-    for text in (adr_016, task):
-        assert "current repository scanner and `.gitignore` remain intentionally more" in text
-        assert "separate repository-policy implementation PR" in text
-        assert "scripts/check_repository_policy.py" in text
-        assert "tests/test_repository_policy.py" in text
-        assert "resources/templates/README.md" in text
-        assert "docs/security.md" in text
-        assert "docs/testing-strategy.md" in text
-        assert "docs/development-workflow.md" in text
-        assert "The future enforcement PR does not block PR-004" in text
-        assert "No template artifact is added by GATE-M0" in text
-
-
-def test_pr_5_adds_no_template_or_template_derived_binary_artifact() -> None:
-    tracked_files = set(subprocess_run_git_ls_files())
-    forbidden_suffixes = {
-        ".xls",
-        ".xlsx",
-        ".xlsm",
-        ".xlsb",
-        ".xlt",
-        ".xltx",
-        ".xltm",
-        ".png",
-        ".jpg",
-        ".jpeg",
-        ".webp",
-        ".bmp",
-        ".gif",
-        ".tif",
-        ".tiff",
-    }
-
-    template_paths = [path for path in tracked_files if path.startswith("resources/templates/")]
-    assert template_paths == ["resources/templates/README.md"]
-    binary_artifacts = [
-        path for path in tracked_files if Path(path).suffix.lower() in forbidden_suffixes
-    ]
-    assert not binary_artifacts, "Unexpected tracked template/binary artifacts: " + ", ".join(
-        sorted(binary_artifacts)
-    )
-
-
-def subprocess_run_git_ls_files() -> list[str]:
-    import subprocess
-
-    result = subprocess.run(
-        ["git", "ls-files"],
-        cwd=REPO_ROOT,
-        check=True,
-        capture_output=True,
-        text=True,
-    )
-    return result.stdout.splitlines()
 
 
 def test_open_questions_q001_through_q020_remain_present() -> None:
