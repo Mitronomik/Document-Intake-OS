@@ -190,6 +190,11 @@ def test_lifecycle_state_is_current_and_not_closed() -> None:
     assert "PR-003 must not begin before PR-002 acceptance" in handoff
     assert "that sequencing decision" in handoff
     assert "PR-003 must not start before PR-002 acceptance" in progress
+    assert "explicit product-owner decision on M0/M1 lifecycle sequencing" in progress
+    assert "permits repository-safety work to continue" in progress
+    assert "after PR-002 acceptance and an explicit product-owner" in progress
+    assert "only if that decision permits" in progress
+    assert "after PR-002 acceptance, prepare PR-003" not in progress
     assert "M0/M1 lifecycle sequencing remains unresolved" in progress
     assert "M0 COMPLETED" not in progress
     assert "privacy gate closed" not in progress.lower()

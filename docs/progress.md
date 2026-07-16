@@ -36,7 +36,7 @@
 
 ## Не начато
 
-- [ ] PR-003 CI and privacy guardrails; PR-003 must not start before PR-002 acceptance;
+- [ ] PR-003 CI and privacy guardrails; PR-003 must not start before PR-002 acceptance and an explicit product-owner decision on M0/M1 lifecycle sequencing that permits repository-safety work to continue;
 - [ ] approved private development contour for terminal templates and template-derived golden files;
 - [ ] domain implementation;
 - [ ] storage implementation;
@@ -55,6 +55,6 @@ M0/M1 lifecycle sequencing remains unresolved: `docs/implementation-plan.md` req
 
 1. complete human review and CI for PR-002 without marking it completed before merge;
 2. keep M0 open until terminal questions and the privacy gate are resolved;
-3. after PR-002 acceptance, prepare PR-003 as the next single-scope task for CI and privacy guardrails.
+3. after PR-002 acceptance and an explicit product-owner lifecycle-sequencing decision, prepare PR-003 only if that decision permits the repository-safety work to continue.
 
 M0 remains open because terminal questions and the privacy gate remain open.
