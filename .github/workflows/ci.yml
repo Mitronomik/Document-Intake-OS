@@ -24,12 +24,16 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v7
+        with:
+          persist-credentials: false
       - name: Install uv
         uses: astral-sh/setup-uv@v7
       - name: Set up Python
         uses: actions/setup-python@v6
         with:
           python-version-file: ".python-version"
+      - name: Repository policy
+        run: python scripts/check_repository_policy.py
       - name: Install Qt runtime libraries on Linux
         if: runner.os == 'Linux'
         run: |
@@ -44,7 +48,7 @@ jobs:
       - name: Ruff format
         run: uv run ruff format --check .
       - name: Mypy
-        run: uv run mypy src
+        run: uv run mypy src scripts/check_repository_policy.py
       - name: Pytest
         run: uv run pytest -ra
       - name: Build package

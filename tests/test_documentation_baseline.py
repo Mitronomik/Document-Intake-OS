@@ -34,6 +34,7 @@ REQUIRED_DOCUMENTS = (
     "docs/handoff.md",
     "docs/tasks/PR-001-repository-bootstrap.md",
     "docs/tasks/PR-002-documentation-baseline.md",
+    "docs/tasks/PR-003-ci-privacy-guardrails.md",
 )
 
 CANONICAL_SOURCE_ORDER = (
@@ -101,6 +102,23 @@ def _canonical_section(markdown: str, heading: str) -> str:
     return "\n".join(section_lines)
 
 
+def _adr_section(markdown: str, heading: str) -> str:
+    lines = markdown.splitlines()
+    start = None
+    for index, line in enumerate(lines):
+        if line.strip() == heading:
+            start = index
+            break
+    assert start is not None, f"Missing ADR heading: {heading}"
+
+    section_lines: list[str] = []
+    for line in lines[start:]:
+        if section_lines and line.startswith("## "):
+            break
+        section_lines.append(line)
+    return "\n".join(section_lines)
+
+
 def test_required_documentation_files_exist() -> None:
     missing = [path for path in REQUIRED_DOCUMENTS if not (REPO_ROOT / path).is_file()]
     assert not missing, "Missing required documentation files: " + ", ".join(missing)
@@ -158,46 +176,36 @@ def test_readme_and_agents_use_canonical_source_order() -> None:
 
 
 def test_lifecycle_state_is_current_and_not_closed() -> None:
+    decisions = (REPO_ROOT / "docs/decisions.md").read_text(encoding="utf-8")
     progress = (REPO_ROOT / "docs/progress.md").read_text(encoding="utf-8")
     handoff = (REPO_ROOT / "docs/handoff.md").read_text(encoding="utf-8")
+    roadmap = (REPO_ROOT / "docs/roadmap.md").read_text(encoding="utf-8")
+    implementation_plan = (REPO_ROOT / "docs/implementation-plan.md").read_text(encoding="utf-8")
+    combined_current = "\n".join([progress, handoff, roadmap, implementation_plan])
+    adr_015 = _adr_section(decisions, "## ADR-015 — M0/M1 repository-safety sequencing")
 
-    assert "PR-002 IN REVIEW" in progress
-    assert "PR-002 COMPLETED" not in progress
-    assert "PRE-IMPLEMENTATION" not in handoff
-
-    forbidden_pr001_states = (
-        "PR-001 is the current task",
-        "PR-001 is current",
-        "PR-001 is the next",
-        "PR-001 Repository bootstrap:",
-        "PR-001 remains under review",
-        "PR-001 IN REVIEW",
-        "PR-001 is incomplete",
-        "PR-001 incomplete",
-    )
-    for forbidden_state in forbidden_pr001_states:
-        assert forbidden_state not in handoff
-        assert forbidden_state not in progress
-
-    assert "PR-002 is the current repository-safety task" in handoff
+    assert "## ADR-015 — M0/M1 repository-safety sequencing" in adr_015
+    assert "**Status:** ACCEPTED" in adr_015
+    assert "**Date:** 2026-07-16" in adr_015
+    assert "PR-002 completed and merged through GitHub PR #3" in progress
+    assert "PR-003 IN REVIEW" in progress
+    assert "PR-003 COMPLETED" not in progress
     assert "M0 remains open" in progress
     assert "M0 remains open" in handoff
     assert "privacy gate remains open" in progress
-    assert "privacy gate remain unresolved" in handoff
-    assert "Formal M1 entry is not asserted" in handoff
-    assert "Project phase: M1 Safe Repository" not in handoff
-    assert "requires an explicit product-owner decision" in handoff
-    assert "PR-003 must not begin before PR-002 acceptance" in handoff
-    assert "that sequencing decision" in handoff
-    assert "PR-003 must not start before PR-002 acceptance" in progress
-    assert "explicit product-owner decision on M0/M1 lifecycle sequencing" in progress
-    assert "permits repository-safety work to continue" in progress
-    assert "after PR-002 acceptance and an explicit product-owner" in progress
-    assert "only if that decision permits" in progress
-    assert "after PR-002 acceptance, prepare PR-003" not in progress
-    assert "M0/M1 lifecycle sequencing remains unresolved" in progress
+    assert "privacy gate remains open" in handoff
+    assert "M0/M1 lifecycle sequencing remains unresolved" not in combined_current
+    assert (
+        "M2 cannot begin until M0 is accepted and M1 repository-safety work is accepted" in roadmap
+    )
+    assert "PR-004 and later tasks remain blocked until M0 and M1 are accepted" in (
+        implementation_plan
+    )
     assert "M0 COMPLETED" not in progress
-    assert "privacy gate closed" not in progress.lower()
+    assert "M1 COMPLETED" not in progress
+    assert "M0 is completed" not in combined_current
+    assert "M1 is completed" not in combined_current
+    assert "privacy gate closed" not in combined_current.lower()
 
 
 def test_open_questions_q001_through_q020_remain_present() -> None:

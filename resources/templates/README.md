@@ -1,20 +1,16 @@
-# Terminal templates
+# Terminal template directory policy
 
-Only approved and cleaned terminal templates may be committed here.
+This repository is temporarily public under ADR-014. While it remains public, this directory may contain only this `README.md` policy marker.
 
-Required paths:
+Terminal templates are prohibited here, including cleaned, anonymized, empty, and sample templates. Template-derived golden files are also prohibited.
 
-- `tsp/TSPMAINFILE.xls`
-- `visitors/visitors_example.xlsx`
-- `mgs/MGSMAINFILE.xlsx`
+Checksums, manifests, screenshots, exports, and sidecar files derived from real terminal templates are prohibited. Real file names, sheet structures, mappings, or template-derived examples must not be added merely as placeholders.
 
-Before commit verify:
+Before any template-related file is introduced:
 
-1. no real names, phones, passport numbers, addresses, VINs or registrations;
-2. sheet names are unchanged;
-3. exact headers are unchanged;
-4. comments, validations, formatting and service sheets remain intact;
-5. the workbook opens without repair;
-6. the SHA-256 checksum is recorded in `template-checksums.sha256`.
+1. repository visibility must be reviewed;
+2. a private development contour must be approved;
+3. the exact files must receive separate approval;
+4. golden-file handling must be defined.
 
-Do not edit templates directly during export. Adapters must work with copies.
+Adapters must never modify source templates in place.

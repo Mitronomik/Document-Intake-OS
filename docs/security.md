@@ -111,3 +111,21 @@ Encrypted archive with manifest, checksum, format version and tested restore. Re
 ## 15. Нерешенные решения
 
 Encryption implementation, Windows key storage, file encryption, password policy, idle timeout, retention, secure deletion and number of workstations.
+
+## 16. Repository privacy guardrails
+
+PR-003 adds a tracked-file repository policy scanner that runs locally and in CI. The scanner reads the current tracked tree with `git ls-files -z`; it does not recursively inspect untracked local directories and is not Git-history forensics.
+
+The scanner enforces forbidden repository-root paths for runtime data, exports, logs, personal-data areas, private fixtures and local acceptance data. Root-level `storage/` is treated as runtime storage and does not apply to `src/document_intake/storage/`.
+
+While the repository remains public, `resources/templates/README.md` is the only permitted tracked file under `resources/templates/`. This exception permits repository-policy documentation only. It does not permit any terminal template, fixture, manifest, checksum or template-derived information. Terminal templates, including cleaned, anonymized, empty and sample templates, remain prohibited.
+
+Committed fixtures must be synthetic-only and may exist only under `tests/fixtures/synthetic/`. Private, real, production, local and acceptance fixture subtrees are blocked. PR-003 adds no document fixtures.
+
+Tracked images are allowed only under `tests/fixtures/synthetic/`, and tracked synthetic images are limited to 1,992,294 bytes. This is the integer byte limit corresponding to 1.90 MiB.
+
+The scanner detects a narrow set of high-confidence secret signatures: private-key markers, AWS access-key IDs, GitHub classic tokens, GitHub fine-grained tokens, OpenAI-style keys, Google API keys, Slack tokens and Stripe live secret keys. It does not use broad entropy heuristics and does not implement semantic PII detection.
+
+Diagnostics include stable rule IDs, repository-relative paths and line numbers when applicable. Diagnostics must not print matched secrets, binary content or full source lines.
+
+Passing the scanner reduces risk but cannot prove absence of every possible PII item or secret. Real-data acceptance remains local and outside Git and CI. A detected real secret requires separate credential revocation and incident handling. Passing the scanner does not authorize a file that violates higher-level policy or an accepted ADR.

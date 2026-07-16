@@ -38,6 +38,14 @@ Codex не принимает security/data decisions без ADR.
 
 ## 5. Checklist
 
+Before submitting a change, run:
+
+```bash
+python scripts/check_repository_policy.py
+```
+
+Policy failures block merge. Policy rules must not be bypassed through renamed files. `resources/templates/README.md` is the only permitted tracked file under `resources/templates/` while the repository is public, and it permits repository-policy documentation only. Exceptions affecting privacy or data boundaries require an accepted ADR. Developers must inspect `git status` and `git diff --cached` before pushing. Real acceptance files remain outside the repository.
+
 - [ ] один scope;
 - [ ] нет real PII;
 - [ ] нет network functionality;

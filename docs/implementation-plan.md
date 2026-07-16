@@ -5,6 +5,9 @@
 - один PR решает одну понятную задачу;
 - каждый PR содержит тесты, документацию и manual verification;
 - следующий крупный этап начинается после приемки gate;
+- ADR-015 creates a narrow exception for PR-001 through PR-003 repository-safety work while M0 remains open;
+- PR-003 may proceed while M0 is open;
+- PR-004 and later tasks remain blocked until M0 and M1 are accepted;
 - реальные документы не используются в Codex Web;
 - OCR начинается только после готовности ручного контура.
 
@@ -43,7 +46,20 @@ Scope:
 
 ### PR-003 — CI and privacy guardrails
 
-CI, secret scan, запрет private fixture patterns, проверка крупных изображений и fixture policy.
+**Status:** IN REVIEW after implementation submission; not completed until merge and human acceptance.
+
+Scope:
+
+- repository-policy scanner using tracked files from `git ls-files -z`;
+- high-confidence secret signatures with safe diagnostics;
+- private-fixture protection;
+- terminal-template protection, permitting only `resources/templates/README.md` as a policy marker under `resources/templates/`;
+- tracked-image location and 1,992,294-byte synthetic-image size policy;
+- CI integration on Ubuntu and Windows;
+- fixture-policy documentation;
+- automated tests.
+
+Non-goals: domain, persistence, storage, image pipeline, UI workflow, OCR, Excel implementation, PR-004, M2, real documents, terminal templates and fixtures.
 
 ## Этап 1. Домен и хранение
 

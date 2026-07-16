@@ -99,13 +99,24 @@ Cleaned or anonymized terminal templates may be allowed only after:
 3. the security decision is recorded;
 4. the files are separately approved.
 
+## Repository policy guardrail
+
+Before submitting a change, run:
+
+```bash
+python scripts/check_repository_policy.py
+```
+
+Do not bypass or weaken policy checks. Do not add allowlist exceptions without an accepted ADR when privacy or data boundaries are affected. No real documents, templates or private fixtures may be used to make a test pass. While the repository is public, `resources/templates/README.md` is the only permitted tracked file under `resources/templates/`, and it is only a policy marker.
+
 ## Required checks
 
 ```bash
+python scripts/check_repository_policy.py
 uv sync --locked --all-extras --dev
 uv run ruff check .
 uv run ruff format --check .
-uv run mypy src
+uv run mypy src scripts/check_repository_policy.py
 uv run pytest -ra
 uv build
 ```
