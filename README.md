@@ -83,6 +83,7 @@ PR-001 established Python 3.12 and `uv` for dependency management. The bootstrap
 ### Local commands
 
 ```bash
+python scripts/check_repository_policy.py
 uv sync --locked --all-extras --dev
 uv run python -c "import document_intake; print(document_intake.__version__)"
 uv run ruff check .
@@ -91,6 +92,8 @@ uv run mypy src
 uv run pytest -ra
 uv build
 ```
+
+`python scripts/check_repository_policy.py` checks tracked files only and blocks prohibited repository content such as private fixtures, terminal templates, oversized tracked images and high-confidence secret signatures. The tracked-file scanner is the CI-enforced guardrail; `.gitignore` is only preventive.
 
 ### Run the bootstrap desktop shell
 

@@ -104,3 +104,73 @@ Before any template or document-derived fixture is committed, repository visibil
 This decision does not change the offline and local-only runtime architecture.
 
 The privacy gate remains open.
+
+## ADR-015 — M0/M1 repository-safety sequencing
+
+**Status:** ACCEPTED
+**Date:** 2026-07-16
+
+### Context
+
+PR-002 discovered a lifecycle conflict: the implementation plan says the next major stage starts only after the applicable gate is accepted, the roadmap groups PR-001 through PR-003 under M1 Safe Repository, M0 remains open because terminal questions and the privacy gate remain unresolved, and no accepted decision previously allowed repository-safety work to continue while M0 was open.
+
+### Decision
+
+1. PR-001 through PR-003 form a narrow repository-safety workstream.
+2. Repository-safety work under PR-001 through PR-003 may proceed while M0 remains open.
+3. PR-003 is authorized by this decision.
+4. PR-003 is limited to:
+
+   * CI integration;
+   * tracked-file privacy policy;
+   * high-confidence secret detection;
+   * private-fixture path protection;
+   * terminal-template protection;
+   * tracked-image location and size protection;
+   * fixture-policy documentation and tests.
+5. M0 remains open.
+6. The privacy gate remains open.
+7. Terminal and security questions remain unresolved.
+8. This decision does not approve real documents, personal data, document-derived fixtures, terminal templates or template-derived golden files for the public repository.
+9. This decision does not authorize domain, persistence, storage, image pipeline, UI workflow, OCR or Excel implementation.
+10. This decision does not authorize PR-004 or any later implementation task.
+11. M2 must not begin until:
+
+    * M0 is accepted;
+    * M1 repository-safety work is accepted.
+12. Completion of PR-003 does not imply completion of M0.
+13. Completion of PR-003 does not automatically authorize M2.
+14. Q-001 through Q-020 remain unresolved.
+15. Public-repository restrictions from ADR-014 remain unchanged.
+
+### Rationale
+
+Repository guardrails reduce privacy risk and do not depend on unresolved terminal mappings, real documents or Excel templates. The work is limited to repository safety and CI enforcement, so it can proceed without making product-runtime or data-architecture decisions.
+
+### Consequences
+
+- PR-003 is authorized.
+- M0 remains open.
+- The privacy gate remains open.
+- M2 remains blocked.
+- Public-repository restrictions remain unchanged.
+- No product runtime implementation is authorized.
+- After merge, PR-003 still requires human acceptance before M1 can be considered complete.
+
+### Non-decisions
+
+ADR-015 does not decide:
+
+- Q-001 through Q-020;
+- repository privacy timing;
+- encryption;
+- retention;
+- workstations;
+- authentication;
+- secure deletion;
+- terminal limits;
+- terminal mappings;
+- `.xls` handling;
+- OCR technology;
+- database implementation;
+- filesystem storage implementation.

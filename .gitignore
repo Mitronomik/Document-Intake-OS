@@ -47,6 +47,8 @@ ocr-models/
 *.p12
 *.crt
 *.cer
+*.jks
+*.keystore
 
 # Real or accidental image uploads are ignored by default.
 *.jpg
@@ -68,9 +70,30 @@ ocr-models/
 *.xls
 *.xlsx
 *.xlsm
+*.xlsb
+*.xlt
+*.xltx
+*.xltm
 
 # Terminal templates and template-derived golden Excel files remain ignored while this
 # repository is public. They require a separately approved private development contour.
+# The tracked resources/templates/README.md policy marker remains allowed.
+resources/templates/**
+!resources/templates/
+!resources/templates/README.md
+
+# Document and archive containers
+*.pdf
+*.doc
+*.docx
+*.odt
+*.rtf
+*.zip
+*.7z
+*.rar
+*.tar
+*.tgz
+*.gz
 
 # Build artifacts
 dist/
@@ -84,3 +107,7 @@ build-output/
 ~$*.xls
 ~$*.xlsx
 ~$*.xlsm
+~$*.xlsb
+~$*.xlt
+~$*.xltx
+~$*.xltm

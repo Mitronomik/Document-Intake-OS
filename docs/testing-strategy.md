@@ -14,20 +14,24 @@
 
 ## 3. Fixtures
 
-Git: fictional data, synthetic MRZ, generated documents, distortions, glare, multiple documents and sides.
+Committed fixtures must be fictional and synthetic. Committed fixture files may exist only under `tests/fixtures/synthetic/`; `resources/templates/README.md` is the only permitted tracked file under `resources/templates/` while the repository is public, and that exception permits repository-policy documentation only.
+
+PR-003 adds no document fixtures. Large test inputs must normally be generated at test runtime. Private acceptance datasets remain outside Git, Codex and CI. Repository-policy tests use temporary files only.
 
 Private local set: controlled access, local ground truth, no inclusion in reports or cloud tools.
 
 ## 4. CI
 
 ```bash
-ruff check .
-ruff format --check .
-mypy src
-pytest
+python scripts/check_repository_policy.py
+uv run ruff check .
+uv run ruff format --check .
+uv run mypy src scripts/check_repository_policy.py
+uv run pytest -ra
+uv build
 ```
 
-После настройки: coverage, secret scan, dependency/license audit, network guard and fixture privacy scan.
+После настройки: coverage, dependency/license audit and network guard. The repository-policy scanner is a preventive tracked-file guardrail; it does not implement semantic PII detection.
 
 ## 5. Domain tests
 

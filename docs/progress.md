@@ -1,7 +1,7 @@
 # Progress
 
 **Обновлено:** 2026-07-16  
-**Статус:** PR-002 IN REVIEW
+**Статус:** PR-003 IN REVIEW
 
 ## Завершено
 
@@ -17,26 +17,23 @@
 - [x] подготовлен пакет Markdown-документации;
 - [x] GitHub repository exists;
 - [x] repository is temporarily public by explicit product-owner decision;
-- [x] PR-001 принят и смержен в `main` коммитом `6ca116e`;
-- [x] создан Python 3.12 repository skeleton;
-- [x] `uv.lock` сгенерирован через uv и добавлен в Git;
-- [x] добавлен минимальный PySide6 entry point;
-- [x] зафиксированы архитектурные границы пакетов;
-- [x] добавлены bootstrap smoke tests;
-- [x] Ubuntu и Windows CI прошли на финальной версии PR;
-- [x] local macOS bootstrap smoke test passed;
+- [x] PR-001 completed and merged in `main` commit `6ca116e`;
+- [x] PR-002 completed and merged through GitHub PR #3 with merge commit `d7203f82`;
+- [x] ADR-015 accepted by the product owner;
 - [x] no terminal templates are committed;
 - [x] no personal data are committed.
 
 ## В работе
 
-- [ ] PR-002 documentation-baseline implementation is submitted for review;
+- [ ] PR-003 implementation is under review;
+- [ ] M0 remains open;
 - [ ] privacy gate remains open;
-- [ ] terminal and security questions required for subsequent stages remain unresolved.
+- [ ] terminal and security questions remain unresolved;
+- [ ] M1 is not completed before PR-003 merge and human acceptance;
+- [ ] M2 and PR-004+ remain blocked.
 
 ## Не начато
 
-- [ ] PR-003 CI and privacy guardrails; PR-003 must not start before PR-002 acceptance and an explicit product-owner decision on M0/M1 lifecycle sequencing that permits repository-safety work to continue;
 - [ ] approved private development contour for terminal templates and template-derived golden files;
 - [ ] domain implementation;
 - [ ] storage implementation;
@@ -49,12 +46,12 @@
 
 Visitors terminal name, TSP format, participant limits, completeness matrix, merge rules, workstation count, retention, encryption and missing document samples remain unresolved.
 
-M0/M1 lifecycle sequencing remains unresolved: `docs/implementation-plan.md` requires a gate acceptance before the next major stage, `docs/roadmap.md` groups PR-001–PR-003 under M1 Safe Repository, and M0 cannot close while terminal questions and the privacy gate remain open. Formal M1 entry is not asserted until an explicit product-owner sequencing decision is recorded.
+ADR-015 resolves repository-safety sequencing only for PR-001 through PR-003. Completion of PR-003 does not imply completion of M0, does not close the privacy gate and does not automatically authorize M2.
 
 ## Следующий безопасный шаг
 
-1. complete human review and CI for PR-002 without marking it completed before merge;
+1. complete human review and CI for PR-003 without marking it completed before merge;
 2. keep M0 open until terminal questions and the privacy gate are resolved;
-3. after PR-002 acceptance and an explicit product-owner lifecycle-sequencing decision, prepare PR-003 only if that decision permits the repository-safety work to continue.
+3. keep M2 and PR-004+ blocked until M0 is accepted and M1 repository-safety work is accepted.
 
 M0 remains open because terminal questions and the privacy gate remain open.
