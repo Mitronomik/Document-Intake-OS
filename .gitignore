@@ -69,13 +69,8 @@ ocr-models/
 *.xlsx
 *.xlsm
 
-# Explicitly allow approved templates and golden fixtures.
-!resources/templates/**/*.xls
-!resources/templates/**/*.xlsx
-!resources/templates/**/*.xlsm
-!tests/golden/**/*.xls
-!tests/golden/**/*.xlsx
-!tests/golden/**/*.xlsm
+# Terminal templates and template-derived golden Excel files remain ignored while this
+# repository is public. They require a separately approved private development contour.
 
 # Build artifacts
 dist/

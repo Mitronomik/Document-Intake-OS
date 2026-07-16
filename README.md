@@ -70,3 +70,49 @@ src/document_intake/
 ## Безопасный старт
 
 До OCR необходимо реализовать ручной контур: импорт, неизменяемые оригиналы, подготовка JPEG, ручная проверка, снимок заявки и три Excel-адаптера.
+
+## Development setup
+
+PR-001 uses Python 3.12 and `uv` for dependency management. The bootstrap contains only the package skeleton and a minimal PySide6 shell; it does not implement OCR, persistence, image processing, Excel export, or business workflows. PR-001 remains under review until final CI, human acceptance, and merge are complete.
+
+### Local commands
+
+```bash
+uv sync --locked --all-extras --dev
+uv run python -c "import document_intake; print(document_intake.__version__)"
+uv run ruff check .
+uv run ruff format --check .
+uv run mypy src
+uv run pytest -ra
+uv build
+```
+
+### Run the bootstrap desktop shell
+
+```bash
+uv run document-intake
+```
+
+The module entry point delegates to the same application entry point:
+
+```bash
+uv run python -m document_intake
+```
+
+Run the automated offscreen event-loop smoke check with:
+
+```bash
+QT_QPA_PLATFORM=offscreen uv run pytest -q tests/test_bootstrap.py::test_real_qt_event_loop_starts_and_exits
+```
+
+## Public repository security warning
+
+The GitHub repository is temporarily public by explicit product-owner decision. This temporary public status does not change the local-only and offline runtime architecture.
+
+While the repository remains public, do not commit terminal Excel templates, including cleaned or anonymized templates, and do not commit template-derived golden Excel files. Do not commit documents, document images, personal data, OCR results, MRZ payloads, databases, database journals, backups, logs, screenshots, local acceptance data, private fixtures, secrets, keys, passwords, certificates or tokens.
+
+Terminal templates may be introduced only after a separate security review and only inside an approved private development contour.
+
+### Data and fixtures
+
+Only synthetic/no-document source-code tests are allowed in this repository and CI. Fictional scalar values are allowed only when they contain no document-derived layout and no personal data.

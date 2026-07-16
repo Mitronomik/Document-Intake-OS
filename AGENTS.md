@@ -68,29 +68,45 @@ Forbidden:
 - Every stored file has SHA-256.
 - Errors must be typed and actionable.
 
-## Fixtures
+## Fixtures and public repository rules
 
-Allowed:
+While the repository is public, allowed fixtures are limited to:
 
-- synthetic images;
-- fictional personal data;
-- generated MRZ;
-- cleaned templates;
-- anonymized fixtures that cannot identify a person.
+- synthetic source-code tests that contain no document-derived layout or personal data;
+- fictional scalar values only when they contain no document-derived layout or personal data.
 
-Forbidden:
+While the repository is public, forbidden fixtures and artifacts include:
 
 - real passports, migration cards, licenses and vehicle documents;
+- scans, photographs or screenshots derived from real documents;
 - real names, phones, addresses and identifiers;
-- production databases, backups and screenshots.
+- birth dates belonging to real people;
+- VINs, vehicle registration numbers and trailer registration numbers;
+- production databases, database journals, backups and screenshots;
+- OCR outputs and MRZ payloads;
+- logs containing operational data;
+- secrets, keys, passwords, certificates and tokens;
+- private fixtures and local acceptance fixtures;
+- cleaned terminal templates;
+- anonymized terminal templates;
+- template-derived golden Excel files.
+
+Cleaned or anonymized terminal templates may be allowed only after:
+
+1. the repository is moved into an approved private contour;
+2. repository visibility is reviewed;
+3. the security decision is recorded;
+4. the files are separately approved.
 
 ## Required checks
 
 ```bash
-ruff check .
-ruff format --check .
-mypy src
-pytest
+uv sync --locked --all-extras --dev
+uv run ruff check .
+uv run ruff format --check .
+uv run mypy src
+uv run pytest -ra
+uv build
 ```
 
 Image tests prove immutable originals, EXIF handling, RGB JPEG, ≤1.90 MiB and determinism.
