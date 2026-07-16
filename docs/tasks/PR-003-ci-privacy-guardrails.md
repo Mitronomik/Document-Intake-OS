@@ -115,7 +115,7 @@ While the repository is public, `resources/templates/README.md` is the only perm
 
 Committed fixture files may exist only under `tests/fixtures/synthetic/`. Tracked images are allowed only under that subtree and must not exceed 1,992,294 bytes.
 
-Forbidden file types include Excel and Office templates, database files and journals, keys and key stores, documents and archives. Environment files are forbidden except `.env.example`, which still must pass secret scanning.
+Forbidden file types include Excel and Office templates, database files and journals, certificates, keys and key stores, documents and archives. Certificate extensions `.crt` and `.cer` are blocked by the authoritative scanner. Environment files are forbidden except `.env.example`, which still must pass secret scanning.
 
 ## Secret signatures
 

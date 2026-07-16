@@ -78,6 +78,8 @@ FORBIDDEN_EXTENSIONS: Final[frozenset[str]] = frozenset(
         ".pem",
         ".pfx",
         ".p12",
+        ".crt",
+        ".cer",
         ".jks",
         ".keystore",
         ".pdf",
@@ -382,30 +384,41 @@ def is_probably_text(root: Path, repo_path: str) -> bool:
         return False
     file_path = path_for(root, repo_path)
     try:
-        sample = file_path.read_bytes()[:TEXT_SAMPLE_BYTES]
+        with file_path.open("rb") as stream:
+            sample = stream.read(TEXT_SAMPLE_BYTES)
     except OSError:
         return True
     return b"\0" not in sample
 
 
-def read_text_for_scanning(root: Path, repo_path: str) -> tuple[str | None, Violation | None]:
-    """Read UTF-8-ish text for secret scanning without trusting arbitrary binary files."""
-    file_path = path_for(root, repo_path)
-    try:
-        content = file_path.read_bytes().decode("utf-8", errors="replace")
-    except OSError:
-        return None, Violation(repo_path, FILE_READ_ERROR, None, "Tracked file could not be read")
-    return content, None
-
-
-def evaluate_secret_policy(repo_path: str, text: str) -> list[Violation]:
-    """Evaluate high-confidence secret signatures without returning matched content."""
+def evaluate_secret_line(repo_path: str, line_number: int, line: str) -> list[Violation]:
+    """Evaluate high-confidence secret signatures for a single text line."""
     violations: list[Violation] = []
-    for line_number, line in enumerate(text.splitlines(), start=1):
-        for rule_id, pattern, message in SECRET_PATTERNS:
-            if pattern.search(line):
-                violations.append(Violation(repo_path, rule_id, line_number, message))
+    for rule_id, pattern, message in SECRET_PATTERNS:
+        if pattern.search(line):
+            violations.append(Violation(repo_path, rule_id, line_number, message))
     return violations
+
+
+def evaluate_secret_file(root: Path, repo_path: str) -> list[Violation]:
+    """Evaluate high-confidence secret signatures using bounded-memory text streaming."""
+    file_path = path_for(root, repo_path)
+    violations: list[Violation] = []
+    try:
+        with file_path.open("r", encoding="utf-8", errors="replace") as stream:
+            for line_number, line in enumerate(stream, start=1):
+                violations.extend(evaluate_secret_line(repo_path, line_number, line))
+    except OSError:
+        return [Violation(repo_path, FILE_READ_ERROR, None, "Tracked file could not be read")]
+    return violations
+
+
+def has_unsafe_filesystem_violation(violations: Iterable[Violation]) -> bool:
+    """Return whether content and metadata inspection must stop for a path."""
+    return any(
+        violation.rule_id in {PATH_OUTSIDE_REPOSITORY, PATH_SYMLINK_ESCAPE, FILE_READ_ERROR}
+        for violation in violations
+    )
 
 
 def evaluate_file(root: Path, raw_path: str) -> list[Violation]:
@@ -417,19 +430,25 @@ def evaluate_file(root: Path, raw_path: str) -> list[Violation]:
         ]
 
     violations: list[Violation] = []
-    violations.extend(evaluate_location_policy(root, repo_path))
-    violations.extend(evaluate_symlink_policy(root, repo_path))
+
+    # Static checks only inspect the tracked path string and must still run even when
+    # later filesystem safety checks reject the path.
     violations.extend(evaluate_path_policy(repo_path))
     violations.extend(evaluate_extension_policy(repo_path))
     violations.extend(evaluate_environment_policy(repo_path))
+
+    filesystem_violations: list[Violation] = []
+    filesystem_violations.extend(evaluate_location_policy(root, repo_path))
+    filesystem_violations.extend(evaluate_symlink_policy(root, repo_path))
+    violations.extend(filesystem_violations)
+
+    if has_unsafe_filesystem_violation(filesystem_violations):
+        return violations
+
     violations.extend(evaluate_image_policy(root, repo_path))
 
     if is_probably_text(root, repo_path):
-        text, read_error = read_text_for_scanning(root, repo_path)
-        if read_error is not None:
-            violations.append(read_error)
-        elif text is not None:
-            violations.extend(evaluate_secret_policy(repo_path, text))
+        violations.extend(evaluate_secret_file(root, repo_path))
 
     return violations
 

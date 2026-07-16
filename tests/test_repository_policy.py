@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import importlib.util
+import io
 import os
 import stat
 import subprocess
@@ -124,6 +125,20 @@ def test_forbidden_document_and_archive_types(tmp_path: Path, repo_path: str) ->
     assert policy.EXT_FORBIDDEN in _rules(violations)
 
 
+@pytest.mark.parametrize(
+    "repo_path",
+    [
+        "certificates/example.crt",
+        "certificates/example.cer",
+        "certificates/EXAMPLE.CRT",
+    ],
+)
+def test_certificate_extensions_rejected(tmp_path: Path, repo_path: str) -> None:
+    _write(tmp_path, repo_path, b"certificate-like bytes")
+    violations = _scan(tmp_path, [repo_path])
+    assert policy.EXT_FORBIDDEN in _rules(violations)
+
+
 @pytest.mark.parametrize("repo_path", [".env", ".env.local"])
 def test_environment_files_rejected(tmp_path: Path, repo_path: str) -> None:
     _write(tmp_path, repo_path, "EXAMPLE=value\n")
@@ -207,15 +222,47 @@ def test_invalid_utf8_does_not_crash(tmp_path: Path) -> None:
 def test_read_failure_fails_closed(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     path = "docs/unreadable.txt"
     _write(tmp_path, path)
+    original_open = Path.open
 
-    def fail_read_bytes(self: Path) -> bytes:
+    def fail_open(self: Path, *args: object, **kwargs: object) -> object:
         if self.name == "unreadable.txt":
             raise OSError("simulated read failure")
-        return b""
+        return original_open(self, *args, **kwargs)
 
-    monkeypatch.setattr(Path, "read_bytes", fail_read_bytes)
+    monkeypatch.setattr(Path, "open", fail_open)
     violations = _scan(tmp_path, [path])
     assert policy.FILE_READ_ERROR in _rules(violations)
+
+
+def test_text_classification_uses_bounded_sample_read(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    path = "docs/sample.txt"
+    _write(tmp_path, path)
+    read_sizes: list[int] = []
+
+    class SampleStream(io.BytesIO):
+        def __enter__(self) -> SampleStream:
+            return self
+
+        def __exit__(self, *args: object) -> None:
+            self.close()
+
+        def read(self, size: int = -1) -> bytes:
+            read_sizes.append(size)
+            return super().read(size)
+
+    original_open = Path.open
+
+    def fake_open(self: Path, mode: str = "r", *args: object, **kwargs: object) -> object:
+        if self.name == "sample.txt" and mode == "rb":
+            return SampleStream(b"x" * (policy.TEXT_SAMPLE_BYTES + 10))
+        return original_open(self, mode, *args, **kwargs)
+
+    monkeypatch.setattr(Path, "open", fake_open)
+
+    assert policy.is_probably_text(tmp_path, path) is True
+    assert read_sizes == [policy.TEXT_SAMPLE_BYTES]
 
 
 def test_cli_reports_policy_failure_without_secret_value(tmp_path: Path) -> None:
@@ -251,6 +298,105 @@ def test_symlink_escape_rejected(tmp_path: Path) -> None:
 
     violations = _scan(tmp_path, ["linked.txt"])
     assert policy.PATH_SYMLINK_ESCAPE in _rules(violations)
+
+
+def test_external_secret_symlink_target_is_not_scanned(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    secret = "gh" + "p_" + ("D" * 36)
+    outside = tmp_path.parent / f"external-secret-{tmp_path.name}.txt"
+    outside.write_text(secret + "\n", encoding="utf-8")
+    link = tmp_path / "linked-secret.txt"
+    try:
+        link.symlink_to(outside)
+    except (NotImplementedError, OSError) as exc:
+        pytest.skip(f"symlink creation is not available: {exc}")
+
+    original_open = Path.open
+
+    def fail_if_content_opened(self: Path, *args: object, **kwargs: object) -> object:
+        if self.name in {"linked-secret.txt", outside.name}:
+            raise AssertionError("external symlink target content was inspected")
+        return original_open(self, *args, **kwargs)
+
+    monkeypatch.setattr(Path, "open", fail_if_content_opened)
+
+    violations = _scan(tmp_path, ["linked-secret.txt"])
+    output = policy.format_violations(violations)
+
+    assert policy.PATH_SYMLINK_ESCAPE in _rules(violations)
+    assert not any(violation.rule_id.startswith("SECRET_") for violation in violations)
+    assert secret not in output
+
+
+def test_external_oversized_image_symlink_target_is_not_inspected(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    outside = tmp_path.parent / f"external-image-{tmp_path.name}.jpg"
+    outside.write_bytes(b"0" * (policy.MAX_SYNTHETIC_IMAGE_BYTES + 1))
+    link_path = tmp_path / "tests" / "fixtures" / "synthetic" / "external.jpg"
+    link_path.parent.mkdir(parents=True, exist_ok=True)
+    try:
+        link_path.symlink_to(outside)
+    except (NotImplementedError, OSError) as exc:
+        pytest.skip(f"symlink creation is not available: {exc}")
+
+    original_open = Path.open
+    original_stat = Path.stat
+
+    def fail_if_content_opened(self: Path, *args: object, **kwargs: object) -> object:
+        if self.name in {"external.jpg", outside.name}:
+            raise AssertionError("external image symlink content was inspected")
+        return original_open(self, *args, **kwargs)
+
+    def fail_if_image_stat_called(self: Path, *args: object, **kwargs: object) -> object:
+        if (
+            self.name in {"external.jpg", outside.name}
+            and kwargs.get("follow_symlinks") is not False
+        ):
+            raise AssertionError("external image symlink metadata was inspected")
+        return original_stat(self, *args, **kwargs)
+
+    monkeypatch.setattr(Path, "open", fail_if_content_opened)
+    monkeypatch.setattr(Path, "stat", fail_if_image_stat_called)
+
+    violations = _scan(tmp_path, ["tests/fixtures/synthetic/external.jpg"])
+
+    assert policy.PATH_SYMLINK_ESCAPE in _rules(violations)
+    assert policy.IMAGE_SIZE not in _rules(violations)
+    assert policy.FILE_READ_ERROR not in _rules(violations)
+
+
+def test_broken_symlink_fails_closed_without_duplicate_target_errors(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    link = tmp_path / "tests" / "fixtures" / "synthetic" / "broken.jpg"
+    link.parent.mkdir(parents=True, exist_ok=True)
+    try:
+        link.symlink_to(tmp_path.parent / f"missing-{tmp_path.name}.jpg")
+    except (NotImplementedError, OSError) as exc:
+        pytest.skip(f"symlink creation is not available: {exc}")
+
+    original_open = Path.open
+    original_stat = Path.stat
+
+    def fail_if_broken_target_inspected(self: Path, *args: object, **kwargs: object) -> object:
+        if self.name == "broken.jpg":
+            raise AssertionError("broken symlink content was inspected")
+        return original_open(self, *args, **kwargs)
+
+    def fail_if_broken_stat_called(self: Path, *args: object, **kwargs: object) -> object:
+        if self.name == "broken.jpg" and kwargs.get("follow_symlinks") is not False:
+            raise AssertionError("broken symlink metadata was inspected")
+        return original_stat(self, *args, **kwargs)
+
+    monkeypatch.setattr(Path, "open", fail_if_broken_target_inspected)
+    monkeypatch.setattr(Path, "stat", fail_if_broken_stat_called)
+
+    violations = _scan(tmp_path, ["tests/fixtures/synthetic/broken.jpg"])
+
+    assert [violation.rule_id for violation in violations].count(policy.FILE_READ_ERROR) == 1
+    assert policy.IMAGE_SIZE not in _rules(violations)
 
 
 def test_permission_style_unreadable_file_if_platform_enforces_it(tmp_path: Path) -> None:

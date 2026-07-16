@@ -102,6 +102,23 @@ def _canonical_section(markdown: str, heading: str) -> str:
     return "\n".join(section_lines)
 
 
+def _adr_section(markdown: str, heading: str) -> str:
+    lines = markdown.splitlines()
+    start = None
+    for index, line in enumerate(lines):
+        if line.strip() == heading:
+            start = index
+            break
+    assert start is not None, f"Missing ADR heading: {heading}"
+
+    section_lines: list[str] = []
+    for line in lines[start:]:
+        if section_lines and line.startswith("## "):
+            break
+        section_lines.append(line)
+    return "\n".join(section_lines)
+
+
 def test_required_documentation_files_exist() -> None:
     missing = [path for path in REQUIRED_DOCUMENTS if not (REPO_ROOT / path).is_file()]
     assert not missing, "Missing required documentation files: " + ", ".join(missing)
@@ -165,10 +182,11 @@ def test_lifecycle_state_is_current_and_not_closed() -> None:
     roadmap = (REPO_ROOT / "docs/roadmap.md").read_text(encoding="utf-8")
     implementation_plan = (REPO_ROOT / "docs/implementation-plan.md").read_text(encoding="utf-8")
     combined_current = "\n".join([progress, handoff, roadmap, implementation_plan])
+    adr_015 = _adr_section(decisions, "## ADR-015 — M0/M1 repository-safety sequencing")
 
-    assert "## ADR-015 — M0/M1 repository-safety sequencing" in decisions
-    assert "**Status:** ACCEPTED" in decisions
-    assert "**Date:** 2026-07-16" in decisions
+    assert "## ADR-015 — M0/M1 repository-safety sequencing" in adr_015
+    assert "**Status:** ACCEPTED" in adr_015
+    assert "**Date:** 2026-07-16" in adr_015
     assert "PR-002 completed and merged through GitHub PR #3" in progress
     assert "PR-003 IN REVIEW" in progress
     assert "PR-003 COMPLETED" not in progress
