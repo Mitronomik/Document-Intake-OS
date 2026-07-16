@@ -73,7 +73,7 @@ src/document_intake/
 
 ## Development setup
 
-PR-001 uses Python 3.12 and `uv` for dependency management. The bootstrap contains only the package skeleton and a minimal PySide6 shell; it does not implement OCR, persistence, image processing, Excel export, or business workflows. PR-001 remains under review until CI and human acceptance are complete.
+PR-001 uses Python 3.12 and `uv` for dependency management. The bootstrap contains only the package skeleton and a minimal PySide6 shell; it does not implement OCR, persistence, image processing, Excel export, or business workflows. PR-001 remains under review until final CI, human acceptance, and merge are complete.
 
 ### Local commands
 
@@ -99,10 +99,10 @@ The module entry point delegates to the same application entry point:
 uv run python -m document_intake
 ```
 
-For headless smoke checks, set Qt to offscreen mode before starting the application:
+Run the automated offscreen event-loop smoke check with:
 
 ```bash
-QT_QPA_PLATFORM=offscreen uv run python -m document_intake
+QT_QPA_PLATFORM=offscreen uv run pytest -q tests/test_bootstrap.py::test_real_qt_event_loop_starts_and_exits
 ```
 
 ## Public repository security warning
