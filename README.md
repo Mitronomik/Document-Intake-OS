@@ -17,13 +17,18 @@
 
 ## Приоритет источников
 
+Канонический порядок источников для требований и реализации:
+
 1. `docs/technical-specification.md`
 2. `docs/decisions.md`
 3. `docs/product-spec.md`
-4. архитектурные документы
-5. текущий PR-контракт
+4. `docs/architecture.md`
+5. `docs/domain-model.md`
+6. `docs/security.md`
+7. `docs/testing-strategy.md`
+8. текущий PR-контракт в `docs/tasks/`
 
-При конфликте разработка останавливается до явного решения.
+Нижестоящий документ не может переопределять вышестоящий источник. При конфликте разработка останавливается: конфликт нужно явно сообщить, а не разрешать молча.
 
 ## Документы
 
@@ -73,7 +78,7 @@ src/document_intake/
 
 ## Development setup
 
-PR-001 uses Python 3.12 and `uv` for dependency management. The bootstrap contains only the package skeleton and a minimal PySide6 shell; it does not implement OCR, persistence, image processing, Excel export, or business workflows. PR-001 remains under review until final CI, human acceptance, and merge are complete.
+PR-001 established Python 3.12 and `uv` for dependency management. The bootstrap contains only the package skeleton and a minimal PySide6 shell; it does not implement OCR, persistence, image processing, Excel export, or business workflows. PR-002 audits and normalizes the documentation baseline; it does not start PR-003 or implement runtime features.
 
 ### Local commands
 

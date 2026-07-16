@@ -1,7 +1,7 @@
 # Progress
 
 **Обновлено:** 2026-07-16  
-**Статус:** PR-001 COMPLETED
+**Статус:** PR-002 IN REVIEW
 
 ## Завершено
 
@@ -30,11 +30,13 @@
 
 ## В работе
 
+- [ ] PR-002 documentation-baseline implementation is submitted for review;
 - [ ] privacy gate remains open;
 - [ ] terminal and security questions required for subsequent stages remain unresolved.
 
 ## Не начато
 
+- [ ] PR-003 CI and privacy guardrails; PR-003 must not start before PR-002 acceptance;
 - [ ] approved private development contour for terminal templates and template-derived golden files;
 - [ ] domain implementation;
 - [ ] storage implementation;
@@ -45,13 +47,12 @@
 
 ## Блокеры
 
-Visitors terminal name, TSP format, participant limits, completeness matrix, merge rules, workstation count, retention, encryption and missing document samples.
+Visitors terminal name, TSP format, participant limits, completeness matrix, merge rules, workstation count, retention, encryption and missing document samples remain unresolved.
 
 ## Следующий безопасный шаг
 
-1. review repository visibility and approve the private development contour before any template or template-derived golden file is introduced;
-2. confirm Q-001–Q-007;
-3. determine which unresolved decisions block PR-002 and PR-003;
-4. prepare the next single-scope PR only after its dependencies and acceptance criteria are confirmed.
+1. complete human review and CI for PR-002 without marking it completed before merge;
+2. keep M0 open until terminal questions and the privacy gate are resolved;
+3. after PR-002 acceptance, prepare PR-003 as the next single-scope task for CI and privacy guardrails.
 
-M0 пока не закрыт из-за терминальных вопросов и открытого privacy gate.
+M0 remains open because terminal questions and the privacy gate remain open.
