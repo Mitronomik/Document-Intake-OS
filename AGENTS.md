@@ -6,7 +6,7 @@ Document Intake OS is an offline Windows desktop application for importing drive
 
 ## Authoritative sources
 
-Read before changing code:
+Read before changing code. Canonical source priority is:
 
 1. `docs/technical-specification.md`
 2. `docs/decisions.md`
@@ -15,8 +15,9 @@ Read before changing code:
 5. `docs/domain-model.md`
 6. `docs/security.md`
 7. `docs/testing-strategy.md`
+8. current PR task under `docs/tasks/`
 
-If documents conflict, stop and report the conflict.
+A lower-priority document must not override a higher-priority source. If documents conflict, stop and report the conflict instead of resolving it silently.
 
 ## Hard constraints
 
