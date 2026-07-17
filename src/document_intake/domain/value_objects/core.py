@@ -17,6 +17,8 @@ _FIELD_KEY_RE = re.compile(r"^[a-z0-9_]+(?:\.[a-z0-9_]+)*$")
 
 
 def _reject_padded_text(value: str, invariant: str) -> None:
+    if not isinstance(value, str):
+        raise InvalidValueError(f"{invariant}: invalid_type")
     if not value or not value.strip():
         raise InvalidValueError(f"{invariant}: empty")
     if value != value.strip():
@@ -27,9 +29,16 @@ def _reject_padded_text(value: str, invariant: str) -> None:
 class EntityId:
     value: UUID
 
+    def __post_init__(self) -> None:
+        if not isinstance(self.value, UUID):
+            raise InvalidValueError("entity_id: invalid_type")
+
     @classmethod
     def parse(cls, value: str) -> EntityId:
-        return cls(UUID(value))
+        try:
+            return cls(UUID(value))
+        except (AttributeError, TypeError, ValueError) as exc:
+            raise InvalidValueError("entity_id: invalid_uuid") from exc
 
     def __str__(self) -> str:
         return str(self.value)
@@ -45,6 +54,9 @@ class NonEmptyText:
     def __str__(self) -> str:
         return self.value
 
+    def __repr__(self) -> str:
+        return "NonEmptyText(<redacted>)"
+
 
 @dataclass(frozen=True, slots=True, order=True)
 class IdentifierText:
@@ -56,12 +68,17 @@ class IdentifierText:
     def __str__(self) -> str:
         return self.value
 
+    def __repr__(self) -> str:
+        return "IdentifierText(<redacted>)"
+
 
 @dataclass(frozen=True, slots=True, order=True)
 class CountryCode:
     value: str
 
     def __post_init__(self) -> None:
+        if not isinstance(self.value, str):
+            raise InvalidValueError("country_code: invalid_type")
         if not re.fullmatch(r"[A-Z]{2,3}", self.value):
             raise InvalidValueError("country_code: invalid_format")
 
@@ -74,6 +91,8 @@ class FieldKey:
     value: str
 
     def __post_init__(self) -> None:
+        if not isinstance(self.value, str):
+            raise InvalidValueError("field_key: invalid_type")
         if not _FIELD_KEY_RE.fullmatch(self.value):
             raise InvalidValueError("field_key: invalid_format")
 
@@ -92,9 +111,11 @@ class Confidence:
     value: Decimal
 
     def __init__(self, value: Decimal | int | str | float) -> None:
+        if isinstance(value, bool):
+            raise InvalidValueError("confidence: invalid_type")
         try:
             decimal_value = Decimal(str(value)) if isinstance(value, float) else Decimal(value)
-        except (InvalidOperation, ValueError) as exc:
+        except (InvalidOperation, TypeError, ValueError) as exc:
             raise InvalidValueError("confidence: invalid_decimal") from exc
         object.__setattr__(self, "value", decimal_value)
         if decimal_value.is_nan() or decimal_value.is_infinite():
@@ -142,23 +163,23 @@ class ValidationReport:
 JsonValue = str | int | bool | None | list["JsonValue"] | dict[str, "JsonValue"]
 
 
-def _canonicalize(value: Any, path: str) -> JsonValue:
+def _canonicalize(value: Any) -> JsonValue:
     if isinstance(value, bool) or value is None or isinstance(value, str):
         return value
     if isinstance(value, int) and not isinstance(value, bool):
         return value
     if isinstance(value, float):
-        raise InvalidValueError(f"snapshot_payload: float_forbidden:{path}")
+        raise InvalidValueError("snapshot_payload: float_forbidden")
     if isinstance(value, list | tuple):
-        return [_canonicalize(item, f"{path}[]") for item in value]
+        return [_canonicalize(item) for item in value]
     if isinstance(value, dict | MappingProxyType):
         result: dict[str, JsonValue] = {}
         for key, item in value.items():
             if not isinstance(key, str):
-                raise InvalidValueError(f"snapshot_payload: non_string_key:{path}")
-            result[key] = _canonicalize(item, f"{path}.{key}")
+                raise InvalidValueError("snapshot_payload: non_string_key")
+            result[key] = _canonicalize(item)
         return result
-    raise InvalidValueError(f"snapshot_payload: unsupported_type:{path}")
+    raise InvalidValueError("snapshot_payload: unsupported_type")
 
 
 @dataclass(frozen=True, slots=True)
@@ -169,7 +190,7 @@ class SnapshotPayload:
         loaded = json.loads(value) if isinstance(value, str) else value
         if not isinstance(loaded, dict):
             raise InvalidValueError("snapshot_payload: root_mapping_required")
-        canonical = _canonicalize(loaded, "$")
+        canonical = _canonicalize(loaded)
         encoded = json.dumps(canonical, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
         object.__setattr__(self, "canonical_json", encoded)
 

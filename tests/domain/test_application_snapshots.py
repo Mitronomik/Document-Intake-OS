@@ -1,13 +1,39 @@
 from __future__ import annotations
 
-# ruff: noqa: F403, F405
 from dataclasses import FrozenInstanceError
 from datetime import UTC, datetime
 from uuid import UUID
 
 import pytest
 
-from document_intake.domain import *
+from document_intake.domain import (
+    ActorKind,
+    ActorRef,
+    Application,
+    ApplicationSnapshot,
+    ApplicationStatus,
+    EntityId,
+    FieldKey,
+    FieldRef,
+    InvalidValueError,
+    NonEmptyText,
+    SnapshotInvariantError,
+    SnapshotPayload,
+    TerminalCode,
+    ValidationIssue,
+    ValidationReport,
+    VerificationStatus,
+    VerifiedField,
+    admin_override,
+    create_application_snapshot,
+    mark_conflict,
+    mark_not_applicable,
+    verify_by_human,
+)
+from document_intake.domain.policies.snapshots import (
+    _SNAPSHOT_FACTORY_TOKEN,
+    _calculate_snapshot_sha256,
+)
 
 
 def eid(i: int) -> EntityId:
@@ -138,7 +164,7 @@ def test_payload_immutable_snapshot_frozen_hash_deterministic_and_artifact_order
     with pytest.raises(FrozenInstanceError):
         snapshot.sha256 = "bad"  # type: ignore[misc]
     payload2 = SnapshotPayload({"a": {"b": "c"}, "z": [1]})
-    same = calculate_snapshot_sha256(
+    same = _calculate_snapshot_sha256(
         application_id=eid(1),
         terminal_code=TerminalCode.TSP,
         template_version=NonEmptyText("template-v1"),
@@ -148,7 +174,7 @@ def test_payload_immutable_snapshot_frozen_hash_deterministic_and_artifact_order
         payload=payload2,
         document_artifact_refs=(eid(8), eid(9)),
     )
-    other = calculate_snapshot_sha256(
+    other = _calculate_snapshot_sha256(
         application_id=eid(1),
         terminal_code=TerminalCode.TSP,
         template_version=NonEmptyText("template-v1"),
@@ -176,3 +202,86 @@ def test_payload_immutable_snapshot_frozen_hash_deterministic_and_artifact_order
     before = snapshot.sha256
     application.verified_fields = ()
     assert snapshot.sha256 == before
+
+
+def test_application_status_is_read_only_and_factory_transitions() -> None:
+    application = app()
+    with pytest.raises(AttributeError):
+        application.status = ApplicationStatus.SNAPSHOTTED  # type: ignore[misc]
+    assert application.status == ApplicationStatus.READY_FOR_SNAPSHOT
+    make_snapshot(application)
+    assert application.status == ApplicationStatus.SNAPSHOTTED
+
+
+def test_malformed_resolved_fields_cannot_bypass_snapshot_gate() -> None:
+    with pytest.raises(InvalidValueError):
+        VerifiedField(ref(1), None, VerificationStatus.VERIFIED, actor(), NOW)
+    with pytest.raises(InvalidValueError):
+        VerifiedField(ref(1), NonEmptyText("bad"), VerificationStatus.NOT_APPLICABLE, actor(), NOW)
+    with pytest.raises(InvalidValueError):
+        VerifiedField(
+            ref(1),
+            None,
+            VerificationStatus.ADMIN_OVERRIDE,
+            actor(ActorKind.ADMIN),
+            NOW,
+            override_reason=NonEmptyText("safe reason"),
+        )
+
+
+def test_public_api_hides_hash_helper_and_internal_hash_rejects_naive_datetime() -> None:
+    import document_intake.domain as domain
+
+    assert "calculate_snapshot_sha256" not in domain.__all__
+    assert "_calculate_snapshot_sha256" not in domain.__all__
+    with pytest.raises(SnapshotInvariantError):
+        _calculate_snapshot_sha256(
+            application_id=eid(1),
+            terminal_code=TerminalCode.TSP,
+            template_version=NonEmptyText("template-v1"),
+            rules_version=NonEmptyText("rules-v1"),
+            created_by=actor(),
+            created_at=datetime(2026, 1, 2),
+            payload=SnapshotPayload({"safe": "value"}),
+            document_artifact_refs=(eid(8),),
+        )
+
+
+def test_direct_snapshot_construction_requires_factory_token_and_tamper_rejected() -> None:
+    payload = SnapshotPayload({"safe": "value"})
+    with pytest.raises(SnapshotInvariantError):
+        ApplicationSnapshot(
+            eid(99),
+            eid(1),
+            TerminalCode.TSP,
+            NonEmptyText("template-v1"),
+            NonEmptyText("rules-v1"),
+            actor(),
+            datetime(2026, 1, 2, tzinfo=UTC),
+            payload,
+            (eid(8),),
+            _calculate_snapshot_sha256(
+                application_id=eid(1),
+                terminal_code=TerminalCode.TSP,
+                template_version=NonEmptyText("template-v1"),
+                rules_version=NonEmptyText("rules-v1"),
+                created_by=actor(),
+                created_at=datetime(2026, 1, 2, tzinfo=UTC),
+                payload=payload,
+                document_artifact_refs=(eid(8),),
+            ),
+        )
+    with pytest.raises(SnapshotInvariantError):
+        ApplicationSnapshot(
+            eid(99),
+            eid(1),
+            TerminalCode.TSP,
+            NonEmptyText("template-v1"),
+            NonEmptyText("rules-v1"),
+            actor(),
+            datetime(2026, 1, 2, tzinfo=UTC),
+            payload,
+            (eid(8),),
+            "bad",
+            _factory_token=_SNAPSHOT_FACTORY_TOKEN,
+        )

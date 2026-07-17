@@ -32,4 +32,4 @@ def transition_document(document: Document, target: DocumentWorkflowStatus) -> N
     current = document.workflow_status
     if not can_transition_document(current, target):
         raise InvalidTransitionError(f"document_transition: {current}->{target}")
-    document.workflow_status = target
+    document._transition_workflow_status(target)

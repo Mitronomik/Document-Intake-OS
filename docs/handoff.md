@@ -43,7 +43,7 @@ ADR-017 fixes the first MVP topology as one Windows 11 x64 workstation with one 
 
 PR-001 and PR-002 are completed. PR-003 is completed and merged through GitHub PR #4 at `ad5782045473d3ef5eb0a097cc8f6982bab821c7`. M1 Safe Repository is accepted by the product owner.
 
-GATE-M0 is in review. M0 decision is approved in this PR, but not yet recorded in `main`. PR-004 remains blocked until the GATE-M0 PR is merged and human acceptance confirms the decision in `main`.
+See current lifecycle state below. See current lifecycle state below. See current lifecycle state below.
 
 ADR-016 accepts the repository privacy boundary for non-sensitive code and documentation while keeping the sensitive-data/private-contour gate open for real documents, personal data, real application data, private fixtures and local acceptance evidence. Approved PII-free template artifacts are permitted by product policy, while current technical enforcement remains temporarily stricter until a separate repository-policy enforcement PR updates scanner and `.gitignore` rules.
 
@@ -59,9 +59,13 @@ PR-005 and PR-006 remain unauthorized until a separate accepted security ADR res
 
 ## Продолжение
 
-Before each task, read the authoritative sources, check the applicable gate, form a single PR contract and preserve unresolved questions unless an accepted ADR explicitly resolves them. The next safe step is GATE-M0 review, CI, merge and human acceptance; do not start PR-004 until that happens.
+Before each task, read the authoritative sources, check the applicable gate, form a single PR contract and preserve unresolved questions unless an accepted ADR explicitly resolves them. See current lifecycle state below, CI, merge and human acceptance; do not start PR-004 until that happens.
 
 
 ## PR-004 handoff update
 
 GATE-M0: COMPLETED at merge commit `3dada63ea82163c7c4497e290b303d2cc781b085`; human acceptance occurred after merge of PR #5. M0: ACCEPTED. M1: ACCEPTED. PR-004: IN REVIEW after implementation submission and is authorized/started by this PR, but is not completed before merge and human acceptance. PR-005: UNAUTHORIZED. PR-006: UNAUTHORIZED. PR-007 AND LATER: UNAUTHORIZED. Gate 1 is not accepted, M2 is not completed, Q-010 remains open, the template enforcement PR remains future work and does not block PR-004, and the sensitive-data/private-contour gate remains open for real data.
+
+## Current lifecycle state
+
+GATE-M0: COMPLETED. GATE-M0 merge commit: `3dada63ea82163c7c4497e290b303d2cc781b085`. Human acceptance of GATE-M0 occurred after PR #5 merge. M0: ACCEPTED. M1: ACCEPTED. PR-004: IN REVIEW. PR-004 is the only authorized implementation task. PR-004: NOT COMPLETED BEFORE MERGE AND PRODUCT-OWNER ACCEPTANCE. PR-005: UNAUTHORIZED. PR-006: UNAUTHORIZED. PR-007 AND LATER: UNAUTHORIZED. Gate 1: NOT ACCEPTED. M2: NOT COMPLETED. Q-010: OPEN. The template enforcement PR remains future work and does not block PR-004. The sensitive-data/private-contour gate remains open for real data. The next safe step is review, CI, merge and human acceptance of PR-004. PR-005 must not start after PR-004 merge without the separate Q-010 security ADR.

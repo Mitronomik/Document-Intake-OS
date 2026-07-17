@@ -31,7 +31,10 @@ def _utc_iso(value: datetime) -> str:
     return value.astimezone(UTC).isoformat().replace("+00:00", "Z")
 
 
-def calculate_snapshot_sha256(
+_SNAPSHOT_FACTORY_TOKEN = object()
+
+
+def _calculate_snapshot_sha256(
     *,
     application_id: EntityId,
     terminal_code: TerminalCode,
@@ -42,6 +45,7 @@ def calculate_snapshot_sha256(
     payload: SnapshotPayload,
     document_artifact_refs: tuple[EntityId, ...],
 ) -> str:
+    _require_aware(created_at, "snapshot_hash.created_at")
     semantic = {
         "application_id": str(application_id),
         "terminal_code": terminal_code.value,
@@ -87,7 +91,7 @@ def create_application_snapshot(
         raise SnapshotInvariantError("required_critical_fields: unresolved")
 
     artifact_refs = tuple(document_artifact_refs)
-    sha256 = calculate_snapshot_sha256(
+    sha256 = _calculate_snapshot_sha256(
         application_id=application.id,
         terminal_code=application.terminal_code,
         template_version=template_version,
@@ -108,7 +112,7 @@ def create_application_snapshot(
         payload=payload,
         document_artifact_refs=artifact_refs,
         sha256=sha256,
+        _factory_token=_SNAPSHOT_FACTORY_TOKEN,
     )
-    application.status = ApplicationStatus.SNAPSHOTTED
-    application.updated_at = created_at
+    application._mark_snapshotted(at=created_at)
     return snapshot

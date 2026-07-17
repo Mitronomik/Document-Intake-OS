@@ -207,43 +207,50 @@ def test_readme_and_agents_use_canonical_source_order() -> None:
 
 
 def test_lifecycle_state_records_gate_m0_completion_and_pr004_review_state() -> None:
-    progress = (REPO_ROOT / "docs/progress.md").read_text(encoding="utf-8")
-    handoff = (REPO_ROOT / "docs/handoff.md").read_text(encoding="utf-8")
-    roadmap = (REPO_ROOT / "docs/roadmap.md").read_text(encoding="utf-8")
-    implementation_plan = (REPO_ROOT / "docs/implementation-plan.md").read_text(encoding="utf-8")
-    gate_task = (REPO_ROOT / "docs/tasks/GATE-M0-requirements-lock.md").read_text(encoding="utf-8")
-    pr004_task = (REPO_ROOT / "docs/tasks/PR-004-core-domain.md").read_text(encoding="utf-8")
-    combined_current = "\n".join(
-        [progress, handoff, roadmap, implementation_plan, gate_task, pr004_task]
+    lifecycle_files = (
+        "docs/progress.md",
+        "docs/roadmap.md",
+        "docs/implementation-plan.md",
+        "docs/handoff.md",
     )
-
-    required = (
+    required_by_file = (
         "GATE-M0: COMPLETED",
-        "GATE-M0 merge commit: `3dada63ea82163c7c4497e290b303d2cc781b085`",
-        "Human acceptance occurred after merge of PR #5",
+        "3dada63ea82163c7c4497e290b303d2cc781b085",
         "M0: ACCEPTED",
         "M1: ACCEPTED",
-        "PR-004: IN REVIEW after implementation submission",
-        "PR-004 is authorized and started by this PR",
-        "PR-004 is not completed before merge and human acceptance",
+        "PR-004: IN REVIEW",
+        "PR-004: NOT COMPLETED BEFORE MERGE AND PRODUCT-OWNER ACCEPTANCE",
         "PR-005: UNAUTHORIZED",
         "PR-006: UNAUTHORIZED",
         "PR-007 AND LATER: UNAUTHORIZED",
-        "Gate 1 is not accepted",
-        "M2 is not completed",
-        "Q-010 remains open",
-        "template enforcement PR remains future work and does not block PR-004",
-        "sensitive-data/private-contour gate remains open",
+        "Q-010: OPEN",
     )
-    for text in required:
-        assert text in combined_current
+    stale_current_state = (
+        "GATE-M0 is in review",
+        "GATE-M0 IN REVIEW",
+        "M0 DECISION APPROVED, NOT YET RECORDED IN MAIN",
+        "PR-004 remains blocked until GATE-M0",
+        "PR-004 BLOCKED UNTIL GATE-M0",
+        "Complete review, CI and human acceptance for the GATE-M0 PR",
+        "The next safe step is GATE-M0 review",
+    )
 
-    assert "PR-005: AUTHORIZED" not in combined_current
-    assert "PR-006: AUTHORIZED" not in combined_current
-    assert "PR-004: COMPLETED" not in combined_current
-    assert "Gate 1 is accepted" not in combined_current
-    assert "M2 is completed" not in combined_current
-    assert "privacy gate closed" not in combined_current.lower()
+    for filename in lifecycle_files:
+        text = (REPO_ROOT / filename).read_text(encoding="utf-8")
+        for required in required_by_file:
+            assert required in text, filename
+        assert "PR-004 is the only authorized implementation task" in text, filename
+        assert "template enforcement PR remains future work" in text, filename
+        assert "sensitive-data/private-contour gate remains open" in text.lower(), filename
+        for stale in stale_current_state:
+            assert stale not in text, filename
+
+    progress = (REPO_ROOT / "docs/progress.md").read_text(encoding="utf-8")
+    assert "**Обновлено:** 2026-07-17" in progress
+    assert (
+        "PR-005 must not start after PR-004 merge without the separate Q-010 security ADR"
+        in progress
+    )
 
 
 def test_open_questions_q001_through_q020_remain_present_with_valid_statuses() -> None:

@@ -37,7 +37,7 @@ Implemented source is limited to `document_intake.domain` plus the root package 
 - Errors: `DomainError`, `InvalidValueError`, `InvalidTransitionError`, `VerificationPolicyError`, `SnapshotInvariantError`.
 - Value objects: `EntityId`, `NonEmptyText`, `IdentifierText`, `CountryCode`, `FieldKey`, `FieldRef`, `Confidence`, `ActorRef`, `OwnerRef`, `ValidationIssue`, `ValidationReport`, `SnapshotPayload`.
 - Entities: `Person`, `IdentityDocument`, `MigrationDocument`, `Vehicle`, `Terminal`, `Document`, `FieldCandidate`, `VerifiedField`, `ParticipantAssignment`, `Application`, `ApplicationSnapshot`.
-- Policies: `can_transition_document`, `transition_document`, `CRITICAL_FIELD_KEYS`, `draft_from_candidate`, `verify_by_human`, `mark_conflict`, `mark_not_applicable`, `admin_override`, `unresolved_required_fields`, `create_application_snapshot`, `calculate_snapshot_sha256`.
+- Policies: `can_transition_document`, `transition_document`, `CRITICAL_FIELD_KEYS`, `draft_from_candidate`, `verify_by_human`, `mark_conflict`, `mark_not_applicable`, `admin_override`, `unresolved_required_fields`, `create_application_snapshot`.
 
 ## Inputs and outputs
 

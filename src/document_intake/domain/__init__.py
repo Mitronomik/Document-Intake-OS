@@ -34,7 +34,6 @@ from document_intake.domain.errors import (
 from document_intake.domain.policies import (
     CRITICAL_FIELD_KEYS,
     admin_override,
-    calculate_snapshot_sha256,
     can_transition_document,
     create_application_snapshot,
     draft_from_candidate,
@@ -99,7 +98,6 @@ __all__ = [
     "VerificationStatus",
     "VerifiedField",
     "admin_override",
-    "calculate_snapshot_sha256",
     "can_transition_document",
     "create_application_snapshot",
     "draft_from_candidate",

@@ -57,3 +57,10 @@ def test_invalid_transitions_do_not_mutate(current: S, target: S) -> None:
     with pytest.raises(InvalidTransitionError):
         transition_document(document, target)
     assert document.workflow_status == current
+
+
+def test_document_workflow_status_is_read_only() -> None:
+    document = Document(eid(1), DocumentType.PASSPORT, S.NEW)
+    with pytest.raises(AttributeError):
+        document.workflow_status = S.VERIFIED  # type: ignore[misc]
+    assert document.workflow_status == S.NEW

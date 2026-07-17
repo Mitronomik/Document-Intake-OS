@@ -1,12 +1,31 @@
 from __future__ import annotations
 
-# ruff: noqa: F403, F405
 from datetime import UTC, datetime
 from uuid import UUID
 
 import pytest
 
-from document_intake.domain import *
+from document_intake.domain import (
+    ActorKind,
+    ActorRef,
+    CandidateSourceType,
+    Confidence,
+    EntityId,
+    FieldCandidate,
+    FieldKey,
+    FieldRef,
+    InvalidValueError,
+    NonEmptyText,
+    VerificationPolicyError,
+    VerificationStatus,
+    VerifiedField,
+    admin_override,
+    draft_from_candidate,
+    mark_conflict,
+    mark_not_applicable,
+    unresolved_required_fields,
+    verify_by_human,
+)
 
 
 def eid(i: int) -> EntityId:
@@ -123,3 +142,32 @@ def test_same_field_key_different_entities_and_safe_reprs_errors() -> None:
             at=NOW,
         )
     assert "sensitive-value" not in str(exc.value)
+
+
+def test_direct_verified_field_invariants_prevent_bypass() -> None:
+    r = ref(10)
+    with pytest.raises(InvalidValueError):
+        VerifiedField(
+            r, NonEmptyText("ok"), VerificationStatus.VERIFIED, actor(ActorKind.SYSTEM), NOW
+        )
+    with pytest.raises(InvalidValueError):
+        VerifiedField(r, None, VerificationStatus.VERIFIED, actor(ActorKind.OPERATOR), NOW)
+    with pytest.raises(InvalidValueError):
+        VerifiedField(r, None, VerificationStatus.NOT_APPLICABLE, actor(ActorKind.SYSTEM), NOW)
+    with pytest.raises(InvalidValueError):
+        VerifiedField(
+            r,
+            NonEmptyText("not allowed"),
+            VerificationStatus.NOT_APPLICABLE,
+            actor(ActorKind.OPERATOR),
+            NOW,
+        )
+    with pytest.raises(InvalidValueError):
+        VerifiedField(
+            r,
+            None,
+            VerificationStatus.ADMIN_OVERRIDE,
+            actor(ActorKind.ADMIN),
+            NOW,
+            override_reason=NonEmptyText("safe reason"),
+        )

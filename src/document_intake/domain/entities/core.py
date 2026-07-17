@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import InitVar, dataclass
 from datetime import date, datetime
 
 from document_intake.domain.enums import (
@@ -123,21 +123,45 @@ class Terminal:
     is_active: bool = True
 
 
-@dataclass(slots=True)
+@dataclass(slots=True, init=False)
 class Document:
     id: EntityId
     document_type: DocumentType
-    workflow_status: DocumentWorkflowStatus
+    _workflow_status: DocumentWorkflowStatus
     country_code: CountryCode | None = None
     template_version: NonEmptyText | None = None
     owner_ref: OwnerRef | None = None
     side_ids: tuple[EntityId, ...] = ()
     prepared_artifact_id: EntityId | None = None
 
-    def __post_init__(self) -> None:
-        self.side_ids = tuple(self.side_ids)
+    def __init__(
+        self,
+        id: EntityId,
+        document_type: DocumentType,
+        workflow_status: DocumentWorkflowStatus,
+        country_code: CountryCode | None = None,
+        template_version: NonEmptyText | None = None,
+        owner_ref: OwnerRef | None = None,
+        side_ids: tuple[EntityId, ...] = (),
+        prepared_artifact_id: EntityId | None = None,
+    ) -> None:
+        self.id = id
+        self.document_type = document_type
+        self._workflow_status = workflow_status
+        self.country_code = country_code
+        self.template_version = template_version
+        self.owner_ref = owner_ref
+        self.side_ids = tuple(side_ids)
+        self.prepared_artifact_id = prepared_artifact_id
         if len(set(self.side_ids)) != len(self.side_ids):
             raise InvalidValueError("document.side_ids: duplicate")
+
+    @property
+    def workflow_status(self) -> DocumentWorkflowStatus:
+        return self._workflow_status
+
+    def _transition_workflow_status(self, target: DocumentWorkflowStatus) -> None:
+        self._workflow_status = target
 
     def __repr__(self) -> str:
         return (
@@ -180,11 +204,25 @@ class VerifiedField:
     override_reason: NonEmptyText | None = None
 
     def __post_init__(self) -> None:
-        if self.status in {VerificationStatus.VERIFIED, VerificationStatus.NOT_APPLICABLE}:
+        if self.status == VerificationStatus.VERIFIED:
+            if self.value is None:
+                raise InvalidValueError("verified_field.VERIFIED: value_required")
             if self.actor is None or self.timestamp is None:
-                raise InvalidValueError(f"verified_field.{self.status}: actor_timestamp_required")
-            _require_aware(self.timestamp, f"verified_field.{self.status}")
+                raise InvalidValueError("verified_field.VERIFIED: actor_timestamp_required")
+            if self.actor.kind not in {ActorKind.OPERATOR, ActorKind.ADMIN}:
+                raise InvalidValueError("verified_field.VERIFIED: human_actor_required")
+            _require_aware(self.timestamp, "verified_field.VERIFIED")
+        if self.status == VerificationStatus.NOT_APPLICABLE:
+            if self.value is not None:
+                raise InvalidValueError("verified_field.NOT_APPLICABLE: value_forbidden")
+            if self.actor is None or self.timestamp is None:
+                raise InvalidValueError("verified_field.NOT_APPLICABLE: actor_timestamp_required")
+            if self.actor.kind not in {ActorKind.OPERATOR, ActorKind.ADMIN}:
+                raise InvalidValueError("verified_field.NOT_APPLICABLE: human_actor_required")
+            _require_aware(self.timestamp, "verified_field.NOT_APPLICABLE")
         if self.status == VerificationStatus.ADMIN_OVERRIDE:
+            if self.value is None:
+                raise InvalidValueError("verified_field.ADMIN_OVERRIDE: value_required")
             if self.actor is None or self.actor.kind != ActorKind.ADMIN or self.timestamp is None:
                 raise InvalidValueError(
                     "verified_field.ADMIN_OVERRIDE: admin_actor_timestamp_required"
@@ -212,8 +250,14 @@ class ParticipantAssignment:
         if self.trailer_id is not None and self.tractor_id == self.trailer_id:
             raise InvalidValueError("participant_assignment: tractor_trailer_same")
 
+    def __repr__(self) -> str:
+        return (
+            f"ParticipantAssignment(person_id={self.person_id}, tractor_id={self.tractor_id}, "
+            f"has_trailer={self.trailer_id is not None})"
+        )
 
-@dataclass(slots=True)
+
+@dataclass(slots=True, init=False)
 class Application:
     id: EntityId
     batch_id: EntityId
@@ -221,19 +265,50 @@ class Application:
     assignments: tuple[ParticipantAssignment, ...]
     verified_fields: tuple[VerifiedField, ...]
     validation_report: ValidationReport
-    status: ApplicationStatus
+    _status: ApplicationStatus
     created_by: ActorRef
     created_at: datetime
     updated_at: datetime
 
-    def __post_init__(self) -> None:
-        _require_aware(self.created_at, "application.created_at")
-        _require_aware(self.updated_at, "application.updated_at")
-        self.assignments = tuple(self.assignments)
-        self.verified_fields = tuple(self.verified_fields)
+    def __init__(
+        self,
+        id: EntityId,
+        batch_id: EntityId,
+        terminal_code: TerminalCode | None,
+        assignments: tuple[ParticipantAssignment, ...],
+        verified_fields: tuple[VerifiedField, ...],
+        validation_report: ValidationReport,
+        status: ApplicationStatus,
+        created_by: ActorRef,
+        created_at: datetime,
+        updated_at: datetime,
+    ) -> None:
+        _require_aware(created_at, "application.created_at")
+        _require_aware(updated_at, "application.updated_at")
+        self.id = id
+        self.batch_id = batch_id
+        self.terminal_code = terminal_code
+        self.assignments = tuple(assignments)
+        self.verified_fields = tuple(verified_fields)
+        self.validation_report = validation_report
+        self._status = status
+        self.created_by = created_by
+        self.created_at = created_at
+        self.updated_at = updated_at
         refs = [field.field_ref for field in self.verified_fields]
         if len(set(refs)) != len(refs):
             raise InvalidValueError("application.verified_fields: duplicate_field_ref")
+
+    @property
+    def status(self) -> ApplicationStatus:
+        return self._status
+
+    def _mark_snapshotted(self, *, at: datetime) -> None:
+        _require_aware(at, "application.snapshotted_at")
+        if self._status != ApplicationStatus.READY_FOR_SNAPSHOT:
+            raise InvalidValueError("application.snapshot_transition: invalid_source")
+        self._status = ApplicationStatus.SNAPSHOTTED
+        self.updated_at = at
 
     def __repr__(self) -> str:
         return (
@@ -255,15 +330,20 @@ class ApplicationSnapshot:
     payload: SnapshotPayload
     document_artifact_refs: tuple[EntityId, ...]
     sha256: str
+    _factory_token: InitVar[object | None] = None
 
-    def __post_init__(self) -> None:
+    def __post_init__(self, _factory_token: object | None) -> None:
+        from document_intake.domain.policies.snapshots import _SNAPSHOT_FACTORY_TOKEN
+
+        if _factory_token is not _SNAPSHOT_FACTORY_TOKEN:
+            raise SnapshotInvariantError("application_snapshot.factory_required")
         _require_aware(self.created_at, "application_snapshot.created_at")
         object.__setattr__(self, "document_artifact_refs", tuple(self.document_artifact_refs))
         if len(set(self.document_artifact_refs)) != len(self.document_artifact_refs):
             raise SnapshotInvariantError("application_snapshot.artifact_refs: duplicate")
-        from document_intake.domain.policies.snapshots import calculate_snapshot_sha256
+        from document_intake.domain.policies.snapshots import _calculate_snapshot_sha256
 
-        expected = calculate_snapshot_sha256(
+        expected = _calculate_snapshot_sha256(
             application_id=self.application_id,
             terminal_code=self.terminal_code,
             template_version=self.template_version,
