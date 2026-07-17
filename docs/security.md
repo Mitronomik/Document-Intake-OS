@@ -118,7 +118,7 @@ PR-003 adds a tracked-file repository policy scanner that runs locally and in CI
 
 The scanner enforces forbidden repository-root paths for runtime data, exports, logs, personal-data areas, private fixtures and local acceptance data. Root-level `storage/` is treated as runtime storage and does not apply to `src/document_intake/storage/`.
 
-While the repository remains public, `resources/templates/README.md` is the only permitted tracked file under `resources/templates/`. This exception permits repository-policy documentation only. It does not permit any terminal template, fixture, manifest, checksum or template-derived information. Terminal templates, including cleaned, anonymized, empty and sample templates, remain prohibited.
+ADR-016 changes the approved-template boundary from file-type-based to content-based for `TSPMAINFILE.xls`, `visitors_example.xlsx` and `MGSMAINFILE.xlsx`. Those approved templates and PII-free technical derivatives may be committed only after technical privacy inspection and after a repository-policy enforcement PR updates scanner and `.gitignore` rules. Until that enforcement PR is merged, `resources/templates/README.md` remains the only permitted tracked file under `resources/templates/`. Real documents, personal data, real application data, operational databases, logs, backups, OCR/MRZ payloads from real documents, credentials and secrets remain prohibited.
 
 Committed fixtures must be synthetic-only and may exist only under `tests/fixtures/synthetic/`. Private, real, production, local and acceptance fixture subtrees are blocked. PR-003 adds no document fixtures.
 

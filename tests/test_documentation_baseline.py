@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import re
+import subprocess
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -136,6 +137,10 @@ def _question_section(markdown: str, question_id: str) -> str:
             break
         section_lines.append(line)
     return "\n".join(section_lines)
+
+
+def _compact(text: str) -> str:
+    return " ".join(text.split())
 
 
 def _question_status(section: str) -> str:
@@ -309,7 +314,7 @@ def test_open_question_status_metadata_is_complete() -> None:
         assert _question_status(section) == "LOCAL_EVIDENCE_REQUIRED"
         assert "**Required evidence:**" in section
         assert "**Target:**" in section
-        assert "outside Git, Codex and CI" in section
+        assert "outside Git, Codex and CI" in section or "remains local" in section
 
     for question_id in deferred_questions:
         section = _question_section(open_questions, question_id)
@@ -352,6 +357,193 @@ def test_terminal_staging_rule_prevents_placeholder_values() -> None:
     for question_id in ["Q-001", "Q-002", "Q-003", "Q-004", "Q-005"]:
         section = _question_section(open_questions, question_id)
         assert "**Placeholder rule:**" in section
+
+
+def test_adr_014_is_partially_superseded_for_approved_templates_only() -> None:
+    decisions = (REPO_ROOT / "docs/decisions.md").read_text(encoding="utf-8")
+    adr_014 = _adr_section(decisions, "## ADR-014 — Temporary public repository during bootstrap")
+
+    assert "**Status:** ACCEPTED" in adr_014
+    assert "**Partially superseded by:** ADR-016 for the three product-owner-approved" in adr_014
+    assert "PII-free technical derivatives" in adr_014
+    assert "ADR-014 remains fully active for real documents" in adr_014
+    assert "personal data" in adr_014
+    assert "real databases and journals" in adr_014
+    assert "real exports" in adr_014
+    assert "operational logs" in adr_014
+    assert "backups" in adr_014
+    assert "OCR and MRZ payloads from real documents" in adr_014
+    assert "private acceptance datasets" in adr_014
+    assert "secrets and credentials" in adr_014
+    assert "categorically prohibits the three approved terminal templates" in adr_014
+    assert "## ADR-014 — Temporary public repository during bootstrap" in adr_014
+    assert "**Status:** SUPERSEDED" not in adr_014
+
+
+def test_adr_016_records_approved_template_artifacts() -> None:
+    decisions = (REPO_ROOT / "docs/decisions.md").read_text(encoding="utf-8")
+    adr_016 = _adr_section(
+        decisions, "## ADR-016 — M0 Gate, Privacy Boundary and PR-004 Authorization"
+    )
+
+    compact_adr_016 = _compact(adr_016)
+    for template in ("TSPMAINFILE.xls", "visitors_example.xlsx", "MGSMAINFILE.xlsx"):
+        assert template in compact_adr_016
+    assert "approved terminal artifacts" in compact_adr_016.lower()
+    assert "cleaned copies" in compact_adr_016
+    assert "anonymized copies" in compact_adr_016
+    assert "empty structural copies" in compact_adr_016
+    assert "binary golden files" in compact_adr_016
+    assert "synthetic output workbooks" in compact_adr_016
+    assert "screenshots showing template structure" in compact_adr_016
+    assert "real template checksum values" in compact_adr_016
+    assert "extracted structural manifests" in compact_adr_016
+    assert "machine-generated mappings" in compact_adr_016
+    assert "manually maintained mappings" in compact_adr_016
+    assert "workbook structural metadata" in compact_adr_016
+    assert "sheet names and order" in compact_adr_016
+    assert "exact headers" in compact_adr_016
+    assert "comments" in compact_adr_016
+    assert "validations" in compact_adr_016
+    assert "named ranges" in compact_adr_016
+    assert "tables and ranges" in compact_adr_016
+    assert "styles" in compact_adr_016
+    assert "merged-cell definitions" in compact_adr_016
+    assert "external-connection metadata" in compact_adr_016
+    assert "No separate product-owner decision is required" in compact_adr_016
+
+
+def test_adr_016_records_content_based_template_restrictions() -> None:
+    decisions = (REPO_ROOT / "docs/decisions.md").read_text(encoding="utf-8")
+    adr_016 = _adr_section(
+        decisions, "## ADR-016 — M0 Gate, Privacy Boundary and PR-004 Authorization"
+    )
+
+    compact_adr_016 = _compact(adr_016)
+    assert "Template origin or binary format does not make a file prohibited" in compact_adr_016
+    for prohibited in (
+        "real driver or visitor records",
+        "real application rows",
+        "real names",
+        "real dates of birth",
+        "real passport",
+        "real phone numbers",
+        "real registration addresses",
+        "real VINs",
+        "real vehicle or trailer registration",
+        "photographs or scans of real documents",
+        "OCR output from real documents",
+        "MRZ payloads from real documents",
+        "authentication credentials",
+        "passwords",
+        "API tokens",
+        "private keys",
+        "confidential connection strings",
+        "confidential local or network paths",
+    ):
+        assert prohibited in compact_adr_016
+    assert (
+        "Golden files generated from a real application or real participant data remain prohibited"
+        in compact_adr_016
+    )
+    assert "Screenshots containing real personal data remain prohibited" in compact_adr_016
+    assert "no real personal or operational records" in compact_adr_016
+
+
+def test_adr_016_records_inspection_and_transitional_enforcement() -> None:
+    decisions = (REPO_ROOT / "docs/decisions.md").read_text(encoding="utf-8")
+    task = (REPO_ROOT / "docs/tasks/GATE-M0-requirements-lock.md").read_text(encoding="utf-8")
+    adr_016 = _adr_section(
+        decisions, "## ADR-016 — M0 Gate, Privacy Boundary and PR-004 Authorization"
+    )
+
+    for text in (adr_016, task):
+        compact_text = _compact(text)
+        for inspection_item in (
+            "visible cells",
+            "hidden sheets",
+            "hidden rows and columns",
+            "comments and notes",
+            "workbook and document properties",
+            "author and last-editor metadata",
+            "custom properties",
+            "defined names",
+            "external links",
+            "Power Query and workbook connections",
+            "cached connection results",
+            "embedded objects",
+            "images",
+            "macros",
+            "local usernames",
+            "local filesystem paths",
+            "network paths",
+            "credentials and connection strings",
+        ):
+            assert inspection_item in compact_text
+        assert (
+            "current scanner and `.gitignore` remain temporarily more restrictive" in compact_text
+        )
+        assert "separate repository-policy enforcement PR" in compact_text
+        assert "does not block PR-004" in compact_text
+        assert "No template artifact is added" in compact_text
+
+
+def test_current_policy_documents_allow_approved_templates_without_weakening_pii_rules() -> None:
+    current_policy_files = (
+        "AGENTS.md",
+        "README.md",
+        "docs/security.md",
+        "docs/testing-strategy.md",
+        "docs/development-workflow.md",
+        "docs/handoff.md",
+        "docs/progress.md",
+        "docs/technical-specification.md",
+        "resources/templates/README.md",
+    )
+    for filename in current_policy_files:
+        text = (REPO_ROOT / filename).read_text(encoding="utf-8")
+        assert "ADR-016" in text, filename
+        assert "PII" in text or "personal data" in text, filename
+    resources_readme = (REPO_ROOT / "resources/templates/README.md").read_text(encoding="utf-8")
+    assert "TSPMAINFILE.xls" in resources_readme
+    assert "visitors_example.xlsx" in resources_readme
+    assert "MGSMAINFILE.xlsx" in resources_readme
+    assert "Do not add the actual Excel templates" in resources_readme
+
+
+def test_pr_5_adds_no_template_or_template_derived_artifact() -> None:
+    result = subprocess.run(
+        ["git", "ls-files"],
+        cwd=REPO_ROOT,
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    tracked_files = result.stdout.splitlines()
+    forbidden_suffixes = (
+        ".xls",
+        ".xlsx",
+        ".xlsm",
+        ".png",
+        ".jpg",
+        ".jpeg",
+        ".webp",
+        ".bmp",
+        ".gif",
+        ".tif",
+        ".tiff",
+        ".json",
+    )
+    artifacts = [
+        path
+        for path in tracked_files
+        if path.startswith("resources/templates/") and path != "resources/templates/README.md"
+    ]
+    binary_or_manifest_artifacts = [
+        path for path in artifacts if Path(path).suffix.lower() in forbidden_suffixes
+    ]
+    assert not artifacts
+    assert not binary_or_manifest_artifacts
 
 
 def test_open_questions_q001_through_q020_remain_present() -> None:

@@ -84,6 +84,8 @@ Export читает immutable ApplicationSnapshot.
 
 **Status:** ACCEPTED
 **Date:** 2026-07-15
+**Partially superseded by:** ADR-016 for the three product-owner-approved,
+non-sensitive terminal templates and their PII-free technical derivatives.
 
 The repository remains public temporarily by explicit product-owner decision during bootstrap.
 
@@ -91,19 +93,17 @@ This temporary exception applies only to non-sensitive documentation, applicatio
 
 This exception does not permit real documents, document photographs, scans, document-derived screenshots, or any personal data.
 
-This exception does not permit terminal templates, including cleaned or anonymized templates.
+ADR-014 remains fully active for real documents, personal data, real databases and journals, real exports, operational logs, backups, OCR and MRZ payloads from real documents, private acceptance datasets, secrets and credentials.
 
-This exception does not permit template-derived golden Excel files.
+ADR-014 no longer categorically prohibits the three approved terminal templates and their PII-free technical derivatives. ADR-016 defines the content-based boundary, technical privacy inspection and transitional enforcement requirements for those artifacts.
 
-This exception does not permit PII, databases, database journals, logs, backups, OCR outputs, MRZ payloads, private fixtures, local acceptance fixtures, secrets, keys, passwords, certificates or tokens.
+`resources/templates` remains limited by current scanner and `.gitignore` enforcement until a separate repository-policy implementation PR is merged.
 
-`resources/templates` must remain without terminal files while the repository is public.
-
-Before any template or document-derived fixture is committed, repository visibility and the approved security contour must be reviewed again and the files must be separately approved.
+Before any unapproved template or document-derived fixture is committed, repository visibility and the approved security contour must be reviewed again and the files must be separately approved.
 
 This decision does not change the offline and local-only runtime architecture.
 
-The privacy gate remains open.
+The privacy gate remains open for real documents, personal data and operational sensitive data.
 
 ## ADR-015 — M0/M1 repository-safety sequencing
 
@@ -183,16 +183,16 @@ ADR-015 does not decide:
 ### Context
 
 GitHub PR #4 merged PR-003 at commit `ad5782045473d3ef5eb0a097cc8f6982bab821c7`.
-The product owner accepted PR-003 and accepted M1 Safe Repository. ADR-014 remains in
-force for the temporarily public repository, and ADR-015 remains in force for the
-completed repository-safety sequencing decision.
+The product owner accepted PR-003 and accepted M1 Safe Repository. ADR-014 remains
+accepted for real documents, personal data, operational sensitive data, private
+acceptance datasets, OCR/MRZ payloads from real documents and secrets. ADR-016
+partially supersedes ADR-014 only for the three product-owner-approved,
+non-sensitive terminal templates and their PII-free technical derivatives.
 
 M0 still required a requirements-lock decision because terminal-specific questions,
 local-evidence questions and security-staging questions were still listed as open.
 PR-004 is limited to Core Domain: entities, value objects, enums, transitions,
-verification policy and snapshot invariants. It does not require real documents,
-terminal templates, databases, OCR payloads, Excel files or private acceptance
-fixtures.
+verification policy and snapshot invariants.
 
 ### Decision
 
@@ -200,46 +200,99 @@ fixtures.
    `ad5782045473d3ef5eb0a097cc8f6982bab821c7`.
 2. M1 Safe Repository is accepted.
 3. `REPOSITORY PRIVACY BOUNDARY — ACCEPTED FOR NON-SENSITIVE CODE` is accepted.
-   While the repository remains temporarily public, it may contain only
-   non-sensitive application source code, non-sensitive documentation, ordinary
-   development configuration and fully fictional synthetic source-code tests that
-   contain no document-derived data.
-4. The public repository must not contain real documents or document photographs,
-   personal data, anonymized or cleaned real documents, terminal templates,
-   template-derived golden files, template-derived screenshots, manifests,
-   checksums or mappings, databases or journals, OCR or MRZ payloads, private or
-   local acceptance fixtures, operational logs or backups, secrets, keys,
-   certificates or tokens.
-5. `SENSITIVE-DATA / PRIVATE-CONTOUR GATE — OPEN` remains open. Real terminal
-   templates and local acceptance materials remain outside Git, Codex and CI.
-6. The open sensitive-data/private-contour gate does not block PR-004 because
-   PR-004 requires no sensitive input. It continues to block every task that
-   requires real documents, terminal templates, template-derived artifacts or
-   private acceptance materials.
-7. Terminal-specific questions may be staged to downstream gates for M0 and
-   PR-004 authorization only when all of the following are recorded:
+   While the repository remains temporarily public, it may contain non-sensitive
+   application source code, non-sensitive documentation, ordinary development
+   configuration, fully fictional synthetic source-code tests and, after the
+   transitional enforcement update, the approved PII-free terminal artifacts
+   described by this ADR.
+4. Approved terminal artifacts: the three approved terminal templates
+   `TSPMAINFILE.xls`, `visitors_example.xlsx` and `MGSMAINFILE.xlsx` and their
+   PII-free technical derivatives are permitted project artifacts after technical
+   content validation confirms that they contain no real personal data,
+   credentials or confidential operational data.
+5. Permitted derivative classes include approved original Excel templates,
+   cleaned copies, anonymized copies, empty structural copies, binary golden
+   files, synthetic output workbooks, screenshots showing template structure,
+   real template checksum values, extracted structural manifests,
+   machine-generated mappings, manually maintained mappings, workbook structural metadata, sheet names and order, exact headers, comments, validations, named
+   ranges, tables and ranges, styles, merged-cell definitions and
+   external-connection metadata that contains no credentials or confidential
+   paths.
+6. No separate product-owner decision is required for each checksum, manifest,
+   screenshot, mapping or golden file derived from one of the three approved
+   templates. A new template belonging to another terminal still requires a
+   separate product-owner decision.
+7. Personal-data boundary: Template origin or binary format does not make a file prohibited. A file is prohibited when it contains real personal data, real
+   document content, unauthorized operational data or secrets.
+8. A permitted template artifact must not contain real driver or visitor records,
+   real application rows, real names, real dates of birth, real passport,
+   identity-document or migration-document numbers, real phone numbers, real
+   registration addresses, real VINs, real vehicle or trailer registration
+   numbers, real organization data when it identifies an actual application
+   participant, photographs or scans of real documents, OCR output from real
+   documents, MRZ payloads from real documents, authentication credentials,
+   passwords, API tokens, private keys, confidential connection strings,
+   confidential local or network paths or operational data not authorized for
+   publication.
+9. Golden-file boundary: binary golden files are permitted when generated from an
+   approved terminal template, an immutable synthetic application snapshot and
+   fully fictional test data. Golden files generated from a real application or
+   real participant data remain prohibited. Synthetic output workbooks may contain
+   only fully fictional test values.
+10. Screenshot boundary: screenshots showing empty template structure or fully
+    fictional data are permitted. Screenshots containing real personal data remain
+    prohibited.
+11. Manifest and mapping boundary: checksums, manifests and mappings derived from
+    an approved template are permitted when they contain no PII or credentials.
+    They do not require a separate product-owner decision. Real checksum values
+    of the approved source templates are permitted and are not personal data. A
+    manifest is permitted only when it contains structural metadata and no real
+    personal or operational records.
+12. Technical privacy inspection is required before each approved template is
+    first committed. The inspection must cover visible cells, hidden sheets,
+    hidden rows and columns, comments and notes, workbook and document properties,
+    author and last-editor metadata, custom properties, defined names, external links, Power Query and workbook connections, cached connection results,
+    embedded objects, images, macros where applicable, local usernames, local
+    filesystem paths, network paths, credentials and connection strings. This is a
+    technical acceptance check, not a new product decision.
+13. `SENSITIVE-DATA / PRIVATE-CONTOUR GATE — OPEN` remains open for real
+    documents, real personal data, operational databases, real acceptance
+    datasets, real OCR/MRZ output, operational logs, real exports and backups. It
+    is not a blanket gate against the approved terminal templates.
+14. Product policy permits the three approved PII-free terminal templates and
+    their technical derivatives. The current scanner and `.gitignore` remain
+    temporarily more restrictive. Before the first permitted binary artifact is
+    committed, a separate repository-policy enforcement PR must update the
+    scanner, `.gitignore` and related tests.
+15. The future enforcement PR is required before committing an Excel template,
+    binary golden file, template screenshot, generated manifest or generated
+    mapping artifact. It does not block PR-004 and blocks only the first actual
+    commit of those artifact classes.
+16. No template artifact is added by GATE-M0 / PR #5.
+17. Terminal-specific questions may be staged to downstream gates for M0 and
+    PR-004 authorization only when all of the following are recorded:
 
-   * the question remains present;
-   * it has an explicit status;
-   * its required evidence or confirmation is identified;
-   * its owner is identified;
-   * its target PR or milestone is identified;
-   * implementation depending on that answer remains blocked until evidence
-     exists;
-   * no placeholder terminal value is invented.
-8. M0 Requirements Locked is accepted for the non-sensitive code/documentation
-   contour.
-9. Authorization is limited to PR-004 — Core Domain.
-10. During the GATE-M0 PR, PR-004 remains blocked until this gate PR is merged and
+    * the question remains present;
+    * it has an explicit status;
+    * its required evidence or confirmation is identified;
+    * its owner is identified;
+    * its target PR or milestone is identified;
+    * implementation depending on that answer remains blocked until evidence
+      exists;
+    * no placeholder terminal value is invented.
+18. M0 Requirements Locked is accepted for the non-sensitive code/documentation
+    contour.
+19. Authorization is limited to PR-004 — Core Domain.
+20. During the GATE-M0 PR, PR-004 remains blocked until this gate PR is merged and
     human acceptance confirms the recorded decision in `main`.
-11. PR-005, PR-006, PR-007 and every later implementation task remain
+21. PR-005, PR-006, PR-007 and every later implementation task remain
     unauthorized.
-12. Q-010 remains open and blocks PR-005 and PR-006 from storing production
+22. Q-010 remains open and blocks PR-005 and PR-006 from storing production
     personal data until a separate accepted security ADR resolves the sequencing
     conflict between mandatory encrypted database/filesystem storage, persistence
     and filesystem implementation, and encryption currently planned later under
     PR-030.
-13. No encryption technology is selected by this ADR.
+23. No encryption technology is selected by this ADR.
 
 ### Consequences
 
@@ -251,14 +304,17 @@ fixtures.
   staging.
 - Terminal adapters remain blocked by their external confirmations.
 - OCR work remains blocked by local evidence requirements.
-- No real documents, terminal templates, template-derived artifacts, private
-  fixtures or local acceptance artifacts are added to the repository.
+- Current repository-policy enforcement remains temporarily stricter than product
+  policy for approved template artifacts until a separate enforcement PR is
+  merged.
+- No template artifact is added by GATE-M0 / PR #5.
 
 ### Non-decisions
 
 ADR-016 does not decide encryption technology, retention periods,
 terminal-specific values, Excel strategy, OCR technology, PR-005, PR-006, PR-007
-or any later implementation task.
+or any later implementation task. It does not implement repository-policy scanner
+or `.gitignore` changes for approved template artifacts.
 
 ## ADR-017 — MVP Workstation Topology
 

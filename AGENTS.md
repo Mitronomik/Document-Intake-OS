@@ -84,20 +84,13 @@ While the repository is public, forbidden fixtures and artifacts include:
 - birth dates belonging to real people;
 - VINs, vehicle registration numbers and trailer registration numbers;
 - production databases, database journals, backups and screenshots;
-- OCR outputs and MRZ payloads;
+- OCR outputs and MRZ payloads from real documents;
 - logs containing operational data;
 - secrets, keys, passwords, certificates and tokens;
 - private fixtures and local acceptance fixtures;
-- cleaned terminal templates;
-- anonymized terminal templates;
-- template-derived golden Excel files.
+- terminal templates or template-derived artifacts outside the three product-owner-approved templates and their PII-free technical derivatives.
 
-Cleaned or anonymized terminal templates may be allowed only after:
-
-1. the repository is moved into an approved private contour;
-2. repository visibility is reviewed;
-3. the security decision is recorded;
-4. the files are separately approved.
+ADR-016 permits the three approved terminal templates (`TSPMAINFILE.xls`, `visitors_example.xlsx`, `MGSMAINFILE.xlsx`) and PII-free technical derivatives after repository-policy enforcement is updated and technical privacy inspection passes. Permitted derivatives may include cleaned, anonymized or empty structural copies, binary golden files and synthetic output workbooks with fully fictional values, structural screenshots, real checksums, extracted manifests, mappings and workbook structural metadata. These artifacts must not contain real personal data, real application rows, real document images, OCR/MRZ payloads from real documents, secrets, credentials, confidential connection strings or confidential paths.
 
 ## Repository policy guardrail
 
@@ -107,7 +100,7 @@ Before submitting a change, run:
 python scripts/check_repository_policy.py
 ```
 
-Do not bypass or weaken policy checks. Do not add allowlist exceptions without an accepted ADR when privacy or data boundaries are affected. No real documents, templates or private fixtures may be used to make a test pass. While the repository is public, `resources/templates/README.md` is the only permitted tracked file under `resources/templates/`, and it is only a policy marker.
+Do not bypass or weaken policy checks. Do not add allowlist exceptions without an accepted ADR when privacy or data boundaries are affected. No real documents, private fixtures, PII-bearing workbooks or secret-bearing files may be used to make a test pass. Product policy permits the three approved PII-free terminal templates and technical derivatives, but the current scanner and `.gitignore` remain temporarily more restrictive; before the first permitted binary artifact is committed, a separate repository-policy enforcement PR must update the scanner, `.gitignore` and related tests.
 
 ## Required checks
 

@@ -45,7 +45,7 @@ PR-001 and PR-002 are completed. PR-003 is completed and merged through GitHub P
 
 GATE-M0 is in review. M0 decision is approved in this PR, but not yet recorded in `main`. PR-004 remains blocked until the GATE-M0 PR is merged and human acceptance confirms the decision in `main`.
 
-ADR-016 accepts the repository privacy boundary for non-sensitive code and documentation while keeping the sensitive-data/private-contour gate open. Real documents, personal data, terminal templates, template-derived artifacts, private fixtures and local acceptance evidence remain outside Git, Codex and CI.
+ADR-016 accepts the repository privacy boundary for non-sensitive code and documentation while keeping the sensitive-data/private-contour gate open for real documents, personal data, real application data, private fixtures and local acceptance evidence. Approved PII-free template artifacts are permitted by product policy, while current technical enforcement remains temporarily stricter until a separate repository-policy enforcement PR updates scanner and `.gitignore` rules.
 
 ## Authorization boundary
 

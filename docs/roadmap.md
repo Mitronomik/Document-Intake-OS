@@ -46,7 +46,7 @@ PR-019–023.
 
 Result: Visitors, MGS, TSP and export package.
 
-Gate: all terminal-specific external confirmations required by Q-001 through Q-005 and Q-015 exist, no placeholder terminal values are invented, all workbooks open without repair and real terminal upload is verified locally outside Git, Codex and CI.
+Gate: all terminal-specific external confirmations required by Q-001 through Q-005 and Q-015 exist, no placeholder terminal values are invented, approved template artifacts have passed technical privacy inspection and repository-policy enforcement if committed, all workbooks open without repair and real terminal upload is verified locally without committing real application data.
 
 ## M6 — OCR assistance
 

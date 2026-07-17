@@ -1,16 +1,11 @@
-# Terminal template directory policy
+# Terminal template policy marker
 
-This repository is temporarily public under ADR-014. While it remains public, this directory may contain only this `README.md` policy marker.
+This directory is intentionally empty in the current tracked tree except for this policy marker.
 
-Terminal templates are prohibited here, including cleaned, anonymized, empty, and sample templates. Template-derived golden files are also prohibited.
+ADR-016 permits the three approved source templates — `TSPMAINFILE.xls`, `visitors_example.xlsx` and `MGSMAINFILE.xlsx` — and their PII-free technical derivatives after a repository-policy enforcement PR updates scanner and `.gitignore` rules and after each artifact passes technical privacy inspection.
 
-Checksums, manifests, screenshots, exports, and sidecar files derived from real terminal templates are prohibited. Real file names, sheet structures, mappings, or template-derived examples must not be added merely as placeholders.
+Do not add the actual Excel templates, screenshots, manifests, mappings or binary golden files in GATE-M0 / PR #5.
 
-Before any template-related file is introduced:
-
-1. repository visibility must be reviewed;
-2. a private development contour must be approved;
-3. the exact files must receive separate approval;
-4. golden-file handling must be defined.
+Before the first approved template artifact is committed, the enforcement PR must define approved paths, provenance rules, synthetic-data-only golden-file rules and continued blocking of real documents, PII, databases, logs, backups, OCR/MRZ payloads from real documents and secrets.
 
 Adapters must never modify source templates in place.

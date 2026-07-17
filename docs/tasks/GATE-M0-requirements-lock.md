@@ -25,30 +25,45 @@ This is the merge commit of GitHub PR #4, which delivered PR-003.
 
 Accepted.
 
-M0 may be accepted and PR-004 may proceed while the repository remains temporarily public under ADR-014. The accepted public-repository state is `REPOSITORY PRIVACY BOUNDARY — ACCEPTED FOR NON-SENSITIVE CODE`.
+M0 may be accepted and PR-004 may proceed while the repository remains temporarily public under ADR-014 as partially superseded by ADR-016.
 
-The public repository may contain only:
+`REPOSITORY PRIVACY BOUNDARY — ACCEPTED FOR NON-SENSITIVE CODE` remains accepted.
 
-- non-sensitive application source code;
-- non-sensitive documentation;
-- ordinary development configuration;
-- fully fictional synthetic source-code tests that contain no document-derived data.
+`SENSITIVE-DATA / PRIVATE-CONTOUR GATE — OPEN` remains open for real documents, personal data, real application data, operational databases, real acceptance datasets, real OCR/MRZ output, operational logs, real exports, backups and secrets. It is not a blanket gate against the approved terminal templates.
 
-The public repository must not contain:
+### Product-owner template decision
 
-- real documents or document photographs;
-- personal data;
-- anonymized or cleaned real documents;
-- terminal templates;
-- template-derived golden files;
-- template-derived screenshots, manifests, checksums or mappings;
-- databases or journals;
-- OCR or MRZ payloads;
-- private or local acceptance fixtures;
-- operational logs or backups;
-- secrets, keys, certificates or tokens.
+The product owner approves these three terminal templates as non-sensitive project contract files:
 
-`SENSITIVE-DATA / PRIVATE-CONTOUR GATE — OPEN` remains open. Real terminal templates and local acceptance materials remain outside Git, Codex and CI. The open sensitive-data gate does not block PR-004 because PR-004 requires no sensitive input. It continues to block every task that requires real documents, terminal templates, template-derived artifacts or private acceptance materials.
+- `TSPMAINFILE.xls`;
+- `visitors_example.xlsx`;
+- `MGSMAINFILE.xlsx`.
+
+They may be stored in the project repository after technical content validation confirms that they contain no real personal data, credentials or confidential operational data.
+
+Permitted derivatives include approved original Excel templates, cleaned copies, anonymized copies, empty structural copies, binary golden files, synthetic output workbooks, screenshots showing template structure, real template checksum values, extracted structural manifests, machine-generated mappings, manually maintained mappings, workbook structural metadata, sheet names and order, exact headers, comments, validations, named ranges, tables and ranges, styles, merged-cell definitions and external-connection metadata that contains no credentials or confidential paths.
+
+No separate product-owner decision is required for each checksum, manifest, screenshot, mapping or golden file derived from one of the three approved templates. A new template belonging to another terminal still requires a separate product-owner decision.
+
+### Content-based restriction
+
+Template origin or binary format does not make a file prohibited. A permitted template artifact must not contain real driver or visitor records, real application rows, real names, real dates of birth, real passport, identity-document or migration-document numbers, real phone numbers, real registration addresses, real VINs, real vehicle or trailer registration numbers, real organization data when it identifies an actual application participant, photographs or scans of real documents, OCR output from real documents, MRZ payloads from real documents, authentication credentials, passwords, API tokens, private keys, confidential connection strings, confidential local or network paths or operational data not authorized for publication.
+
+Golden files and synthetic output workbooks may contain only fully fictional test values. A screenshot is permitted only when it contains empty structure or fully fictional values. A manifest is permitted only when it contains structural metadata and no real personal or operational records. Real checksum values of the approved source templates are permitted and are not personal data.
+
+### Technical privacy inspection
+
+Each approved template must undergo technical privacy inspection before its first commit. The inspection must cover visible cells, hidden sheets, hidden rows and columns, comments and notes, workbook and document properties, author and last-editor metadata, custom properties, defined names, external links, Power Query and workbook connections, cached connection results, embedded objects, images, macros where applicable, local usernames, local filesystem paths, network paths, credentials and connection strings.
+
+The inspection is not a new product decision. It is a technical acceptance check proving that the artifact complies with the already accepted content boundary. Do not claim that all three files have passed this inspection unless all three files were actually available and inspected.
+
+### Transitional technical enforcement
+
+Product policy permits the three approved PII-free terminal templates and their technical derivatives. The current scanner and `.gitignore` remain temporarily more restrictive. Before the first permitted binary artifact is committed, a separate repository-policy enforcement PR must update the scanner, `.gitignore` and related tests.
+
+The future enforcement PR is required before committing an Excel template, binary golden file, template screenshot, generated manifest or generated mapping artifact. That future enforcement PR does not block PR-004. It blocks only the first actual commit of those artifact classes.
+
+No template artifact is added by GATE-M0 / PR #5.
 
 ### M0-02 — MVP workstation topology
 
@@ -126,7 +141,7 @@ This rule does not answer the terminal question. It stages the question to the c
 
 ## Scope
 
-Allowed changes are documentation and documentation-baseline tests only. No runtime code, dependencies, fixtures, templates, databases, real or anonymized documents, private acceptance artifacts or repository-policy scanner changes are included.
+Allowed changes are documentation and documentation-baseline tests only. No runtime code, dependencies, fixtures, databases, real or anonymized documents, private acceptance artifacts or repository-policy scanner changes are included. No template artifact is added by GATE-M0 / PR #5.
 
 ## Verification
 

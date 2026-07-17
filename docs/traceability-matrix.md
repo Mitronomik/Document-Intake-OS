@@ -50,4 +50,5 @@
 | PR-005/PR-006 encryption staging | ADR-016 / Q-010 | UNAUTHORIZED until separate security ADR | documentation baseline test |
 | MVP workstation topology | ADR-017 / Q-008 | One Windows 11 x64 workstation with one active operator session at a time | documentation baseline test |
 | Terminal-specific staged questions | Q-001–Q-005 | External confirmation required before target adapter/export PRs | documentation baseline test |
-| Local evidence staged questions | Q-012–Q-015 | Evidence remains outside Git, Codex and CI | documentation baseline test |
+| Local evidence staged questions | Q-012–Q-015 | Real-document and environment evidence remains outside Git, Codex and CI | documentation baseline test |
+| Approved template artifact policy | ADR-016 | Product policy permits approved PII-free terminal templates and derivatives after inspection/enforcement update | documentation baseline test |

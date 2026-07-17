@@ -39,7 +39,7 @@
 - [ ] PR-005 remains unauthorized pending a separate Q-010 security ADR;
 - [ ] PR-006 remains unauthorized pending a separate Q-010 security ADR;
 - [ ] PR-007 and later implementation tasks remain unauthorized by GATE-M0;
-- [ ] approved private development contour for terminal templates and template-derived golden files;
+- [ ] Repository-policy enforcement update required before the first approved terminal template or template-derived binary artifact is committed;
 - [ ] storage implementation;
 - [ ] image pipeline;
 - [ ] terminal adapters;
@@ -52,7 +52,7 @@
 - Q-008 is accepted by ADR-017: one Windows 11 x64 workstation with one active operator session at a time.
 - Q-010 remains OPEN and blocks PR-005 and PR-006 until a separate accepted security ADR resolves encryption staging.
 - Q-012 through Q-015 require local evidence outside Git, Codex and CI.
-- Terminal templates, real documents, template-derived artifacts and private acceptance materials remain outside Git, Codex and CI.
+- Approved PII-free template artifacts are permitted by product policy after technical privacy inspection and repository-policy enforcement updates; real documents, PII-bearing artifacts and private acceptance materials remain outside Git, Codex and CI.
 
 ## Следующий безопасный шаг
 

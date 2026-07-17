@@ -179,7 +179,7 @@ Statuses: `OPEN`, `ACCEPTED`, `DEFERRED`, `EXTERNAL_CONFIRMATION_REQUIRED`, `LOC
 **Required evidence:** Local Windows 11 / Microsoft Excel availability and version evidence for Excel adapter acceptance.
 **Target:** Before PR-022/PR-023 and installer acceptance.
 **Current gate impact:** Does not block M0 or PR-004.
-**Privacy rule:** Evidence files and terminal workbooks remain outside Git, Codex and CI.
+**Privacy rule:** Local Microsoft Excel availability evidence remains local. Approved PII-free terminal workbooks may be stored in Git after the repository-policy enforcement update and technical privacy inspection. Real application workbooks remain prohibited.
 
 ### Q-016
 

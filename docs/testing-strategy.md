@@ -14,9 +14,9 @@
 
 ## 3. Fixtures
 
-Committed fixtures must be fictional and synthetic. Committed fixture files may exist only under `tests/fixtures/synthetic/`; `resources/templates/README.md` is the only permitted tracked file under `resources/templates/` while the repository is public, and that exception permits repository-policy documentation only.
+Committed document/data fixtures must be fictional and synthetic. Committed document fixture files may exist only under `tests/fixtures/synthetic/`. ADR-016 permits structural template fixtures, approved-template-derived golden files and synthetic output workbooks using only the three approved terminal templates and fully fictional data after technical privacy inspection and after a repository-policy enforcement PR updates scanner and `.gitignore` rules.
 
-PR-003 adds no document fixtures. Large test inputs must normally be generated at test runtime. Private acceptance datasets remain outside Git, Codex and CI. Repository-policy tests use temporary files only.
+PR-003 adds no document fixtures. Large document test inputs must normally be generated at test runtime. Private acceptance datasets, real-document fixtures and real-application workbooks remain outside Git, Codex and CI. Repository-policy tests use temporary files only.
 
 Private local set: controlled access, local ground truth, no inclusion in reports or cloud tools.
 

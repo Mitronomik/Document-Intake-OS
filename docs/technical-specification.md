@@ -340,6 +340,6 @@
 ## 21. Требования к разработке через Codex Web
 - Репозиторий не содержит реальные фотографии, паспортные номера, телефоны и адреса.
 - Разработка ведется небольшими PR: каркас, база, image pipeline, адаптер TSP, адаптер visitors, адаптер MGS, OCR/MRZ, UI проверки, экспорт, безопасность.
-- Для тестов в публичном репозитории используются только fully fictional synthetic source-code tests без document-derived data. Обезличенные, cleaned, real or template-derived fixtures remain outside Git, Codex and CI unless a later accepted private-contour decision allows them.
+- Для тестов в публичном репозитории используются fully fictional synthetic source-code tests без document-derived data. ADR-016 approved PII-free template/golden artifacts derived from the three approved terminal templates are allowed only after technical privacy inspection and repository-policy enforcement updates. Real-document and real-application fixtures remain outside Git, Codex and CI.
 - Windows-сборка и проверка .xls выполняются локально на Windows 11; Codex Web не является заменой тестированию на целевой ОС.
 - Каждое изменение адаптера сопровождается golden-file тестом и проверкой открытия Excel без восстановления.

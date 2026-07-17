@@ -93,7 +93,7 @@ uv run pytest -ra
 uv build
 ```
 
-`python scripts/check_repository_policy.py` checks tracked files only and blocks prohibited repository content such as private fixtures, terminal templates, oversized tracked images and high-confidence secret signatures. The tracked-file scanner is the CI-enforced guardrail; `.gitignore` is only preventive.
+`python scripts/check_repository_policy.py` checks tracked files only and blocks prohibited repository content such as private fixtures, currently blocked terminal-template paths, oversized tracked images and high-confidence secret signatures. The tracked-file scanner is the CI-enforced guardrail; `.gitignore` is only preventive. ADR-016 permits the three approved PII-free terminal templates and their technical derivatives as product artifacts, but the scanner remains temporarily stricter until a separate enforcement PR updates it.
 
 ### Run the bootstrap desktop shell
 
@@ -117,9 +117,9 @@ QT_QPA_PLATFORM=offscreen uv run pytest -q tests/test_bootstrap.py::test_real_qt
 
 The GitHub repository is temporarily public by explicit product-owner decision. This temporary public status does not change the local-only and offline runtime architecture.
 
-While the repository remains public, do not commit terminal Excel templates, including cleaned or anonymized templates, and do not commit template-derived golden Excel files. Do not commit documents, document images, personal data, OCR results, MRZ payloads, databases, database journals, backups, logs, screenshots, local acceptance data, private fixtures, secrets, keys, passwords, certificates or tokens.
+While the repository remains public, do not commit real documents, document images, personal data, OCR results, MRZ payloads, databases, database journals, real exports, backups, operational logs, screenshots containing PII, local acceptance data, private fixtures, secrets, keys, passwords, certificates or tokens.
 
-Terminal templates may be introduced only after a separate security review and only inside an approved private development contour.
+ADR-016 permits `TSPMAINFILE.xls`, `visitors_example.xlsx`, `MGSMAINFILE.xlsx` and their PII-free technical derivatives after technical privacy inspection and after the repository-policy enforcement PR updates scanner and `.gitignore` paths. Permitted derivatives include cleaned/anonymized/empty structural copies, binary golden files and synthetic output workbooks with fully fictional values, structural screenshots, checksums, manifests, mappings and structural metadata. No permitted artifact may contain real personal data, real application rows, document images, OCR/MRZ payloads from real documents, credentials, confidential connection strings or confidential paths.
 
 ### Data and fixtures
 
