@@ -36,6 +36,19 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/d1/d6/3965ed04c63042e047cb6a3e6ed1a63a35087b6a609aa3a15ed8ac56c221/colorama-0.4.6-py2.py3-none-any.whl", hash = "sha256:4f1d9991f5acc0ca119f9d443620b77f9d6b33703e51011c16baf57afb285fc6", size = 25335, upload-time = "2022-10-25T02:36:20.889Z" },
 ]
 
+
+[[package]]
+name = "cryptography"
+version = "49.0.0"
+source = { registry = "https://pypi.org/simple" }
+wheels = []
+
+[[package]]
+name = "sqlcipher3"
+version = "0.6.2"
+source = { registry = "https://pypi.org/simple" }
+wheels = []
+
 [[package]]
 name = "document-intake-os"
 version = "0.1.0"
@@ -50,6 +63,10 @@ dev = [
     { name = "pytest" },
     { name = "ruff" },
 ]
+encryption-spike = [
+    { name = "cryptography", marker = "sys_platform == 'win32'", version = "49.0.0", source = { registry = "https://pypi.org/simple" } },
+    { name = "sqlcipher3", marker = "sys_platform == 'win32' and platform_machine == 'AMD64'", version = "0.6.2", source = { registry = "https://pypi.org/simple" } },
+]
 
 [package.metadata]
 requires-dist = [{ name = "pyside6", specifier = ">=6.7,<7" }]
@@ -59,6 +76,10 @@ dev = [
     { name = "mypy", specifier = ">=1.10" },
     { name = "pytest", specifier = ">=8.2" },
     { name = "ruff", specifier = ">=0.5" },
+]
+encryption-spike = [
+    { name = "cryptography", marker = "sys_platform == 'win32'", specifier = "==49.0.0" },
+    { name = "sqlcipher3", marker = "sys_platform == 'win32' and platform_machine == 'AMD64'", specifier = "==0.6.2" },
 ]
 
 [[package]]

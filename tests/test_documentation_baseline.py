@@ -224,7 +224,7 @@ def test_lifecycle_state_records_gate_s1_accepted_state() -> None:
         "GATE-S1: COMPLETED AND HUMAN ACCEPTED",
         "ADR-018: ACCEPTED",
         "Q-010: ACCEPTED",
-        "PR-S001: AUTHORIZED, NOT STARTED",
+        "PR-S001: IN REVIEW",
         "PR-005: UNAUTHORIZED",
         "PR-006: UNAUTHORIZED",
         "PR-007 AND LATER: UNAUTHORIZED",
@@ -261,10 +261,7 @@ def test_lifecycle_state_records_gate_s1_accepted_state() -> None:
         text = (REPO_ROOT / filename).read_text(encoding="utf-8")
         for required in required_by_file:
             assert required in text, filename
-        assert (
-            "prepare, implement and review PR-S001 — Windows encryption feasibility "
-            "and packaging spike" in text
-        ), filename
+        assert "review PR-S001 evidence and make a product-owner feasibility decision" in text, filename
         for stale in stale_current_state:
             assert stale not in text, filename
 
@@ -273,7 +270,7 @@ def test_lifecycle_state_records_gate_s1_accepted_state() -> None:
     assert "- [x] GATE-S1: COMPLETED AND HUMAN ACCEPTED;" in progress
     assert "- [x] ADR-018: ACCEPTED;" in progress
     assert "- [x] Q-010: ACCEPTED;" in progress
-    assert "- [ ] PR-S001: AUTHORIZED, NOT STARTED;" in progress
+    assert "- [ ] PR-S001: IN REVIEW;" in progress
     assert "- [ ] PR-005: UNAUTHORIZED;" in progress
     assert "- [ ] PR-006: UNAUTHORIZED;" in progress
     assert "- [ ] GATE-S1: COMPLETED AND HUMAN ACCEPTED;" not in progress
@@ -877,3 +874,31 @@ def test_open_questions_q001_through_q020_remain_present() -> None:
             missing.append(heading)
 
     assert not missing, "Missing open-question headings: " + ", ".join(missing)
+
+
+def test_pr_s001_spike_documentation_and_scope() -> None:
+    assert (REPO_ROOT / "docs/tasks/PR-S001-windows-encryption-feasibility.md").exists()
+    assert (REPO_ROOT / "docs/research/PR-S001-windows-encryption-feasibility.md").exists()
+    assert "edc895ffaf26f496bd8f60dbcbb87f3d5cfb09f4" in (REPO_ROOT / "docs/tasks/PR-S001-windows-encryption-feasibility.md").read_text(encoding="utf-8")
+    report = (REPO_ROOT / "docs/research/PR-S001-windows-encryption-feasibility.md").read_text(encoding="utf-8")
+    assert "CONDITIONALLY FEASIBLE" in report
+    assert "does not select a final production package" in report
+    assert "coordinated rollback" in report and "not claimed as detected" in report
+    assert "Technical" in report or "Technical".lower() in report.lower()
+    assert "Security" in report or "security" in report.lower()
+    assert "Packaging" in report or "packaging" in report.lower()
+    assert "Licensing" in report or "licensing" in report.lower()
+    pyproject = (REPO_ROOT / "pyproject.toml").read_text(encoding="utf-8")
+    project_block = pyproject.split("[project.scripts]", maxsplit=1)[0]
+    assert "sqlcipher3" not in project_block
+    assert "cryptography" not in project_block
+    assert "encryption-spike" in pyproject
+    assert "PR-S001: IN REVIEW" in (REPO_ROOT / "docs/progress.md").read_text(encoding="utf-8")
+    for lifecycle in ["docs/progress.md", "docs/handoff.md", "docs/roadmap.md", "docs/implementation-plan.md", "docs/traceability-matrix.md"]:
+        text = (REPO_ROOT / lifecycle).read_text(encoding="utf-8")
+        assert "AUTHORIZED, NOT STARTED" not in text
+        assert "PR-S001 uses fictional synthetic data only" in text
+        assert "PR-S001 contains no production persistence/storage API" in text
+        assert "a negative feasibility result is valid" in text
+        assert "PR-S001 merge does not authorize PR-005" in text
+        assert "human acceptance and separate authorization remain required" in text
