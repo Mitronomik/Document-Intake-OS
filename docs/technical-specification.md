@@ -332,14 +332,14 @@
 - Подтвердить, должны ли изображения физически вставляться в Excel или достаточно папки документов рядом с Excel. В настоящем ТЗ базовым считается второй вариант.
 - Передать матрицу обязательных документов по терминалу, гражданству, виду пропуска и типу транспорта.
 - Подтвердить требуемую схему склейки: вертикально или горизонтально, порядок сторон и допустимые поля вокруг документа.
-- Определить, нужна ли первая версия для macOS или достаточно Windows 11.
-- Определить количество рабочих мест: один компьютер или несколько операторов в локальной сети.
+- macOS initial-release question superseded by ADR-002 and NFR-02: Windows 11 x64 is first; macOS follows Windows stabilization.
+- Workstation topology resolved by ADR-017 for the first MVP: one Windows 11 x64 workstation with one active operator session at a time.
 - Определить срок хранения оригиналов и подготовленных копий и правила удаления после подачи заявки.
 - Передать обезличенные примеры водительских удостоверений и разрешений на работу: эти типы заявлены, но представлены недостаточно для приемочного теста.
 
 ## 21. Требования к разработке через Codex Web
 - Репозиторий не содержит реальные фотографии, паспортные номера, телефоны и адреса.
 - Разработка ведется небольшими PR: каркас, база, image pipeline, адаптер TSP, адаптер visitors, адаптер MGS, OCR/MRZ, UI проверки, экспорт, безопасность.
-- Для тестов используются синтетические и обезличенные фикстуры.
+- Для тестов в публичном репозитории используются fully fictional synthetic source-code tests без document-derived data. ADR-016 approved PII-free template/golden artifacts derived from the three approved terminal templates are allowed only after technical privacy inspection and repository-policy enforcement updates. Real-document and real-application fixtures remain outside Git, Codex and CI.
 - Windows-сборка и проверка .xls выполняются локально на Windows 11; Codex Web не является заменой тестированию на целевой ОС.
 - Каждое изменение адаптера сопровождается golden-file тестом и проверкой открытия Excel без восстановления.

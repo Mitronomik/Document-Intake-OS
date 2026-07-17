@@ -1,7 +1,7 @@
 # Progress
 
 **Обновлено:** 2026-07-16  
-**Статус:** PR-003 IN REVIEW
+**Статус:** GATE-M0 IN REVIEW
 
 ## Завершено
 
@@ -20,38 +20,40 @@
 - [x] PR-001 completed and merged in `main` commit `6ca116e`;
 - [x] PR-002 completed and merged through GitHub PR #3 with merge commit `d7203f82`;
 - [x] ADR-015 accepted by the product owner;
+- [x] PR-003 COMPLETED and merged through GitHub PR #4 at `ad5782045473d3ef5eb0a097cc8f6982bab821c7`;
+- [x] M1 ACCEPTED by the product owner;
 - [x] no terminal templates are committed;
 - [x] no personal data are committed.
 
 ## В работе
 
-- [ ] PR-003 implementation is under review;
-- [ ] M0 remains open;
-- [ ] privacy gate remains open;
-- [ ] terminal and security questions remain unresolved;
-- [ ] M1 is not completed before PR-003 merge and human acceptance;
-- [ ] M2 and PR-004+ remain blocked.
+- [ ] GATE-M0 IN REVIEW;
+- [ ] M0 DECISION APPROVED, NOT YET RECORDED IN MAIN;
+- [ ] REPOSITORY PRIVACY BOUNDARY — ACCEPTED FOR NON-SENSITIVE CODE;
+- [ ] SENSITIVE-DATA / PRIVATE-CONTOUR GATE — OPEN;
+- [ ] PR-004 BLOCKED UNTIL GATE-M0 PR MERGE AND HUMAN ACCEPTANCE.
 
-## Не начато
+## Не начато / unauthorized
 
-- [ ] approved private development contour for terminal templates and template-derived golden files;
-- [ ] domain implementation;
+- [ ] PR-004 implementation is not started in GATE-M0;
+- [ ] PR-005 remains unauthorized pending a separate Q-010 security ADR;
+- [ ] PR-006 remains unauthorized pending a separate Q-010 security ADR;
+- [ ] PR-007 and later implementation tasks remain unauthorized by GATE-M0;
+- [ ] Repository-policy enforcement update required before the first approved terminal template or template-derived binary artifact is committed;
 - [ ] storage implementation;
 - [ ] image pipeline;
 - [ ] terminal adapters;
 - [ ] OCR benchmark;
 - [ ] installer.
 
-## Блокеры
+## Блокеры and staged questions
 
-Visitors terminal name, TSP format, participant limits, completeness matrix, merge rules, workstation count, retention, encryption and missing document samples remain unresolved.
-
-ADR-015 resolves repository-safety sequencing only for PR-001 through PR-003. Completion of PR-003 does not imply completion of M0, does not close the privacy gate and does not automatically authorize M2.
+- Q-001 through Q-005 are staged as external terminal confirmations and do not block domain-only PR-004 under ADR-016.
+- Q-008 is accepted by ADR-017: one Windows 11 x64 workstation with one active operator session at a time.
+- Q-010 remains OPEN and blocks PR-005 and PR-006 until a separate accepted security ADR resolves encryption staging.
+- Q-012 through Q-015 require local evidence outside Git, Codex and CI.
+- Approved PII-free template artifacts are permitted by product policy after technical privacy inspection and repository-policy enforcement updates; real documents, PII-bearing artifacts and private acceptance materials remain outside Git, Codex and CI.
 
 ## Следующий безопасный шаг
 
-1. complete human review and CI for PR-003 without marking it completed before merge;
-2. keep M0 open until terminal questions and the privacy gate are resolved;
-3. keep M2 and PR-004+ blocked until M0 is accepted and M1 repository-safety work is accepted.
-
-M0 remains open because terminal questions and the privacy gate remain open.
+Complete review, CI and human acceptance for the GATE-M0 PR. Do not start PR-004 until the GATE-M0 PR is merged and accepted. Do not start PR-005, PR-006 or later tasks until separately authorized.

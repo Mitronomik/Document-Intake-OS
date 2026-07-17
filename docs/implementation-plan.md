@@ -5,9 +5,12 @@
 - один PR решает одну понятную задачу;
 - каждый PR содержит тесты, документацию и manual verification;
 - следующий крупный этап начинается после приемки gate;
-- ADR-015 creates a narrow exception for PR-001 through PR-003 repository-safety work while M0 remains open;
-- PR-003 may proceed while M0 is open;
-- PR-004 and later tasks remain blocked until M0 and M1 are accepted;
+- ADR-015 created a narrow exception for PR-001 through PR-003 repository-safety work while M0 remained open;
+- PR-003 is completed and merged through GitHub PR #4 at `ad5782045473d3ef5eb0a097cc8f6982bab821c7`;
+- M1 Safe Repository is accepted;
+- GATE-M0 is in review: M0 decision approved, not yet recorded in `main`;
+- PR-004 remains blocked until the GATE-M0 PR is merged and human acceptance confirms the decision in `main`;
+- PR-005 and later tasks remain unauthorized;
 - реальные документы не используются в Codex Web;
 - OCR начинается только после готовности ручного контура.
 
@@ -46,7 +49,7 @@ Scope:
 
 ### PR-003 — CI and privacy guardrails
 
-**Status:** IN REVIEW after implementation submission; not completed until merge and human acceptance.
+**Status:** COMPLETED and merged through GitHub PR #4 at `ad5782045473d3ef5eb0a097cc8f6982bab821c7`; accepted by the product owner.
 
 Scope:
 
@@ -69,15 +72,15 @@ Entities, value objects, enums, transitions, verification policy and snapshot in
 
 ### PR-005 — SQLite persistence
 
-Schema, migrations, repositories, unit of work and transaction tests. Конкретное шифрование не реализовать до ADR.
+Unauthorized by GATE-M0. Schema, migrations, repositories, unit of work and transaction tests remain blocked until a separate accepted security ADR resolves Q-010 encryption staging. Конкретное шифрование не реализовать до ADR.
 
 ### PR-006 — Immutable filesystem storage
 
-Original import, SHA-256, metadata, atomic writes and integrity tests.
+Unauthorized by GATE-M0. Original import, SHA-256, metadata, atomic writes and integrity tests remain blocked until a separate accepted security ADR resolves Q-010 encryption staging for production personal data.
 
 ### PR-007 — Audit events
 
-Masked audit model, critical operations and PII-safe tests.
+Unauthorized by GATE-M0. Masked audit model, critical operations and PII-safe tests remain a later task.
 
 **Gate 1:** domain/storage приняты.
 

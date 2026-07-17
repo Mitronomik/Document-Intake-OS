@@ -2,7 +2,7 @@
 
 ## 1. Репозиторий
 
-Целевой рабочий контур — приватный GitHub с protected `main` и merge только через PR. Временный публичный bootstrap допускается исключительно по ADR-014: без реальных данных, документов, терминальных шаблонов, template-derived golden files и закрытых acceptance fixtures.
+Целевой рабочий контур — приватный GitHub с protected `main` и merge только через PR. Временный публичный bootstrap допускается по ADR-014/ADR-016: без реальных данных, документов, закрытых acceptance fixtures, PII or secrets. ADR-016 permits the three approved PII-free terminal templates and their technical derivatives after technical privacy inspection and repository-policy enforcement updates.
 
 ## 2. Ветки
 
@@ -44,7 +44,7 @@ Before submitting a change, run:
 python scripts/check_repository_policy.py
 ```
 
-Policy failures block merge. Policy rules must not be bypassed through renamed files. `resources/templates/README.md` is the only permitted tracked file under `resources/templates/` while the repository is public, and it permits repository-policy documentation only. Exceptions affecting privacy or data boundaries require an accepted ADR. Developers must inspect `git status` and `git diff --cached` before pushing. Real acceptance files remain outside the repository.
+Policy failures block merge. Policy rules must not be bypassed through renamed files. Product policy permits the three approved PII-free terminal templates and technical derivatives, but the current scanner and `.gitignore` remain temporarily stricter until a separate enforcement PR updates approved paths and tests. Exceptions affecting privacy or data boundaries require an accepted ADR. Developers must inspect `git status` and `git diff --cached` before pushing. Real acceptance files remain outside the repository.
 
 - [ ] один scope;
 - [ ] нет real PII;

@@ -118,11 +118,28 @@ PR-003 adds a tracked-file repository policy scanner that runs locally and in CI
 
 The scanner enforces forbidden repository-root paths for runtime data, exports, logs, personal-data areas, private fixtures and local acceptance data. Root-level `storage/` is treated as runtime storage and does not apply to `src/document_intake/storage/`.
 
-While the repository remains public, `resources/templates/README.md` is the only permitted tracked file under `resources/templates/`. This exception permits repository-policy documentation only. It does not permit any terminal template, fixture, manifest, checksum or template-derived information. Terminal templates, including cleaned, anonymized, empty and sample templates, remain prohibited.
+ADR-016 changes the approved-template boundary from file-type-based to content-based for `TSPMAINFILE.xls`, `visitors_example.xlsx` and `MGSMAINFILE.xlsx`. Those approved templates and PII-free technical derivatives may be committed only after technical privacy inspection and after a repository-policy enforcement PR updates scanner and `.gitignore` rules. Until that enforcement PR is merged, `resources/templates/README.md` remains the only permitted tracked file under `resources/templates/`. Real documents, personal data, real application data, operational databases, logs, backups, OCR/MRZ payloads from real documents, credentials and secrets remain prohibited.
 
-Committed fixtures must be synthetic-only and may exist only under `tests/fixtures/synthetic/`. Private, real, production, local and acceptance fixture subtrees are blocked. PR-003 adds no document fixtures.
+### Current scanner enforcement
 
-Tracked images are allowed only under `tests/fixtures/synthetic/`, and tracked synthetic images are limited to 1,992,294 bytes. This is the integer byte limit corresponding to 1.90 MiB.
+Until the repository-policy enforcement PR is merged:
+
+- ordinary committed document/data fixtures are permitted only under `tests/fixtures/synthetic/`;
+- tracked images are permitted only under the current synthetic-image path;
+- `resources/templates/README.md` is the only tracked template-directory file.
+
+Private, real, production, local and acceptance fixture subtrees are blocked. PR-003 adds no document fixtures. Tracked synthetic images remain limited to 1,992,294 bytes, the integer byte limit corresponding to 1.90 MiB.
+
+### ADR-016 exception after enforcement update
+
+After the enforcement PR and required technical inspection:
+
+- the three approved source templates may use explicitly approved template paths;
+- approved binary golden files and synthetic output workbooks may use explicitly approved golden paths;
+- PII-free structural template screenshots may use explicitly approved screenshot paths;
+- manifests and mappings may use explicitly approved metadata paths.
+
+The future enforcement PR must define those exact template paths, golden-file paths, screenshot paths and manifest/mapping paths. This exception applies only to the three approved templates and their PII-free derivatives. Real document images remain prohibited. Real application workbooks remain prohibited. PII-bearing screenshots and golden files remain prohibited. Secrets and credentials remain prohibited.
 
 The scanner detects a narrow set of high-confidence secret signatures: private-key markers, AWS access-key IDs, GitHub classic tokens, GitHub fine-grained tokens, OpenAI-style keys, Google API keys, Slack tokens and Stripe live secret keys. It does not use broad entropy heuristics and does not implement semantic PII detection.
 
