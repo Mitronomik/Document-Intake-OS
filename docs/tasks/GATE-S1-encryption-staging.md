@@ -1,7 +1,13 @@
 # GATE-S1 — Encryption staging proposal (completed and human accepted)
 
-## Base SHA
+## Original task base SHA
 
+`6f3021a38305cb92d733a46426cde427828bac04`
+
+Original task base:
+`6f3021a38305cb92d733a46426cde427828bac04`
+
+Resulting GATE-S1 merge commit:
 `fb9984036f7df0c34badfc3a93f6faec1bc5d38e`
 
 ## Context
@@ -135,7 +141,7 @@ PR-S001 is authorized, not started, as a Windows encryption feasibility and pack
 
 ## Manual review checklist
 
-- Run the PR review/manual verification command `git diff --name-only 6f3021a38305cb92d733a46426cde427828bac04...HEAD` outside pytest to confirm GATE-S1 correction file scope.
+- Run the historical GATE-S1 PR review evidence command `git diff --name-only 6f3021a38305cb92d733a46426cde427828bac04...HEAD` outside pytest to confirm the original GATE-S1 proposal file scope.
 - Confirm ADR-018 is ACCEPTED.
 - Confirm Q-010 is ACCEPTED.
 - Confirm PR-S001 is authorized but not started and PR-005, PR-006, PR-007 and later work remain unauthorized.

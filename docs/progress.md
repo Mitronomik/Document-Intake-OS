@@ -32,21 +32,21 @@
 ## Current lifecycle state
 
 - [x] PR-004: COMPLETED AND HUMAN ACCEPTED;
-- [ ] GATE-S1: COMPLETED AND HUMAN ACCEPTED;
-- [ ] ADR-018: ACCEPTED;
+- [x] GATE-S1: COMPLETED AND HUMAN ACCEPTED;
+- [x] ADR-018: ACCEPTED;
 - [ ] PR-S001: AUTHORIZED, NOT STARTED;
 - [ ] PR-005: UNAUTHORIZED;
 - [ ] PR-006: UNAUTHORIZED;
 - [ ] PR-007 AND LATER: UNAUTHORIZED;
 - [ ] Gate 1: NOT ACCEPTED;
 - [ ] M2: NOT COMPLETED;
-- [ ] Q-010: ACCEPTED;
-- [ ] REPOSITORY PRIVACY BOUNDARY — ACCEPTED FOR NON-SENSITIVE CODE;
+- [x] Q-010: ACCEPTED;
+- [x] REPOSITORY PRIVACY BOUNDARY — ACCEPTED FOR NON-SENSITIVE CODE;
 - [ ] The sensitive-data/private-contour gate remains open for real data.
 
 ## Not started / unauthorized
 
-- [ ] PR-005 must not start without accepted PR-S001 review and explicit follow-up authorization and a completed accepted PR-S001;
+- [ ] PR-005 remains blocked until PR-S001 is merged, reviewed and human accepted, followed by separate explicit product-owner authorization;
 - [ ] PR-006 remains unauthorized pending its own task review after accepted encryption staging;
 - [ ] PR-007 and later implementation tasks remain unauthorized;
 - [ ] The template enforcement PR remains future work and does not block PR-004;

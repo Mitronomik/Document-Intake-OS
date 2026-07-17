@@ -270,6 +270,15 @@ def test_lifecycle_state_records_gate_s1_accepted_state() -> None:
 
     progress = (REPO_ROOT / "docs/progress.md").read_text(encoding="utf-8")
     assert "**Обновлено:** 2026-07-17" in progress
+    assert "- [x] GATE-S1: COMPLETED AND HUMAN ACCEPTED;" in progress
+    assert "- [x] ADR-018: ACCEPTED;" in progress
+    assert "- [x] Q-010: ACCEPTED;" in progress
+    assert "- [ ] PR-S001: AUTHORIZED, NOT STARTED;" in progress
+    assert "- [ ] PR-005: UNAUTHORIZED;" in progress
+    assert "- [ ] PR-006: UNAUTHORIZED;" in progress
+    assert "- [ ] GATE-S1: COMPLETED AND HUMAN ACCEPTED;" not in progress
+    assert "- [ ] ADR-018: ACCEPTED;" not in progress
+    assert "- [ ] Q-010: ACCEPTED;" not in progress
 
 
 def test_gate_s1_encryption_staging_acceptance_contract() -> None:
@@ -386,6 +395,10 @@ def test_gate_s1_encryption_staging_acceptance_contract() -> None:
     assert "PR-007 AND LATER: UNAUTHORIZED" in task
     assert "Gate 1: NOT ACCEPTED" in task
     assert "M2: NOT COMPLETED" in task
+    assert "## Original task base SHA\n\n`6f3021a38305cb92d733a46426cde427828bac04`" in task
+    assert "Original task base:" in task
+    assert "Resulting GATE-S1 merge commit:" in task
+    assert task.index("Original task base:") < task.index("Resulting GATE-S1 merge commit:")
     assert "Product-owner acceptance: CONFIRMED" in task
     assert "GitHub PR: #7" in task
     assert "Merge commit: fb9984036f7df0c34badfc3a93f6faec1bc5d38e" in task
@@ -437,6 +450,27 @@ def test_gate_s1_acceptance_security_and_lifecycle_boundaries() -> None:
         assert "real documents and personal data remain prohibited in Git, Codex and CI" in text, (
             filename
         )
+
+
+def test_pr005_pr006_sequences_remain_blocked_after_gate_s1_acceptance() -> None:
+    implementation_plan = (REPO_ROOT / "docs/implementation-plan.md").read_text(encoding="utf-8")
+
+    assert (
+        "accepted PR-S001 review and explicit follow-up authorization, accepted PR-S001"
+        not in implementation_plan
+    )
+    assert (
+        "PR-005 remains blocked until PR-S001 is merged, reviewed and human accepted"
+        in implementation_plan
+    )
+    assert "separate explicit product-owner authorization of PR-005" in implementation_plan
+    assert "PR-S001 does not create a production persistence API" in implementation_plan
+    assert (
+        "PR-006 remains blocked until PR-S001 is merged, reviewed and human accepted"
+        in implementation_plan
+    )
+    assert "separate PR-006 task review and explicit authorization" in implementation_plan
+    assert "PR-S001 does not create production filesystem storage" in implementation_plan
 
 
 def test_q001_through_q020_statuses_other_than_q010_are_unchanged() -> None:

@@ -71,11 +71,11 @@ Entities, value objects, enums, transitions, verification policy and snapshot in
 
 ### PR-005 — SQLite persistence
 
-Unauthorized. Schema, migrations, repositories, unit of work and transaction tests remain blocked until accepted PR-S001 review and explicit follow-up authorization, accepted PR-S001, and explicit PR-005 authorization. Конкретное шифрование не реализовать в GATE-S1.
+Unauthorized. PR-005 remains blocked until PR-S001 is merged, reviewed and human accepted, followed by a separate explicit product-owner authorization of PR-005. PR-S001 does not create a production persistence API.
 
 ### PR-006 — Immutable filesystem storage
 
-Unauthorized. Original import, SHA-256, metadata, atomic writes and integrity tests remain blocked until accepted PR-S001 review and explicit follow-up authorization, accepted PR-S001, and explicit PR-006 task review.
+Unauthorized. PR-006 remains blocked until PR-S001 is merged, reviewed and human accepted, followed by a separate PR-006 task review and explicit authorization. PR-S001 does not create production filesystem storage.
 
 ### PR-007 — Audit events
 
