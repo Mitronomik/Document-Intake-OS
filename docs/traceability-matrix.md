@@ -62,13 +62,15 @@
 | M0 | Product-owner authorization | ACCEPTED | documentation baseline test |
 | M1 | Product-owner authorization | ACCEPTED | documentation baseline test |
 | PR-004 | GitHub PR #6 | COMPLETED AND HUMAN ACCEPTED at merge commit `6f3021a38305cb92d733a46426cde427828bac04` | domain and documentation tests |
-| GATE-S1 | ADR-018 / Q-010 | IN REVIEW; proposal only | documentation baseline test |
-| ADR-018 | Q-010 | PROPOSED | documentation baseline test |
-| PR-S001 | ADR-018 proposal | PROPOSED, NOT AUTHORIZED | documentation baseline test |
+| GATE-S1 | ADR-018 / Q-010 | COMPLETED AND HUMAN ACCEPTED at merge commit `fb9984036f7df0c34badfc3a93f6faec1bc5d38e` | documentation baseline test |
+| ADR-018 | Q-010 | ACCEPTED | documentation baseline test |
+| PR-S001 | ADR-018 acceptance | AUTHORIZED, NOT STARTED | documentation baseline test |
 | PR-005 | Q-010 / authorization boundary | UNAUTHORIZED | documentation baseline test |
 | PR-006 | Q-010 / authorization boundary | UNAUTHORIZED | documentation baseline test |
 | PR-007 AND LATER | authorization boundary | UNAUTHORIZED | documentation baseline test |
 
 ## Current lifecycle state
 
-GATE-M0: COMPLETED. M0: ACCEPTED. M1: ACCEPTED. PR-004: COMPLETED AND HUMAN ACCEPTED. GATE-S1: IN REVIEW. ADR-018: PROPOSED. Q-010: OPEN. PR-S001: PROPOSED, NOT AUTHORIZED. PR-005: UNAUTHORIZED. PR-006: UNAUTHORIZED. PR-007 AND LATER: UNAUTHORIZED. Gate 1: NOT ACCEPTED. M2: NOT COMPLETED. The next safe step is review and product-owner decision on GATE-S1 / ADR-018.
+GATE-M0: COMPLETED. M0: ACCEPTED. M1: ACCEPTED. PR-004: COMPLETED AND HUMAN ACCEPTED. GATE-S1: COMPLETED AND HUMAN ACCEPTED. ADR-018: ACCEPTED. Q-010: ACCEPTED. PR-S001: AUTHORIZED, NOT STARTED. PR-005: UNAUTHORIZED. PR-006: UNAUTHORIZED. PR-007 AND LATER: UNAUTHORIZED. Gate 1: NOT ACCEPTED. M2: NOT COMPLETED. The next safe step is prepare, implement and review PR-S001 — Windows encryption feasibility and packaging spike.
+
+PR-S001 is the only authorized next task. PR-S001 uses fictional synthetic data only, may evaluate candidate packages and prototypes, must not create production database/storage APIs, and must not use real documents or personal data. PR-005 does not start automatically after PR-S001 merge; explicit human acceptance and authorization are required after PR-S001. PR-006 remains blocked until PR-S001 acceptance and a separate PR-006 task review. Q-017 remains deferred. The sensitive-data/private-contour gate remains open, and real documents and personal data remain prohibited in Git, Codex and CI.

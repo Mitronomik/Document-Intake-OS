@@ -1,7 +1,7 @@
 # Progress
 
 **Обновлено:** 2026-07-17
-**Статус:** GATE-S1: IN REVIEW
+**Статус:** GATE-S1: COMPLETED AND HUMAN ACCEPTED
 
 ## Завершено
 
@@ -32,21 +32,21 @@
 ## Current lifecycle state
 
 - [x] PR-004: COMPLETED AND HUMAN ACCEPTED;
-- [ ] GATE-S1: IN REVIEW;
-- [ ] ADR-018: PROPOSED;
-- [ ] PR-S001: PROPOSED, NOT AUTHORIZED;
+- [x] GATE-S1: COMPLETED AND HUMAN ACCEPTED;
+- [x] ADR-018: ACCEPTED;
+- [ ] PR-S001: AUTHORIZED, NOT STARTED;
 - [ ] PR-005: UNAUTHORIZED;
 - [ ] PR-006: UNAUTHORIZED;
 - [ ] PR-007 AND LATER: UNAUTHORIZED;
 - [ ] Gate 1: NOT ACCEPTED;
 - [ ] M2: NOT COMPLETED;
-- [ ] Q-010: OPEN;
-- [ ] REPOSITORY PRIVACY BOUNDARY — ACCEPTED FOR NON-SENSITIVE CODE;
+- [x] Q-010: ACCEPTED;
+- [x] REPOSITORY PRIVACY BOUNDARY — ACCEPTED FOR NON-SENSITIVE CODE;
 - [ ] The sensitive-data/private-contour gate remains open for real data.
 
 ## Not started / unauthorized
 
-- [ ] PR-005 must not start without product-owner acceptance of GATE-S1 / ADR-018 and a completed accepted PR-S001;
+- [ ] PR-005 remains blocked until PR-S001 is merged, reviewed and human accepted, followed by separate explicit product-owner authorization;
 - [ ] PR-006 remains unauthorized pending its own task review after accepted encryption staging;
 - [ ] PR-007 and later implementation tasks remain unauthorized;
 - [ ] The template enforcement PR remains future work and does not block PR-004;
@@ -60,10 +60,12 @@
 
 - Q-001 through Q-005 are staged as external terminal confirmations and do not block domain-only PR-004 under ADR-016.
 - Q-008 is accepted by ADR-017: one Windows 11 x64 workstation with one active operator session at a time.
-- Q-010: OPEN; ADR-018 is PROPOSED and does not resolve Q-010 until human acceptance. PR-005 and PR-006 remain blocked.
+- Q-010: ACCEPTED; ADR-018 is ACCEPTED and resolves Q-010 at the architecture and sequencing level. PR-005 and PR-006 remain unauthorized.
 - Q-012 through Q-015 require local evidence outside Git, Codex and CI.
 - Approved PII-free template artifacts are permitted by product policy after technical privacy inspection and repository-policy enforcement updates; real documents, PII-bearing artifacts and private acceptance materials remain outside Git, Codex and CI.
 
 ## Следующий безопасный шаг
 
-review and product-owner decision on GATE-S1 / ADR-018. Do not start PR-S001, PR-005, PR-006, PR-007 or later tasks until separately authorized.
+prepare, implement and review PR-S001 — Windows encryption feasibility and packaging spike. Do not start PR-005, PR-006, PR-007 or later tasks until separately authorized. PR-S001 is the only authorized next task and is not started by this acceptance PR.
+
+PR-S001 is the only authorized next task. PR-S001 uses fictional synthetic data only, may evaluate candidate packages and prototypes, must not create production database/storage APIs, and must not use real documents or personal data. PR-005 does not start automatically after PR-S001 merge; explicit human acceptance and authorization are required after PR-S001. PR-006 remains blocked until PR-S001 acceptance and a separate PR-006 task review. Q-017 remains deferred. The sensitive-data/private-contour gate remains open, and real documents and personal data remain prohibited in Git, Codex and CI.

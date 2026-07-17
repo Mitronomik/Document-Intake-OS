@@ -115,14 +115,15 @@ Statuses: `OPEN`, `ACCEPTED`, `DEFERRED`, `EXTERNAL_CONFIRMATION_REQUIRED`, `LOC
 
 **Question:** Encryption and key storage.
 
-**Status:** OPEN
+**Status:** ACCEPTED
 **Owner:** Product owner and security/architecture owner.
-**Required decision:** A separate accepted security ADR resolving encryption staging before PR-005.
-**Proposal reference:** ADR-018
-**Target:** Before PR-005; blocks PR-005 and PR-006 authorization.
-**Current gate impact:** Does not block completed PR-004. ADR-018 is PROPOSED and Q-010 is not accepted yet. PR-005 and PR-006 remain blocked, product-owner acceptance is required, PR-S001 remains only a proposed next security task, and no encryption technology has been implemented.
-**Open conflict:** The technical specification requires encrypted database and filesystem storage, while persistence/storage are planned before PR-030 encryption.
-**Placeholder rule:** GATE-S1 may propose an encryption architecture and candidate technology classes, but does not finally select a package, edition, binding, version or production implementation. Final selection remains blocked until product-owner acceptance and PR-S001 evidence.
+**Resolution:** ADR-018 accepted after merge of GitHub PR #7.
+**Accepted direction:** Option C — Encryption-first application architecture.
+**Decision reference:** ADR-018
+**Target:** Resolved before PR-005; PR-005 and PR-006 authorization remain blocked by later gates.
+**Current gate impact:** The encryption staging conflict is resolved at the architecture and sequencing level. Production plaintext persistence is prohibited. PR-S001 is authorized, not started. Exact packages, bindings, versions and implementation details remain subject to PR-S001 evidence. PR-005 and PR-006 remain unauthorized, PR-007 and later work remain unauthorized, and no encryption technology has yet been implemented.
+**Resolved conflict:** The technical specification requires encrypted database and filesystem storage, while persistence/storage were planned before PR-030 encryption; ADR-018 resolves sequencing by requiring encryption-first architecture before production persistence or storage.
+**Placeholder rule:** ADR-018 accepts the architecture direction and candidate technology classes, but does not finally select a package, edition, binding, version or production implementation. Final selection remains blocked until PR-S001 evidence and later explicit authorization.
 
 ### Q-011
 
