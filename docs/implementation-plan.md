@@ -8,7 +8,7 @@
 - ADR-015 created a narrow exception for PR-001 through PR-003 repository-safety work while M0 remained open;
 - PR-003 is completed and merged through GitHub PR #4 at `ad5782045473d3ef5eb0a097cc8f6982bab821c7`;
 - M1 Safe Repository is accepted;
-- GATE-M0 and M0 are accepted; PR-004 is completed and human accepted; GATE-S1 is in review; ADR-018 is proposed; PR-005 and later work remain unauthorized;
+- GATE-M0 and M0 are accepted; PR-004 is completed and human accepted; GATE-S1 is completed and human accepted; ADR-018 is accepted; PR-S001 is authorized, not started; PR-005 and later work remain unauthorized;
 - PR-005 and later tasks remain unauthorized;
 - реальные документы не используются в Codex Web;
 - OCR начинается только после готовности ручного контура.
@@ -71,11 +71,11 @@ Entities, value objects, enums, transitions, verification policy and snapshot in
 
 ### PR-005 — SQLite persistence
 
-Unauthorized. Schema, migrations, repositories, unit of work and transaction tests remain blocked until product-owner acceptance of GATE-S1 / ADR-018, accepted PR-S001, and explicit PR-005 authorization. Конкретное шифрование не реализовать в GATE-S1.
+Unauthorized. Schema, migrations, repositories, unit of work and transaction tests remain blocked until accepted PR-S001 review and explicit follow-up authorization, accepted PR-S001, and explicit PR-005 authorization. Конкретное шифрование не реализовать в GATE-S1.
 
 ### PR-006 — Immutable filesystem storage
 
-Unauthorized. Original import, SHA-256, metadata, atomic writes and integrity tests remain blocked until product-owner acceptance of GATE-S1 / ADR-018, accepted PR-S001, and explicit PR-006 task review.
+Unauthorized. Original import, SHA-256, metadata, atomic writes and integrity tests remain blocked until accepted PR-S001 review and explicit follow-up authorization, accepted PR-S001, and explicit PR-006 task review.
 
 ### PR-007 — Audit events
 
@@ -219,4 +219,6 @@ Network block, PII logs, template tampering, formula injection and fault injecti
 
 ## Current authorization state for GATE-S1
 
-GATE-M0: COMPLETED. GATE-M0 merge commit: `3dada63ea82163c7c4497e290b303d2cc781b085`. Human acceptance of GATE-M0 occurred after PR #5 merge. M0: ACCEPTED. M1: ACCEPTED. PR-004: COMPLETED AND HUMAN ACCEPTED. GATE-S1: IN REVIEW. ADR-018: PROPOSED. PR-S001: PROPOSED, NOT AUTHORIZED. PR-005: UNAUTHORIZED. PR-006: UNAUTHORIZED. PR-007 AND LATER: UNAUTHORIZED. Gate 1: NOT ACCEPTED. M2: NOT COMPLETED. Q-010: OPEN. The template enforcement PR remains future work and does not block PR-004. The sensitive-data/private-contour gate remains open for real data. The next safe step is review and product-owner decision on GATE-S1 / ADR-018. PR-005 must not start without accepted encryption staging and later authorization.
+GATE-M0: COMPLETED. GATE-M0 merge commit: `3dada63ea82163c7c4497e290b303d2cc781b085`. Human acceptance of GATE-M0 occurred after PR #5 merge. M0: ACCEPTED. M1: ACCEPTED. PR-004: COMPLETED AND HUMAN ACCEPTED. GATE-S1: COMPLETED AND HUMAN ACCEPTED. ADR-018: ACCEPTED. PR-S001: AUTHORIZED, NOT STARTED. PR-005: UNAUTHORIZED. PR-006: UNAUTHORIZED. PR-007 AND LATER: UNAUTHORIZED. Gate 1: NOT ACCEPTED. M2: NOT COMPLETED. Q-010: ACCEPTED. The template enforcement PR remains future work and does not block PR-004. The sensitive-data/private-contour gate remains open for real data. The next safe step is prepare, implement and review PR-S001 — Windows encryption feasibility and packaging spike. PR-005 must not start without accepted encryption staging and later authorization.
+
+PR-S001 is the only authorized next task. PR-S001 uses fictional synthetic data only, may evaluate candidate packages and prototypes, must not create production database/storage APIs, and must not use real documents or personal data. PR-005 does not start automatically after PR-S001 merge; explicit human acceptance and authorization are required after PR-S001. PR-006 remains blocked until PR-S001 acceptance and a separate PR-006 task review. Q-017 remains deferred. The sensitive-data/private-contour gate remains open, and real documents and personal data remain prohibited in Git, Codex and CI.

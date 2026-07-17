@@ -1,14 +1,14 @@
-# GATE-S1 — Encryption staging proposal
+# GATE-S1 — Encryption staging proposal (completed and human accepted)
 
 ## Base SHA
 
-`6f3021a38305cb92d733a46426cde427828bac04`
+`fb9984036f7df0c34badfc3a93f6faec1bc5d38e`
 
 ## Context
 
-GATE-M0 is completed. M0 and M1 are accepted. PR-004 is completed through GitHub PR #6 at merge commit `6f3021a38305cb92d733a46426cde427828bac04` and is human accepted. Gate 1 is not accepted. M2 is not completed. Q-010 remains open. PR-005, PR-006, PR-007 and later work remain unauthorized.
+GATE-M0 is completed. M0 and M1 are accepted. PR-004 is completed through GitHub PR #6 at merge commit `6f3021a38305cb92d733a46426cde427828bac04` and is human accepted. GATE-S1 is completed through GitHub PR #7 at merge commit `fb9984036f7df0c34badfc3a93f6faec1bc5d38e` and is human accepted. ADR-018 is accepted. Q-010 is accepted. Gate 1 is not accepted. M2 is not completed. PR-005, PR-006, PR-007 and later work remain unauthorized.
 
-GATE-S1 prepares a proposal. GATE-S1 does not accept ADR-018 automatically. GATE-S1 does not resolve Q-010 until human acceptance.
+GATE-S1 prepared a proposal; product-owner acceptance is now confirmed. The accepted decision authorizes PR-S001 only and does not implement encryption.
 
 ## Problem statement
 
@@ -62,17 +62,17 @@ Envelope authentication proves integrity and authenticity under the relevant key
 
 - Option A — Plaintext persistence until PR-030: REJECT.
 - Option B — BitLocker-only protection: REJECT AS SOLE CONTROL.
-- Option C — Encryption-first application architecture: PREFERRED, but not accepted until human review.
+- Option C — Encryption-first application architecture: ACCEPTED.
 
 ## Recommendation
 
-Recommend Option C for product-owner review only.
+Option C is accepted by the product owner as the ADR-018 architecture direction.
 
 ## Assumptions
 
 - First MVP topology remains one Windows 11 x64 workstation with one active operator session.
 - PR-004 contains no persistence.
-- Q-010 remains open until a human accepts ADR-018.
+- Q-010 is accepted because the product owner accepted ADR-018.
 
 ## Risks
 
@@ -89,47 +89,56 @@ This gate may propose security architecture and documentation tests only. It may
 
 Final SQLCipher edition or distribution, final Python database binding, exact cryptography package and version, FIPS requirement, backup recovery password policy, backup destination, retention and deletion periods, secure deletion guarantees, local application users, authentication, idle timeout, administrator recovery ceremony, key rotation UI, multi-workstation key sharing and macOS keychain implementation remain unresolved.
 
+## Completion record
+
+- GATE-S1: COMPLETED
+- GitHub PR: #7
+- Merge commit: fb9984036f7df0c34badfc3a93f6faec1bc5d38e
+- Product-owner acceptance: CONFIRMED
+- ADR-018: ACCEPTED
+- Q-010: ACCEPTED
+
 ## Lifecycle state
 
 - GATE-M0: COMPLETED
 - M0: ACCEPTED
 - M1: ACCEPTED
 - PR-004: COMPLETED AND HUMAN ACCEPTED
-- GATE-S1: IN REVIEW
-- ADR-018: PROPOSED
-- Q-010: OPEN
-- PR-S001: PROPOSED, NOT AUTHORIZED
+- GATE-S1: COMPLETED AND HUMAN ACCEPTED
+- ADR-018: ACCEPTED
+- Q-010: ACCEPTED
+- PR-S001: AUTHORIZED, NOT STARTED
 - PR-005: UNAUTHORIZED
 - PR-006: UNAUTHORIZED
 - PR-007 AND LATER: UNAUTHORIZED
 - Gate 1: NOT ACCEPTED
 - M2: NOT COMPLETED
 
-The next safe step is review and product-owner decision on GATE-S1 / ADR-018.
+The next safe step is prepare, implement and review PR-S001 — Windows encryption feasibility and packaging spike.
 
 ## Affected future PRs
 
-PR-S001 is proposed as a Windows encryption feasibility and packaging spike. PR-005 remains unauthorized until ADR-018 acceptance, PR-S001 review and acceptance, and explicit PR-005 authorization. PR-006 remains unauthorized until its own task review. PR-007 and later work remain unauthorized.
+PR-S001 is authorized, not started, as a Windows encryption feasibility and packaging spike. PR-005 remains unauthorized until PR-S001 review and acceptance, and explicit PR-005 authorization. PR-006 remains unauthorized until its own task review. PR-007 and later work remain unauthorized.
 
 ## Acceptance criteria
 
-- ADR-018 exists once and is PROPOSED.
-- Q-010 remains OPEN and references ADR-018 as a proposal.
-- PR-004 closure records GitHub PR #6, the exact merge commit, and product-owner acceptance.
-- Lifecycle documents state GATE-S1 is in review and remove stale PR-004 in-review state.
+- ADR-018 exists once and is ACCEPTED.
+- Q-010 is ACCEPTED and references accepted ADR-018.
+- GATE-S1 closure records GitHub PR #7, the exact merge commit, and product-owner acceptance.
+- Lifecycle documents state GATE-S1 is completed and human accepted.
 - Documentation tests cover the proposal, authorization boundaries and independent rollback-anchor boundary.
 - No runtime implementation, dependency, fixture, template, PII or binary artifact is added.
 
 ## Documentation tests
 
-`tests/test_documentation_baseline.py` must prove the PR-004 closure, ADR-018 proposal status, Q-010 status, PR-S001 proposed-but-unauthorized state, PR-005/PR-006/PR-007 authorization boundaries, Gate 1 and M2 status, option recommendations, encryption-first invariant, no silent fallback, raw-key storage prohibition, threat-model boundary, key hierarchy and purpose separation, SQLCipher hardening requirements, encrypted object envelope requirements, backup boundary, non-decisions and absence of stale lifecycle state. Permanent pytest tests must not depend on fixed historical Git diff ranges.
+`tests/test_documentation_baseline.py` must prove the PR-004 closure, ADR-018 accepted status, Q-010 accepted status, PR-S001 authorized-but-not-started state, PR-005/PR-006/PR-007 authorization boundaries, Gate 1 and M2 status, option recommendations, encryption-first invariant, no silent fallback, raw-key storage prohibition, threat-model boundary, key hierarchy and purpose separation, SQLCipher hardening requirements, encrypted object envelope requirements, backup boundary, non-decisions and absence of stale lifecycle state. Permanent pytest tests must not depend on fixed historical Git diff ranges.
 
 ## Manual review checklist
 
 - Run the PR review/manual verification command `git diff --name-only 6f3021a38305cb92d733a46426cde427828bac04...HEAD` outside pytest to confirm GATE-S1 correction file scope.
-- Confirm ADR-018 remains PROPOSED.
-- Confirm Q-010 remains OPEN.
-- Confirm PR-S001, PR-005, PR-006, PR-007 and later work remain unauthorized.
+- Confirm ADR-018 is ACCEPTED.
+- Confirm Q-010 is ACCEPTED.
+- Confirm PR-S001 is authorized but not started and PR-005, PR-006, PR-007 and later work remain unauthorized.
 - Confirm no dependency or runtime implementation was added.
 - Confirm no real documents, PII, templates or binary fixtures were added.
 - Confirm fixed-base Git diff checks remain manual PR review checks only and are not permanent pytest invariants.
@@ -143,4 +152,4 @@ Do not implement SQLite, SQLCipher, database libraries, migrations, repository i
 
 ## Final report requirements
 
-Report actual branch, base SHA, commit SHA, final head SHA, changed files, ADR-018 status, proposal summary, Q-010 final status, lifecycle updates, verification results, blocked commands, GitHub Actions status if known, PR number, PR title, PR body, and confirmations that no dependency, encryption code, database/storage code, PII, template or binary fixture was added and PR-005 and later remain unauthorized.
+Report actual branch, base SHA, commit SHA, final head SHA, changed files, GATE-S1 final status, ADR-018 status, accepted architecture summary, Q-010 final status, lifecycle updates, verification results, blocked commands, GitHub Actions status if known, PR number, PR title, PR body, and confirmations that no dependency, encryption code, database/storage code, PII, template or binary fixture was added and PR-005 and later remain unauthorized.

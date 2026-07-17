@@ -41,13 +41,19 @@ flowchart LR
 
 ## 5. Данные на диске
 
-- DB encrypted;
-- storage encrypted средствами приложения или утвержденной дисковой схемой;
-- key не лежит открыто рядом;
-- backup encrypted;
-- temp restricted and cleaned.
+- ADR-018 is accepted: the application follows an encryption-first data-at-rest architecture.
+- Production database and document storage must never persist production personal data in plaintext.
+- Windows DPAPI Current User protects the first-MVP local root/master-key blob.
+- The root/master key is not directly used as a database, file or future backup key; database, file-storage and future backup purposes require independent key material and purpose separation.
+- SQLite requires SQLCipher or a separately validated equivalent with integrity authentication.
+- Originals and derived artifacts require authenticated application-level encryption with a versioned encrypted-object envelope.
+- BitLocker or Windows Device Encryption is defense in depth, not the sole security control.
+- Encryption initialization failures and authentication failures fail closed.
+- No plaintext fallback is permitted.
 
-Конкретная технология — отдельный ADR.
+ADR-018 threat-model boundary: DPAPI Current User does not isolate applications running under the same Windows credentials. Same-user malware, malicious administrators, unlocked sessions and process-memory inspection are not fully mitigated; application security primarily protects data at rest.
+
+ADR-018 rollback boundary: authenticated encrypted-object envelopes prove integrity and authenticity, but not freshness. Object-level rollback detection requires expected state outside the replaceable object. Coordinated rollback of the full encrypted database, storage and all local authoritative-state copies is not claimed as solved.
 
 ## 6. Роли
 
@@ -110,7 +116,7 @@ Encrypted archive with manifest, checksum, format version and tested restore. Re
 
 ## 15. Нерешенные решения
 
-Encryption implementation, Windows key storage, file encryption, password policy, idle timeout, retention, secure deletion and number of workstations.
+Final packages and versions, final Python database binding, exact KDF/wrapping mechanics, exact encrypted-envelope format, final crash-consistency design, recovery policy, authentication, idle timeout, retention, secure deletion, full-system rollback anchor and number of workstations.
 
 ## 16. Repository privacy guardrails
 

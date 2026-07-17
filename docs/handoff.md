@@ -41,11 +41,11 @@ ADR-017 fixes the first MVP topology as one Windows 11 x64 workstation with one 
 
 ## Current lifecycle state
 
-GATE-M0: COMPLETED. GATE-M0 merge commit: `3dada63ea82163c7c4497e290b303d2cc781b085`. Human acceptance of GATE-M0 occurred after PR #5 merge. M0: ACCEPTED. M1: ACCEPTED. PR-004: COMPLETED AND HUMAN ACCEPTED. GATE-S1: IN REVIEW. ADR-018: PROPOSED. PR-S001: PROPOSED, NOT AUTHORIZED. PR-005: UNAUTHORIZED. PR-006: UNAUTHORIZED. PR-007 AND LATER: UNAUTHORIZED. Gate 1: NOT ACCEPTED. M2: NOT COMPLETED. Q-010: OPEN. Under ADR-016, the template enforcement PR remains future work and does not block PR-004. The sensitive-data/private-contour gate remains open for real data.
+GATE-M0: COMPLETED. GATE-M0 merge commit: `3dada63ea82163c7c4497e290b303d2cc781b085`. Human acceptance of GATE-M0 occurred after PR #5 merge. M0: ACCEPTED. M1: ACCEPTED. PR-004: COMPLETED AND HUMAN ACCEPTED. GATE-S1: COMPLETED AND HUMAN ACCEPTED. ADR-018: ACCEPTED. PR-S001: AUTHORIZED, NOT STARTED. PR-005: UNAUTHORIZED. PR-006: UNAUTHORIZED. PR-007 AND LATER: UNAUTHORIZED. Gate 1: NOT ACCEPTED. M2: NOT COMPLETED. Q-010: ACCEPTED. Under ADR-016, the template enforcement PR remains future work and does not block PR-004. The sensitive-data/private-contour gate remains open for real data.
 
 ## Authorization boundary
 
-GATE-S1 is authorized only to prepare the ADR-018 proposal. PR-S001 is proposed but not authorized. PR-005, PR-006, PR-007 and later work remain unauthorized.
+GATE-S1 is completed and human accepted after GitHub PR #7. PR-S001 is authorized, not started. PR-005, PR-006, PR-007 and later work remain unauthorized.
 
 ## Риски
 
@@ -53,4 +53,6 @@ GATE-S1 is authorized only to prepare the ADR-018 proposal. PR-S001 is proposed 
 
 ## Продолжение
 
-The next safe step is review and product-owner decision on GATE-S1 / ADR-018. Before each later task, read the authoritative sources, check the applicable gate, form a single PR contract and preserve unresolved questions unless an accepted ADR explicitly resolves them.
+The next safe step is prepare, implement and review PR-S001 — Windows encryption feasibility and packaging spike. Before each later task, read the authoritative sources, check the applicable gate, form a single PR contract and preserve unresolved questions unless an accepted ADR explicitly resolves them.
+
+PR-S001 is the only authorized next task. PR-S001 uses fictional synthetic data only, may evaluate candidate packages and prototypes, must not create production database/storage APIs, and must not use real documents or personal data. PR-005 does not start automatically after PR-S001 merge; explicit human acceptance and authorization are required after PR-S001. PR-006 remains blocked until PR-S001 acceptance and a separate PR-006 task review. Q-017 remains deferred. The sensitive-data/private-contour gate remains open, and real documents and personal data remain prohibited in Git, Codex and CI.
