@@ -6,25 +6,25 @@ from dataclasses import replace
 import pytest
 
 from spikes.windows_encryption.envelope_probe import (
+    Envelope,
     EnvelopeStatus,
     NonceRegistry,
     decrypt_envelope,
     encrypt_envelope,
     envelope_to_bytes,
     expected_state_for,
-    no_plaintext_temp_file,
     verify_expected_state,
 )
 
 
-def _env() -> tuple[bytes, bytes, object]:
+def _env() -> tuple[bytes, bytes, Envelope]:
     key = os.urandom(32)
     plaintext = os.urandom(64)
     envelope = encrypt_envelope(key, plaintext, "artifact-0001", "application-octet-stream", 1, 1)
     return key, plaintext, envelope
 
 
-def test_byte_identical_roundtrip_and_nonce_registry(tmp_path) -> None:
+def test_byte_identical_roundtrip_and_nonce_registry() -> None:
     pytest.importorskip("cryptography")
     key, plaintext, envelope = _env()
     assert (
@@ -38,13 +38,12 @@ def test_byte_identical_roundtrip_and_nonce_registry(tmp_path) -> None:
         registry.remember(envelope.nonce)
     other = encrypt_envelope(key, plaintext, "artifact-0001", "application-octet-stream", 2, 1)
     assert other.nonce != envelope.nonce
-    assert no_plaintext_temp_file(tmp_path, plaintext)
 
 
 def test_tamper_matrix_returns_stable_errors() -> None:
     pytest.importorskip("cryptography")
     key, plaintext, envelope = _env()
-    cases = [
+    cases: list[Envelope] = [
         replace(
             envelope, ciphertext=envelope.ciphertext[:-1] + bytes([envelope.ciphertext[-1] ^ 1])
         ),

@@ -42,15 +42,17 @@ The sanitized report must not contain machine name, username or absolute path.
 
 ## 5. SQLCipher executable evidence
 
-Status: NOT_DEMONSTRATED locally on Linux; DEMONSTRATED only after Windows CI runs. The harness executes capability checks for installed binding version, embedded SQLCipher version, SQLite version, `cipher_status`, `cipher_integrity_check`, compile options, provider PRAGMAs when exposed, journal mode, temp-store mode, raw-key API inspection and logging status. Database checks execute encrypted creation, correct key, wrong key, ordinary SQLite rejection, encrypted header, marker scans, integrity, bit modification, truncation, WAL scan, rollback-journal scan, controlled temp scan and cleanup.
+Status: NOT_DEMONSTRATED locally on Linux; DEMONSTRATED only after Windows CI runs. The harness executes capability checks for: installed binding version, embedded SQLCipher version, SQLite version, `cipher_status`, `cipher_integrity_check`, compile options, provider PRAGMAs when exposed, journal mode, temp-store mode, raw-key API assessment, logging status, HMAC/integrity evidence, WAL evidence, and rollback journal evidence.
+
+Correct-key check reopens the DB with proper key, reads back the previously inserted synthetic marker. Wrong-key, tamper, and truncation checks catch expected database exceptions only. Unexpected exceptions fail the harness. WAL scenario creates a real WAL file via `journal_mode=WAL`, confirms its existence, scans for marker, and verifies encrypted content. Rollback journal scenario detects actual journal files. Empty PRAGMA results yield UNSUPPORTED. Unknown PRAGMAs are not treated as success just because SQLite did not raise. The `sqlcipher-overall` mandatory check reflects `SqlcipherEvidence.status`. If overall status is FAIL, the final recommendation is NOT_FEASIBLE.
 
 ## 6. DPAPI evidence
 
-Status: NOT_DEMONSTRATED locally on Linux; DEMONSTRATED only after Windows CI runs. The spike uses `ctypes` with `use_last_error=True`, explicit `argtypes`/`restype`, `CRYPTPROTECT_UI_FORBIDDEN`, no Local Machine scope, no prompt structure, application wrapper validation, and `LocalFree`. The upload step must first protect, unprotect in-process, unprotect in a fresh same-runner subprocess, and confirm the recovered key matches. The cross-runner job accepts only `ERR_DPAPI_UNPROTECT_FAILED`.
+Status: NOT_DEMONSTRATED locally on Linux; DEMONSTRATED only after Windows CI runs. The spike uses `ctypes` with `use_last_error=True`, explicit `argtypes`/`restype`, `CRYPTPROTECT_UI_FORBIDDEN`, no Local Machine scope, no prompt structure, application wrapper validation, and `LocalFree`. Fresh subprocess verifies that recovered key matches original using a transient expected digest (no raw keys printed or stored). Subprocess status codes: PASS, ERR_DPAPI_SUBPROCESS_KEY_MISMATCH, ERR_DPAPI_SUBPROCESS_VERIFY_FAILED. Cross-runner job accepts only `ERR_DPAPI_UNPROTECT_FAILED`.
 
 ## 7. ACL evidence
 
-Status: NOT_DEMONSTRATED locally on Linux; DEMONSTRATED only after Windows CI runs. The temporary ACL probe creates a temporary spike directory, obtains the current user SID without reporting it, disables inherited broad write access, grants required principals, checks broad groups, and deletes the directory. This is not a final installer ACL design.
+Status: NOT_DEMONSTRATED locally on Linux; DEMONSTRATED only after Windows CI runs. The temporary ACL probe uses well-known SIDs for SYSTEM (S-1-5-18) and Administrators (S-1-5-32-544). It separately checks current user rights, SYSTEM rights, Administrators rights, and absence of write rights for broad ordinary-user principals (S-1-5-32-545, S-1-5-11). It analyzes specific ACE entries rather than searching for 'W' in all output. Repository ACL is never modified. The probe's cleanup verifies the temporary directory is actually removed.
 
 ## 8. Key-hierarchy comparison
 
@@ -62,19 +64,19 @@ Status: DEMONSTRATED by local tests when `cryptography` is available; otherwise 
 
 ## 10. Independent rollback-anchor evidence
 
-Status: DEMONSTRATED by local tests. Expected state remains outside the replaceable envelope. Old valid envelope, generation modification, digest modification, key rollback, ciphertext replacement and artifact-copy substitution fail. Coordinated rollback of both object and expected-state record remains explicitly undetected and is not claimed as detected.
+Status: DEMONSTRATED by local tests. Expected state remains outside the replaceable envelope. Old valid envelope, generation modification, digest modification, key rollback, ciphertext replacement and artifact-copy substitution fail. Coordinated rollback of both object and expected-state record remains explicitly undetected and is not claimed as detected. coordinated rollback is not claimed as detected.
 
 ## 11. Crash-consistency comparison
 
-Status: DEMONSTRATED as an experimental state model. The staged sequence models pending expected state, encrypted temporary object write, file flush/fsync, atomic replace, active finalization and restart reconciliation. Results are limited to ACTIVE, SAFE_TO_RETRY or QUARANTINED. Windows directory fsync limitations remain unresolved. This is not a selected production transaction design.
+Status: DEMONSTRATED as an experimental state model. `reconcile()` verifies the digest of the current final object. ACTIVE + matching object → ACTIVE. ACTIVE + modified object → QUARANTINED. ACTIVE + absent object → QUARANTINED. PENDING + not yet published → SAFE_TO_RETRY. PENDING + partial temp → SAFE_TO_RETRY. PENDING + published final object → QUARANTINED. Absent authoritative record + existing object → QUARANTINED. Each FailurePoint has exact expected ReconcileStatus. Objects are described as "opaque synthetic bytes", not "encrypted."
 
 ## 12. Offline wheelhouse-install evidence
 
-Status: NOT_DEMONSTRATED until Windows CI executes. The workflow downloads binary wheels into `RUNNER_TEMP`, records sanitized filename/tag/SHA-256/size evidence, installs with `--no-index --find-links` into a clean venv, and runs the offline smoke module. This proves only wheelhouse-based package-source independence, not the final Windows installer and not physical network disablement.
+Status: NOT_DEMONSTRATED until Windows CI executes. The workflow downloads binary wheels into `RUNNER_TEMP`, records sanitized filename/tag/SHA-256/size evidence, installs with `--no-index --find-links` into a clean venv, and runs the offline smoke module. This proves only wheelhouse-based package-source independence, not the final Windows installer and not physical network disablement. Wrong-key rejection catches only expected database exceptions; unexpected exceptions fail the harness. Cleanup is verified after directory removal and returns explicit cleanup status (not PENDING_CLEANUP).
 
 ## 13. Performance evidence
 
-Status: DEMONSTRATED for bounded standard SQLite and AES-GCM harness measurements when dependencies are available; SQLCipher and DPAPI performance remain NOT_DEMONSTRATED until Windows CI executes. GitHub-hosted runner measurements are not production performance claims.
+Status: NOT_DEMONSTRATED. Measurement code exists for bounded standard SQLite and AES-GCM harness measurements, but runtime performance evidence has not been collected by a runner. SQLCipher and DPAPI performance remain NOT_DEMONSTRATED until Windows CI executes. Absence of `cryptography` does not give a vacuous PASS.
 
 ## 14. Licensing and attribution obligations
 
@@ -92,16 +94,38 @@ Status: DEMONSTRATED as documented limitations. DPAPI Current User does not isol
 
 Status: UNSUPPORTED on local Linux for Windows-only DPAPI, ACL and SQLCipher runtime checks. Windows CI failures are evidence and must be reported as FAILED, UNSUPPORTED or NOT_DEMONSTRATED rather than converted into harness crashes unless the failure is an invalid lockfile, dependency failure, lint/type/test failure, unhandled exception, unsafe report, missing artifact, incorrect cross-runner semantics or cleanup failure.
 
-## 18. Recommendation
+## 18. CI run evidence
+
+Status: CI run #42 results:
+
+- locked dependency installation: PASS
+- Ubuntu Ruff: FAIL
+- Windows Ruff: FAIL
+- Windows spike mypy strict: FAIL
+- Windows runtime probes: NOT EXECUTED
+- DPAPI cross-runner: NOT EXECUTED
+
+Ruff and mypy failures are addressed in this correction. No Ubuntu or Windows CI has executed since the last harness correction; these statuses will update when CI re-runs.
+
+## 19. Recommendation
 
 CONDITIONALLY FEASIBLE. The recommendation is conditional because GitHub Windows Server evidence is preliminary, Windows 11 x64 result is NOT_DEMONSTRATED, legal redistribution is unresolved, raw-key API suitability is unresolved, and no final production design is selected.
 
-## 19. Remaining blockers
+## 20. Remaining blockers
 
 Status: NOT_DEMONSTRATED for production acceptance. Blockers remain: final SQLCipher edition/binding/version, legal redistribution approval, final key hierarchy, production envelope format, production storage/database transaction boundary, backup/recovery design, installer ACL design, Windows 11 x64 sanitized run and full-system rollback strategy.
 
-## 20. Explicit non-authorization of PR-005 and PR-006
+## 21. Explicit non-authorization of PR-005 and PR-006
 
 Status: DEMONSTRATED. PR-S001 is in review only. PR-S001 merge does not authorize PR-005 or PR-006. Human acceptance and separate authorization are required before any production persistence or storage work.
 
-coordinated rollback is not claimed as detected.
+## 22. Gate and milestone status
+
+Gate 1: NOT ACCEPTED
+M2: NOT COMPLETED
+PR-S001: IN REVIEW
+PR-005: UNAUTHORIZED
+PR-006: UNAUTHORIZED
+Windows 11 x64: NOT_DEMONSTRATED
+
+No final package selection has been made.

@@ -21,16 +21,20 @@ def _hkdf(root_key: bytes, salt: bytes, label: str) -> bytes:
     if len(root_key) != 32:
         raise ValueError("ERR_INVALID_ROOT_KEY")
     try:
-        from cryptography.hazmat.primitives import hashes
-        from cryptography.hazmat.primitives.kdf.hkdf import HKDF
+        # fmt: off
+        from cryptography.hazmat.primitives import hashes  # type: ignore[import-not-found]
+        from cryptography.hazmat.primitives.kdf.hkdf import HKDF  # type: ignore[import-not-found]
+        # fmt: on
     except ImportError as exc:  # pragma: no cover
         raise RuntimeError("ERR_CRYPTOGRAPHY_UNAVAILABLE") from exc
-    return HKDF(
-        algorithm=hashes.SHA256(),
-        length=32,
-        salt=salt,
-        info=("pr-s001:" + label).encode("ascii"),
-    ).derive(root_key)
+    return bytes(
+        HKDF(
+            algorithm=hashes.SHA256(),
+            length=32,
+            salt=salt,
+            info=("pr-s001:" + label).encode("ascii"),
+        ).derive(root_key)
+    )
 
 
 def derive_purpose_key(root_key: bytes, salt: bytes, purpose: KeyPurpose) -> bytes:
@@ -51,7 +55,9 @@ def derive_kek(root_key: bytes, salt: bytes, purpose: KeyPurpose) -> bytes:
 
 def wrap_dek(root_key: bytes, salt: bytes, dek: bytes, purpose: KeyPurpose) -> WrappedDek:
     try:
-        from cryptography.hazmat.primitives.keywrap import aes_key_wrap_with_padding
+        # fmt: off
+        from cryptography.hazmat.primitives.keywrap import aes_key_wrap_with_padding  # type: ignore[import-not-found]  # noqa: I001
+        # fmt: on
     except ImportError as exc:  # pragma: no cover
         raise RuntimeError("ERR_CRYPTOGRAPHY_UNAVAILABLE") from exc
     return WrappedDek(
@@ -65,8 +71,10 @@ def unwrap_dek(root_key: bytes, salt: bytes, wrapped: WrappedDek) -> bytes:
     except ImportError as exc:  # pragma: no cover
         raise RuntimeError("ERR_CRYPTOGRAPHY_UNAVAILABLE") from exc
     try:
-        return aes_key_unwrap_with_padding(
-            derive_kek(root_key, salt, wrapped.purpose), wrapped.wrapped
+        return bytes(
+            aes_key_unwrap_with_padding(
+                derive_kek(root_key, salt, wrapped.purpose), wrapped.wrapped
+            )
         )
     except ValueError as exc:
         raise ValueError("ERR_DEK_UNWRAP_FAILED") from exc

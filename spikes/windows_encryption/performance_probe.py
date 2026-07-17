@@ -8,6 +8,7 @@ import time
 from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Any
 
 
 @dataclass(frozen=True)
@@ -38,20 +39,35 @@ def _measure(
     )
 
 
+def _try_import_aesgcm() -> Any:
+    """Import AESGCM conditionally; returns the class or None."""
+    try:
+        # fmt: off
+        from cryptography.hazmat.primitives.ciphers.aead import AESGCM  # type: ignore[import-not-found]  # noqa: I001
+        # fmt: on
+    except ImportError:
+        return None
+    return AESGCM
+
+
 def measure_aes_gcm() -> list[TimingSample]:
     try:
+        # fmt: off
         from cryptography.hazmat.primitives.ciphers.aead import AESGCM
+        # fmt: on
     except ImportError:
         return []
     samples: list[TimingSample] = []
+    # Use a local alias to avoid type-checking issues with cryptography
+    aesgcm_cls: Any = AESGCM
     for size in (1024, 102400, 1048576, 1992294):
         key = os.urandom(32)
-        aes = AESGCM(key)
+        aes: Any = aesgcm_cls(key)
 
-        def action(payload_size: int = size, cipher: AESGCM = aes) -> None:
+        def action(payload_size: int = size, cipher: Any = aes) -> None:
             nonce = os.urandom(12)
             data = os.urandom(payload_size)
-            encrypted = cipher.encrypt(nonce, data, b"aad")
+            encrypted: Any = cipher.encrypt(nonce, data, b"aad")
             cipher.decrypt(nonce, encrypted, b"aad")
 
         samples.append(_measure("aes-gcm-roundtrip", size, action))
@@ -92,3 +108,11 @@ def measure_standard_sqlite() -> list[TimingSample]:
         )
         conn.close()
     return samples
+
+
+def performance_evidence_note() -> str:
+    """Measurement code exists but runtime performance evidence is NOT_DEMONSTRATED."""
+    return (
+        "NOT_DEMONSTRATED: measurement code exists "
+        "but runtime performance evidence has not been collected by a runner"
+    )

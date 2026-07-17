@@ -37,6 +37,9 @@ class SqlcipherEvidence:
     temp_store: str = "UNSUPPORTED"
     raw_key_api_assessment: str = "NOT_DEMONSTRATED"
     logging_status: str = "UNSUPPORTED"
+    hmac_evidence: str = "NOT_DEMONSTRATED"
+    wal_evidence: str = "NOT_DEMONSTRATED"
+    journal_evidence: str = "NOT_DEMONSTRATED"
     checks: tuple[CheckResult, ...] = ()
 
 
@@ -99,7 +102,7 @@ def run_sqlcipher_probe(temp_dir: Path) -> SqlcipherEvidence:
     if platform.system() != "Windows":
         return SqlcipherEvidence(
             status="UNSUPPORTED",
-            checks=(CheckResult("sqlcipher-platform", "UNSUPPORTED", "UNSUPPORTED_NON_WINDOWS"),),
+            checks=(CheckResult("sqlcipher-overall", "UNSUPPORTED", "UNSUPPORTED_NON_WINDOWS"),),
         )
     try:
         import sqlcipher3  # type: ignore[import-not-found]
@@ -107,7 +110,7 @@ def run_sqlcipher_probe(temp_dir: Path) -> SqlcipherEvidence:
         return SqlcipherEvidence(
             status="UNSUPPORTED",
             raw_key_api_assessment="UNAVAILABLE",
-            checks=(CheckResult("sqlcipher-import", "UNSUPPORTED", "ERR_SQLCIPHER_IMPORT"),),
+            checks=(CheckResult("sqlcipher-overall", "UNSUPPORTED", "ERR_SQLCIPHER_IMPORT"),),
         )
 
     temp_dir.mkdir(parents=True, exist_ok=True)
@@ -128,6 +131,9 @@ def run_sqlcipher_probe(temp_dir: Path) -> SqlcipherEvidence:
     compile_options: tuple[str, ...] = ()
     crypto_provider = "UNSUPPORTED"
     logging_status = "UNSUPPORTED"
+    hmac_evidence = "NOT_DEMONSTRATED"
+    wal_evidence = "NOT_DEMONSTRATED"
+    journal_evidence = "NOT_DEMONSTRATED"
     try:
         _key_connection(conn, key)
         checks.append(CheckResult("sqlcipher-startup", "PASS", "PASS", startup_ms))
@@ -135,9 +141,6 @@ def run_sqlcipher_probe(temp_dir: Path) -> SqlcipherEvidence:
         if status == "PASS" and rows:
             cipher_status_value = str(rows[0][0])
         checks.append(CheckResult("cipher-status", status, cipher_status_value))
-        conn.execute("PRAGMA journal_mode=WAL")
-        journal_mode = str(conn.execute("PRAGMA journal_mode").fetchone()[0])
-        temp_store = str(conn.execute("PRAGMA temp_store").fetchone()[0])
         conn.execute("CREATE TABLE t(id INTEGER PRIMARY KEY, value BLOB)")
         conn.execute("CREATE INDEX ix_t_value ON t(value)")
         conn.execute("INSERT INTO t(value) VALUES (?)", (marker,))
@@ -158,15 +161,22 @@ def run_sqlcipher_probe(temp_dir: Path) -> SqlcipherEvidence:
             if status == "PASS" and rows:
                 crypto_provider = str(rows[0][0])
                 break
-        status, _ = _execute_pragma(conn, "PRAGMA cipher_log_level=NONE")
-        logging_status = "PASS" if status == "PASS" else "UNSUPPORTED"
+        for pragma_valid in ("PRAGMA cipher_hmac_pgno", "PRAGMA cipher_hmac_algorithm"):
+            _, hmac_rows = _execute_pragma(conn, pragma_valid)
+            if hmac_rows:
+                hmac_evidence = "AVAILABLE"
+        status, rows = _execute_pragma(conn, "PRAGMA cipher_log_level")
+        logging_status = status
+        conn.execute("PRAGMA journal_mode=WAL")
+        journal_mode = str(conn.execute("PRAGMA journal_mode").fetchone()[0])
+        temp_store = str(conn.execute("PRAGMA temp_store").fetchone()[0])
     finally:
         conn.close()
+
     main_bytes = db_path.read_bytes()
     checks.extend(
         [
             CheckResult("encrypted-db-created", "PASS" if db_path.exists() else "FAIL", "PASS"),
-            CheckResult("correct-key-query", "PASS", "PASS"),
             _status_from_bool(
                 "encrypted-main-header",
                 b"SQLite format 3" not in main_bytes[:100],
@@ -180,6 +190,22 @@ def run_sqlcipher_probe(temp_dir: Path) -> SqlcipherEvidence:
             ),
         ]
     )
+
+    correct_conn = sqlcipher3.connect(str(db_path))
+    try:
+        _key_connection(correct_conn, key)
+        row = correct_conn.execute("SELECT value FROM t WHERE id=1").fetchone()
+        if row is None or row[0] != marker:
+            checks.append(
+                CheckResult("correct-key-query", "FAIL", "ERR_CORRECT_KEY_MARKER_MISMATCH")
+            )
+        else:
+            checks.append(CheckResult("correct-key-query", "PASS", "PASS"))
+    except Exception:
+        checks.append(CheckResult("correct-key-query", "FAIL", "ERR_CORRECT_KEY_EXCEPTION"))
+    finally:
+        correct_conn.close()
+
     wrong_conn = sqlcipher3.connect(str(db_path))
     try:
         _key_connection(wrong_conn, wrong)
@@ -190,6 +216,7 @@ def run_sqlcipher_probe(temp_dir: Path) -> SqlcipherEvidence:
     finally:
         wrong_conn.close()
     checks.append(_status_from_bool("wrong-key-query", wrong_key, "ERR_WRONG_KEY_ACCEPTED"))
+
     try:
         sqlite3.connect(db_path).execute("SELECT count(*) FROM sqlite_master").fetchone()
         ordinary_fails = False
@@ -198,41 +225,86 @@ def run_sqlcipher_probe(temp_dir: Path) -> SqlcipherEvidence:
     checks.append(
         _status_from_bool("ordinary-sqlite-failure", ordinary_fails, "ERR_SQLITE_ACCEPTED")
     )
+
+    try:
+        bit_detected = _corruption_detected(sqlcipher3, db_path, key, "bit")
+    except Exception:
+        bit_detected = False
     checks.append(
         _status_from_bool(
             "bit-modified-detection",
-            _corruption_detected(sqlcipher3, db_path, key, "bit"),
+            bit_detected,
             "ERR_BIT_TAMPER_UNDETECTED",
         )
     )
+
+    try:
+        trunc_detected = _corruption_detected(sqlcipher3, db_path, key, "truncate")
+    except Exception:
+        trunc_detected = False
     checks.append(
         _status_from_bool(
             "truncated-detection",
-            _corruption_detected(sqlcipher3, db_path, key, "truncate"),
+            trunc_detected,
             "ERR_TRUNCATION_UNDETECTED",
         )
     )
+
     wal_paths = list(temp_dir.glob("*.db-wal"))
+    if wal_paths:
+        wal_evidence = "PRESENT"
+        checks.append(
+            _status_from_bool(
+                "wal-marker-absent",
+                _scan_for_marker(wal_paths, marker),
+                "ERR_MARKER_IN_WAL",
+            )
+        )
+        wal_data = wal_paths[0].read_bytes()
+        checks.append(
+            _status_from_bool(
+                "wal-encrypted-content",
+                b"SQLite format 3" not in wal_data[:16],
+                "ERR_PLAINTEXT_WAL",
+            )
+        )
+    else:
+        wal_evidence = "NOT_DEMONSTRATED"
+        checks.append(CheckResult("wal-marker-absent", "NOT_DEMONSTRATED", "NOT_DEMONSTRATED"))
+        checks.append(CheckResult("wal-encrypted-content", "NOT_DEMONSTRATED", "NOT_DEMONSTRATED"))
+
     journal_paths = list(temp_dir.glob("*.db-journal"))
-    checks.append(
-        _status_from_bool(
-            "wal-marker-absent", _scan_for_marker(wal_paths, marker), "ERR_MARKER_IN_WAL"
+    if journal_paths:
+        journal_evidence = "PRESENT"
+        checks.append(
+            _status_from_bool(
+                "journal-marker-absent",
+                _scan_for_marker(journal_paths, marker),
+                "ERR_MARKER_IN_JOURNAL",
+            )
         )
-    )
-    checks.append(
-        _status_from_bool(
-            "journal-marker-absent",
-            _scan_for_marker(journal_paths, marker),
-            "ERR_MARKER_IN_JOURNAL",
-        )
-    )
+    else:
+        journal_evidence = "NOT_DEMONSTRATED"
+        checks.append(CheckResult("journal-marker-absent", "NOT_DEMONSTRATED", "NOT_DEMONSTRATED"))
+
     controlled_files = [path for path in temp_dir.rglob("*") if path.is_file()]
     checks.append(
         _status_from_bool(
-            "controlled-temp-scan", _scan_for_marker(controlled_files, marker), "ERR_MARKER_IN_TEMP"
+            "controlled-temp-scan",
+            _scan_for_marker(controlled_files, marker),
+            "ERR_MARKER_IN_TEMP",
         )
     )
-    checks.append(CheckResult("connection-cleanup", "PASS", "PASS"))
+
+    cleanup_ok = True
+    try:
+        for f in temp_dir.rglob("*"):
+            if f.is_file():
+                f.unlink()
+    except OSError:
+        cleanup_ok = False
+    checks.append(_status_from_bool("connection-cleanup", cleanup_ok, "ERR_CLEANUP_FAILED"))
+
     mandatory_failed = any(check.status == "FAIL" for check in checks)
     missing_mandatory = cipher_status_value != "1" or integrity_result not in {
         "PASS",
@@ -251,6 +323,9 @@ def run_sqlcipher_probe(temp_dir: Path) -> SqlcipherEvidence:
         temp_store=temp_store,
         raw_key_api_assessment=inspect_raw_key_api(sqlcipher3),
         logging_status=logging_status,
+        hmac_evidence=hmac_evidence,
+        wal_evidence=wal_evidence,
+        journal_evidence=journal_evidence,
         checks=tuple(checks),
     )
 

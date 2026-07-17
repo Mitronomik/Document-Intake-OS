@@ -11,6 +11,7 @@ import tempfile
 from ctypes import wintypes
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Any
 
 MAGIC = b"PR-S001-DPAPI\0\0\0"
 VERSION = 1
@@ -69,9 +70,9 @@ def _make_input_blob(data: bytes) -> _InputBlob:
     return _InputBlob(blob=blob, buffer=buffer)
 
 
-def _load_windows_functions() -> tuple[object, object, object]:
-    crypt32 = ctypes.WinDLL("crypt32", use_last_error=True)
-    kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+def _load_windows_functions() -> tuple[Any, Any, Any]:
+    crypt32 = ctypes.WinDLL("crypt32", use_last_error=True)  # type: ignore[attr-defined]
+    kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)  # type: ignore[attr-defined]
     protect = crypt32.CryptProtectData
     protect.argtypes = [
         ctypes.POINTER(DATA_BLOB),
@@ -156,19 +157,33 @@ def unprotect_current_user(protected_blob: bytes) -> DpapiResult:
         local_free(ctypes.cast(out_blob.pbData, wintypes.HLOCAL))
 
 
+def _transient_expected_digest(key: bytes, marker: bytes) -> str:
+    return hashlib.sha256(key + marker).hexdigest()
+
+
 def verify_same_runner_blob(protected_blob: bytes, expected_key: bytes) -> str:
     current = unprotect_current_user(protected_blob)
     if current.status != "PASS" or current.data != expected_key:
         return "ERR_DPAPI_CURRENT_PROCESS_VERIFY_FAILED"
+    marker = os.urandom(16)
+    expected = _transient_expected_digest(expected_key, marker)
     with tempfile.TemporaryDirectory() as tmp_name:
         blob_path = Path(tmp_name) / "protected.blob"
+        marker_path = Path(tmp_name) / "marker.bin"
         blob_path.write_bytes(protected_blob)
+        marker_path.write_bytes(marker)
         code = (
+            "import hashlib, sys;"
             "from pathlib import Path;"
             "from spikes.windows_encryption.dpapi_probe import unprotect_current_user;"
-            "r=unprotect_current_user(Path(r'" + str(blob_path) + "').read_bytes());"
-            "print(r.status);"
-            "raise SystemExit(0 if r.status=='PASS' else 1)"
+            "blob = Path(r'" + str(blob_path) + "').read_bytes();"
+            "mk = Path(r'" + str(marker_path) + "').read_bytes();"
+            "r = unprotect_current_user(blob);"
+            "if r.status != 'PASS':"
+            "  print('ERR_DPAPI_SUBPROCESS_KEY_MISMATCH'); sys.exit(1);"
+            "transient = hashlib.sha256(r.data + mk).hexdigest();"
+            "print(transient);"
+            "sys.exit(0 if transient == r'" + expected + "' else 1)"
         )
         completed = subprocess.run(
             [sys.executable, "-c", code],
@@ -176,7 +191,10 @@ def verify_same_runner_blob(protected_blob: bytes, expected_key: bytes) -> str:
             capture_output=True,
             text=True,
         )
-    if completed.returncode != 0 or completed.stdout.strip() != "PASS":
+    if completed.returncode != 0:
+        stdout_val = completed.stdout.strip()
+        if "ERR_DPAPI_SUBPROCESS_KEY_MISMATCH" in stdout_val:
+            return "ERR_DPAPI_SUBPROCESS_KEY_MISMATCH"
         return "ERR_DPAPI_SUBPROCESS_VERIFY_FAILED"
     return "PASS"
 

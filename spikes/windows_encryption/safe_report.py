@@ -21,12 +21,14 @@ ALLOWED_REASON_CODES = frozenset(
         "FAIL",
         "UNSUPPORTED_NON_WINDOWS",
         "UNSUPPORTED_DEPENDENCY_MISSING",
+        "NOT_DEMONSTRATED",
         "NOT_DEMONSTRATED_WINDOWS11",
         "ERR_SQLCIPHER_IMPORT",
         "ERR_DPAPI_PROTECT_FAILED",
         "ERR_DPAPI_UNPROTECT_FAILED",
         "ERR_DPAPI_ARTIFACT_INVALID",
         "ERR_DPAPI_CURRENT_PROCESS_VERIFY_FAILED",
+        "ERR_DPAPI_SUBPROCESS_KEY_MISMATCH",
         "ERR_DPAPI_SUBPROCESS_VERIFY_FAILED",
         "ERR_ACL_PROBE_FAILED",
         "ERR_REPORT_UNSAFE",
@@ -35,6 +37,20 @@ ALLOWED_REASON_CODES = frozenset(
         "ERR_CRASH_MODEL",
         "ERR_ENVELOPE_AUTH_FAILED",
         "ERR_ROLLBACK_UNDETECTED",
+        "ERR_CLEANUP_FAILED",
+        "ERR_CORRECT_KEY_MARKER_MISMATCH",
+        "ERR_CORRECT_KEY_EXCEPTION",
+        "ERR_WRONG_KEY_ACCEPTED",
+        "ERR_SQLITE_ACCEPTED",
+        "ERR_BIT_TAMPER_UNDETECTED",
+        "ERR_TRUNCATION_UNDETECTED",
+        "ERR_PLAINTEXT_HEADER",
+        "ERR_MARKER_IN_DB",
+        "ERR_TEMP_STORE_NOT_MEMORY",
+        "ERR_MARKER_IN_WAL",
+        "ERR_MARKER_IN_JOURNAL",
+        "ERR_MARKER_IN_TEMP",
+        "ERR_PLAINTEXT_WAL",
     }
 )
 
@@ -111,7 +127,7 @@ def utc_timestamp() -> str:
 
 
 def _safe_string(value: str) -> bool:
-    if len(value) > 256 or "/" in value or "\\" in value:
+    if len(value) > 256 or "/" in value or "\\\\" in value:
         return False
     forbidden = ("BEGIN", "PRIVATE", "Traceback", "nonce", "ciphertext", "plaintext")
     return not any(token.lower() in value.lower() for token in forbidden)
@@ -126,6 +142,10 @@ def _validate_check(check: dict[str, Any]) -> None:
         raise ValueError("ERR_REPORT_REASON")
     if not _safe_string(check["identifier"]):
         raise ValueError("ERR_REPORT_UNSAFE")
+    if not isinstance(check.get("duration_ms", 0), int) or check["duration_ms"] < 0:
+        raise ValueError("ERR_REPORT_SCHEMA")
+    if not isinstance(check.get("byte_size", 0), int) or check["byte_size"] < 0:
+        raise ValueError("ERR_REPORT_SCHEMA")
 
 
 def _validate_package(package: dict[str, Any]) -> None:
@@ -144,6 +164,15 @@ def _validate_wheel(wheel: dict[str, Any]) -> None:
         char in "0123456789abcdef" for char in wheel["sha256"]
     ):
         raise ValueError("ERR_REPORT_UNSAFE")
+    if not isinstance(wheel.get("size_bytes", 0), int) or wheel["size_bytes"] < 0:
+        raise ValueError("ERR_REPORT_SCHEMA")
+
+
+def _validate_timestamp(value: str) -> None:
+    try:
+        datetime.fromisoformat(value)
+    except ValueError:
+        raise ValueError("ERR_REPORT_TIMESTAMP") from None
 
 
 def validate_report_object(data: dict[str, Any]) -> None:
@@ -151,9 +180,16 @@ def validate_report_object(data: dict[str, Any]) -> None:
         raise ValueError("ERR_REPORT_SCHEMA")
     if data["recommendation"] not in _ALLOWED_RECOMMENDATIONS:
         raise ValueError("ERR_REPORT_RECOMMENDATION")
+    if not isinstance(data["report_schema_version"], int) or data["report_schema_version"] <= 0:
+        raise ValueError("ERR_REPORT_SCHEMA")
+    _validate_timestamp(str(data.get("timestamp_utc", "")))
+    if data["windows_11_x64_result"] not in ResultStatus._value2member_map_:
+        raise ValueError("ERR_REPORT_STATUS")
     for key in ("os_family", "os_release", "architecture", "python_version", "candidate_name"):
         if not _safe_string(str(data[key])):
             raise ValueError("ERR_REPORT_UNSAFE")
+    if not _safe_string(data["sqlcipher_version"]) or not _safe_string(data["sqlite_version"]):
+        raise ValueError("ERR_REPORT_UNSAFE")
     for check in data["checks"]:
         _validate_check(check)
     for package in data["packages"]:
@@ -163,6 +199,13 @@ def validate_report_object(data: dict[str, Any]) -> None:
     for value in data["licensing_classifications"] + data["documented_limitations"]:
         if not _safe_string(str(value)):
             raise ValueError("ERR_REPORT_UNSAFE")
+    for check in data["checks"]:
+        status_val = check["status"]
+        reason_val = check["reason_code"]
+        if status_val == "PASS" and reason_val not in ("PASS",):
+            raise ValueError("ERR_REPORT_REASON")
+        if status_val == "FAIL" and reason_val == "PASS":
+            raise ValueError("ERR_REPORT_REASON")
 
 
 def report_to_json(report: SafeReport) -> str:

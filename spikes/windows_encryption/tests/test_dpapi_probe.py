@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import os
 import platform
+from pathlib import Path
 
 import pytest
 
@@ -31,7 +32,9 @@ def test_wrapper_validation_detects_malformed_truncated_and_modified() -> None:
     assert local_machine_scope_disabled()
 
 
-def test_dpapi_roundtrip_and_blob_creation(tmp_path, capsys) -> None:
+def test_dpapi_roundtrip_and_blob_creation(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
     key = os.urandom(32)
     protected = protect_current_user(key)
     if platform.system() != "Windows":
@@ -47,3 +50,34 @@ def test_dpapi_roundtrip_and_blob_creation(tmp_path, capsys) -> None:
     assert blob_path.exists() and blob_path.stat().st_size > 0
     captured = capsys.readouterr()
     assert key.hex() not in captured.out + captured.err
+
+
+@pytest.mark.skipif(platform.system() != "Windows", reason="Windows-only test")
+def test_empty_blob_returns_invalid() -> None:
+    result = unprotect_current_user(b"")
+    assert result.status == "ERR_DPAPI_ARTIFACT_INVALID"
+
+
+@pytest.mark.skipif(platform.system() != "Windows", reason="Windows-only test")
+def test_truncated_real_blob() -> None:
+    key = os.urandom(32)
+    protected = protect_current_user(key)
+    if protected.status != "PASS":
+        pytest.skip("DPAPI protect failed")
+    result = unprotect_current_user(protected.data[:10])
+    expected = {"ERR_DPAPI_UNPROTECT_FAILED", "ERR_DPAPI_WRAPPER_INVALID"}
+    assert result.status in expected
+
+
+@pytest.mark.skipif(platform.system() != "Windows", reason="Windows-only test")
+def test_modified_real_blob() -> None:
+    key = os.urandom(32)
+    protected = protect_current_user(key)
+    if protected.status != "PASS":
+        pytest.skip("DPAPI protect failed")
+    mutated = bytearray(protected.data)
+    if len(mutated) > 10:
+        mutated[10] ^= 0xFF
+    result = unprotect_current_user(bytes(mutated))
+    expected = {"ERR_DPAPI_UNPROTECT_FAILED", "ERR_DPAPI_WRAPPER_INVALID"}
+    assert result.status in expected

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import os
 from dataclasses import dataclass, replace
 from enum import StrEnum
@@ -36,20 +37,25 @@ def _fsync_file(path: Path, data: bytes) -> None:
         os.fsync(handle.fileno())
 
 
+def _digest_for(data: bytes) -> str:
+    return hashlib.sha256(data).hexdigest()
+
+
 def run_staged_sequence(
     directory: Path, failure: FailurePoint
 ) -> tuple[ExpectedRecord, Path, Path]:
     directory.mkdir(parents=True, exist_ok=True)
-    record = ExpectedRecord("PENDING", "object.bin", "digest-0001")
+    object_data = b"opaque synthetic bytes for crash consistency test"
+    digest = _digest_for(object_data)
+    record = ExpectedRecord("PENDING", "object.bin", digest)
     temp_path = directory / "object.bin.tmp"
     final_path = directory / record.object_name
-    encrypted_bytes = b"encrypted-synthetic-object"
     if failure is FailurePoint.BEFORE_TEMP_WRITE:
         return record, temp_path, final_path
     if failure is FailurePoint.DURING_TEMP_WRITE:
-        temp_path.write_bytes(encrypted_bytes[:5])
+        temp_path.write_bytes(object_data[:5])
         return record, temp_path, final_path
-    _fsync_file(temp_path, encrypted_bytes)
+    _fsync_file(temp_path, object_data)
     if failure is FailurePoint.AFTER_TEMP_WRITE:
         return record, temp_path, final_path
     os.replace(temp_path, final_path)
@@ -61,13 +67,27 @@ def run_staged_sequence(
 
 def reconcile(record: ExpectedRecord | None, final_path: Path, temp_path: Path) -> ReconcileStatus:
     if record is None:
-        return ReconcileStatus.QUARANTINED if final_path.exists() else ReconcileStatus.SAFE_TO_RETRY
-    if record.state == "ACTIVE" and final_path.exists() and not temp_path.exists():
-        return ReconcileStatus.ACTIVE
-    if record.state == "PENDING" and not final_path.exists():
+        if final_path.exists():
+            return ReconcileStatus.QUARANTINED
         return ReconcileStatus.SAFE_TO_RETRY
-    if record.state == "PENDING" and final_path.exists():
+    if record.state == "ACTIVE":
+        if not final_path.exists():
+            return ReconcileStatus.QUARANTINED
+        actual_digest = _digest_for(final_path.read_bytes())
+        if actual_digest == record.digest:
+            return ReconcileStatus.ACTIVE
         return ReconcileStatus.QUARANTINED
+    if record.state == "PENDING":
+        if final_path.exists():
+            return ReconcileStatus.QUARANTINED
+        if temp_path.exists():
+            temp_size = temp_path.stat().st_size
+            expected_size = len(b"opaque synthetic bytes for crash consistency test")
+            if temp_size == expected_size:
+                return ReconcileStatus.SAFE_TO_RETRY
+            if temp_size < expected_size:
+                return ReconcileStatus.SAFE_TO_RETRY
+        return ReconcileStatus.SAFE_TO_RETRY
     return ReconcileStatus.QUARANTINED
 
 

@@ -53,12 +53,29 @@ def _reason(value: str) -> str:
         "PASS",
         "UNSUPPORTED_NON_WINDOWS",
         "UNSUPPORTED_DEPENDENCY_MISSING",
+        "NOT_DEMONSTRATED",
         "ERR_SQLCIPHER_IMPORT",
         "ERR_ACL_PROBE_FAILED",
         "ERR_OFFLINE_SMOKE",
         "ERR_CRASH_MODEL",
         "ERR_ENVELOPE_AUTH_FAILED",
         "ERR_ROLLBACK_UNDETECTED",
+        "ERR_DPAPI_SUBPROCESS_KEY_MISMATCH",
+        "ERR_DPAPI_SUBPROCESS_VERIFY_FAILED",
+        "ERR_CLEANUP_FAILED",
+        "ERR_CORRECT_KEY_MARKER_MISMATCH",
+        "ERR_CORRECT_KEY_EXCEPTION",
+        "ERR_WRONG_KEY_ACCEPTED",
+        "ERR_SQLITE_ACCEPTED",
+        "ERR_BIT_TAMPER_UNDETECTED",
+        "ERR_TRUNCATION_UNDETECTED",
+        "ERR_PLAINTEXT_HEADER",
+        "ERR_MARKER_IN_DB",
+        "ERR_TEMP_STORE_NOT_MEMORY",
+        "ERR_MARKER_IN_WAL",
+        "ERR_MARKER_IN_JOURNAL",
+        "ERR_MARKER_IN_TEMP",
+        "ERR_PLAINTEXT_WAL",
     }
     return value if value in allowed else "FAIL"
 
@@ -114,6 +131,11 @@ def _crash_check(temp_dir: Path) -> ReportCheck:
 def build_report(temp_dir: Path) -> SafeReport:
     sql = run_sqlcipher_probe(temp_dir / "sqlcipher")
     checks = [_check_from_sql(check) for check in sql.checks]
+    sqlcipher_overall_status = _status(sql.status)
+    sqlcipher_overall_reason = "PASS" if sql.status == "PASS" else _reason(sql.status)
+    checks.append(
+        ReportCheck("sqlcipher-overall", sqlcipher_overall_status, sqlcipher_overall_reason)
+    )
     acl_result = run_acl_probe()
     checks.append(
         ReportCheck(
@@ -131,13 +153,14 @@ def build_report(temp_dir: Path) -> SafeReport:
         )
     )
     recommendation = "CONDITIONALLY_FEASIBLE"
-    if any(check.status == ResultStatus.FAIL for check in checks):
+    if sql.status == "FAIL" or any(check.status == ResultStatus.FAIL for check in checks):
         recommendation = "NOT_FEASIBLE"
+    safe_report_mod = __import__(
+        "spikes.windows_encryption.safe_report", fromlist=["utc_timestamp"]
+    )
     return SafeReport(
         report_schema_version=1,
-        timestamp_utc=__import__(
-            "spikes.windows_encryption.safe_report", fromlist=["utc_timestamp"]
-        ).utc_timestamp(),
+        timestamp_utc=safe_report_mod.utc_timestamp(),
         os_family=platform.system() or "UNKNOWN",
         os_release=platform.release() or "UNKNOWN",
         architecture=platform.machine() or "UNKNOWN",

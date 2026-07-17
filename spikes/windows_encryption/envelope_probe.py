@@ -106,7 +106,9 @@ def encrypt_envelope(
     if len(key) != 32:
         raise ValueError("ERR_INVALID_KEY")
     try:
-        from cryptography.hazmat.primitives.ciphers.aead import AESGCM
+        # fmt: off
+        from cryptography.hazmat.primitives.ciphers.aead import AESGCM  # type: ignore[import-not-found]  # noqa: I001
+        # fmt: on
     except ImportError as exc:  # pragma: no cover
         raise RuntimeError("ERR_CRYPTOGRAPHY_UNAVAILABLE") from exc
     nonce = os.urandom(NONCE_LENGTH)
@@ -145,7 +147,7 @@ def decrypt_envelope(
     ):
         raise ValueError("ERR_ENVELOPE_CONTEXT_MISMATCH")
     try:
-        from cryptography.exceptions import InvalidTag
+        from cryptography.exceptions import InvalidTag  # type: ignore[import-not-found]
         from cryptography.hazmat.primitives.ciphers.aead import AESGCM
     except ImportError as exc:  # pragma: no cover
         raise RuntimeError("ERR_CRYPTOGRAPHY_UNAVAILABLE") from exc
@@ -161,7 +163,7 @@ def decrypt_envelope(
         raise ValueError("ERR_ENVELOPE_LENGTH_MISMATCH")
     if hashlib.sha256(plaintext).hexdigest() != envelope.metadata.plaintext_sha256:
         raise ValueError("ERR_ENVELOPE_DIGEST_MISMATCH")
-    return plaintext
+    return bytes(plaintext)
 
 
 def envelope_to_bytes(envelope: Envelope) -> bytes:
