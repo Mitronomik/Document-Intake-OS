@@ -38,6 +38,7 @@ REQUIRED_DOCUMENTS = (
     "docs/tasks/PR-003-ci-privacy-guardrails.md",
     "docs/tasks/GATE-M0-requirements-lock.md",
     "docs/tasks/PR-004-core-domain.md",
+    "docs/tasks/GATE-S1-encryption-staging.md",
 )
 
 CANONICAL_SOURCE_ORDER = (
@@ -206,76 +207,175 @@ def test_readme_and_agents_use_canonical_source_order() -> None:
         )
 
 
-def test_lifecycle_state_records_gate_m0_completion_and_pr004_review_state() -> None:
+def test_lifecycle_state_records_gate_s1_review_state() -> None:
     lifecycle_files = (
         "docs/progress.md",
         "docs/roadmap.md",
         "docs/implementation-plan.md",
         "docs/handoff.md",
+        "docs/traceability-matrix.md",
     )
     required_by_file = (
         "GATE-M0: COMPLETED",
-        "3dada63ea82163c7c4497e290b303d2cc781b085",
         "M0: ACCEPTED",
         "M1: ACCEPTED",
-        "PR-004: IN REVIEW",
-        "PR-004: NOT COMPLETED BEFORE MERGE AND PRODUCT-OWNER ACCEPTANCE",
+        "PR-004: COMPLETED AND HUMAN ACCEPTED",
+        "GATE-S1: IN REVIEW",
+        "ADR-018: PROPOSED",
+        "Q-010: OPEN",
+        "PR-S001: PROPOSED, NOT AUTHORIZED",
         "PR-005: UNAUTHORIZED",
         "PR-006: UNAUTHORIZED",
         "PR-007 AND LATER: UNAUTHORIZED",
-        "Q-010: OPEN",
+        "Gate 1: NOT ACCEPTED",
+        "M2: NOT COMPLETED",
     )
     stale_current_state = (
-        "GATE-M0 is in review",
-        "GATE-M0 IN REVIEW",
-        "M0 DECISION APPROVED, NOT YET RECORDED IN MAIN",
-        "PR-004 remains blocked until GATE-M0",
-        "PR-004 BLOCKED UNTIL GATE-M0",
-        "Complete review, CI and human acceptance for the GATE-M0 PR",
-        "The next safe step is GATE-M0 review",
-        "GATE-M0 does not start PR-004",
-        "do not start PR-004 until",
-        "After this PR is merged and accepted, the next repository update may prepare PR-004",
-        "See current lifecycle state below. See current lifecycle state below",
-        "but See current lifecycle state below",
-        "next safe step is GATE-M0",
+        "PR-004: IN REVIEW",
+        "PR-004: NOT COMPLETED BEFORE MERGE AND PRODUCT-OWNER ACCEPTANCE",
+        "PR-004 is the only authorized implementation task",
+        "PR-004 is in review",
+        "PR-004 Core Domain is the only authorized implementation task",
     )
 
     for filename in lifecycle_files:
         text = (REPO_ROOT / filename).read_text(encoding="utf-8")
         for required in required_by_file:
             assert required in text, filename
-        assert "PR-004 is the only authorized implementation task" in text, filename
-        assert "template enforcement PR remains future work" in text, filename
-        assert "sensitive-data/private-contour gate remains open" in text.lower(), filename
+        assert "review and product-owner decision on GATE-S1 / ADR-018" in text, filename
         for stale in stale_current_state:
             assert stale not in text, filename
 
-    handoff = (REPO_ROOT / "docs/handoff.md").read_text(encoding="utf-8")
-    roadmap = (REPO_ROOT / "docs/roadmap.md").read_text(encoding="utf-8")
-    implementation_plan = (REPO_ROOT / "docs/implementation-plan.md").read_text(encoding="utf-8")
     progress = (REPO_ROOT / "docs/progress.md").read_text(encoding="utf-8")
-
-    assert handoff.count("## Current lifecycle state") == 1
-    assert "See current lifecycle" not in roadmap
-    assert "review, CI, merge and product-owner acceptance of PR-004" in handoff
-    assert (
-        "PR-005 cannot start after PR-004 merge without a separate accepted Q-010 security ADR"
-        in handoff
-    )
-    assert (
-        "PR-005 and PR-006 remain blocked until a separate accepted security ADR resolves Q-010"
-        in roadmap
-    )
-    assert (
-        "GATE-M0 and M0 are accepted; PR-004 is in review; "
-        "PR-005 and later work remain unauthorized" in implementation_plan
-    )
     assert "**Обновлено:** 2026-07-17" in progress
+
+
+def test_gate_s1_encryption_staging_proposal_contract() -> None:
+    decisions = (REPO_ROOT / "docs/decisions.md").read_text(encoding="utf-8")
+    open_questions = (REPO_ROOT / "docs/open-questions.md").read_text(encoding="utf-8")
+    task = (REPO_ROOT / "docs/tasks/GATE-S1-encryption-staging.md").read_text(encoding="utf-8")
+    pr004 = (REPO_ROOT / "docs/tasks/PR-004-core-domain.md").read_text(encoding="utf-8")
+    adr_018_heading = "## ADR-018 — Encryption Staging and Windows Key Protection"
+
+    assert decisions.count(adr_018_heading) == 1
+    adr_018 = _adr_section(decisions, adr_018_heading)
+    q010 = _question_section(open_questions, "Q-010")
+
+    assert "**Status:** PROPOSED" in adr_018
+    assert _question_status(q010) == "OPEN"
+    assert "**Proposal reference:** ADR-018" in q010
+    assert "ADR-018 is PROPOSED" in q010
+    assert "Q-010 is not accepted yet" in q010
+    assert "PR-005 and PR-006 remain blocked" in q010
+    assert "PR-S001 remains only a proposed next security task" in q010
+    assert "no encryption technology has been implemented" in q010
+
+    assert "PR-004: COMPLETED" in pr004
+    assert "GitHub PR: #6" in pr004
+    assert "Merge commit: 6f3021a38305cb92d733a46426cde427828bac04" in pr004
+    assert "Product-owner acceptance: CONFIRMED" in pr004
+
+    compact_adr = _compact(adr_018)
+    assert "No production-capable database or document storage" in compact_adr
+    assert "may write personal data to disk in plaintext" in compact_adr
+    assert "silently falls back to plaintext" in compact_adr
+    assert "Failure to initialize encryption must fail closed" in compact_adr
+    assert "raw key is never stored in source code" in compact_adr
+    assert "configuration, environment variables, logs or database rows" in compact_adr
+    assert "kept separate from encrypted database and storage content" in compact_adr
+    assert "Copying only the DPAPI blob is not a portable backup strategy" in compact_adr
     assert (
-        "PR-005 must not start after PR-004 merge without the separate Q-010 security ADR"
-        in progress
+        "does not choose a final Python binding, package version or SQLCipher edition"
+        in compact_adr
     )
+    assert "exact cryptography package and version" in compact_adr
+
+    assert "**Decision recommendation:** REJECT" in adr_018
+    assert "**Decision recommendation:** REJECT AS SOLE CONTROL" in adr_018
+    assert "**Decision recommendation:** PREFERRED" in adr_018
+    assert "Option C is preferred but not accepted" in adr_018
+
+    assert "PR-S001 is proposed, not authorized" in adr_018
+    assert "PR-005 and PR-006 remain unauthorized" in adr_018
+    assert "PR-007 AND LATER: UNAUTHORIZED" in task
+    assert "Gate 1: NOT ACCEPTED" in task
+    assert "M2: NOT COMPLETED" in task
+    assert "GATE-S1 does not accept ADR-018 automatically" in task
+    assert "GATE-S1 does not resolve Q-010 until human acceptance" in task
+
+
+def test_gate_s1_adds_no_encryption_implementation_or_dependency() -> None:
+    committed = subprocess.run(
+        ["git", "diff", "--name-only", "6f3021a38305cb92d733a46426cde427828bac04...HEAD"],
+        cwd=REPO_ROOT,
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    working_tree = subprocess.run(
+        ["git", "diff", "--name-only"],
+        cwd=REPO_ROOT,
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    untracked = subprocess.run(
+        ["git", "ls-files", "--others", "--exclude-standard"],
+        cwd=REPO_ROOT,
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    changed_files = (
+        set(committed.stdout.splitlines())
+        | set(working_tree.stdout.splitlines())
+        | set(untracked.stdout.splitlines())
+    )
+    expected = {
+        "docs/decisions.md",
+        "docs/open-questions.md",
+        "docs/tasks/PR-004-core-domain.md",
+        "docs/tasks/GATE-S1-encryption-staging.md",
+        "docs/implementation-plan.md",
+        "docs/roadmap.md",
+        "docs/progress.md",
+        "docs/handoff.md",
+        "docs/traceability-matrix.md",
+        "tests/test_documentation_baseline.py",
+    }
+    assert changed_files == expected
+    assert "pyproject.toml" not in changed_files
+    assert "uv.lock" not in changed_files
+    assert not any(path.startswith("src/") for path in changed_files)
+    assert not any(path.startswith("resources/") for path in changed_files)
+
+
+def test_q001_through_q020_statuses_other_than_q010_are_unchanged() -> None:
+    open_questions = (REPO_ROOT / "docs/open-questions.md").read_text(encoding="utf-8")
+    expected_statuses = {
+        "Q-001": "EXTERNAL_CONFIRMATION_REQUIRED",
+        "Q-002": "EXTERNAL_CONFIRMATION_REQUIRED",
+        "Q-003": "EXTERNAL_CONFIRMATION_REQUIRED",
+        "Q-004": "EXTERNAL_CONFIRMATION_REQUIRED",
+        "Q-005": "EXTERNAL_CONFIRMATION_REQUIRED",
+        "Q-006": "DEFERRED",
+        "Q-007": "DEFERRED",
+        "Q-008": "ACCEPTED",
+        "Q-009": "DEFERRED",
+        "Q-010": "OPEN",
+        "Q-011": "DEFERRED",
+        "Q-012": "LOCAL_EVIDENCE_REQUIRED",
+        "Q-013": "LOCAL_EVIDENCE_REQUIRED",
+        "Q-014": "LOCAL_EVIDENCE_REQUIRED",
+        "Q-015": "LOCAL_EVIDENCE_REQUIRED",
+        "Q-016": "DEFERRED",
+        "Q-017": "DEFERRED",
+        "Q-018": "DEFERRED",
+        "Q-019": "SUPERSEDED",
+        "Q-020": "DEFERRED",
+    }
+    for question_id, expected_status in expected_statuses.items():
+        assert _question_status(_question_section(open_questions, question_id)) == expected_status
 
 
 def test_open_questions_q001_through_q020_remain_present_with_valid_statuses() -> None:
@@ -374,7 +474,7 @@ def test_gate_m0_specific_question_requirements_are_recorded() -> None:
     assert "one Windows 11 x64 workstation with one active operator session" in architecture
 
     assert _question_status(q010) == "OPEN"
-    assert "separate accepted security ADR" in q010
+    assert "**Proposal reference:** ADR-018" in q010
     assert "blocks PR-005 and PR-006" in q010
     assert "No encryption technology is selected" in decisions
 

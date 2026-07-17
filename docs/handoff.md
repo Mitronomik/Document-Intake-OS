@@ -41,11 +41,11 @@ ADR-017 fixes the first MVP topology as one Windows 11 x64 workstation with one 
 
 ## Current lifecycle state
 
-GATE-M0: COMPLETED. GATE-M0 merge commit: `3dada63ea82163c7c4497e290b303d2cc781b085`. Human acceptance of GATE-M0 occurred after PR #5 merge. M0: ACCEPTED. M1: ACCEPTED. PR-004: IN REVIEW. PR-004 is the only authorized implementation task. PR-004: NOT COMPLETED BEFORE MERGE AND PRODUCT-OWNER ACCEPTANCE. PR-005: UNAUTHORIZED. PR-006: UNAUTHORIZED. PR-007 AND LATER: UNAUTHORIZED. Gate 1: NOT ACCEPTED. M2: NOT COMPLETED. Q-010: OPEN. Under ADR-016, the template enforcement PR remains future work and does not block PR-004. The sensitive-data/private-contour gate remains open for real data.
+GATE-M0: COMPLETED. GATE-M0 merge commit: `3dada63ea82163c7c4497e290b303d2cc781b085`. Human acceptance of GATE-M0 occurred after PR #5 merge. M0: ACCEPTED. M1: ACCEPTED. PR-004: COMPLETED AND HUMAN ACCEPTED. GATE-S1: IN REVIEW. ADR-018: PROPOSED. PR-S001: PROPOSED, NOT AUTHORIZED. PR-005: UNAUTHORIZED. PR-006: UNAUTHORIZED. PR-007 AND LATER: UNAUTHORIZED. Gate 1: NOT ACCEPTED. M2: NOT COMPLETED. Q-010: OPEN. Under ADR-016, the template enforcement PR remains future work and does not block PR-004. The sensitive-data/private-contour gate remains open for real data.
 
 ## Authorization boundary
 
-PR-004 Core Domain is the only authorized implementation task. PR-005, PR-006, PR-007 and later work remain unauthorized. PR-005 cannot start after PR-004 merge without a separate accepted Q-010 security ADR.
+GATE-S1 is authorized only to prepare the ADR-018 proposal. PR-S001 is proposed but not authorized. PR-005, PR-006, PR-007 and later work remain unauthorized.
 
 ## Риски
 
@@ -53,4 +53,4 @@ PR-004 Core Domain is the only authorized implementation task. PR-005, PR-006, P
 
 ## Продолжение
 
-The next safe step is review, CI, merge and product-owner acceptance of PR-004. Before each later task, read the authoritative sources, check the applicable gate, form a single PR contract and preserve unresolved questions unless an accepted ADR explicitly resolves them.
+The next safe step is review and product-owner decision on GATE-S1 / ADR-018. Before each later task, read the authoritative sources, check the applicable gate, form a single PR contract and preserve unresolved questions unless an accepted ADR explicitly resolves them.

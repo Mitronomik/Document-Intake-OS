@@ -8,7 +8,7 @@
 - ADR-015 created a narrow exception for PR-001 through PR-003 repository-safety work while M0 remained open;
 - PR-003 is completed and merged through GitHub PR #4 at `ad5782045473d3ef5eb0a097cc8f6982bab821c7`;
 - M1 Safe Repository is accepted;
-- GATE-M0 and M0 are accepted; PR-004 is in review; PR-005 and later work remain unauthorized;
+- GATE-M0 and M0 are accepted; PR-004 is completed and human accepted; GATE-S1 is in review; ADR-018 is proposed; PR-005 and later work remain unauthorized;
 - PR-005 and later tasks remain unauthorized;
 - реальные документы не используются в Codex Web;
 - OCR начинается только после готовности ручного контура.
@@ -71,11 +71,11 @@ Entities, value objects, enums, transitions, verification policy and snapshot in
 
 ### PR-005 — SQLite persistence
 
-Unauthorized by GATE-M0. Schema, migrations, repositories, unit of work and transaction tests remain blocked until a separate accepted security ADR resolves Q-010 encryption staging. Конкретное шифрование не реализовать до ADR.
+Unauthorized. Schema, migrations, repositories, unit of work and transaction tests remain blocked until product-owner acceptance of GATE-S1 / ADR-018, accepted PR-S001, and explicit PR-005 authorization. Конкретное шифрование не реализовать в GATE-S1.
 
 ### PR-006 — Immutable filesystem storage
 
-Unauthorized by GATE-M0. Original import, SHA-256, metadata, atomic writes and integrity tests remain blocked until a separate accepted security ADR resolves Q-010 encryption staging for production personal data.
+Unauthorized. Original import, SHA-256, metadata, atomic writes and integrity tests remain blocked until product-owner acceptance of GATE-S1 / ADR-018, accepted PR-S001, and explicit PR-006 task review.
 
 ### PR-007 — Audit events
 
@@ -217,6 +217,6 @@ Network block, PII logs, template tampering, formula injection and fault injecti
 
 Рабочий Windows MVP: 8–12 недель. Стабильная версия после пилота: 3–5 месяцев. Оценка пересматривается после Gate 1 и Gate 4.
 
-## Current authorization state for PR-004
+## Current authorization state for GATE-S1
 
-GATE-M0: COMPLETED. GATE-M0 merge commit: `3dada63ea82163c7c4497e290b303d2cc781b085`. Human acceptance of GATE-M0 occurred after PR #5 merge. M0: ACCEPTED. M1: ACCEPTED. PR-004: IN REVIEW. PR-004 is the only authorized implementation task. PR-004: NOT COMPLETED BEFORE MERGE AND PRODUCT-OWNER ACCEPTANCE. PR-005: UNAUTHORIZED. PR-006: UNAUTHORIZED. PR-007 AND LATER: UNAUTHORIZED. Gate 1: NOT ACCEPTED. M2: NOT COMPLETED. Q-010: OPEN. The template enforcement PR remains future work and does not block PR-004. The sensitive-data/private-contour gate remains open for real data. The next safe step is review, CI, merge and human acceptance of PR-004. PR-005 must not start after PR-004 merge without the separate Q-010 security ADR.
+GATE-M0: COMPLETED. GATE-M0 merge commit: `3dada63ea82163c7c4497e290b303d2cc781b085`. Human acceptance of GATE-M0 occurred after PR #5 merge. M0: ACCEPTED. M1: ACCEPTED. PR-004: COMPLETED AND HUMAN ACCEPTED. GATE-S1: IN REVIEW. ADR-018: PROPOSED. PR-S001: PROPOSED, NOT AUTHORIZED. PR-005: UNAUTHORIZED. PR-006: UNAUTHORIZED. PR-007 AND LATER: UNAUTHORIZED. Gate 1: NOT ACCEPTED. M2: NOT COMPLETED. Q-010: OPEN. The template enforcement PR remains future work and does not block PR-004. The sensitive-data/private-contour gate remains open for real data. The next safe step is review and product-owner decision on GATE-S1 / ADR-018. PR-005 must not start without accepted encryption staging and later authorization.

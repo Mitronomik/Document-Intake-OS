@@ -7,9 +7,10 @@
 - Human acceptance occurred after merge of GitHub PR #5.
 - M0: ACCEPTED
 - M1: ACCEPTED
-- PR-004: IN REVIEW after implementation submission
-- PR-004 is authorized and started by this PR.
-- PR-004 is not completed before merge and product-owner acceptance.
+- PR-004: COMPLETED
+- GitHub PR: #6
+- Merge commit: 6f3021a38305cb92d733a46426cde427828bac04
+- Product-owner acceptance: CONFIRMED
 - PR-005: UNAUTHORIZED
 - PR-006: UNAUTHORIZED
 - PR-007 AND LATER: UNAUTHORIZED

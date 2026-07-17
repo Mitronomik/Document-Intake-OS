@@ -358,3 +358,103 @@ Consequences for the first MVP:
 ADR-017 does not select encryption technology, implement SQLite, implement
 filesystem storage, implement local accounts, implement authentication or
 authorize shared multi-workstation data.
+
+## ADR-018 — Encryption Staging and Windows Key Protection
+
+**Status:** PROPOSED
+**Date:** 2026-07-17
+**Proposal reference for:** Q-010
+
+### Context
+
+1. The first MVP is one Windows 11 x64 workstation with one active operator session.
+2. The application stores passports, identity information, vehicle identifiers, document images and application data.
+3. Database and filesystem storage must be encrypted.
+4. The raw encryption key must not be stored beside the database or files.
+5. PR-005 and PR-006 are blocked because encryption was previously scheduled only in PR-030.
+6. Implementing plaintext persistence first and adding encryption later creates unacceptable migration and accidental-production-use risk.
+7. PR-004 contains no persistence and does not resolve Q-010.
+
+This ADR is a proposal for review only. It does not accept ADR-018, does not resolve Q-010, does not authorize PR-S001, PR-005, PR-006, PR-007 or later work, and does not implement encryption, database, storage or backup code.
+
+### Recommended proposal for review
+
+#### Encryption-first invariant
+
+No production-capable database or document storage may write personal data to disk in plaintext. There must be no supported production mode that creates an unencrypted SQLite database, stores original documents as plaintext files, stores prepared document artifacts as plaintext files, silently falls back to plaintext when encryption is unavailable, or continues application startup after key-protection failure. Failure to initialize encryption must fail closed.
+
+#### Application master key
+
+The proposed protected-storage initialization generates a cryptographically random application master key locally. The key is never hardcoded, never derived directly from a username, predictable device identifier or default password, and the raw key is never stored in source code, configuration, environment variables, logs or database rows. Only a protected key blob is stored. The protected key blob is kept separate from encrypted database and storage content, has an explicit format version, and supports later rotation and re-wrapping without domain-model changes. This proposal does not implement key generation.
+
+#### Windows local key protection
+
+For the first MVP local key wrapper, the proposal uses Windows DPAPI with current-user scope. The application master key is wrapped through Windows DPAPI. The raw master key is held in memory only for the shortest practical duration. `LOCAL_MACHINE` scope is not the default because it broadens decryption access to other users of the same workstation. DPAPI failure blocks access to protected data. The protected key blob is not itself treated as sufficient for backup portability. Future local-user architecture may require key re-wrapping or migration. No Windows account or authentication implementation is added by this gate, and no DPAPI calls are implemented.
+
+#### Database encryption
+
+SQLite remains the logical persistence engine for the single-workstation MVP. Every production-capable database file must use full-database authenticated encryption through SQLCipher or a separately validated equivalent. No plaintext SQLite database may be migrated into production use without an explicit encrypted migration procedure. Wrong-key access must fail. Tampered or corrupt encrypted databases must not be treated as valid. Database keys must come from protected application key material and must not appear in SQL logs, exception messages or diagnostics. This ADR does not choose a final Python binding, package version or SQLCipher edition, and requires a separate Windows x64 feasibility and packaging spike before PR-005 authorization.
+
+#### File encryption
+
+Originals and derived artifacts use application-level authenticated encryption, such as AES-256-GCM or an equivalently reviewed construction. Every encrypted object has a unique nonce, and nonce reuse under the same key is prohibited. Authenticated metadata includes at least storage format version, entity/artifact identifier, artifact kind, and plaintext length or another integrity-bound size field. Encrypted object names and directories must not expose personal data. Ciphertext replacement under an existing immutable artifact ID is prohibited. Decrypted bytes must reproduce the original bytes exactly. Authentication failure blocks reading. There is no silent plaintext fallback and no PII in encryption errors or logs. This proposal does not implement encryption and does not add a cryptography dependency.
+
+#### BitLocker position
+
+BitLocker or Windows Device Encryption is recommended as defense in depth. Volume encryption is not accepted as the only application security control because deployment state may vary between workstations, configuration may be outside the application's control, external or backup media require separate protection, and application data must remain protected independently of accidental volume-policy changes. A future installer or preflight check may verify volume-encryption status, but this proposal does not implement that check.
+
+#### Temporary plaintext
+
+Plaintext temporary files are forbidden by default. Decryption should use memory or restricted short-lived files only when a later image/Excel integration proves that an external library requires a path. Any future temporary-file exception requires a dedicated threat analysis, restricted permissions, non-PII filenames, cleanup on success and handled failure, startup cleanup of abandoned files, and tests confirming cleanup. Secure deletion guarantees are not claimed for SSD storage. This proposal does not implement temporary-file handling.
+
+#### Backup and recovery boundary
+
+A DPAPI-protected local key blob normally belongs to the current Windows user and workstation. Copying only the DPAPI blob is not a portable backup strategy. Future encrypted backup/restore must use a separately designed recovery wrapping mechanism. The recovery wrapper must protect the application master key or a backup-specific key. The recovery secret must never be stored inside the same backup archive in usable plaintext. Backup destination, recovery ownership and recovery ceremony remain unresolved under Q-017. PR-032 remains responsible for backup/restore implementation. This proposal does not select a recovery password policy and does not implement backup.
+
+### Compared options
+
+#### Option A — Plaintext persistence until PR-030
+
+**Decision recommendation:** REJECT
+
+Rejected because it violates the production encryption requirement, creates migration risk, permits accidental real-data use before encryption, and changes persistence and storage formats late in the roadmap.
+
+#### Option B — BitLocker-only protection
+
+**Decision recommendation:** REJECT AS SOLE CONTROL
+
+Rejected as the sole control because deployment and media protection vary outside application control. BitLocker remains recommended defense in depth.
+
+#### Option C — Encryption-first application architecture
+
+**Decision recommendation:** PREFERRED
+
+Preferred proposal: DPAPI-protected application master key, encrypted SQLite through SQLCipher or a validated equivalent, application-level authenticated file encryption, fail-closed behavior, and later independent backup/recovery wrapping. Option C is preferred but not accepted; it remains a proposal until human acceptance.
+
+### Required feasibility spike before PR-005
+
+Proposed task: PR-S001 — Windows encryption feasibility and packaging spike. PR-S001 is proposed, not authorized, and is not implemented by GATE-S1.
+
+Scope proposed for PR-S001:
+
+1. use only fully fictional synthetic data;
+2. run on Windows 11 x64;
+3. verify Python 3.12 compatibility;
+4. compare supported SQLCipher/equivalent packaging options;
+5. document license and attribution obligations;
+6. verify offline installation and bundling;
+7. prove an encrypted database cannot be read as ordinary SQLite;
+8. test correct-key, wrong-key, tamper and corruption behavior;
+9. prototype DPAPI current-user wrapping with non-production synthetic key material;
+10. prototype application-level authenticated file encryption;
+11. verify unique nonce generation and authentication-failure behavior;
+12. measure startup/read/write overhead;
+13. confirm no key or synthetic plaintext appears in logs;
+14. produce no production storage API;
+15. introduce no real documents or PII.
+
+Required sequence: GATE-S1 proposal → product-owner review → ADR-018 acceptance → PR-S001 → PR-S001 review and acceptance → PR-005 authorization → PR-006 authorization only after its own task review. PR-005 and PR-006 remain unauthorized in this proposal.
+
+### Non-decisions
+
+ADR-018 does not decide the final SQLCipher edition or distribution, final Python database binding, exact cryptography package and version, FIPS requirement, backup recovery password policy, backup destination, retention and deletion periods, secure deletion guarantees, local application users, authentication, idle timeout, administrator recovery ceremony, key rotation UI, multi-workstation key sharing or macOS keychain implementation.

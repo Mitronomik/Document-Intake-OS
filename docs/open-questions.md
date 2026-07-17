@@ -118,10 +118,11 @@ Statuses: `OPEN`, `ACCEPTED`, `DEFERRED`, `EXTERNAL_CONFIRMATION_REQUIRED`, `LOC
 **Status:** OPEN
 **Owner:** Product owner and security/architecture owner.
 **Required decision:** A separate accepted security ADR resolving encryption staging before PR-005.
+**Proposal reference:** ADR-018
 **Target:** Before PR-005; blocks PR-005 and PR-006 authorization.
-**Current gate impact:** Does not block domain-only PR-004. It does block PR-005 and PR-006 from storing production personal data.
+**Current gate impact:** Does not block completed PR-004. ADR-018 is PROPOSED and Q-010 is not accepted yet. PR-005 and PR-006 remain blocked, product-owner acceptance is required, PR-S001 remains only a proposed next security task, and no encryption technology has been implemented.
 **Open conflict:** The technical specification requires encrypted database and filesystem storage, while persistence/storage are planned before PR-030 encryption.
-**Placeholder rule:** Do not select encryption technology in GATE-M0 or PR-004.
+**Placeholder rule:** Do not select encryption technology in GATE-M0, PR-004 or GATE-S1.
 
 ### Q-011
 
