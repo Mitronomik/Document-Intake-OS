@@ -1,7 +1,7 @@
 # Progress
 
 **Обновлено:** 2026-07-17
-**Статус:** PR-004: IN REVIEW
+**Статус:** GATE-S1: IN REVIEW
 
 ## Завершено
 
@@ -31,9 +31,10 @@
 
 ## Current lifecycle state
 
-- [ ] PR-004: IN REVIEW;
-- [ ] PR-004 is the only authorized implementation task;
-- [ ] PR-004: NOT COMPLETED BEFORE MERGE AND PRODUCT-OWNER ACCEPTANCE;
+- [x] PR-004: COMPLETED AND HUMAN ACCEPTED;
+- [ ] GATE-S1: IN REVIEW;
+- [ ] ADR-018: PROPOSED;
+- [ ] PR-S001: PROPOSED, NOT AUTHORIZED;
 - [ ] PR-005: UNAUTHORIZED;
 - [ ] PR-006: UNAUTHORIZED;
 - [ ] PR-007 AND LATER: UNAUTHORIZED;
@@ -45,8 +46,8 @@
 
 ## Not started / unauthorized
 
-- [ ] PR-005 must not start after PR-004 merge without the separate Q-010 security ADR;
-- [ ] PR-006 remains unauthorized pending a separate Q-010 security ADR;
+- [ ] PR-005 must not start without product-owner acceptance of GATE-S1 / ADR-018 and a completed accepted PR-S001;
+- [ ] PR-006 remains unauthorized pending its own task review after accepted encryption staging;
 - [ ] PR-007 and later implementation tasks remain unauthorized;
 - [ ] The template enforcement PR remains future work and does not block PR-004;
 - [ ] storage implementation;
@@ -59,10 +60,10 @@
 
 - Q-001 through Q-005 are staged as external terminal confirmations and do not block domain-only PR-004 under ADR-016.
 - Q-008 is accepted by ADR-017: one Windows 11 x64 workstation with one active operator session at a time.
-- Q-010: OPEN and blocks PR-005 and PR-006 until a separate accepted security ADR resolves encryption staging.
+- Q-010: OPEN; ADR-018 is PROPOSED and does not resolve Q-010 until human acceptance. PR-005 and PR-006 remain blocked.
 - Q-012 through Q-015 require local evidence outside Git, Codex and CI.
 - Approved PII-free template artifacts are permitted by product policy after technical privacy inspection and repository-policy enforcement updates; real documents, PII-bearing artifacts and private acceptance materials remain outside Git, Codex and CI.
 
 ## Следующий безопасный шаг
 
-Complete review, CI, merge and human acceptance for PR-004. Do not start PR-005 after PR-004 merge without the separate Q-010 security ADR. Do not start PR-006, PR-007 or later tasks until separately authorized.
+review and product-owner decision on GATE-S1 / ADR-018. Do not start PR-S001, PR-005, PR-006, PR-007 or later tasks until separately authorized.

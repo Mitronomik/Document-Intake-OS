@@ -47,7 +47,7 @@
 | M1 Safe Repository | ADR-016 | ACCEPTED | documentation baseline test |
 | M0 Requirements Locked | ADR-016 | DECISION APPROVED during GATE-M0 PR; recorded in `main` only after merge and human acceptance | documentation baseline test |
 | PR-004 authorization boundary | ADR-016 | Limited to PR-004 Core Domain after gate merge and acceptance | documentation baseline test |
-| PR-005/PR-006 encryption staging | ADR-016 / Q-010 | UNAUTHORIZED until separate security ADR | documentation baseline test |
+| PR-005/PR-006 encryption staging | ADR-016 / Q-010 / ADR-018 proposal | UNAUTHORIZED until accepted encryption staging and explicit authorization | documentation baseline test |
 | MVP workstation topology | ADR-017 / Q-008 | One Windows 11 x64 workstation with one active operator session at a time | documentation baseline test |
 | Terminal-specific staged questions | Q-001–Q-005 | External confirmation required before target adapter/export PRs | documentation baseline test |
 | Local evidence staged questions | Q-012–Q-015 | Real-document and environment evidence remains outside Git, Codex and CI | documentation baseline test |
@@ -61,7 +61,14 @@
 | GATE-M0 | GitHub PR #5 | COMPLETED at `3dada63ea82163c7c4497e290b303d2cc781b085`; human acceptance occurred after merge | documentation baseline test |
 | M0 | Product-owner authorization | ACCEPTED | documentation baseline test |
 | M1 | Product-owner authorization | ACCEPTED | documentation baseline test |
-| PR-004 | Current task | IN REVIEW after implementation submission | domain and documentation tests |
+| PR-004 | GitHub PR #6 | COMPLETED AND HUMAN ACCEPTED at merge commit `6f3021a38305cb92d733a46426cde427828bac04` | domain and documentation tests |
+| GATE-S1 | ADR-018 / Q-010 | IN REVIEW; proposal only | documentation baseline test |
+| ADR-018 | Q-010 | PROPOSED | documentation baseline test |
+| PR-S001 | ADR-018 proposal | PROPOSED, NOT AUTHORIZED | documentation baseline test |
 | PR-005 | Q-010 / authorization boundary | UNAUTHORIZED | documentation baseline test |
 | PR-006 | Q-010 / authorization boundary | UNAUTHORIZED | documentation baseline test |
 | PR-007 AND LATER | authorization boundary | UNAUTHORIZED | documentation baseline test |
+
+## Current lifecycle state
+
+GATE-M0: COMPLETED. M0: ACCEPTED. M1: ACCEPTED. PR-004: COMPLETED AND HUMAN ACCEPTED. GATE-S1: IN REVIEW. ADR-018: PROPOSED. Q-010: OPEN. PR-S001: PROPOSED, NOT AUTHORIZED. PR-005: UNAUTHORIZED. PR-006: UNAUTHORIZED. PR-007 AND LATER: UNAUTHORIZED. Gate 1: NOT ACCEPTED. M2: NOT COMPLETED. The next safe step is review and product-owner decision on GATE-S1 / ADR-018.
