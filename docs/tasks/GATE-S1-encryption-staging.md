@@ -54,6 +54,10 @@ PR-S001 must verify active encryption for every production connection, fail clos
 
 File encryption requires a versioned envelope containing format magic/version, algorithm identifier, key version or key identifier, nonce/IV, ciphertext, authentication tag and canonical authenticated metadata. Metadata binds artifact ID, artifact kind, plaintext length, storage format version, and expected content checksum or another accepted rollback/replay control. Nonce reuse is prohibited, partial writes fail authentication, writes use encrypted temporary output and atomic replacement, plaintext temporary files are forbidden by default, historical ciphertext replacement for the same immutable artifact is detectable, and errors contain no PII.
 
+## Independent rollback anchor
+
+Envelope authentication proves integrity and authenticity under the relevant key, but it does not prove freshness or latest-version status. An envelope-contained checksum, version or generation is authenticated metadata, not an independent replay control and not its own rollback anchor. Object-level rollback detection requires authoritative expected state outside the replaceable encrypted object, including artifact identity, expected generation/version, expected digest, key version and storage format version. PR-S001 must test replacement of the current object with an old valid envelope while the authoritative record remains unchanged. Coordinated rollback of all local state, including the encrypted database, encrypted storage and every authoritative-state copy, is not claimed as solved. Exact persistence transaction boundaries, crash consistency and recovery reconciliation remain deferred to PR-S001 and later persistence/storage design.
+
 ## Compared options
 
 - Option A — Plaintext persistence until PR-030: REJECT.
@@ -113,7 +117,7 @@ PR-S001 is proposed as a Windows encryption feasibility and packaging spike. PR-
 - Q-010 remains OPEN and references ADR-018 as a proposal.
 - PR-004 closure records GitHub PR #6, the exact merge commit, and product-owner acceptance.
 - Lifecycle documents state GATE-S1 is in review and remove stale PR-004 in-review state.
-- Documentation tests cover the proposal and authorization boundaries.
+- Documentation tests cover the proposal, authorization boundaries and independent rollback-anchor boundary.
 - No runtime implementation, dependency, fixture, template, PII or binary artifact is added.
 
 ## Documentation tests
@@ -129,6 +133,9 @@ PR-S001 is proposed as a Windows encryption feasibility and packaging spike. PR-
 - Confirm no dependency or runtime implementation was added.
 - Confirm no real documents, PII, templates or binary fixtures were added.
 - Confirm fixed-base Git diff checks remain manual PR review checks only and are not permanent pytest invariants.
+- Confirm ADR-018 does not claim envelope-contained metadata independently prevents replay.
+- Confirm PR-S001 must test old-valid-envelope replacement against an independent authoritative record.
+- Confirm coordinated full-system rollback detection remains a non-claim unless a later external or monotonic trust anchor is accepted.
 
 ## Prohibited implementation
 

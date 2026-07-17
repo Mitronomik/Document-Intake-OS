@@ -415,7 +415,15 @@ Originals and derived artifacts use application-level authenticated encryption, 
 
 File storage must use a versioned encrypted object envelope defining at least format magic/version, algorithm identifier, key version or key identifier, nonce/IV, ciphertext, authentication tag, and a canonical authenticated metadata schema. Authenticated metadata must bind at least artifact ID, artifact kind, plaintext length, storage format version, and expected content checksum or another accepted rollback/replay control.
 
-Nonce reuse under one key is prohibited. Truncated or partially written objects must fail authentication. Object writes use encrypted temporary output and atomic replacement. Plaintext temporary files remain forbidden by default. Replacing one valid historical ciphertext with another valid ciphertext for the same immutable artifact must be detectable. Authentication errors contain no PII. Exact algorithm, package and chunking format remain for PR-S001 evidence.
+Nonce reuse under one key is prohibited. Truncated or partially written objects must fail authentication. Object writes use encrypted temporary output and atomic replacement. Plaintext temporary files remain forbidden by default. Authentication errors contain no PII. Exact algorithm, package and chunking format remain for PR-S001 evidence.
+
+An authentication tag proves integrity and authenticity under the relevant key, but it does not by itself prove that the object is the latest accepted version. A checksum, object version or generation stored only inside the encrypted envelope is not sufficient to detect replacement of the entire envelope with an older valid envelope. Envelope-contained metadata remains authenticated, but it is not treated as its own independent rollback anchor.
+
+Object-level rollback detection requires an authoritative expected-state record outside the replaceable encrypted object. That authoritative record must bind at least artifact ID, expected object generation or immutable version, expected plaintext hash, ciphertext hash or another independently validated object digest, key version, and storage format version. The authoritative record may later reside in the encrypted database or an immutable application snapshot.
+
+Reading an encrypted object must fail closed when its artifact ID differs, its generation/version differs, its expected digest differs, its key version is not accepted, or its envelope metadata differs from the authoritative record. Replacing the current object with a prior valid envelope while leaving the authoritative record unchanged must be detected. The exact authoritative-record schema and transaction boundary remain for PR-S001 and later persistence/storage design.
+
+ADR-018 does not claim detection of a coordinated rollback of the complete encrypted database, the complete encrypted storage, and every local authoritative-state copy. Coordinated full-system rollback detection would require a separately accepted external or monotonic trust anchor and remains a non-decision unless later required. No TPM counter, remote service, online timestamp or other external mechanism is selected; the application remains fully offline.
 
 #### BitLocker position
 
@@ -484,11 +492,21 @@ Scope proposed for PR-S001:
 27. compare independent purpose-derived keys with wrapped per-database/per-object data-encryption keys;
 28. prototype application-level authenticated file encryption and the versioned encrypted object envelope;
 29. verify unique nonce generation, rollback/replay detection and authentication-failure behavior;
-30. verify truncated or partially written encrypted objects fail authentication;
-31. measure startup/read/write overhead;
-32. confirm no key or synthetic plaintext appears in logs;
-33. produce no production storage API;
-34. introduce no real documents or PII.
+30. verify a current encrypted object opens when its independent authoritative record matches;
+31. verify bit modification fails authentication;
+32. verify truncation fails authentication;
+33. verify replacing the current envelope with an older valid envelope fails because the external expected generation/digest does not match;
+34. verify modifying envelope metadata without a valid authentication tag fails;
+35. verify copying an envelope to another artifact ID fails;
+36. verify key-version mismatch fails closed;
+37. verify failure diagnostics contain no artifact content, document identifiers or PII;
+38. define an explicit crash-consistency design for the authoritative database record and encrypted-object publication;
+39. document whether atomicity requires database transaction first, object publication first, staged pending state or recovery reconciliation;
+40. avoid claiming coordinated full-database-plus-storage rollback detection unless an independent external anchor is actually demonstrated;
+41. measure startup/read/write overhead;
+42. confirm no key or synthetic plaintext appears in logs;
+43. produce no production storage API;
+44. introduce no real documents or PII.
 
 Required sequence: GATE-S1 proposal → product-owner review → ADR-018 acceptance → PR-S001 → PR-S001 review and acceptance → PR-005 authorization → PR-006 authorization only after its own task review. PR-005 and PR-006 remain unauthorized in this proposal.
 

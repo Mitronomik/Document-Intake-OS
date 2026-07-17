@@ -325,6 +325,30 @@ def test_gate_s1_encryption_staging_proposal_contract() -> None:
     assert "canonical authenticated metadata schema" in compact_adr
     assert "rollback/replay control" in compact_adr
     assert "partially written objects must fail authentication" in compact_adr
+    assert "does not by itself prove that the object is the latest accepted version" in compact_adr
+    assert "not treated as its own independent rollback anchor" in compact_adr
+    assert (
+        "authoritative expected-state record outside the replaceable encrypted object"
+        in compact_adr
+    )
+    assert "expected object generation or immutable version" in compact_adr
+    assert "key version is not accepted" in compact_adr
+    assert "prior valid envelope while leaving the authoritative record unchanged" in compact_adr
+    assert "does not claim detection of a coordinated rollback" in compact_adr
+    assert "complete encrypted database" in compact_adr
+    assert "complete encrypted storage" in compact_adr
+    assert "external or monotonic trust anchor" in compact_adr
+    assert "No TPM counter, remote service, online timestamp" in compact_adr
+
+    compact_task = _compact(task)
+    assert "Envelope authentication proves integrity and authenticity" in compact_task
+    assert "does not prove freshness or latest-version status" in compact_task
+    assert "not its own rollback anchor" in compact_task
+    assert "authoritative expected state outside the replaceable encrypted object" in compact_task
+    assert "old valid envelope" in compact_task
+    assert "Coordinated rollback of all local state" in compact_task
+    assert "not claimed as solved" in compact_task
+    assert "Exact persistence transaction boundaries" in compact_task
 
     assert "**Decision recommendation:** REJECT" in adr_018
     assert "**Decision recommendation:** REJECT AS SOLE CONTROL" in adr_018
@@ -332,6 +356,19 @@ def test_gate_s1_encryption_staging_proposal_contract() -> None:
     assert "Option C is preferred but not accepted" in adr_018
 
     assert "PR-S001 is proposed, not authorized" in adr_018
+    assert (
+        "current encrypted object opens when its independent authoritative record matches"
+        in adr_018
+    )
+    assert "bit modification fails authentication" in adr_018
+    assert "older valid envelope fails" in adr_018
+    assert "copying an envelope to another artifact ID fails" in adr_018
+    assert "key-version mismatch fails closed" in adr_018
+    assert "crash-consistency design" in adr_018
+    assert "database transaction first" in adr_018
+    assert "object publication first" in adr_018
+    assert "staged pending state" in adr_018
+    assert "recovery reconciliation" in adr_018
     assert "PR-005 and PR-006 remain unauthorized" in adr_018
     assert "PR-007 AND LATER: UNAUTHORIZED" in task
     assert "Gate 1: NOT ACCEPTED" in task
