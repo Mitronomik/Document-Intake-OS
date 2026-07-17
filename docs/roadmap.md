@@ -75,3 +75,8 @@ Gate: offline local acceptance and release decision.
 ## Не делать преждевременно
 
 Cloud, web frontend, microservices, Kubernetes, event broker, vector DB, LLM, browser automation and plugin system.
+
+
+## Current lifecycle after GATE-M0 merge
+
+GATE-M0: COMPLETED. GATE-M0 merge commit: `3dada63ea82163c7c4497e290b303d2cc781b085`. Human acceptance occurred after merge of PR #5. M0: ACCEPTED. M1: ACCEPTED. PR-004: IN REVIEW after implementation submission; PR-004 is authorized and started by this PR, but is not completed before merge and human acceptance. PR-005: UNAUTHORIZED. PR-006: UNAUTHORIZED. PR-007 AND LATER: UNAUTHORIZED. Gate 1 is not accepted. M2 is not completed. Q-010 remains open. The template enforcement PR remains future work and does not block PR-004. The sensitive-data/private-contour gate remains open for real data.

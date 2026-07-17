@@ -60,3 +60,8 @@ PR-005 and PR-006 remain unauthorized until a separate accepted security ADR res
 ## Продолжение
 
 Before each task, read the authoritative sources, check the applicable gate, form a single PR contract and preserve unresolved questions unless an accepted ADR explicitly resolves them. The next safe step is GATE-M0 review, CI, merge and human acceptance; do not start PR-004 until that happens.
+
+
+## PR-004 handoff update
+
+GATE-M0: COMPLETED at merge commit `3dada63ea82163c7c4497e290b303d2cc781b085`; human acceptance occurred after merge of PR #5. M0: ACCEPTED. M1: ACCEPTED. PR-004: IN REVIEW after implementation submission and is authorized/started by this PR, but is not completed before merge and human acceptance. PR-005: UNAUTHORIZED. PR-006: UNAUTHORIZED. PR-007 AND LATER: UNAUTHORIZED. Gate 1 is not accepted, M2 is not completed, Q-010 remains open, the template enforcement PR remains future work and does not block PR-004, and the sensitive-data/private-contour gate remains open for real data.

@@ -57,3 +57,23 @@
 ## Следующий безопасный шаг
 
 Complete review, CI and human acceptance for the GATE-M0 PR. Do not start PR-004 until the GATE-M0 PR is merged and accepted. Do not start PR-005, PR-006 or later tasks until separately authorized.
+
+
+## PR-004 lifecycle update
+
+- GATE-M0: COMPLETED
+- GATE-M0 merge commit: `3dada63ea82163c7c4497e290b303d2cc781b085`
+- Human acceptance occurred after merge of PR #5.
+- M0: ACCEPTED
+- M1: ACCEPTED
+- PR-004: IN REVIEW after implementation submission
+- PR-004 is authorized and started by this PR.
+- PR-004 is not completed before merge and human acceptance.
+- PR-005: UNAUTHORIZED
+- PR-006: UNAUTHORIZED
+- PR-007 AND LATER: UNAUTHORIZED
+- Gate 1 is not accepted.
+- M2 is not completed.
+- Q-010 remains open.
+- The template enforcement PR remains future work and does not block PR-004.
+- SENSITIVE-DATA / PRIVATE-CONTOUR GATE — OPEN for real data.

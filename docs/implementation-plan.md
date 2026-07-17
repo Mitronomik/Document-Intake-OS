@@ -217,3 +217,8 @@ Network block, PII logs, template tampering, formula injection and fault injecti
 ## Оценка
 
 Рабочий Windows MVP: 8–12 недель. Стабильная версия после пилота: 3–5 месяцев. Оценка пересматривается после Gate 1 и Gate 4.
+
+
+## Current authorization state for PR-004
+
+GATE-M0: COMPLETED. GATE-M0 merge commit: `3dada63ea82163c7c4497e290b303d2cc781b085`. Human acceptance occurred after merge of PR #5. M0: ACCEPTED. M1: ACCEPTED. PR-004: IN REVIEW after implementation submission and is authorized/started by this PR. PR-004 is not completed before merge and human acceptance. PR-005: UNAUTHORIZED. PR-006: UNAUTHORIZED. PR-007 AND LATER: UNAUTHORIZED. Gate 1 is not accepted and M2 is not completed. Q-010 remains open. The template enforcement PR remains future work and does not block PR-004. The sensitive-data/private-contour gate remains open for real data.

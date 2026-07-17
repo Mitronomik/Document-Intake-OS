@@ -37,6 +37,7 @@ REQUIRED_DOCUMENTS = (
     "docs/tasks/PR-002-documentation-baseline.md",
     "docs/tasks/PR-003-ci-privacy-guardrails.md",
     "docs/tasks/GATE-M0-requirements-lock.md",
+    "docs/tasks/PR-004-core-domain.md",
 )
 
 CANONICAL_SOURCE_ORDER = (
@@ -205,42 +206,44 @@ def test_readme_and_agents_use_canonical_source_order() -> None:
         )
 
 
-def test_lifecycle_state_records_gate_m0_review_state() -> None:
-    decisions = (REPO_ROOT / "docs/decisions.md").read_text(encoding="utf-8")
+def test_lifecycle_state_records_gate_m0_completion_and_pr004_review_state() -> None:
     progress = (REPO_ROOT / "docs/progress.md").read_text(encoding="utf-8")
     handoff = (REPO_ROOT / "docs/handoff.md").read_text(encoding="utf-8")
     roadmap = (REPO_ROOT / "docs/roadmap.md").read_text(encoding="utf-8")
     implementation_plan = (REPO_ROOT / "docs/implementation-plan.md").read_text(encoding="utf-8")
-    task = (REPO_ROOT / "docs/tasks/GATE-M0-requirements-lock.md").read_text(encoding="utf-8")
-    combined_current = "\n".join([progress, handoff, roadmap, implementation_plan, task])
-    adr_016 = _adr_section(
-        decisions, "## ADR-016 — M0 Gate, Privacy Boundary and PR-004 Authorization"
+    gate_task = (REPO_ROOT / "docs/tasks/GATE-M0-requirements-lock.md").read_text(encoding="utf-8")
+    pr004_task = (REPO_ROOT / "docs/tasks/PR-004-core-domain.md").read_text(encoding="utf-8")
+    combined_current = "\n".join(
+        [progress, handoff, roadmap, implementation_plan, gate_task, pr004_task]
     )
-    adr_017 = _adr_section(decisions, "## ADR-017 — MVP Workstation Topology")
 
-    assert "## ADR-016 — M0 Gate, Privacy Boundary and PR-004 Authorization" in adr_016
-    assert "**Status:** ACCEPTED" in adr_016
-    assert "**Date:** 2026-07-16" in adr_016
-    assert "## ADR-017 — MVP Workstation Topology" in adr_017
-    assert "**Status:** ACCEPTED" in adr_017
-    assert "**Date:** 2026-07-16" in adr_017
-    assert "PR-003 COMPLETED" in progress
-    assert "ad5782045473d3ef5eb0a097cc8f6982bab821c7" in combined_current
-    assert "M1 ACCEPTED" in progress
-    assert "M0 DECISION APPROVED, NOT YET RECORDED IN MAIN" in progress
-    assert "GATE-M0 IN REVIEW" in progress
-    assert "PR-004 BLOCKED UNTIL GATE-M0 PR MERGE AND HUMAN ACCEPTANCE" in progress
-    assert "Authorization is limited to PR-004 — Core Domain" in task
-    assert "PR-005 and PR-006 remain entirely unauthorized" in task
-    assert "PR-005 and PR-006 remain blocked" in roadmap
-    assert "SENSITIVE-DATA / PRIVATE-CONTOUR GATE — OPEN" in progress
-    assert "REPOSITORY PRIVACY BOUNDARY — ACCEPTED FOR NON-SENSITIVE CODE" in progress
-    assert "PR-004 implementation is not started" in progress
-    assert "PR-004 is not started" not in combined_current
-    assert "privacy gate closed" not in combined_current.lower()
-    assert "PR-004 IN PROGRESS" not in combined_current
+    required = (
+        "GATE-M0: COMPLETED",
+        "GATE-M0 merge commit: `3dada63ea82163c7c4497e290b303d2cc781b085`",
+        "Human acceptance occurred after merge of PR #5",
+        "M0: ACCEPTED",
+        "M1: ACCEPTED",
+        "PR-004: IN REVIEW after implementation submission",
+        "PR-004 is authorized and started by this PR",
+        "PR-004 is not completed before merge and human acceptance",
+        "PR-005: UNAUTHORIZED",
+        "PR-006: UNAUTHORIZED",
+        "PR-007 AND LATER: UNAUTHORIZED",
+        "Gate 1 is not accepted",
+        "M2 is not completed",
+        "Q-010 remains open",
+        "template enforcement PR remains future work and does not block PR-004",
+        "sensitive-data/private-contour gate remains open",
+    )
+    for text in required:
+        assert text in combined_current
+
     assert "PR-005: AUTHORIZED" not in combined_current
     assert "PR-006: AUTHORIZED" not in combined_current
+    assert "PR-004: COMPLETED" not in combined_current
+    assert "Gate 1 is accepted" not in combined_current
+    assert "M2 is completed" not in combined_current
+    assert "privacy gate closed" not in combined_current.lower()
 
 
 def test_open_questions_q001_through_q020_remain_present_with_valid_statuses() -> None:

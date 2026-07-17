@@ -52,3 +52,16 @@
 | Terminal-specific staged questions | Q-001–Q-005 | External confirmation required before target adapter/export PRs | documentation baseline test |
 | Local evidence staged questions | Q-012–Q-015 | Real-document and environment evidence remains outside Git, Codex and CI | documentation baseline test |
 | Approved template artifact policy | ADR-016 | Product policy permits approved PII-free terminal templates and derivatives after inspection/enforcement update | documentation baseline test |
+
+
+## PR-004 traceability update
+
+| Gate item | Source | Status | Verification |
+|---|---|---|---|
+| GATE-M0 | GitHub PR #5 | COMPLETED at `3dada63ea82163c7c4497e290b303d2cc781b085`; human acceptance occurred after merge | documentation baseline test |
+| M0 | Product-owner authorization | ACCEPTED | documentation baseline test |
+| M1 | Product-owner authorization | ACCEPTED | documentation baseline test |
+| PR-004 | Current task | IN REVIEW after implementation submission | domain and documentation tests |
+| PR-005 | Q-010 / authorization boundary | UNAUTHORIZED | documentation baseline test |
+| PR-006 | Q-010 / authorization boundary | UNAUTHORIZED | documentation baseline test |
+| PR-007 AND LATER | authorization boundary | UNAUTHORIZED | documentation baseline test |
