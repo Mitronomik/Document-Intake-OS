@@ -2,36 +2,63 @@
 
 Required base SHA: `edc895ffaf26f496bd8f60dbcbb87f3d5cfb09f4`.
 
-Authorization source: GATE-S1 completed and human accepted; ADR-018 accepted; Q-010 accepted.
+Authorization source: GATE-S1 completed and human accepted; ADR-018 accepted; Q-010 accepted. This task contract is subordinate to ADR-018.
 
 PR-S001 is an isolated feasibility spike. PR-S001 does not create production persistence or storage. PR-S001 does not select the final production package automatically. PR-S001 merge does not authorize PR-005 or PR-006. Human acceptance and separate authorization are required.
 
-Goal: produce reproducible evidence for SQLCipher packaging/encryption, DPAPI Current User, key hierarchy alternatives, authenticated encrypted-object envelope behavior, independent rollback anchors, crash consistency, safe diagnostics, licensing and performance.
+## Exact required modules
 
-Candidate matrix: A `sqlcipher3==0.6.2` executable Windows candidate; B official Zetetic Windows package metadata-only/commercial-not-tested; C `pysqlcipher3==1.2.0` legacy metadata control; D custom binding/build route documented only.
+Existing modules: `dpapi_probe.py`, `key_strategy_probe.py`, `sqlcipher_probe.py`, `envelope_probe.py`, `safe_report.py`, `run.py`. Added correction modules: `acl_probe.py`, `crash_consistency_probe.py`, `offline_smoke.py`, `performance_probe.py`. Tests live only under `spikes/windows_encryption/tests/`.
 
-Exact modules: `spikes/windows_encryption/dpapi_probe.py`, `key_strategy_probe.py`, `sqlcipher_probe.py`, `envelope_probe.py`, `safe_report.py`, `run.py`, and their spike tests.
+## Inputs and outputs
 
-Inputs: runtime-generated fictional synthetic bytes and scalar labels only. Outputs: sanitized JSON evidence in CI, GitHub step summary, one short-lived DPAPI-protected blob artifact for cross-runner negative testing, and this research report.
+Inputs are runtime-generated fictional synthetic bytes and scalar labels only. Outputs are sanitized JSON evidence, GitHub step summary lines, one short-lived DPAPI-protected synthetic blob artifact for cross-runner negative testing, and this research report. No key, blob, DB, WAL, journal, ciphertext, wheel, PII, template or binary fixture may be committed.
 
-Synthetic-data policy: no real/anonymized documents, personal data, document images, OCR/MRZ, database files, WAL/journal files, key blobs, ciphertext, wheels or benchmark output are committed.
+## Mandatory checks
 
-Security boundaries: no Local Machine DPAPI, no interactive prompts, no production repository/storage/application interfaces, no production migrations, no UI integration, no telemetry, no external runtime service.
+SQLCipher: installed binding version, SQLCipher version, SQLite version, `cipher_status`, `cipher_integrity_check`, compile options, provider PRAGMAs when exposed, journal mode, temp-store mode, raw-key API assessment, logging status, encrypted DB creation, correct key, wrong key, ordinary SQLite rejection, encrypted header, main/WAL/journal/temp marker scans, bit modification, truncation, HMAC/integrity evidence and cleanup.
 
-Acceptance criteria: isolated under `spikes/`; no `src/` changes; spike dependencies only in `encryption-spike`; Windows spike CI demonstrates or honestly fails SQLCipher, DPAPI, ACL, offline wheelhouse, envelope, rollback, crash model and safe-report checks; PR-005/PR-006 remain unauthorized.
+DPAPI: `use_last_error=True`, explicit `argtypes`/`restype`, input buffer lifetime, exactly one `LocalFree` per Windows output buffer, `flags = CRYPTPROTECT_UI_FORBIDDEN`, proof that Local Machine scope is not used, no prompt/description/UI, stable status codes, in-process verification, subprocess verification, malformed/truncated/modified blob tests, and cross-runner exact `ERR_DPAPI_UNPROTECT_FAILED` semantics.
 
-Tests: documentation baseline tests, repository policy, Ruff, mypy, pytest, build, and dedicated Windows spike tests.
+ACL: temporary directory only, current user SID not reported, broad inherited write access disabled, required principals retained, broad ordinary-user write access rejected, repository ACL never modified, directory deleted, stable status only.
 
-CI: add `windows-encryption-spike` and dependent `windows-dpapi-cross-runner-negative` jobs without changing the existing checks matrix.
+Key hierarchy: PyCA HKDF-SHA-256 purpose-derived keys and purpose-bound wrapped DEKs; purpose/salt variation, invalid label failure, wrong key failure, wrapped-byte tamper failure and no final strategy selection.
 
-Manual verification: review changed file scope, sanitized report, lifecycle wording and absence of generated artifacts.
+Envelope and rollback: `SPIKE ENVELOPE VERSION 0`, magic/version/algorithm/key version/nonce/canonical metadata/ciphertext/tag, InvalidTag-only auth mapping, full tamper matrix, independent expected-state record, and coordinated rollback explicitly undetected.
 
-Evidence report: `docs/research/PR-S001-windows-encryption-feasibility.md`.
+Crash consistency: pending expected state, encrypted temporary object, file flush/fsync, atomic replace, active expected state and restart reconciliation. Simulated failures must resolve only to ACTIVE, SAFE_TO_RETRY or QUARANTINED.
 
-Licensing review: binding license, SQLCipher Community attribution, cryptographic-provider notices, official commercial/enterprise implications, trial restrictions and redistribution approval remain subject to legal/product-owner review.
+Offline smoke: clean `--no-index --find-links` venv imports `sqlcipher3` and `cryptography`, reports SQLCipher version, creates/reopens encrypted DB with correct key, rejects wrong key, rejects ordinary SQLite, performs AES-GCM roundtrip and removes temporary files.
 
-Risks: raw-key API availability, package support, Windows-only behavior, offline installer gap, ACL installer design, final transaction design, full-system rollback non-claim.
+Safe report: exact allowlisted schema, actual UTC timestamp, status enums only, stable reason codes only, no raw exceptions, no absolute paths, no username/hostname/environment, no key/hash/nonce/ciphertext/blob/plaintext/synthetic marker/document identifier.
 
-Non-goals: production persistence/storage, production encryption APIs, backup/recovery, authentication, UI integration, final package/KDF/envelope/crash-design selection, PR-005 authorization, PR-006 authorization.
+## Windows Server versus Windows 11 boundary
 
-Final-report requirements: report branch, base SHA, commit/PR metadata, changed files, candidate matrix, runtime versions where demonstrated, results, blockers, verification, CI status and lifecycle authorization states.
+GitHub Actions provides preliminary Windows x64 evidence on Windows Server. It does not prove Windows 11 compatibility. A sanitized Windows 11 x64 run remains required before product-owner acceptance. No real documents or personal data are needed.
+
+```powershell
+uv sync --locked --dev --group encryption-spike
+
+uv run --group encryption-spike pytest -ra `
+  spikes/windows_encryption/tests
+
+uv run --group encryption-spike python -m spikes.windows_encryption.run `
+  --output "$env:TEMP\pr-s001-windows11-evidence.json"
+
+uv run --group encryption-spike python -m spikes.windows_encryption.run `
+  --validate-report "$env:TEMP\pr-s001-windows11-evidence.json"
+```
+
+Until this run is completed, Windows 11 x64 result: NOT_DEMONSTRATED.
+
+## Acceptance criteria
+
+PR-S001 is ready for review only when CI is green, the standard Ubuntu/Windows jobs pass, the Windows spike job executes fully, the DPAPI cross-runner job passes for the exact expected reason, `uv.lock` is generated by `uv`, Ruff and mypy pass, no hardcoded evidence PASS remains, SQLCipher/WAL/journal/temp/tamper/truncation checks are real or explicitly unsupported, DPAPI subprocess roundtrip passes, ACL executes, envelope and rollback matrices are complete, crash consistency is tested, offline smoke creates and reads an encrypted DB, safe report uses the exact allowlist, Windows Server evidence is distinguished from Windows 11 evidence, no `src/` file changes occur, no production dependency is added, and PR-005/PR-006 remain unauthorized.
+
+## Non-goals
+
+Production persistence/storage, production encryption APIs, migrations, backup/recovery, authentication, UI integration, final package/KDF/envelope/crash-design selection, PR-005 authorization and PR-006 authorization.
+
+## Final-report requirements
+
+Report PR #9, actual branch `codex/-windows`, current GitHub head supplied by GitHub rather than local-only SHA, changed files, candidate matrix, executed evidence statuses, blockers, verification, CI status, Windows 11 limitation and lifecycle authorization states. Do not merge PR #9, accept PR-S001, authorize PR-005 or authorize PR-006.

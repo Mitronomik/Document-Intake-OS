@@ -1,47 +1,62 @@
 from __future__ import annotations
 
-import hashlib
-import hmac
 import os
 from dataclasses import dataclass
+from enum import StrEnum
 
-VALID_PURPOSES = frozenset({"database-key", "file-key-encryption-key", "future-backup-key", "root-kek"})
+
+class KeyPurpose(StrEnum):
+    DATABASE = "database-key"
+    FILE = "file-key-encryption-key"
+    BACKUP = "future-backup-key"
 
 
 @dataclass(frozen=True)
 class WrappedDek:
-    purpose: str
+    purpose: KeyPurpose
     wrapped: bytes
 
 
-def derive_purpose_key(root_key: bytes, salt: bytes, purpose: str, length: int = 32) -> bytes:
-    if purpose not in VALID_PURPOSES:
+def _hkdf(root_key: bytes, salt: bytes, label: str) -> bytes:
+    if len(root_key) != 32:
+        raise ValueError("ERR_INVALID_ROOT_KEY")
+    try:
+        from cryptography.hazmat.primitives import hashes
+        from cryptography.hazmat.primitives.kdf.hkdf import HKDF
+    except ImportError as exc:  # pragma: no cover
+        raise RuntimeError("ERR_CRYPTOGRAPHY_UNAVAILABLE") from exc
+    return HKDF(
+        algorithm=hashes.SHA256(),
+        length=32,
+        salt=salt,
+        info=("pr-s001:" + label).encode("ascii"),
+    ).derive(root_key)
+
+
+def derive_purpose_key(root_key: bytes, salt: bytes, purpose: KeyPurpose) -> bytes:
+    if not isinstance(purpose, KeyPurpose):
         raise ValueError("ERR_INVALID_PURPOSE")
-    if len(root_key) < 32:
-        raise ValueError("ERR_WEAK_INPUT_KEY_MATERIAL")
-    prk = hmac.new(salt, root_key, hashlib.sha256).digest()
-    info = b"pr-s001:" + purpose.encode("ascii")
-    okm = b""
-    prev = b""
-    counter = 1
-    while len(okm) < length:
-        prev = hmac.new(prk, prev + info + bytes([counter]), hashlib.sha256).digest()
-        okm += prev
-        counter += 1
-    return okm[:length]
+    return _hkdf(root_key, salt, purpose.value)
 
 
 def generate_dek() -> bytes:
     return os.urandom(32)
 
 
-def wrap_dek(root_key: bytes, salt: bytes, dek: bytes, purpose: str) -> WrappedDek:
+def derive_kek(root_key: bytes, salt: bytes, purpose: KeyPurpose) -> bytes:
+    if not isinstance(purpose, KeyPurpose):
+        raise ValueError("ERR_INVALID_PURPOSE")
+    return _hkdf(root_key, salt, "wrapped-dek:" + purpose.value)
+
+
+def wrap_dek(root_key: bytes, salt: bytes, dek: bytes, purpose: KeyPurpose) -> WrappedDek:
     try:
         from cryptography.hazmat.primitives.keywrap import aes_key_wrap_with_padding
-    except ImportError as exc:  # pragma: no cover - dependency is Windows spike-only
+    except ImportError as exc:  # pragma: no cover
         raise RuntimeError("ERR_CRYPTOGRAPHY_UNAVAILABLE") from exc
-    kek = derive_purpose_key(root_key, salt, "root-kek")
-    return WrappedDek(purpose=purpose, wrapped=aes_key_wrap_with_padding(kek, dek))
+    return WrappedDek(
+        purpose=purpose, wrapped=aes_key_wrap_with_padding(derive_kek(root_key, salt, purpose), dek)
+    )
 
 
 def unwrap_dek(root_key: bytes, salt: bytes, wrapped: WrappedDek) -> bytes:
@@ -49,8 +64,9 @@ def unwrap_dek(root_key: bytes, salt: bytes, wrapped: WrappedDek) -> bytes:
         from cryptography.hazmat.primitives.keywrap import aes_key_unwrap_with_padding
     except ImportError as exc:  # pragma: no cover
         raise RuntimeError("ERR_CRYPTOGRAPHY_UNAVAILABLE") from exc
-    kek = derive_purpose_key(root_key, salt, "root-kek")
     try:
-        return aes_key_unwrap_with_padding(kek, wrapped.wrapped)
-    except Exception as exc:  # noqa: BLE001
+        return aes_key_unwrap_with_padding(
+            derive_kek(root_key, salt, wrapped.purpose), wrapped.wrapped
+        )
+    except ValueError as exc:
         raise ValueError("ERR_DEK_UNWRAP_FAILED") from exc

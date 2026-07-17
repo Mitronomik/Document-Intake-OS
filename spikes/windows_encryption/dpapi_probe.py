@@ -5,14 +5,20 @@ import hashlib
 import os
 import platform
 import struct
+import subprocess
+import sys
+import tempfile
 from ctypes import wintypes
 from dataclasses import dataclass
 from pathlib import Path
 
 MAGIC = b"PR-S001-DPAPI\0\0\0"
 VERSION = 1
+KEY_LENGTH = 32
+CHECKSUM_LENGTH = 32
 CRYPTPROTECT_UI_FORBIDDEN = 0x1
 CRYPTPROTECT_LOCAL_MACHINE = 0x4
+DPAPI_FLAGS = CRYPTPROTECT_UI_FORBIDDEN
 
 
 @dataclass(frozen=True)
@@ -25,56 +31,120 @@ class DATA_BLOB(ctypes.Structure):
     _fields_ = [("cbData", wintypes.DWORD), ("pbData", ctypes.POINTER(ctypes.c_ubyte))]
 
 
+@dataclass(frozen=True)
+class _InputBlob:
+    blob: DATA_BLOB
+    buffer: ctypes.Array[ctypes.c_char]
+
+
+def local_machine_scope_disabled() -> bool:
+    return DPAPI_FLAGS & CRYPTPROTECT_LOCAL_MACHINE == 0
+
+
 def build_wrapped_payload(key: bytes) -> bytes:
-    if len(key) != 32:
+    if len(key) != KEY_LENGTH:
         raise ValueError("ERR_INVALID_SYNTHETIC_KEY_LENGTH")
     body = MAGIC + struct.pack(">II", VERSION, len(key)) + key
     return body + hashlib.sha256(body).digest()
 
 
 def parse_wrapped_payload(payload: bytes) -> bytes:
-    min_len = len(MAGIC) + 8 + 32
-    if len(payload) != min_len + 32:
+    expected = len(MAGIC) + 8 + KEY_LENGTH + CHECKSUM_LENGTH
+    if len(payload) != expected:
         raise ValueError("ERR_DPAPI_WRAPPER_INVALID")
-    body, checksum = payload[:-32], payload[-32:]
+    body = payload[:-CHECKSUM_LENGTH]
+    checksum = payload[-CHECKSUM_LENGTH:]
     if hashlib.sha256(body).digest() != checksum:
         raise ValueError("ERR_DPAPI_WRAPPER_CHECKSUM")
     magic = body[: len(MAGIC)]
     version, length = struct.unpack(">II", body[len(MAGIC) : len(MAGIC) + 8])
-    if magic != MAGIC or version != VERSION or length != 32:
+    if magic != MAGIC or version != VERSION or length != KEY_LENGTH:
         raise ValueError("ERR_DPAPI_WRAPPER_INVALID")
     return body[len(MAGIC) + 8 :]
 
 
-def _blob(data: bytes) -> DATA_BLOB:
+def _make_input_blob(data: bytes) -> _InputBlob:
     buffer = ctypes.create_string_buffer(data)
-    return DATA_BLOB(len(data), ctypes.cast(buffer, ctypes.POINTER(ctypes.c_ubyte)))
+    blob = DATA_BLOB(len(data), ctypes.cast(buffer, ctypes.POINTER(ctypes.c_ubyte)))
+    return _InputBlob(blob=blob, buffer=buffer)
+
+
+def _load_windows_functions() -> tuple[object, object, object]:
+    crypt32 = ctypes.WinDLL("crypt32", use_last_error=True)
+    kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+    protect = crypt32.CryptProtectData
+    protect.argtypes = [
+        ctypes.POINTER(DATA_BLOB),
+        wintypes.LPCWSTR,
+        ctypes.POINTER(DATA_BLOB),
+        wintypes.LPVOID,
+        wintypes.LPVOID,
+        wintypes.DWORD,
+        ctypes.POINTER(DATA_BLOB),
+    ]
+    protect.restype = wintypes.BOOL
+    unprotect = crypt32.CryptUnprotectData
+    unprotect.argtypes = [
+        ctypes.POINTER(DATA_BLOB),
+        ctypes.POINTER(wintypes.LPWSTR),
+        ctypes.POINTER(DATA_BLOB),
+        wintypes.LPVOID,
+        wintypes.LPVOID,
+        wintypes.DWORD,
+        ctypes.POINTER(DATA_BLOB),
+    ]
+    unprotect.restype = wintypes.BOOL
+    local_free = kernel32.LocalFree
+    local_free.argtypes = [wintypes.HLOCAL]
+    local_free.restype = wintypes.HLOCAL
+    return protect, unprotect, local_free
 
 
 def protect_current_user(key: bytes) -> DpapiResult:
     if platform.system() != "Windows":
         return DpapiResult("UNSUPPORTED_NON_WINDOWS")
+    if not local_machine_scope_disabled():
+        return DpapiResult("ERR_LOCAL_MACHINE_SCOPE")
     payload = build_wrapped_payload(key)
-    in_blob = _blob(payload)
+    input_blob = _make_input_blob(payload)
     out_blob = DATA_BLOB()
-    if CRYPTPROTECT_LOCAL_MACHINE & CRYPTPROTECT_UI_FORBIDDEN == CRYPTPROTECT_LOCAL_MACHINE:
-        raise AssertionError("ERR_LOCAL_MACHINE_SCOPE")
-    ok = ctypes.windll.crypt32.CryptProtectData(ctypes.byref(in_blob), None, None, None, None, CRYPTPROTECT_UI_FORBIDDEN, ctypes.byref(out_blob))
+    protect, _, local_free = _load_windows_functions()
+    ok = protect(
+        ctypes.byref(input_blob.blob),
+        None,
+        None,
+        None,
+        None,
+        DPAPI_FLAGS,
+        ctypes.byref(out_blob),
+    )
+    _ = input_blob.buffer
     if not ok:
         return DpapiResult("ERR_DPAPI_PROTECT_FAILED")
     try:
-        data = ctypes.string_at(out_blob.pbData, out_blob.cbData)
-        return DpapiResult("PASS", data)
+        return DpapiResult("PASS", ctypes.string_at(out_blob.pbData, out_blob.cbData))
     finally:
-        ctypes.windll.kernel32.LocalFree(out_blob.pbData)
+        local_free(ctypes.cast(out_blob.pbData, wintypes.HLOCAL))
 
 
 def unprotect_current_user(protected_blob: bytes) -> DpapiResult:
     if platform.system() != "Windows":
         return DpapiResult("UNSUPPORTED_NON_WINDOWS")
-    in_blob = _blob(protected_blob)
+    if not protected_blob:
+        return DpapiResult("ERR_DPAPI_ARTIFACT_INVALID")
+    input_blob = _make_input_blob(protected_blob)
     out_blob = DATA_BLOB()
-    ok = ctypes.windll.crypt32.CryptUnprotectData(ctypes.byref(in_blob), None, None, None, None, CRYPTPROTECT_UI_FORBIDDEN, ctypes.byref(out_blob))
+    _, unprotect, local_free = _load_windows_functions()
+    ok = unprotect(
+        ctypes.byref(input_blob.blob),
+        None,
+        None,
+        None,
+        None,
+        DPAPI_FLAGS,
+        ctypes.byref(out_blob),
+    )
+    _ = input_blob.buffer
     if not ok:
         return DpapiResult("ERR_DPAPI_UNPROTECT_FAILED")
     try:
@@ -83,12 +153,41 @@ def unprotect_current_user(protected_blob: bytes) -> DpapiResult:
     except ValueError:
         return DpapiResult("ERR_DPAPI_WRAPPER_INVALID")
     finally:
-        ctypes.windll.kernel32.LocalFree(out_blob.pbData)
+        local_free(ctypes.cast(out_blob.pbData, wintypes.HLOCAL))
 
 
-def write_cross_runner_blob(output: Path) -> str:
-    result = protect_current_user(os.urandom(32))
-    if result.status != "PASS":
-        return result.status
-    output.write_bytes(result.data)
+def verify_same_runner_blob(protected_blob: bytes, expected_key: bytes) -> str:
+    current = unprotect_current_user(protected_blob)
+    if current.status != "PASS" or current.data != expected_key:
+        return "ERR_DPAPI_CURRENT_PROCESS_VERIFY_FAILED"
+    with tempfile.TemporaryDirectory() as tmp_name:
+        blob_path = Path(tmp_name) / "protected.blob"
+        blob_path.write_bytes(protected_blob)
+        code = (
+            "from pathlib import Path;"
+            "from spikes.windows_encryption.dpapi_probe import unprotect_current_user;"
+            "r=unprotect_current_user(Path(r'" + str(blob_path) + "').read_bytes());"
+            "print(r.status);"
+            "raise SystemExit(0 if r.status=='PASS' else 1)"
+        )
+        completed = subprocess.run(
+            [sys.executable, "-c", code],
+            check=False,
+            capture_output=True,
+            text=True,
+        )
+    if completed.returncode != 0 or completed.stdout.strip() != "PASS":
+        return "ERR_DPAPI_SUBPROCESS_VERIFY_FAILED"
+    return "PASS"
+
+
+def create_validated_cross_runner_blob(output: Path) -> str:
+    key = os.urandom(KEY_LENGTH)
+    protected = protect_current_user(key)
+    if protected.status != "PASS":
+        return protected.status
+    verify_status = verify_same_runner_blob(protected.data, key)
+    if verify_status != "PASS":
+        return verify_status
+    output.write_bytes(protected.data)
     return "PASS"

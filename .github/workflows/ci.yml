@@ -98,12 +98,12 @@ jobs:
         run: |
           python -m venv "$env:RUNNER_TEMP\pr-s001-offline-venv"
           & "$env:RUNNER_TEMP\pr-s001-offline-venv\Scripts\python.exe" -m pip install --no-index --find-links "$env:RUNNER_TEMP\pr-s001-wheelhouse" sqlcipher3==0.6.2 cryptography==49.0.0
-          & "$env:RUNNER_TEMP\pr-s001-offline-venv\Scripts\python.exe" -c "import sqlcipher3; import cryptography; from cryptography.hazmat.primitives.ciphers.aead import AESGCM; print('OFFLINE_SMOKE_PASS')"
+          & "$env:RUNNER_TEMP\pr-s001-offline-venv\Scripts\python.exe" -m spikes.windows_encryption.offline_smoke
       - name: Append sanitized summary
         shell: pwsh
         run: |
           "PR-S001 sanitized Windows evidence generated. No general evidence JSON is uploaded by this workflow." >> $env:GITHUB_STEP_SUMMARY
-      - name: Create DPAPI protected synthetic blob
+      - name: Create and same-runner validate DPAPI protected synthetic blob
         run: uv run --group encryption-spike python -m spikes.windows_encryption.run --write-dpapi-blob "$env:RUNNER_TEMP\pr-s001-dpapi-protected.blob"
       - name: Upload DPAPI protected synthetic blob
         uses: actions/upload-artifact@v7
