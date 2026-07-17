@@ -377,6 +377,18 @@ authorize shared multi-workstation data.
 
 This ADR is a proposal for review only. It does not accept ADR-018, does not resolve Q-010, does not authorize PR-S001, PR-005, PR-006, PR-007 or later work, and does not implement encryption, database, storage or backup code.
 
+### Threat model and protection boundary
+
+The proposal is intended to protect data at rest against offline theft or copying of the workstation disk, access by another Windows user, copying the database or storage without the required Windows profile, accidental disclosure of individual encrypted files or later encrypted backups, and tampering detectable by authenticated encryption or database integrity checks.
+
+The proposal does not fully protect against malicious code running under the same Windows user credentials, a compromised or malicious Windows administrator, an already unlocked operator session, process-memory inspection, screen capture or operator-authorized plaintext access, or compromised application binaries. DPAPI Current User allows applications running under the same Windows credentials to request unprotection. DPAPI is not claimed to provide application-to-application isolation.
+
+### Key hierarchy and purpose separation
+
+The DPAPI-protected root/master key must not be used directly as the database encryption key, a file AEAD key, or a backup recovery key. Database, file-storage and future backup purposes require independent key material, and purpose/domain separation is mandatory. A compromise of one purpose key must not automatically expose other purpose keys. Key and envelope formats must be versioned. Exact derivation or wrapping mechanics are selected only after PR-S001 evidence, and GATE-S1 does not select the final KDF, provider or Python package.
+
+PR-S001 must compare independent purpose-derived keys with wrapped per-database and per-object data-encryption keys. No key may be derived from predictable identifiers alone. Python code must not claim guaranteed secure zeroization of immutable byte or string objects. Implementations must minimize key copies and key lifetime in memory.
+
 ### Recommended proposal for review
 
 #### Encryption-first invariant
@@ -393,11 +405,17 @@ For the first MVP local key wrapper, the proposal uses Windows DPAPI with curren
 
 #### Database encryption
 
-SQLite remains the logical persistence engine for the single-workstation MVP. Every production-capable database file must use full-database authenticated encryption through SQLCipher or a separately validated equivalent. No plaintext SQLite database may be migrated into production use without an explicit encrypted migration procedure. Wrong-key access must fail. Tampered or corrupt encrypted databases must not be treated as valid. Database keys must come from protected application key material and must not appear in SQL logs, exception messages or diagnostics. This ADR does not choose a final Python binding, package version or SQLCipher edition, and requires a separate Windows x64 feasibility and packaging spike before PR-005 authorization.
+SQLite remains the logical persistence engine for the single-workstation MVP. Every production-capable database file must use full-database encryption with integrity authentication through SQLCipher or a separately validated equivalent. No plaintext SQLite database may be migrated into production use without an explicit encrypted migration procedure. Wrong-key access must fail. Tampered or corrupt encrypted databases must not be treated as valid. Database keys must come from protected application key material and must not appear in SQL logs, exception messages or diagnostics. This ADR does not choose a final Python binding, package version or SQLCipher edition, and requires a separate Windows x64 feasibility and packaging spike before PR-005 authorization.
 
 #### File encryption
 
 Originals and derived artifacts use application-level authenticated encryption, such as AES-256-GCM or an equivalently reviewed construction. Every encrypted object has a unique nonce, and nonce reuse under the same key is prohibited. Authenticated metadata includes at least storage format version, entity/artifact identifier, artifact kind, and plaintext length or another integrity-bound size field. Encrypted object names and directories must not expose personal data. Ciphertext replacement under an existing immutable artifact ID is prohibited. Decrypted bytes must reproduce the original bytes exactly. Authentication failure blocks reading. There is no silent plaintext fallback and no PII in encryption errors or logs. This proposal does not implement encryption and does not add a cryptography dependency.
+
+#### Encrypted object envelope
+
+File storage must use a versioned encrypted object envelope defining at least format magic/version, algorithm identifier, key version or key identifier, nonce/IV, ciphertext, authentication tag, and a canonical authenticated metadata schema. Authenticated metadata must bind at least artifact ID, artifact kind, plaintext length, storage format version, and expected content checksum or another accepted rollback/replay control.
+
+Nonce reuse under one key is prohibited. Truncated or partially written objects must fail authentication. Object writes use encrypted temporary output and atomic replacement. Plaintext temporary files remain forbidden by default. Replacing one valid historical ciphertext with another valid ciphertext for the same immutable artifact must be detectable. Authentication errors contain no PII. Exact algorithm, package and chunking format remain for PR-S001 evidence.
 
 #### BitLocker position
 
@@ -440,18 +458,37 @@ Scope proposed for PR-S001:
 1. use only fully fictional synthetic data;
 2. run on Windows 11 x64;
 3. verify Python 3.12 compatibility;
-4. compare supported SQLCipher/equivalent packaging options;
-5. document license and attribution obligations;
-6. verify offline installation and bundling;
-7. prove an encrypted database cannot be read as ordinary SQLite;
-8. test correct-key, wrong-key, tamper and corruption behavior;
-9. prototype DPAPI current-user wrapping with non-production synthetic key material;
-10. prototype application-level authenticated file encryption;
-11. verify unique nonce generation and authentication-failure behavior;
-12. measure startup/read/write overhead;
-13. confirm no key or synthetic plaintext appears in logs;
-14. produce no production storage API;
-15. introduce no real documents or PII.
+4. compare supported SQLCipher/equivalent packaging options while keeping the final binding, edition and package version undecided;
+5. test offline Windows 11 x64 packaging;
+6. document license and attribution obligations;
+7. verify SQLCipher encryption is active for every production connection;
+8. treat an inactive encryption status as fail-closed;
+9. verify HMAC/integrity authentication remains enabled;
+10. verify the database cannot be opened through ordinary SQLite;
+11. verify wrong-key behavior;
+12. verify tamper and corruption behavior;
+13. verify WAL and rollback-journal page content is encrypted;
+14. ensure file-based SQLite temporary stores cannot contain plaintext;
+15. verify required build/runtime temporary-store configuration;
+16. disable or strictly constrain SQLCipher internal logging;
+17. prove key material does not enter SQL logs, exceptions or diagnostics;
+18. compare raw-key APIs or binding-safe keying mechanisms against SQL-string key injection;
+19. verify that no security feature is silently disabled for performance;
+20. prototype DPAPI current-user wrapping with non-production synthetic key material;
+21. use Current User scope, not Local Machine scope by default;
+22. use the non-interactive DPAPI path and do not rely on prompt-based DPAPI behavior;
+23. validate same-user/same-machine behavior and failure after Windows-profile/key loss;
+24. apply restrictive Windows ACLs to the protected key blob and application data directories;
+25. confirm no DPAPI description, error or diagnostic contains key material or PII;
+26. record that the protected blob alone is not a portable recovery mechanism;
+27. compare independent purpose-derived keys with wrapped per-database/per-object data-encryption keys;
+28. prototype application-level authenticated file encryption and the versioned encrypted object envelope;
+29. verify unique nonce generation, rollback/replay detection and authentication-failure behavior;
+30. verify truncated or partially written encrypted objects fail authentication;
+31. measure startup/read/write overhead;
+32. confirm no key or synthetic plaintext appears in logs;
+33. produce no production storage API;
+34. introduce no real documents or PII.
 
 Required sequence: GATE-S1 proposal → product-owner review → ADR-018 acceptance → PR-S001 → PR-S001 review and acceptance → PR-005 authorization → PR-006 authorization only after its own task review. PR-005 and PR-006 remain unauthorized in this proposal.
 

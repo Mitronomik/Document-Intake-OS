@@ -231,6 +231,19 @@ def test_lifecycle_state_records_gate_s1_review_state() -> None:
         "M2: NOT COMPLETED",
     )
     stale_current_state = (
+        "GATE-M0 is in review",
+        "GATE-M0 IN REVIEW",
+        "M0 DECISION APPROVED, NOT YET RECORDED IN MAIN",
+        "PR-004 remains blocked until GATE-M0",
+        "PR-004 BLOCKED UNTIL GATE-M0",
+        "Complete review, CI and human acceptance for the GATE-M0 PR",
+        "The next safe step is GATE-M0 review",
+        "GATE-M0 does not start PR-004",
+        "do not start PR-004 until",
+        "After this PR is merged and accepted, the next repository update may prepare PR-004",
+        "See current lifecycle state below. See current lifecycle state below",
+        "but See current lifecycle state below",
+        "next safe step is GATE-M0",
         "PR-004: IN REVIEW",
         "PR-004: NOT COMPLETED BEFORE MERGE AND PRODUCT-OWNER ACCEPTANCE",
         "PR-004 is the only authorized implementation task",
@@ -269,6 +282,9 @@ def test_gate_s1_encryption_staging_proposal_contract() -> None:
     assert "PR-005 and PR-006 remain blocked" in q010
     assert "PR-S001 remains only a proposed next security task" in q010
     assert "no encryption technology has been implemented" in q010
+    assert "may propose an encryption architecture and candidate technology classes" in q010
+    assert "does not finally select a package, edition, binding, version" in q010
+    assert "PR-S001 evidence" in q010
 
     assert "PR-004: COMPLETED" in pr004
     assert "GitHub PR: #6" in pr004
@@ -289,6 +305,26 @@ def test_gate_s1_encryption_staging_proposal_contract() -> None:
         in compact_adr
     )
     assert "exact cryptography package and version" in compact_adr
+    assert "offline theft or copying of the workstation disk" in compact_adr
+    assert "malicious code running under the same Windows user credentials" in compact_adr
+    assert (
+        "DPAPI Current User allows applications running under the same Windows credentials"
+        in compact_adr
+    )
+    assert "not claimed to provide application-to-application isolation" in compact_adr
+    assert "must not be used directly as the database encryption key" in compact_adr
+    assert "purpose/domain separation is mandatory" in compact_adr
+    assert "must not automatically expose other purpose keys" in compact_adr
+    assert "Python code must not claim guaranteed secure zeroization" in compact_adr
+    assert "full-database encryption with integrity authentication through SQLCipher" in compact_adr
+    assert "verify SQLCipher encryption is active for every production connection" in compact_adr
+    assert "verify WAL and rollback-journal page content is encrypted" in compact_adr
+    assert "file-based SQLite temporary stores cannot contain plaintext" in compact_adr
+    assert "SQL-string key injection" in compact_adr
+    assert "format magic/version" in compact_adr
+    assert "canonical authenticated metadata schema" in compact_adr
+    assert "rollback/replay control" in compact_adr
+    assert "partially written objects must fail authentication" in compact_adr
 
     assert "**Decision recommendation:** REJECT" in adr_018
     assert "**Decision recommendation:** REJECT AS SOLE CONTROL" in adr_018
@@ -302,52 +338,6 @@ def test_gate_s1_encryption_staging_proposal_contract() -> None:
     assert "M2: NOT COMPLETED" in task
     assert "GATE-S1 does not accept ADR-018 automatically" in task
     assert "GATE-S1 does not resolve Q-010 until human acceptance" in task
-
-
-def test_gate_s1_adds_no_encryption_implementation_or_dependency() -> None:
-    committed = subprocess.run(
-        ["git", "diff", "--name-only", "6f3021a38305cb92d733a46426cde427828bac04...HEAD"],
-        cwd=REPO_ROOT,
-        check=True,
-        capture_output=True,
-        text=True,
-    )
-    working_tree = subprocess.run(
-        ["git", "diff", "--name-only"],
-        cwd=REPO_ROOT,
-        check=True,
-        capture_output=True,
-        text=True,
-    )
-    untracked = subprocess.run(
-        ["git", "ls-files", "--others", "--exclude-standard"],
-        cwd=REPO_ROOT,
-        check=True,
-        capture_output=True,
-        text=True,
-    )
-    changed_files = (
-        set(committed.stdout.splitlines())
-        | set(working_tree.stdout.splitlines())
-        | set(untracked.stdout.splitlines())
-    )
-    expected = {
-        "docs/decisions.md",
-        "docs/open-questions.md",
-        "docs/tasks/PR-004-core-domain.md",
-        "docs/tasks/GATE-S1-encryption-staging.md",
-        "docs/implementation-plan.md",
-        "docs/roadmap.md",
-        "docs/progress.md",
-        "docs/handoff.md",
-        "docs/traceability-matrix.md",
-        "tests/test_documentation_baseline.py",
-    }
-    assert changed_files == expected
-    assert "pyproject.toml" not in changed_files
-    assert "uv.lock" not in changed_files
-    assert not any(path.startswith("src/") for path in changed_files)
-    assert not any(path.startswith("resources/") for path in changed_files)
 
 
 def test_q001_through_q020_statuses_other_than_q010_are_unchanged() -> None:

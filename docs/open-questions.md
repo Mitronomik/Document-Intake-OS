@@ -122,7 +122,7 @@ Statuses: `OPEN`, `ACCEPTED`, `DEFERRED`, `EXTERNAL_CONFIRMATION_REQUIRED`, `LOC
 **Target:** Before PR-005; blocks PR-005 and PR-006 authorization.
 **Current gate impact:** Does not block completed PR-004. ADR-018 is PROPOSED and Q-010 is not accepted yet. PR-005 and PR-006 remain blocked, product-owner acceptance is required, PR-S001 remains only a proposed next security task, and no encryption technology has been implemented.
 **Open conflict:** The technical specification requires encrypted database and filesystem storage, while persistence/storage are planned before PR-030 encryption.
-**Placeholder rule:** Do not select encryption technology in GATE-M0, PR-004 or GATE-S1.
+**Placeholder rule:** GATE-S1 may propose an encryption architecture and candidate technology classes, but does not finally select a package, edition, binding, version or production implementation. Final selection remains blocked until product-owner acceptance and PR-S001 evidence.
 
 ### Q-011
 

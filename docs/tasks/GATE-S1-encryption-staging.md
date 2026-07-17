@@ -36,7 +36,23 @@ The technical specification requires encrypted database and filesystem storage, 
 
 ## Exact proposal
 
-Propose ADR-018 with an encryption-first invariant: no production-capable database or document storage may write personal data to disk in plaintext, and no startup may continue after key-protection failure. Propose a locally generated application master key protected by a versioned DPAPI current-user key blob, encrypted SQLite through SQLCipher or a validated equivalent, application-level authenticated file encryption, BitLocker as defense in depth, strict temporary-plaintext boundaries, and a future backup/recovery wrapper separate from the DPAPI blob.
+Propose ADR-018 with an encryption-first invariant: no production-capable database or document storage may write personal data to disk in plaintext, and no startup may continue after key-protection failure. Propose an explicit threat model, a locally generated application root/master key protected by a versioned DPAPI current-user key blob, mandatory key hierarchy and purpose separation, full-database encryption with integrity authentication through SQLCipher or a validated equivalent, application-level authenticated file encryption with a versioned encrypted object envelope, BitLocker as defense in depth, strict temporary-plaintext boundaries, and a future backup/recovery wrapper separate from the DPAPI blob.
+
+## Threat model and protection boundary
+
+The proposal protects data at rest against offline disk theft/copying, another Windows user, copying protected data without the required Windows profile, accidental disclosure of encrypted files or later encrypted backups, and tampering detectable by authenticated encryption or database integrity checks. It does not fully protect against malicious code under the same Windows credentials, a malicious administrator, an already unlocked operator session, process-memory inspection, screen capture or operator-authorized plaintext access, or compromised application binaries. DPAPI Current User does not provide application-to-application isolation.
+
+## Key hierarchy and purpose separation
+
+The DPAPI-protected root/master key is not directly a database key, file AEAD key or backup recovery key. Database, file-storage and future backup purposes require independent key material, purpose/domain separation, versioned key and envelope formats, no derivation from predictable identifiers alone, no claim of guaranteed Python zeroization for immutable bytes/strings, and minimized key copies/lifetimes. PR-S001 must compare purpose-derived keys with wrapped per-database/per-object data-encryption keys.
+
+## SQLCipher hardening requirements
+
+PR-S001 must verify active encryption for every production connection, fail closed when encryption is inactive, keep HMAC/integrity authentication enabled, prove ordinary SQLite cannot open the database, test wrong-key/tamper/corruption behavior, verify WAL and rollback-journal pages are encrypted, prevent plaintext file-based SQLite temporary stores, constrain SQLCipher logging, keep keys out of logs/exceptions/diagnostics, compare binding-safe keying against SQL-string key injection, test offline Windows packaging, document licensing, and verify no security feature is silently disabled for performance.
+
+## Encrypted object envelope
+
+File encryption requires a versioned envelope containing format magic/version, algorithm identifier, key version or key identifier, nonce/IV, ciphertext, authentication tag and canonical authenticated metadata. Metadata binds artifact ID, artifact kind, plaintext length, storage format version, and expected content checksum or another accepted rollback/replay control. Nonce reuse is prohibited, partial writes fail authentication, writes use encrypted temporary output and atomic replacement, plaintext temporary files are forbidden by default, historical ciphertext replacement for the same immutable artifact is detectable, and errors contain no PII.
 
 ## Compared options
 
@@ -102,15 +118,17 @@ PR-S001 is proposed as a Windows encryption feasibility and packaging spike. PR-
 
 ## Documentation tests
 
-`tests/test_documentation_baseline.py` must prove the PR-004 closure, ADR-018 proposal status, Q-010 status, PR-S001 proposed-but-unauthorized state, PR-005/PR-006/PR-007 authorization boundaries, Gate 1 and M2 status, option recommendations, encryption-first invariant, no silent fallback, raw-key storage prohibition, backup boundary, non-decisions, absence of encryption implementation and absence of stale PR-004 in-review lifecycle state.
+`tests/test_documentation_baseline.py` must prove the PR-004 closure, ADR-018 proposal status, Q-010 status, PR-S001 proposed-but-unauthorized state, PR-005/PR-006/PR-007 authorization boundaries, Gate 1 and M2 status, option recommendations, encryption-first invariant, no silent fallback, raw-key storage prohibition, threat-model boundary, key hierarchy and purpose separation, SQLCipher hardening requirements, encrypted object envelope requirements, backup boundary, non-decisions and absence of stale lifecycle state. Permanent pytest tests must not depend on fixed historical Git diff ranges.
 
 ## Manual review checklist
 
+- Run the PR review/manual verification command `git diff --name-only 6f3021a38305cb92d733a46426cde427828bac04...HEAD` outside pytest to confirm GATE-S1 correction file scope.
 - Confirm ADR-018 remains PROPOSED.
 - Confirm Q-010 remains OPEN.
 - Confirm PR-S001, PR-005, PR-006, PR-007 and later work remain unauthorized.
 - Confirm no dependency or runtime implementation was added.
 - Confirm no real documents, PII, templates or binary fixtures were added.
+- Confirm fixed-base Git diff checks remain manual PR review checks only and are not permanent pytest invariants.
 
 ## Prohibited implementation
 
