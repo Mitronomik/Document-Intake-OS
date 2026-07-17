@@ -6,7 +6,7 @@ Result: requirements package, open-question status model, accepted decisions and
 
 Gate: MVP scope is confirmed, real documents are excluded from the cloud/public development contour, the repository privacy boundary is accepted for non-sensitive code, terminal-specific blockers are either externally confirmed or staged to downstream gates under ADR-016, and no placeholder terminal values are invented.
 
-See current lifecycle state below. ADR-016 records the approved M0 decision for this PR, but See current lifecycle state below.
+GATE-M0 is completed and human accepted. PR-004 Core Domain is the only authorized implementation task and is currently in review.
 
 ## M1 — Safe repository
 
@@ -22,7 +22,7 @@ PR-004–007.
 
 Result: domain, SQLite, immutable storage and audit.
 
-PR-004 — Core Domain is the only implementation task authorized by the approved M0 decision, and only after the GATE-M0 PR is merged and human acceptance confirms the decision in `main`. PR-005, PR-006, PR-007 and every later implementation task remain unauthorized. PR-005 and PR-006 remain blocked until a separate accepted security ADR resolves Q-010 encryption staging.
+PR-004 — Core Domain is the only implementation task authorized by the accepted M0 decision and is currently in review. PR-005, PR-006, PR-007 and every later implementation task remain unauthorized. PR-005 and PR-006 remain blocked until a separate accepted security ADR resolves Q-010 encryption staging.
 
 ## M3 — Manual image workflow
 

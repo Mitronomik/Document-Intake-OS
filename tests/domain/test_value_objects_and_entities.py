@@ -1,7 +1,10 @@
 from __future__ import annotations
 
+from collections.abc import Iterator, Mapping
 from datetime import UTC, datetime
 from decimal import Decimal
+from types import MappingProxyType
+from typing import Any
 from uuid import UUID
 
 import pytest
@@ -25,6 +28,8 @@ from document_intake.domain import (
     IdentityDocument,
     InvalidValueError,
     NonEmptyText,
+    OwnerKind,
+    OwnerRef,
     ParticipantAssignment,
     Person,
     SnapshotPayload,
@@ -36,6 +41,20 @@ from document_intake.domain import (
     VerificationStatus,
     VerifiedField,
 )
+
+
+class ReadOnlyMapping(Mapping[str, Any]):
+    def __init__(self, data: dict[str, Any]) -> None:
+        self._data = data
+
+    def __getitem__(self, key: str) -> Any:
+        return self._data[key]
+
+    def __iter__(self) -> Iterator[str]:
+        return iter(self._data)
+
+    def __len__(self) -> int:
+        return len(self._data)
 
 
 def eid(i: int) -> EntityId:
@@ -203,3 +222,100 @@ def test_snapshot_payload_errors_exclude_caller_keys_and_values() -> None:
     with pytest.raises(InvalidValueError) as unsupported:
         SnapshotPayload({"safe": object()})
     assert str(unsupported.value) == "snapshot_payload: unsupported_type"
+
+
+def test_reference_value_objects_reject_wrong_component_types_safely() -> None:
+    with pytest.raises(InvalidValueError) as actor_error:
+        ActorRef(eid(1), "OPERATOR")  # type: ignore[arg-type]
+    assert "OPERATOR" not in str(actor_error.value)
+    assert str(actor_error.value) == "actor_ref.kind: invalid_type"
+    with pytest.raises(InvalidValueError):
+        ActorRef("actor-id", ActorKind.OPERATOR)  # type: ignore[arg-type]
+    with pytest.raises(InvalidValueError) as owner_error:
+        OwnerRef("PERSON", eid(1))  # type: ignore[arg-type]
+    assert "PERSON" not in str(owner_error.value)
+    assert str(owner_error.value) == "owner_ref.owner_kind: invalid_type"
+    with pytest.raises(InvalidValueError):
+        OwnerRef(OwnerKind.PERSON, "owner-id")  # type: ignore[arg-type]
+    with pytest.raises(InvalidValueError):
+        FieldRef("entity-id", FieldKey("person.birth_date"))  # type: ignore[arg-type]
+    with pytest.raises(InvalidValueError):
+        FieldRef(eid(1), "person.birth_date")  # type: ignore[arg-type]
+
+
+def test_security_relevant_entity_enum_fields_reject_strings_safely() -> None:
+    bad = "READY_FOR_SNAPSHOT"
+    cases = [
+        lambda: IdentityDocument(eid(1), eid(2), "PASSPORT"),
+        lambda: Vehicle(eid(1), "TRACTOR"),
+        lambda: Terminal("TSP", NonEmptyText("Terminal")),
+        lambda: Document(eid(1), "PASSPORT", DocumentWorkflowStatus.NEW),
+        lambda: Document(eid(1), DocumentType.PASSPORT, "NEW"),
+        lambda: FieldCandidate(
+            eid(1),
+            field_ref(1),
+            NonEmptyText("raw"),
+            None,
+            "MRZ",
+            Confidence("0.5"),
+        ),
+        lambda: VerifiedField(field_ref(1), None, "VERIFIED"),
+        lambda: Application(
+            eid(1),
+            eid(2),
+            "TSP",
+            (),
+            (),
+            ValidationReport(),
+            ApplicationStatus.DRAFT,
+            actor(),
+            datetime.now(UTC),
+            datetime.now(UTC),
+        ),
+        lambda: Application(
+            eid(1),
+            eid(2),
+            None,
+            (),
+            (),
+            ValidationReport(),
+            bad,
+            actor(),
+            datetime.now(UTC),
+            datetime.now(UTC),
+        ),
+    ]
+    for case in cases:
+        with pytest.raises(InvalidValueError) as exc:
+            case()
+        assert bad not in str(exc.value)
+        assert "PASSPORT" not in str(exc.value)
+        assert "TRACTOR" not in str(exc.value)
+        assert "VERIFIED" not in str(exc.value)
+
+
+def test_snapshot_payload_accepts_mapping_roots_and_nested_generic_mappings() -> None:
+    source = {"root": {"nested": [1, True, None, "text"]}}
+    payload = SnapshotPayload(source)
+    assert payload.as_dict() == {"root": {"nested": [1, True, None, "text"]}}
+    proxy_payload = SnapshotPayload(MappingProxyType({"root": 1}))
+    assert proxy_payload.as_dict() == {"root": 1}
+    custom = ReadOnlyMapping({"outer": ReadOnlyMapping({"inner": ["value"]})})
+    custom_payload = SnapshotPayload(custom)
+    assert custom_payload.as_dict() == {"outer": {"inner": ["value"]}}
+    source["root"]["nested"].append("mutated")
+    assert payload.as_dict() == {"root": {"nested": [1, True, None, "text"]}}
+
+
+def test_snapshot_payload_rejects_json_string_tuple_and_unsafe_shapes() -> None:
+    for value in ('{"a": 1}', {"tuple": (1, 2)}, {"amount": 1.2}, {1: "bad"}):
+        with pytest.raises(InvalidValueError):
+            SnapshotPayload(value)  # type: ignore[arg-type]
+    sensitive_key = "secret.passport.number"
+    sensitive_value = "SECRET-VALUE-002"
+    with pytest.raises(InvalidValueError) as exc:
+        SnapshotPayload({sensitive_key: [sensitive_value, (1, 2)]})
+    message = str(exc.value)
+    assert message == "snapshot_payload: unsupported_type"
+    assert sensitive_key not in message
+    assert sensitive_value not in message

@@ -4,9 +4,9 @@ from __future__ import annotations
 
 import json
 import re
+from collections.abc import Mapping
 from dataclasses import dataclass
 from decimal import Decimal, InvalidOperation
-from types import MappingProxyType
 from typing import Any
 from uuid import UUID
 
@@ -105,6 +105,12 @@ class FieldRef:
     entity_id: EntityId
     field_key: FieldKey
 
+    def __post_init__(self) -> None:
+        if not isinstance(self.entity_id, EntityId):
+            raise InvalidValueError("field_ref.entity_id: invalid_type")
+        if not isinstance(self.field_key, FieldKey):
+            raise InvalidValueError("field_ref.field_key: invalid_type")
+
 
 @dataclass(frozen=True, slots=True, order=True)
 class Confidence:
@@ -129,11 +135,23 @@ class ActorRef:
     actor_id: EntityId
     kind: ActorKind
 
+    def __post_init__(self) -> None:
+        if not isinstance(self.actor_id, EntityId):
+            raise InvalidValueError("actor_ref.actor_id: invalid_type")
+        if not isinstance(self.kind, ActorKind):
+            raise InvalidValueError("actor_ref.kind: invalid_type")
+
 
 @dataclass(frozen=True, slots=True, order=True)
 class OwnerRef:
     owner_kind: OwnerKind
     owner_id: EntityId
+
+    def __post_init__(self) -> None:
+        if not isinstance(self.owner_kind, OwnerKind):
+            raise InvalidValueError("owner_ref.owner_kind: invalid_type")
+        if not isinstance(self.owner_id, EntityId):
+            raise InvalidValueError("owner_ref.owner_id: invalid_type")
 
 
 @dataclass(frozen=True, slots=True)
@@ -170,9 +188,11 @@ def _canonicalize(value: Any) -> JsonValue:
         return value
     if isinstance(value, float):
         raise InvalidValueError("snapshot_payload: float_forbidden")
-    if isinstance(value, list | tuple):
+    if isinstance(value, list):
         return [_canonicalize(item) for item in value]
-    if isinstance(value, dict | MappingProxyType):
+    if isinstance(value, tuple):
+        raise InvalidValueError("snapshot_payload: unsupported_type")
+    if isinstance(value, Mapping):
         result: dict[str, JsonValue] = {}
         for key, item in value.items():
             if not isinstance(key, str):
@@ -186,11 +206,10 @@ def _canonicalize(value: Any) -> JsonValue:
 class SnapshotPayload:
     canonical_json: str
 
-    def __init__(self, value: dict[str, Any] | str) -> None:
-        loaded = json.loads(value) if isinstance(value, str) else value
-        if not isinstance(loaded, dict):
+    def __init__(self, value: Mapping[str, Any]) -> None:
+        if not isinstance(value, Mapping):
             raise InvalidValueError("snapshot_payload: root_mapping_required")
-        canonical = _canonicalize(loaded)
+        canonical = _canonicalize(value)
         encoded = json.dumps(canonical, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
         object.__setattr__(self, "canonical_json", encoded)
 

@@ -233,6 +233,12 @@ def test_lifecycle_state_records_gate_m0_completion_and_pr004_review_state() -> 
         "PR-004 BLOCKED UNTIL GATE-M0",
         "Complete review, CI and human acceptance for the GATE-M0 PR",
         "The next safe step is GATE-M0 review",
+        "GATE-M0 does not start PR-004",
+        "do not start PR-004 until",
+        "After this PR is merged and accepted, the next repository update may prepare PR-004",
+        "See current lifecycle state below. See current lifecycle state below",
+        "but See current lifecycle state below",
+        "next safe step is GATE-M0",
     )
 
     for filename in lifecycle_files:
@@ -245,7 +251,26 @@ def test_lifecycle_state_records_gate_m0_completion_and_pr004_review_state() -> 
         for stale in stale_current_state:
             assert stale not in text, filename
 
+    handoff = (REPO_ROOT / "docs/handoff.md").read_text(encoding="utf-8")
+    roadmap = (REPO_ROOT / "docs/roadmap.md").read_text(encoding="utf-8")
+    implementation_plan = (REPO_ROOT / "docs/implementation-plan.md").read_text(encoding="utf-8")
     progress = (REPO_ROOT / "docs/progress.md").read_text(encoding="utf-8")
+
+    assert handoff.count("## Current lifecycle state") == 1
+    assert "See current lifecycle" not in roadmap
+    assert "review, CI, merge and product-owner acceptance of PR-004" in handoff
+    assert (
+        "PR-005 cannot start after PR-004 merge without a separate accepted Q-010 security ADR"
+        in handoff
+    )
+    assert (
+        "PR-005 and PR-006 remain blocked until a separate accepted security ADR resolves Q-010"
+        in roadmap
+    )
+    assert (
+        "GATE-M0 and M0 are accepted; PR-004 is in review; "
+        "PR-005 and later work remain unauthorized" in implementation_plan
+    )
     assert "**Обновлено:** 2026-07-17" in progress
     assert (
         "PR-005 must not start after PR-004 merge without the separate Q-010 security ADR"

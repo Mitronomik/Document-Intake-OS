@@ -35,6 +35,11 @@ def _require_aware(value: datetime, invariant: str) -> None:
         raise InvalidValueError(f"{invariant}: timezone_aware_required")
 
 
+def _require_enum(value: object, enum_type: type[object], invariant: str) -> None:
+    if not isinstance(value, enum_type):
+        raise InvalidValueError(f"{invariant}: invalid_type")
+
+
 @dataclass(slots=True)
 class Person:
     id: EntityId
@@ -66,6 +71,9 @@ class IdentityDocument:
     personal_number: IdentifierText | None = None
     mrz_raw: NonEmptyText | None = None
     mrz_validation_status: NonEmptyText | None = None
+
+    def __post_init__(self) -> None:
+        _require_enum(self.document_type, DocumentType, "identity_document.document_type")
 
     def __repr__(self) -> str:
         return (
@@ -108,6 +116,9 @@ class Vehicle:
     owner: OwnerRef | None = None
     registration_document_id: EntityId | None = None
 
+    def __post_init__(self) -> None:
+        _require_enum(self.role, VehicleRole, "vehicle.role")
+
     def __repr__(self) -> str:
         return f"Vehicle(id={self.id}, role={self.role})"
 
@@ -121,6 +132,9 @@ class Terminal:
     template_checksum: NonEmptyText | None = None
     rules_version: NonEmptyText | None = None
     is_active: bool = True
+
+    def __post_init__(self) -> None:
+        _require_enum(self.code, TerminalCode, "terminal.code")
 
 
 @dataclass(slots=True, init=False)
@@ -145,6 +159,8 @@ class Document:
         side_ids: tuple[EntityId, ...] = (),
         prepared_artifact_id: EntityId | None = None,
     ) -> None:
+        _require_enum(document_type, DocumentType, "document.document_type")
+        _require_enum(workflow_status, DocumentWorkflowStatus, "document.workflow_status")
         self.id = id
         self.document_type = document_type
         self._workflow_status = workflow_status
@@ -184,6 +200,7 @@ class FieldCandidate:
     recognition_run_id: EntityId | None = None
 
     def __post_init__(self) -> None:
+        _require_enum(self.source_type, CandidateSourceType, "field_candidate.source_type")
         object.__setattr__(self, "validation_results", tuple(self.validation_results))
 
     def __repr__(self) -> str:
@@ -204,6 +221,7 @@ class VerifiedField:
     override_reason: NonEmptyText | None = None
 
     def __post_init__(self) -> None:
+        _require_enum(self.status, VerificationStatus, "verified_field.status")
         if self.status == VerificationStatus.VERIFIED:
             if self.value is None:
                 raise InvalidValueError("verified_field.VERIFIED: value_required")
@@ -283,6 +301,9 @@ class Application:
         created_at: datetime,
         updated_at: datetime,
     ) -> None:
+        if terminal_code is not None:
+            _require_enum(terminal_code, TerminalCode, "application.terminal_code")
+        _require_enum(status, ApplicationStatus, "application.status")
         _require_aware(created_at, "application.created_at")
         _require_aware(updated_at, "application.updated_at")
         self.id = id

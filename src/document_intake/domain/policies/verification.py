@@ -49,7 +49,7 @@ def verify_by_human(
     field: VerifiedField, *, value: NonEmptyText, actor: ActorRef, at: datetime
 ) -> VerifiedField:
     if actor.kind not in {ActorKind.OPERATOR, ActorKind.ADMIN}:
-        raise VerificationPolicyError(f"verify_by_human: actor_kind:{actor.kind}")
+        raise VerificationPolicyError("verify_by_human: human_actor_required")
     _require_aware(at, "verify_by_human")
     return VerifiedField(
         field_ref=field.field_ref,
@@ -77,8 +77,8 @@ def mark_conflict(
 
 
 def mark_not_applicable(field_ref: FieldRef, *, actor: ActorRef, at: datetime) -> VerifiedField:
-    if actor.kind == ActorKind.SYSTEM:
-        raise VerificationPolicyError(f"mark_not_applicable: actor_kind:{actor.kind}")
+    if actor.kind not in {ActorKind.OPERATOR, ActorKind.ADMIN}:
+        raise VerificationPolicyError("mark_not_applicable: human_actor_required")
     _require_aware(at, "mark_not_applicable")
     return VerifiedField(field_ref, None, VerificationStatus.NOT_APPLICABLE, actor, at)
 
@@ -92,7 +92,7 @@ def admin_override(
     reason: NonEmptyText,
 ) -> VerifiedField:
     if actor.kind != ActorKind.ADMIN:
-        raise VerificationPolicyError(f"admin_override: actor_kind:{actor.kind}")
+        raise VerificationPolicyError("admin_override: admin_actor_required")
     _require_aware(at, "admin_override")
     return VerifiedField(
         field_ref=field.field_ref,

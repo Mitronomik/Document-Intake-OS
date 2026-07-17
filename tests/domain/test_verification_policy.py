@@ -171,3 +171,45 @@ def test_direct_verified_field_invariants_prevent_bypass() -> None:
             NOW,
             override_reason=NonEmptyText("safe reason"),
         )
+
+
+def test_verification_policy_errors_are_stable_and_actor_values_not_interpolated() -> None:
+    draft = draft_from_candidate(candidate())
+    with pytest.raises(VerificationPolicyError) as verify_error:
+        verify_by_human(
+            draft,
+            value=NonEmptyText("ok"),
+            actor=actor(ActorKind.SYSTEM),
+            at=NOW,
+        )
+    assert str(verify_error.value) == "verify_by_human: human_actor_required"
+    assert ActorKind.SYSTEM.value not in str(verify_error.value)
+
+    with pytest.raises(VerificationPolicyError) as na_error:
+        mark_not_applicable(ref(20), actor=actor(ActorKind.SYSTEM), at=NOW)
+    assert str(na_error.value) == "mark_not_applicable: human_actor_required"
+    assert ActorKind.SYSTEM.value not in str(na_error.value)
+
+    with pytest.raises(VerificationPolicyError) as override_error:
+        admin_override(
+            draft,
+            value=NonEmptyText("ok"),
+            actor=actor(ActorKind.OPERATOR),
+            at=NOW,
+            reason=NonEmptyText("safe reason"),
+        )
+    assert str(override_error.value) == "admin_override: admin_actor_required"
+    assert ActorKind.OPERATOR.value not in str(override_error.value)
+
+
+def test_mark_not_applicable_accepts_only_human_actor_roles() -> None:
+    assert (
+        mark_not_applicable(ref(21), actor=actor(ActorKind.OPERATOR), at=NOW).status
+        == VerificationStatus.NOT_APPLICABLE
+    )
+    assert (
+        mark_not_applicable(ref(22), actor=actor(ActorKind.ADMIN), at=NOW).status
+        == VerificationStatus.NOT_APPLICABLE
+    )
+    with pytest.raises(VerificationPolicyError):
+        mark_not_applicable(ref(23), actor=actor(ActorKind.SYSTEM), at=NOW)
