@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import importlib
 import os
 import platform
 import shutil
@@ -7,7 +8,7 @@ import sqlite3
 import tempfile
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 
 @dataclass(frozen=True)
@@ -24,12 +25,13 @@ def _raw_key_fragment(key: bytes) -> str:
 def _try_import_aesgcm() -> Any:
     """Import AESGCM conditionally; returns the class or None."""
     try:
-        # fmt: off
-        from cryptography.hazmat.primitives.ciphers.aead import AESGCM  # type: ignore[import-not-found]  # noqa: I001
-        # fmt: on
+        aead_mod = cast(
+            Any,
+            importlib.import_module("cryptography.hazmat.primitives.ciphers.aead"),
+        )
     except ImportError:
         return None
-    return AESGCM
+    return aead_mod.AESGCM
 
 
 def run_offline_smoke() -> OfflineSmokeResult:
@@ -37,7 +39,7 @@ def run_offline_smoke() -> OfflineSmokeResult:
     cleanup_ok = False
     try:
         try:
-            import sqlcipher3  # type: ignore[import-not-found]
+            sqlcipher3 = cast(Any, importlib.import_module("sqlcipher3"))
         except ImportError:
             shutil.rmtree(temp_dir, ignore_errors=True)
             return OfflineSmokeResult("UNSUPPORTED_DEPENDENCY_MISSING", cleanup_status="PASS")

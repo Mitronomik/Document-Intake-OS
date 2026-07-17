@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import importlib
 import platform
+from typing import Any, cast
 
 from spikes.windows_encryption.offline_smoke import (
     _try_import_aesgcm,
@@ -13,7 +15,7 @@ def test_offline_smoke_executes_or_reports_missing_dependency() -> None:
     result = run_offline_smoke()
     if platform.system() == "Windows":
         try:
-            import sqlcipher3  # type: ignore[import-not-found]
+            sqlcipher3 = cast(Any, importlib.import_module("sqlcipher3"))
         except ImportError:
             expected = {"UNSUPPORTED_DEPENDENCY_MISSING"}
         else:

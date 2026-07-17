@@ -2,12 +2,13 @@ from __future__ import annotations
 
 import base64
 import hashlib
+import importlib
 import json
 import os
 from dataclasses import dataclass, replace
 from enum import StrEnum
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 MAGIC = "SPIKE ENVELOPE VERSION 0"
 FORMAT_VERSION = 0
@@ -106,9 +107,11 @@ def encrypt_envelope(
     if len(key) != 32:
         raise ValueError("ERR_INVALID_KEY")
     try:
-        # fmt: off
-        from cryptography.hazmat.primitives.ciphers.aead import AESGCM  # type: ignore[import-not-found]  # noqa: I001
-        # fmt: on
+        aead_mod = cast(
+            Any,
+            importlib.import_module("cryptography.hazmat.primitives.ciphers.aead"),
+        )
+        AESGCM = aead_mod.AESGCM
     except ImportError as exc:  # pragma: no cover
         raise RuntimeError("ERR_CRYPTOGRAPHY_UNAVAILABLE") from exc
     nonce = os.urandom(NONCE_LENGTH)
@@ -147,8 +150,13 @@ def decrypt_envelope(
     ):
         raise ValueError("ERR_ENVELOPE_CONTEXT_MISMATCH")
     try:
-        from cryptography.exceptions import InvalidTag  # type: ignore[import-not-found]
-        from cryptography.hazmat.primitives.ciphers.aead import AESGCM
+        exc_mod = cast(Any, importlib.import_module("cryptography.exceptions"))
+        InvalidTag = exc_mod.InvalidTag
+        aead_mod = cast(
+            Any,
+            importlib.import_module("cryptography.hazmat.primitives.ciphers.aead"),
+        )
+        AESGCM = aead_mod.AESGCM
     except ImportError as exc:  # pragma: no cover
         raise RuntimeError("ERR_CRYPTOGRAPHY_UNAVAILABLE") from exc
     try:

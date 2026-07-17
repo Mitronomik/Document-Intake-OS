@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import importlib
 import importlib.metadata
 import os
 import platform
@@ -9,7 +10,7 @@ import tempfile
 import time
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 SYNTHETIC_MARKER_PREFIX = b"synthetic-record-"
 
@@ -105,7 +106,7 @@ def run_sqlcipher_probe(temp_dir: Path) -> SqlcipherEvidence:
             checks=(CheckResult("sqlcipher-overall", "UNSUPPORTED", "UNSUPPORTED_NON_WINDOWS"),),
         )
     try:
-        import sqlcipher3  # type: ignore[import-not-found]
+        sqlcipher3 = cast(Any, importlib.import_module("sqlcipher3"))
     except ImportError:
         return SqlcipherEvidence(
             status="UNSUPPORTED",

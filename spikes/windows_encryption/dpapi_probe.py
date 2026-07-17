@@ -71,8 +71,11 @@ def _make_input_blob(data: bytes) -> _InputBlob:
 
 
 def _load_windows_functions() -> tuple[Any, Any, Any]:
-    crypt32 = ctypes.WinDLL("crypt32", use_last_error=True)  # type: ignore[attr-defined]
-    kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)  # type: ignore[attr-defined]
+    _WinDLL = getattr(ctypes, "WinDLL", None)
+    if _WinDLL is None:
+        raise RuntimeError("ERR_WIN32_API_UNAVAILABLE: ctypes.WinDLL missing")
+    crypt32 = _WinDLL("crypt32", use_last_error=True)
+    kernel32 = _WinDLL("kernel32", use_last_error=True)
     protect = crypt32.CryptProtectData
     protect.argtypes = [
         ctypes.POINTER(DATA_BLOB),

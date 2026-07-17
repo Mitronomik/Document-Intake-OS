@@ -1,8 +1,10 @@
 from __future__ import annotations
 
+import importlib
 import os
 from dataclasses import dataclass
 from enum import StrEnum
+from typing import Any, cast
 
 
 class KeyPurpose(StrEnum):
@@ -21,10 +23,10 @@ def _hkdf(root_key: bytes, salt: bytes, label: str) -> bytes:
     if len(root_key) != 32:
         raise ValueError("ERR_INVALID_ROOT_KEY")
     try:
-        # fmt: off
-        from cryptography.hazmat.primitives import hashes  # type: ignore[import-not-found]
-        from cryptography.hazmat.primitives.kdf.hkdf import HKDF  # type: ignore[import-not-found]
-        # fmt: on
+        hashes_mod = cast(Any, importlib.import_module("cryptography.hazmat.primitives.hashes"))
+        hkdf_mod = cast(Any, importlib.import_module("cryptography.hazmat.primitives.kdf.hkdf"))
+        hashes = hashes_mod
+        HKDF = hkdf_mod.HKDF
     except ImportError as exc:  # pragma: no cover
         raise RuntimeError("ERR_CRYPTOGRAPHY_UNAVAILABLE") from exc
     return bytes(
@@ -55,9 +57,11 @@ def derive_kek(root_key: bytes, salt: bytes, purpose: KeyPurpose) -> bytes:
 
 def wrap_dek(root_key: bytes, salt: bytes, dek: bytes, purpose: KeyPurpose) -> WrappedDek:
     try:
-        # fmt: off
-        from cryptography.hazmat.primitives.keywrap import aes_key_wrap_with_padding  # type: ignore[import-not-found]  # noqa: I001
-        # fmt: on
+        keywrap_mod = cast(
+            Any,
+            importlib.import_module("cryptography.hazmat.primitives.keywrap"),
+        )
+        aes_key_wrap_with_padding = keywrap_mod.aes_key_wrap_with_padding
     except ImportError as exc:  # pragma: no cover
         raise RuntimeError("ERR_CRYPTOGRAPHY_UNAVAILABLE") from exc
     return WrappedDek(
@@ -67,7 +71,11 @@ def wrap_dek(root_key: bytes, salt: bytes, dek: bytes, purpose: KeyPurpose) -> W
 
 def unwrap_dek(root_key: bytes, salt: bytes, wrapped: WrappedDek) -> bytes:
     try:
-        from cryptography.hazmat.primitives.keywrap import aes_key_unwrap_with_padding
+        keywrap_mod = cast(
+            Any,
+            importlib.import_module("cryptography.hazmat.primitives.keywrap"),
+        )
+        aes_key_unwrap_with_padding = keywrap_mod.aes_key_unwrap_with_padding
     except ImportError as exc:  # pragma: no cover
         raise RuntimeError("ERR_CRYPTOGRAPHY_UNAVAILABLE") from exc
     try:

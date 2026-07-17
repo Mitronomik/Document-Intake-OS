@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import importlib
 import os
 import sqlite3
 import statistics
@@ -8,7 +9,7 @@ import time
 from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 
 @dataclass(frozen=True)
@@ -42,19 +43,22 @@ def _measure(
 def _try_import_aesgcm() -> Any:
     """Import AESGCM conditionally; returns the class or None."""
     try:
-        # fmt: off
-        from cryptography.hazmat.primitives.ciphers.aead import AESGCM  # type: ignore[import-not-found]  # noqa: I001
-        # fmt: on
+        aead_mod = cast(
+            Any,
+            importlib.import_module("cryptography.hazmat.primitives.ciphers.aead"),
+        )
     except ImportError:
         return None
-    return AESGCM
+    return aead_mod.AESGCM
 
 
 def measure_aes_gcm() -> list[TimingSample]:
     try:
-        # fmt: off
-        from cryptography.hazmat.primitives.ciphers.aead import AESGCM
-        # fmt: on
+        aead_mod = cast(
+            Any,
+            importlib.import_module("cryptography.hazmat.primitives.ciphers.aead"),
+        )
+        AESGCM: Any = aead_mod.AESGCM
     except ImportError:
         return []
     samples: list[TimingSample] = []
