@@ -1,1 +1,80 @@
-"""Domain enumeration definitions will be introduced by focused domain PRs."""
+"""Core domain enumerations."""
+
+from __future__ import annotations
+
+from enum import StrEnum
+
+
+class DocumentType(StrEnum):
+    PASSPORT = "PASSPORT"
+    IDENTITY_CARD = "IDENTITY_CARD"
+    DRIVER_LICENSE = "DRIVER_LICENSE"
+    MIGRATION_CARD = "MIGRATION_CARD"
+    WORK_PERMIT = "WORK_PERMIT"
+    TEMPORARY_REGISTRATION = "TEMPORARY_REGISTRATION"
+    VEHICLE_REGISTRATION_TRACTOR = "VEHICLE_REGISTRATION_TRACTOR"
+    VEHICLE_REGISTRATION_TRAILER = "VEHICLE_REGISTRATION_TRAILER"
+    PASSPORT_STAMP_PAGE = "PASSPORT_STAMP_PAGE"
+    OTHER = "OTHER"
+
+
+class DocumentWorkflowStatus(StrEnum):
+    NEW = "NEW"
+    NEEDS_SEGMENTATION = "NEEDS_SEGMENTATION"
+    NEEDS_CLASSIFICATION = "NEEDS_CLASSIFICATION"
+    OCR_READY = "OCR_READY"
+    NEEDS_REVIEW = "NEEDS_REVIEW"
+    VERIFIED = "VERIFIED"
+    INCOMPLETE = "INCOMPLETE"
+    READY_FOR_EXPORT = "READY_FOR_EXPORT"
+    EXPORTED = "EXPORTED"
+
+
+class VerificationStatus(StrEnum):
+    UNVERIFIED = "UNVERIFIED"
+    VERIFIED = "VERIFIED"
+    CONFLICT = "CONFLICT"
+    NOT_APPLICABLE = "NOT_APPLICABLE"
+    ADMIN_OVERRIDE = "ADMIN_OVERRIDE"
+
+
+class CandidateSourceType(StrEnum):
+    VISUAL_OCR = "VISUAL_OCR"
+    MRZ = "MRZ"
+    BARCODE = "BARCODE"
+    TEMPLATE_RULE = "TEMPLATE_RULE"
+    RELATED_DOCUMENT = "RELATED_DOCUMENT"
+    OPERATOR_ENTRY = "OPERATOR_ENTRY"
+
+
+class ActorKind(StrEnum):
+    OPERATOR = "OPERATOR"
+    ADMIN = "ADMIN"
+    SYSTEM = "SYSTEM"
+
+
+class VehicleRole(StrEnum):
+    TRACTOR = "TRACTOR"
+    TRAILER = "TRAILER"
+    SEMI_TRAILER = "SEMI_TRAILER"
+    OTHER = "OTHER"
+
+
+class TerminalCode(StrEnum):
+    TSP = "TSP"
+    VISITORS = "VISITORS"
+    MGS = "MGS"
+
+
+class ApplicationStatus(StrEnum):
+    DRAFT = "DRAFT"
+    INCOMPLETE = "INCOMPLETE"
+    READY_FOR_SNAPSHOT = "READY_FOR_SNAPSHOT"
+    SNAPSHOTTED = "SNAPSHOTTED"
+    EXPORTED = "EXPORTED"
+    FAILED = "FAILED"
+
+
+class OwnerKind(StrEnum):
+    PERSON = "PERSON"
+    VEHICLE = "VEHICLE"

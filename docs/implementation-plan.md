@@ -8,8 +8,7 @@
 - ADR-015 created a narrow exception for PR-001 through PR-003 repository-safety work while M0 remained open;
 - PR-003 is completed and merged through GitHub PR #4 at `ad5782045473d3ef5eb0a097cc8f6982bab821c7`;
 - M1 Safe Repository is accepted;
-- GATE-M0 is in review: M0 decision approved, not yet recorded in `main`;
-- PR-004 remains blocked until the GATE-M0 PR is merged and human acceptance confirms the decision in `main`;
+- GATE-M0 and M0 are accepted; PR-004 is in review; PR-005 and later work remain unauthorized;
 - PR-005 and later tasks remain unauthorized;
 - реальные документы не используются в Codex Web;
 - OCR начинается только после готовности ручного контура.
@@ -217,3 +216,7 @@ Network block, PII logs, template tampering, formula injection and fault injecti
 ## Оценка
 
 Рабочий Windows MVP: 8–12 недель. Стабильная версия после пилота: 3–5 месяцев. Оценка пересматривается после Gate 1 и Gate 4.
+
+## Current authorization state for PR-004
+
+GATE-M0: COMPLETED. GATE-M0 merge commit: `3dada63ea82163c7c4497e290b303d2cc781b085`. Human acceptance of GATE-M0 occurred after PR #5 merge. M0: ACCEPTED. M1: ACCEPTED. PR-004: IN REVIEW. PR-004 is the only authorized implementation task. PR-004: NOT COMPLETED BEFORE MERGE AND PRODUCT-OWNER ACCEPTANCE. PR-005: UNAUTHORIZED. PR-006: UNAUTHORIZED. PR-007 AND LATER: UNAUTHORIZED. Gate 1: NOT ACCEPTED. M2: NOT COMPLETED. Q-010: OPEN. The template enforcement PR remains future work and does not block PR-004. The sensitive-data/private-contour gate remains open for real data. The next safe step is review, CI, merge and human acceptance of PR-004. PR-005 must not start after PR-004 merge without the separate Q-010 security ADR.

@@ -6,7 +6,7 @@ Result: requirements package, open-question status model, accepted decisions and
 
 Gate: MVP scope is confirmed, real documents are excluded from the cloud/public development contour, the repository privacy boundary is accepted for non-sensitive code, terminal-specific blockers are either externally confirmed or staged to downstream gates under ADR-016, and no placeholder terminal values are invented.
 
-GATE-M0 is in review. ADR-016 records the approved M0 decision for this PR, but PR-004 remains blocked until the GATE-M0 PR is merged and human acceptance confirms the decision in `main`.
+GATE-M0 is completed and human accepted. PR-004 Core Domain is the only authorized implementation task and is currently in review.
 
 ## M1 — Safe repository
 
@@ -22,7 +22,7 @@ PR-004–007.
 
 Result: domain, SQLite, immutable storage and audit.
 
-PR-004 — Core Domain is the only implementation task authorized by the approved M0 decision, and only after the GATE-M0 PR is merged and human acceptance confirms the decision in `main`. PR-005, PR-006, PR-007 and every later implementation task remain unauthorized. PR-005 and PR-006 remain blocked until a separate accepted security ADR resolves Q-010 encryption staging.
+PR-004 — Core Domain is the only implementation task authorized by the accepted M0 decision and is currently in review. PR-005, PR-006, PR-007 and every later implementation task remain unauthorized. PR-005 and PR-006 remain blocked until a separate accepted security ADR resolves Q-010 encryption staging.
 
 ## M3 — Manual image workflow
 
@@ -75,3 +75,7 @@ Gate: offline local acceptance and release decision.
 ## Не делать преждевременно
 
 Cloud, web frontend, microservices, Kubernetes, event broker, vector DB, LLM, browser automation and plugin system.
+
+## Current lifecycle after GATE-M0 merge
+
+GATE-M0: COMPLETED. GATE-M0 merge commit: `3dada63ea82163c7c4497e290b303d2cc781b085`. Human acceptance of GATE-M0 occurred after PR #5 merge. M0: ACCEPTED. M1: ACCEPTED. PR-004: IN REVIEW. PR-004 is the only authorized implementation task. PR-004: NOT COMPLETED BEFORE MERGE AND PRODUCT-OWNER ACCEPTANCE. PR-005: UNAUTHORIZED. PR-006: UNAUTHORIZED. PR-007 AND LATER: UNAUTHORIZED. Gate 1: NOT ACCEPTED. M2: NOT COMPLETED. Q-010: OPEN. The template enforcement PR remains future work and does not block PR-004. The sensitive-data/private-contour gate remains open for real data. The next safe step is review, CI, merge and human acceptance of PR-004. PR-005 must not start after PR-004 merge without the separate Q-010 security ADR.

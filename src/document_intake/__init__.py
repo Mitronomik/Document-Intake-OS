@@ -1,8 +1,8 @@
 """Document Intake OS package.
 
-This package currently contains only the PR-001 bootstrap skeleton. Runtime features such as
-OCR, persistence, image processing, terminal exports, and domain workflows are intentionally not
-implemented in this bootstrap.
+This package contains the bootstrap desktop shell and the pure PR-004 core domain model.
+Persistence, filesystem storage, image processing, OCR, Excel export, and production workflows
+are intentionally not implemented yet.
 """
 
 __all__ = ["__version__"]
