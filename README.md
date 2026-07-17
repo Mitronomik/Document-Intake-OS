@@ -123,4 +123,4 @@ ADR-016 permits `TSPMAINFILE.xls`, `visitors_example.xlsx`, `MGSMAINFILE.xlsx` a
 
 ### Data and fixtures
 
-Only synthetic/no-document source-code tests are allowed in this repository and CI. Fictional scalar values are allowed only when they contain no document-derived layout and no personal data.
+Under the current scanner and `.gitignore` enforcement, committed test data remains limited to currently approved synthetic paths. After the separate repository-policy enforcement PR, ADR-016 also permits the three approved PII-free templates, structural template fixtures, binary golden files with fully fictional values, synthetic output workbooks, and PII-free screenshots, manifests and mappings. Real documents, real application data, PII and secrets remain prohibited.

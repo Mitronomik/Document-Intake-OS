@@ -71,10 +71,27 @@ Forbidden:
 
 ## Fixtures and public repository rules
 
-While the repository is public, allowed fixtures are limited to:
+While the repository is public, fixture rules have two states.
+
+### Current enforcement state
+
+Until the repository-policy enforcement PR is merged, tracked fixtures remain limited by the current scanner and `.gitignore`:
 
 - synthetic source-code tests that contain no document-derived layout or personal data;
-- fictional scalar values only when they contain no document-derived layout or personal data.
+- fictional scalar values only when they contain no document-derived layout or personal data;
+- synthetic document fixtures only in currently permitted paths.
+
+No Excel template or template-derived binary artifact may be committed yet.
+
+### Product-policy state after enforcement update
+
+After technical privacy inspection and the repository-policy enforcement PR:
+
+- the three approved source templates may be tracked;
+- approved structural template fixtures may be tracked;
+- PII-free binary golden files may be tracked;
+- synthetic output workbooks may be tracked;
+- PII-free structural screenshots, manifests and mappings may be tracked.
 
 While the repository is public, forbidden fixtures and artifacts include:
 

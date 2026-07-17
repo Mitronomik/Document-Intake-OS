@@ -511,6 +511,69 @@ def test_current_policy_documents_allow_approved_templates_without_weakening_pii
     assert "Do not add the actual Excel templates" in resources_readme
 
 
+def test_fixture_policy_documents_use_transitional_rules() -> None:
+    agents = (REPO_ROOT / "AGENTS.md").read_text(encoding="utf-8")
+    readme = (REPO_ROOT / "README.md").read_text(encoding="utf-8")
+    security = (REPO_ROOT / "docs/security.md").read_text(encoding="utf-8")
+
+    assert "Current enforcement state" in agents
+    assert "Product-policy state after enforcement update" in agents
+    assert "No Excel template or template-derived binary artifact may be committed yet" in agents
+    assert "the three approved source templates may be tracked" in agents
+    assert "PII-free binary golden files may be tracked" in agents
+    assert "PII-free structural screenshots, manifests and mappings may be tracked" in agents
+    assert "While the repository is public, allowed fixtures are limited to" not in agents
+
+    forbidden_readme_sentence = (
+        "Only synthetic/no-document source-code tests are allowed in this repository and CI."
+    )
+    assert forbidden_readme_sentence not in readme
+    assert "Under the current scanner and `.gitignore` enforcement" in readme
+    assert "committed test data remains limited to currently approved synthetic paths" in readme
+    assert "After the separate repository-policy enforcement PR" in readme
+    assert "binary golden files with fully fictional values" in readme
+    assert "Real documents, real application data, PII and secrets remain prohibited" in readme
+
+    assert "### Current scanner enforcement" in security
+    assert "ordinary committed document/data fixtures are permitted only under" in security
+    assert "tracked images are permitted only under the current synthetic-image path" in security
+    assert "resources/templates/README.md` is the only tracked template-directory file" in security
+    assert "### ADR-016 exception after enforcement update" in security
+    assert "approved source templates may use explicitly approved template paths" in security
+    assert "approved binary golden files and synthetic output workbooks" in security
+    assert "PII-free structural template screenshots" in security
+    assert "manifests and mappings may use explicitly approved metadata paths" in security
+    assert "must define those exact template paths" in security
+    assert "golden-file paths" in security
+    assert "screenshot paths" in security
+    assert "manifest/mapping paths" in security
+    assert "Real document images remain prohibited" in security
+    assert "Real application workbooks remain prohibited" in security
+    assert "PII-bearing screenshots and golden files remain prohibited" in security
+    assert "Secrets and credentials remain prohibited" in security
+
+
+def test_adr_014_and_adr_016_contract_text_remains_present() -> None:
+    decisions = (REPO_ROOT / "docs/decisions.md").read_text(encoding="utf-8")
+    adr_014 = _adr_section(decisions, "## ADR-014 — Temporary public repository during bootstrap")
+    adr_016 = _adr_section(
+        decisions, "## ADR-016 — M0 Gate, Privacy Boundary and PR-004 Authorization"
+    )
+
+    assert "**Partially superseded by:** ADR-016 for the three product-owner-approved" in adr_014
+    assert "ADR-014 remains fully active for real documents" in adr_014
+    assert (
+        "ADR-014 no longer categorically prohibits the three approved terminal templates" in adr_014
+    )
+    assert "`TSPMAINFILE.xls`, `visitors_example.xlsx` and `MGSMAINFILE.xlsx`" in adr_016
+    assert "scanner and `.gitignore` remain temporarily more restrictive" in _compact(adr_016)
+    assert "No template artifact is added by GATE-M0 / PR #5" in adr_016
+    assert (
+        "PR-005, PR-006, PR-007 and every later implementation task remain unauthorized"
+        in _compact(adr_016)
+    )
+
+
 def test_pr_5_adds_no_template_or_template_derived_artifact() -> None:
     result = subprocess.run(
         ["git", "ls-files"],
