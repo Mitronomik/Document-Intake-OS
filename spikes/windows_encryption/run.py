@@ -36,6 +36,7 @@ from spikes.windows_encryption.sqlcipher_probe import (
     CheckResult,
     run_sqlcipher_probe,
 )
+from spikes.windows_encryption.windows_target_probe import run_windows_target_probe
 
 
 def _status(value: str) -> ResultStatus:
@@ -54,6 +55,10 @@ def _reason(value: str) -> str:
         "UNSUPPORTED_NON_WINDOWS",
         "UNSUPPORTED_DEPENDENCY_MISSING",
         "NOT_DEMONSTRATED",
+        "NOT_DEMONSTRATED_WINDOWS11",
+        "ERR_WINDOWS_VERSION_QUERY",
+        "ERR_WINDOWS_ARCH_QUERY",
+        "ERR_WINDOWS_TARGET_UNEXPECTED",
         "ERR_SQLCIPHER_IMPORT",
         "ERR_ACL_PROBE_FAILED",
         "ERR_ACL_SID_LOOKUP",
@@ -240,6 +245,8 @@ def build_report(temp_dir: Path) -> SafeReport:
     )
     acl_result = run_acl_probe()
     checks.extend(_acl_checks(acl_result))
+    target = run_windows_target_probe()
+    checks.extend(target.checks)
     checks.append(_envelope_check())
     checks.append(_crash_check(temp_dir))
     offline = run_offline_smoke()
@@ -276,10 +283,14 @@ def build_report(temp_dir: Path) -> SafeReport:
         documented_limitations=[
             "no-final-package-selection",
             "no-production-api",
-            "windows11-not-demonstrated",
+            *(
+                []
+                if target.windows_11_x64_result == ResultStatus.PASS
+                else ["windows11-not-demonstrated"]
+            ),
         ],
         recommendation=recommendation,
-        windows_11_x64_result=ResultStatus.NOT_DEMONSTRATED,
+        windows_11_x64_result=target.windows_11_x64_result,
     )
 
 

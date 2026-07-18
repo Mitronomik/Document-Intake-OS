@@ -129,3 +129,8 @@ PR-006: UNAUTHORIZED
 Windows 11 x64: NOT_DEMONSTRATED
 
 No final package selection has been made.
+
+
+## PR-S001-F4 target-attestation update
+
+GitHub CI #57 on Microsoft Windows Server 2025 AMD64 produced CONDITIONALLY_FEASIBLE research evidence: SQLCipher, WAL, rollback journal, controlled-temp-scan, connection-cleanup, ACL stages, ACL rights, envelope-and-rollback, crash-consistency-model and offline-smoke checks passed. Windows 11 x64 remains NOT_DEMONSTRATED until an actual sanitized target workstation run. The current harness is being extended by PR-S001-F4 to add deterministic Windows target attestation that distinguishes Windows client/workstation from Windows Server without WMI, registry identifiers or caller overrides. Final package selection, legal approval and production design remain unresolved.
