@@ -34,7 +34,7 @@
 - [x] PR-004: COMPLETED AND HUMAN ACCEPTED;
 - [x] GATE-S1: COMPLETED AND HUMAN ACCEPTED;
 - [x] ADR-018: ACCEPTED;
-- [ ] PR-S001: AUTHORIZED, NOT STARTED;
+- [ ] PR-S001: IN REVIEW;
 - [ ] PR-005: UNAUTHORIZED;
 - [ ] PR-006: UNAUTHORIZED;
 - [ ] PR-007 AND LATER: UNAUTHORIZED;
@@ -66,6 +66,9 @@
 
 ## Следующий безопасный шаг
 
-prepare, implement and review PR-S001 — Windows encryption feasibility and packaging spike. Do not start PR-005, PR-006, PR-007 or later tasks until separately authorized. PR-S001 is the only authorized next task and is not started by this acceptance PR.
+review PR-S001 evidence and make a product-owner feasibility decision. Do not start PR-005, PR-006, PR-007 or later tasks until separately authorized. PR-S001 is in review; the next safe step is product-owner evidence review.
 
 PR-S001 is the only authorized next task. PR-S001 uses fictional synthetic data only, may evaluate candidate packages and prototypes, must not create production database/storage APIs, and must not use real documents or personal data. PR-005 does not start automatically after PR-S001 merge; explicit human acceptance and authorization are required after PR-S001. PR-006 remains blocked until PR-S001 acceptance and a separate PR-006 task review. Q-017 remains deferred. The sensitive-data/private-contour gate remains open, and real documents and personal data remain prohibited in Git, Codex and CI.
+
+
+PR-S001 lifecycle boundary: PR-S001 uses fictional synthetic data only; PR-S001 contains no production persistence/storage API; a negative feasibility result is valid; PR-S001 merge does not authorize PR-005; human acceptance and separate authorization remain required.

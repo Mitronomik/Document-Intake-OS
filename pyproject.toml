@@ -14,6 +14,11 @@ dependencies = [
 document-intake = "document_intake.ui.app:main"
 
 [dependency-groups]
+encryption-spike = [
+    "cryptography==49.0.0; sys_platform == 'win32'",
+    "sqlcipher3==0.6.2; sys_platform == 'win32' and platform_machine == 'AMD64'",
+]
+
 dev = [
     "mypy>=1.10",
     "pytest>=8.2",

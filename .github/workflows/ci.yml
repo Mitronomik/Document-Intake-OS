@@ -53,3 +53,120 @@ jobs:
         run: uv run pytest -ra
       - name: Build package
         run: uv build
+
+  windows-encryption-spike:
+    name: PR-S001 Windows encryption spike
+    runs-on: windows-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - name: Repository policy
+        run: python scripts/check_repository_policy.py
+      - name: Sync locked dev and spike groups
+        run: uv sync --locked --dev --group encryption-spike
+      - name: Ruff spike lint
+        run: uv run --group encryption-spike ruff check spikes/windows_encryption
+      - name: Ruff spike format
+        run: uv run --group encryption-spike ruff format --check spikes/windows_encryption
+      - name: Mypy strict spike
+        run: uv run --group encryption-spike mypy --strict spikes/windows_encryption
+      - name: Pytest spike
+        run: uv run --group encryption-spike pytest -ra spikes/windows_encryption/tests
+      - name: Run sanitized spike
+        run: uv run --group encryption-spike python -m spikes.windows_encryption.run --output "$env:RUNNER_TEMP\\pr-s001-evidence.json"
+      - name: Validate report allowlist
+        run: uv run --group encryption-spike python -m spikes.windows_encryption.run --validate-report "$env:RUNNER_TEMP\\pr-s001-evidence.json"
+      - name: Download binary wheelhouse
+        shell: pwsh
+        run: |
+          python -m pip download --only-binary=:all: --dest "$env:RUNNER_TEMP\\pr-s001-wheelhouse" "sqlcipher3==0.6.2" "cryptography==49.0.0"
+          Get-ChildItem "$env:RUNNER_TEMP\\pr-s001-wheelhouse" | ForEach-Object {
+            $hash = (Get-FileHash $_.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
+            "wheel=$($_.Name); sha256=$hash; bytes=$($_.Length)" >> $env:GITHUB_STEP_SUMMARY
+          }
+      - name: Clean offline venv smoke
+        shell: pwsh
+        run: |
+          python -m venv "$env:RUNNER_TEMP\\pr-s001-offline-venv"
+          & "$env:RUNNER_TEMP\\pr-s001-offline-venv\\Scripts\\python.exe" -m pip install --no-index --find-links "$env:RUNNER_TEMP\\pr-s001-wheelhouse" sqlcipher3==0.6.2 cryptography==49.0.0
+          & "$env:RUNNER_TEMP\\pr-s001-offline-venv\\Scripts\\python.exe" -m spikes.windows_encryption.offline_smoke
+      - name: Append sanitized summary
+        shell: pwsh
+        run: |
+          $report = Get-Content "$env:RUNNER_TEMP\\pr-s001-evidence.json" | ConvertFrom-Json
+          "## PR-S001 Sanitized Evidence Summary" >> $env:GITHUB_STEP_SUMMARY
+          "" >> $env:GITHUB_STEP_SUMMARY
+          "* Schema version: $($report.report_schema_version)" >> $env:GITHUB_STEP_SUMMARY
+          "* OS: $($report.os_family) $($report.os_release)" >> $env:GITHUB_STEP_SUMMARY
+          "* Architecture: $($report.architecture)" >> $env:GITHUB_STEP_SUMMARY
+          "* Python: $($report.python_version)" >> $env:GITHUB_STEP_SUMMARY
+          "* Candidate: $($report.candidate_name)" >> $env:GITHUB_STEP_SUMMARY
+          "* SQLCipher version: $($report.sqlcipher_version)" >> $env:GITHUB_STEP_SUMMARY
+          "* SQLite version: $($report.sqlite_version)" >> $env:GITHUB_STEP_SUMMARY
+          "" >> $env:GITHUB_STEP_SUMMARY
+          "## Check results" >> $env:GITHUB_STEP_SUMMARY
+          "" >> $env:GITHUB_STEP_SUMMARY
+          foreach ($check in $report.checks) {
+            "* $($check.identifier): $($check.status) ($($check.reason_code))" >> $env:GITHUB_STEP_SUMMARY
+          }
+          "" >> $env:GITHUB_STEP_SUMMARY
+          "* Recommendation: $($report.recommendation)" >> $env:GITHUB_STEP_SUMMARY
+          "* Windows 11 x64 result: $($report.windows_11_x64_result)" >> $env:GITHUB_STEP_SUMMARY
+          "" >> $env:GITHUB_STEP_SUMMARY
+          "## Status summary" >> $env:GITHUB_STEP_SUMMARY
+          "" >> $env:GITHUB_STEP_SUMMARY
+          foreach ($check in $report.checks) {
+            $id = $check.identifier
+            if ($id -in @('dpapi-same-runner','dpapi-cross-runner','wheelhouse-offline-smoke','github-windows-server','windows-11-x64')) {
+              "* $($id): $($check.status)" >> $env:GITHUB_STEP_SUMMARY
+            }
+          }
+          "" >> $env:GITHUB_STEP_SUMMARY
+          "## Documented limitations" >> $env:GITHUB_STEP_SUMMARY
+          "" >> $env:GITHUB_STEP_SUMMARY
+          foreach ($lim in $report.documented_limitations) {
+            "* $lim" >> $env:GITHUB_STEP_SUMMARY
+          }
+      - name: Create and same-runner validate DPAPI protected synthetic blob
+        run: uv run --group encryption-spike python -m spikes.windows_encryption.run --write-dpapi-blob "$env:RUNNER_TEMP\\pr-s001-dpapi-protected.blob"
+      - name: Upload DPAPI protected synthetic blob
+        uses: actions/upload-artifact@v7
+        with:
+          name: pr-s001-dpapi-protected-blob
+          path: ${{ runner.temp }}\\pr-s001-dpapi-protected.blob
+          retention-days: 1
+
+  windows-dpapi-cross-runner-negative:
+    name: PR-S001 DPAPI cross-runner negative
+    runs-on: windows-latest
+    needs: windows-encryption-spike
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - name: Sync locked dev and spike groups
+        run: uv sync --locked --dev --group encryption-spike
+      - name: Download DPAPI protected synthetic blob
+        uses: actions/download-artifact@v7
+        with:
+          name: pr-s001-dpapi-protected-blob
+          path: ${{ runner.temp }}\\pr-s001-dpapi-blob
+      - name: Prove Current User unprotect fails on fresh runner
+        run: uv run --group encryption-spike python -m spikes.windows_encryption.run --cross-runner-negative "$env:RUNNER_TEMP\\pr-s001-dpapi-blob\\pr-s001-dpapi-protected.blob"
