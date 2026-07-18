@@ -7,7 +7,7 @@ import sys
 import tempfile
 from pathlib import Path
 
-from spikes.windows_encryption.acl_probe import run_acl_probe
+from spikes.windows_encryption.acl_probe import AclProbeResult, run_acl_probe
 from spikes.windows_encryption.crash_consistency_probe import (
     FailurePoint,
     reconcile,
@@ -56,6 +56,11 @@ def _reason(value: str) -> str:
         "NOT_DEMONSTRATED",
         "ERR_SQLCIPHER_IMPORT",
         "ERR_ACL_PROBE_FAILED",
+        "ERR_ACL_CURRENT_USER_RIGHTS",
+        "ERR_ACL_SYSTEM_RIGHTS",
+        "ERR_ACL_ADMINISTRATORS_RIGHTS",
+        "ERR_ACL_BROAD_WRITE",
+        "ERR_ACL_CLEANUP_FAILED",
         "ERR_OFFLINE_SMOKE",
         "ERR_CRASH_MODEL",
         "ERR_ENVELOPE_AUTH_FAILED",
@@ -81,6 +86,59 @@ def _reason(value: str) -> str:
         "ERR_ENCRYPTED_DB_NOT_CREATED",
     }
     return value if value in allowed else "FAIL"
+
+
+def _acl_checks(acl_result: AclProbeResult) -> list[ReportCheck]:
+    if acl_result.status == "UNSUPPORTED_NON_WINDOWS":
+        return [
+            ReportCheck(identifier, ResultStatus.UNSUPPORTED, "UNSUPPORTED_NON_WINDOWS")
+            for identifier in (
+                "acl-current-user-rights",
+                "acl-system-rights",
+                "acl-administrators-rights",
+                "acl-broad-write-blocked",
+                "acl-directory-cleanup",
+            )
+        ]
+    if acl_result.status == "ERR_ACL_PROBE_FAILED":
+        return [
+            ReportCheck(identifier, ResultStatus.FAIL, "ERR_ACL_PROBE_FAILED")
+            for identifier in (
+                "acl-current-user-rights",
+                "acl-system-rights",
+                "acl-administrators-rights",
+                "acl-broad-write-blocked",
+                "acl-directory-cleanup",
+            )
+        ]
+    checks = [
+        ReportCheck(
+            "acl-current-user-rights",
+            ResultStatus.PASS if acl_result.current_user_rights else ResultStatus.FAIL,
+            "PASS" if acl_result.current_user_rights else "ERR_ACL_CURRENT_USER_RIGHTS",
+        ),
+        ReportCheck(
+            "acl-system-rights",
+            ResultStatus.PASS if acl_result.system_rights else ResultStatus.FAIL,
+            "PASS" if acl_result.system_rights else "ERR_ACL_SYSTEM_RIGHTS",
+        ),
+        ReportCheck(
+            "acl-administrators-rights",
+            ResultStatus.PASS if acl_result.administrators_rights else ResultStatus.FAIL,
+            "PASS" if acl_result.administrators_rights else "ERR_ACL_ADMINISTRATORS_RIGHTS",
+        ),
+        ReportCheck(
+            "acl-broad-write-blocked",
+            ResultStatus.PASS if acl_result.broad_write_blocked else ResultStatus.FAIL,
+            "PASS" if acl_result.broad_write_blocked else "ERR_ACL_BROAD_WRITE",
+        ),
+        ReportCheck(
+            "acl-directory-cleanup",
+            ResultStatus.PASS if acl_result.directory_removed else ResultStatus.FAIL,
+            "PASS" if acl_result.directory_removed else "ERR_ACL_CLEANUP_FAILED",
+        ),
+    ]
+    return checks
 
 
 def _check_from_sql(check: CheckResult) -> ReportCheck:
@@ -140,11 +198,7 @@ def build_report(temp_dir: Path) -> SafeReport:
         ReportCheck("sqlcipher-overall", sqlcipher_overall_status, sqlcipher_overall_reason)
     )
     acl_result = run_acl_probe()
-    checks.append(
-        ReportCheck(
-            "acl-temporary-directory", _status(acl_result.status), _reason(acl_result.status)
-        )
-    )
+    checks.extend(_acl_checks(acl_result))
     checks.append(_envelope_check())
     checks.append(_crash_check(temp_dir))
     offline = run_offline_smoke()

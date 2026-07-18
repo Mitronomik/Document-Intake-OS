@@ -8,11 +8,18 @@ import shutil
 import sqlite3
 import tempfile
 import time
+from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, cast
+from typing import Any, Protocol, cast
 
 SYNTHETIC_MARKER_PREFIX = b"synthetic-record-"
+
+
+class ConnectionLike(Protocol):
+    def execute(self, sql: str) -> Any: ...
+
+    def close(self) -> None: ...
 
 
 @dataclass(frozen=True)
@@ -116,6 +123,20 @@ def _read_created_db(db_path: Path) -> tuple[CheckResult, bytes | None]:
         CheckResult("encrypted-db-created", "PASS", "PASS"),
         db_path.read_bytes(),
     )
+
+
+def _ordinary_sqlite_rejects(
+    db_path: Path,
+    connect: Callable[..., ConnectionLike] = sqlite3.connect,
+) -> bool:
+    ordinary_conn = connect(db_path)
+    try:
+        ordinary_conn.execute("SELECT count(*) FROM sqlite_master").fetchone()
+        return False
+    except sqlite3.DatabaseError:
+        return True
+    finally:
+        ordinary_conn.close()
 
 
 def _scan_for_marker(paths: list[Path], marker: bytes) -> bool:
@@ -281,11 +302,7 @@ def run_sqlcipher_probe(temp_dir: Path) -> SqlcipherEvidence:
         wrong_conn.close()
     checks.append(_status_from_bool("wrong-key-query", wrong_key, "ERR_WRONG_KEY_ACCEPTED"))
 
-    try:
-        sqlite3.connect(db_path).execute("SELECT count(*) FROM sqlite_master").fetchone()
-        ordinary_fails = False
-    except sqlite3.DatabaseError:
-        ordinary_fails = True
+    ordinary_fails = _ordinary_sqlite_rejects(db_path)
     checks.append(
         _status_from_bool("ordinary-sqlite-failure", ordinary_fails, "ERR_SQLITE_ACCEPTED")
     )
