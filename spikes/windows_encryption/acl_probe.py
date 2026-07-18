@@ -258,13 +258,16 @@ def _rules_from_acl_envelope(output: str) -> dict[str, list[str]]:
     return _normalize_rule_rows(data)
 
 
-def _normalized_acl_rules(temp_root: Path) -> dict[str, list[str]]:
+def _acl_inspection_output(temp_root: Path) -> str:
     env = {"PR_S001_ACL_TARGET": str(temp_root)}
     try:
-        output = _run_powershell(_acl_inspection_script(), env=env)
+        return _run_powershell(_acl_inspection_script(), env=env)
     except subprocess.CalledProcessError as exc:
-        raise _AclStageFailure(ACL_STAGE_READ, "ERR_ACL_POWERSHELL_LAUNCH") from exc
-    return _rules_from_acl_envelope(output)
+        raise _AclStageFailure(ACL_STAGE_READ, "ERR_ACL_READ") from exc
+
+
+def _normalized_acl_rules(temp_root: Path) -> dict[str, list[str]]:
+    return _rules_from_acl_envelope(_acl_inspection_output(temp_root))
 
 
 def _remove_directory(temp_root: Path, rmtree: Callable[[Path], None] = shutil.rmtree) -> bool:
@@ -323,24 +326,30 @@ def run_acl_probe() -> AclProbeResult:
     failed: _AclStageFailure | None = None
     evidence = AclEvidence()
     rights_evaluated = False
+    is_windows = platform.system() == "Windows"
+    active_stage = ACL_STAGE_CURRENT_USER_SID
     try:
-        if platform.system() != "Windows":
-            return AclProbeResult("UNSUPPORTED_NON_WINDOWS")
-        current_user_sid = _current_user_sid()
-        _apply_acl(temp_root, current_user_sid)
-        rules = _normalized_acl_rules(temp_root)
-        evidence = evaluate_acl_rules(rules, current_user_sid)
-        rights_evaluated = True
+        if is_windows:
+            active_stage = ACL_STAGE_CURRENT_USER_SID
+            current_user_sid = _current_user_sid()
+            active_stage = ACL_STAGE_APPLY
+            _apply_acl(temp_root, current_user_sid)
+            active_stage = ACL_STAGE_READ
+            output = _acl_inspection_output(temp_root)
+            active_stage = ACL_STAGE_JSON_PARSE
+            rules = _rules_from_acl_envelope(output)
+            evidence = evaluate_acl_rules(rules, current_user_sid)
+            rights_evaluated = True
     except _AclStageFailure as exc:
         failed = exc
     except Exception:
-        failed = _AclStageFailure(ACL_STAGE_CURRENT_USER_SID, "ERR_ACL_UNEXPECTED")
+        failed = _AclStageFailure(active_stage, "ERR_ACL_UNEXPECTED")
     finally:
         if temp_root.exists():
             directory_removed = _remove_directory(temp_root)
         if temp_root.exists():
             shutil.rmtree(temp_root, ignore_errors=True)
-    if platform.system() != "Windows":
+    if not is_windows:
         return AclProbeResult(
             "UNSUPPORTED_NON_WINDOWS",
             directory_removed=directory_removed,
