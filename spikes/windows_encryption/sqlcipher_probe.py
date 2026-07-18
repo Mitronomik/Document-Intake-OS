@@ -174,6 +174,42 @@ def _mode_from_rows(rows: list[tuple[Any, ...]]) -> str:
     return str(rows[0][0]).strip().lower()
 
 
+def _wal_marker_absent_reason(
+    *,
+    present: bool,
+    nonempty: bool,
+    control: bool,
+    encrypted_marker_present: bool,
+) -> str:
+    if not present:
+        return "ERR_WAL_NOT_CREATED"
+    if not nonempty:
+        return "ERR_WAL_EMPTY"
+    if not control:
+        return "ERR_WAL_CONTROL_MARKER_MISSING"
+    if encrypted_marker_present:
+        return "ERR_MARKER_IN_WAL"
+    return "PASS"
+
+
+def _journal_marker_absent_reason(
+    *,
+    present: bool,
+    nonempty: bool,
+    control: bool,
+    encrypted_marker_present: bool,
+) -> str:
+    if not present:
+        return "ERR_JOURNAL_NOT_CREATED"
+    if not nonempty:
+        return "ERR_JOURNAL_EMPTY"
+    if not control:
+        return "ERR_JOURNAL_CONTROL_MARKER_MISSING"
+    if encrypted_marker_present:
+        return "ERR_MARKER_IN_JOURNAL"
+    return "PASS"
+
+
 def _wal_checks_from_evidence(
     *,
     mode: str,
@@ -195,8 +231,14 @@ def _wal_checks_from_evidence(
     present = wal_exists
     nonempty = present and wal_size > 0
     control = control_marker_present
-    absent = present and nonempty and control and not encrypted_marker_present
-    encrypted = present and nonempty and control and absent
+    absent_reason = _wal_marker_absent_reason(
+        present=present,
+        nonempty=nonempty,
+        control=control,
+        encrypted_marker_present=encrypted_marker_present,
+    )
+    absent = absent_reason == "PASS"
+    encrypted = absent
     return (
         CheckResult("wal-mode-active", "PASS", "PASS"),
         CheckResult(
@@ -218,28 +260,12 @@ def _wal_checks_from_evidence(
         CheckResult(
             "wal-marker-absent",
             "PASS" if absent else "FAIL",
-            "PASS"
-            if absent
-            else (
-                "ERR_MARKER_IN_WAL"
-                if encrypted_marker_present
-                else "ERR_WAL_CONTROL_MARKER_MISSING"
-            ),
+            absent_reason,
         ),
         CheckResult(
             "wal-encrypted-content",
             "PASS" if encrypted else "FAIL",
-            "PASS"
-            if encrypted
-            else (
-                "ERR_MARKER_IN_WAL"
-                if encrypted_marker_present
-                else (
-                    "ERR_WAL_CONTROL_MARKER_MISSING"
-                    if nonempty
-                    else ("ERR_WAL_EMPTY" if present else "ERR_WAL_NOT_CREATED")
-                )
-            ),
+            absent_reason,
         ),
     )
 
@@ -271,7 +297,13 @@ def _journal_checks_from_evidence(
     present = journal_exists
     nonempty = present and journal_size > 0
     control = control_marker_present
-    absent = present and nonempty and control and not encrypted_marker_present
+    absent_reason = _journal_marker_absent_reason(
+        present=present,
+        nonempty=nonempty,
+        control=control,
+        encrypted_marker_present=encrypted_marker_present,
+    )
+    absent = absent_reason == "PASS"
     return (
         CheckResult("journal-mode-active", "PASS", "PASS"),
         CheckResult(
@@ -293,13 +325,7 @@ def _journal_checks_from_evidence(
         CheckResult(
             "journal-marker-absent",
             "PASS" if absent else "FAIL",
-            "PASS"
-            if absent
-            else (
-                "ERR_MARKER_IN_JOURNAL"
-                if encrypted_marker_present
-                else "ERR_JOURNAL_CONTROL_MARKER_MISSING"
-            ),
+            absent_reason,
         ),
     )
 

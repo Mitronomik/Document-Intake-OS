@@ -449,6 +449,84 @@ def _by_id(checks: tuple[CheckResult, ...]) -> dict[str, CheckResult]:
     return {check.identifier: check for check in checks}
 
 
+def _assert_check(check: CheckResult, status: str, reason_code: str) -> None:
+    assert check.status == status
+    assert check.reason_code == reason_code
+
+
+@pytest.mark.parametrize(
+    (
+        "wal_exists",
+        "wal_size",
+        "control_marker_present",
+        "encrypted_marker_present",
+        "expected_reason",
+    ),
+    [
+        (False, 0, True, False, "ERR_WAL_NOT_CREATED"),
+        (True, 0, True, False, "ERR_WAL_EMPTY"),
+        (True, 128, False, False, "ERR_WAL_CONTROL_MARKER_MISSING"),
+        (True, 128, True, True, "ERR_MARKER_IN_WAL"),
+        (True, 128, True, False, "PASS"),
+    ],
+)
+def test_wal_marker_absent_and_encrypted_content_reason_precedence(
+    wal_exists: bool,
+    wal_size: int,
+    control_marker_present: bool,
+    encrypted_marker_present: bool,
+    expected_reason: str,
+) -> None:
+    checks = _by_id(
+        _wal_checks_from_evidence(
+            mode="wal",
+            wal_exists=wal_exists,
+            wal_size=wal_size,
+            control_marker_present=control_marker_present,
+            encrypted_marker_present=encrypted_marker_present,
+        )
+    )
+    expected_status = "PASS" if expected_reason == "PASS" else "FAIL"
+    _assert_check(checks["wal-marker-absent"], expected_status, expected_reason)
+    _assert_check(checks["wal-encrypted-content"], expected_status, expected_reason)
+
+
+@pytest.mark.parametrize(
+    (
+        "journal_exists",
+        "journal_size",
+        "control_marker_present",
+        "encrypted_marker_present",
+        "expected_reason",
+    ),
+    [
+        (False, 0, True, False, "ERR_JOURNAL_NOT_CREATED"),
+        (True, 0, True, False, "ERR_JOURNAL_EMPTY"),
+        (True, 128, False, False, "ERR_JOURNAL_CONTROL_MARKER_MISSING"),
+        (True, 128, True, True, "ERR_MARKER_IN_JOURNAL"),
+        (True, 128, True, False, "PASS"),
+    ],
+)
+def test_journal_marker_absent_reason_precedence(
+    journal_exists: bool,
+    journal_size: int,
+    control_marker_present: bool,
+    encrypted_marker_present: bool,
+    expected_reason: str,
+) -> None:
+    checks = _by_id(
+        _journal_checks_from_evidence(
+            mode="delete",
+            journal_exists=journal_exists,
+            journal_size=journal_size,
+            control_marker_present=control_marker_present,
+            encrypted_marker_present=encrypted_marker_present,
+        )
+    )
+    expected_status = "PASS" if expected_reason == "PASS" else "FAIL"
+    _assert_check(checks["journal-marker-absent"], expected_status, expected_reason)
+
+
 def test_wal_mode_accepted_as_wal_produces_mode_pass() -> None:
     checks = _by_id(
         _wal_checks_from_evidence(
@@ -500,6 +578,8 @@ def test_active_wal_empty_file_fails() -> None:
         )
     )
     assert checks["wal-file-nonempty"].reason_code == "ERR_WAL_EMPTY"
+    _assert_check(checks["wal-marker-absent"], "FAIL", "ERR_WAL_EMPTY")
+    _assert_check(checks["wal-encrypted-content"], "FAIL", "ERR_WAL_EMPTY")
 
 
 def test_wal_missing_control_marker_fails() -> None:
@@ -590,6 +670,7 @@ def test_active_rollback_empty_journal_fails() -> None:
         )
     )
     assert checks["journal-file-nonempty"].reason_code == "ERR_JOURNAL_EMPTY"
+    _assert_check(checks["journal-marker-absent"], "FAIL", "ERR_JOURNAL_EMPTY")
 
 
 def test_rollback_missing_control_marker_fails() -> None:
@@ -681,8 +762,8 @@ def test_wal_control_pass_is_independent_when_encrypted_wal_missing() -> None:
     assert checks["wal-control-marker-present"].status == "PASS"
     assert checks["wal-control-marker-present"].reason_code == "PASS"
     assert checks["wal-file-present"].reason_code == "ERR_WAL_NOT_CREATED"
-    assert checks["wal-marker-absent"].status == "FAIL"
-    assert checks["wal-encrypted-content"].status == "FAIL"
+    _assert_check(checks["wal-marker-absent"], "FAIL", "ERR_WAL_NOT_CREATED")
+    _assert_check(checks["wal-encrypted-content"], "FAIL", "ERR_WAL_NOT_CREATED")
 
 
 def test_wal_control_pass_is_independent_when_encrypted_wal_empty() -> None:
@@ -713,7 +794,7 @@ def test_journal_control_pass_is_independent_when_encrypted_journal_missing() ->
     assert checks["journal-control-marker-present"].status == "PASS"
     assert checks["journal-control-marker-present"].reason_code == "PASS"
     assert checks["journal-file-present"].reason_code == "ERR_JOURNAL_NOT_CREATED"
-    assert checks["journal-marker-absent"].status == "FAIL"
+    _assert_check(checks["journal-marker-absent"], "FAIL", "ERR_JOURNAL_NOT_CREATED")
 
 
 def test_journal_control_pass_is_independent_when_encrypted_journal_empty() -> None:
