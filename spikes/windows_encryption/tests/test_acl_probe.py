@@ -3,6 +3,9 @@ from __future__ import annotations
 import json
 import platform
 from pathlib import Path
+from typing import Any, cast
+
+import pytest
 
 from spikes.windows_encryption.acl_probe import (
     WELL_KNOWN_ADMINISTRATORS,
@@ -47,9 +50,140 @@ def test_acl_probe_returns_stable_status_and_no_raw_output() -> None:
             "ERR_ACL_BROAD_WRITE",
             "ERR_ACL_CLEANUP_FAILED",
             "ERR_ACL_PROBE_FAILED",
+            "ERR_ACL_SID_LOOKUP",
+            "ERR_ACL_APPLY_INHERITANCE",
+            "ERR_ACL_APPLY_SYSTEM",
+            "ERR_ACL_APPLY_ADMINISTRATORS",
+            "ERR_ACL_APPLY_CURRENT_USER",
+            "ERR_ACL_POWERSHELL_LAUNCH",
+            "ERR_ACL_READ",
+            "ERR_ACL_NORMALIZE_TO_SID",
+            "ERR_ACL_JSON_SERIALIZE",
+            "ERR_ACL_JSON_PARSE",
+            "ERR_ACL_RESULT_SHAPE",
+            "ERR_ACL_UNEXPECTED",
         }
     assert "S-" not in repr(result)
     assert "icacls" not in repr(result).lower()
+
+
+def test_stage_sid_lookup_parser_accepts_bom_and_rejects_bad_output(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from spikes.windows_encryption import acl_probe
+
+    monkeypatch.setattr(acl_probe, "_run_powershell", lambda _script: "\ufeff  S-1-5-21-1000  ")
+    assert acl_probe._current_user_sid() == CURRENT_USER
+    for output in ("", "not-a-sid", "S-1-5-21-1000\nS-1-5-21-2000"):
+        monkeypatch.setattr(acl_probe, "_run_powershell", lambda _script, value=output: value)
+        try:
+            acl_probe._current_user_sid()
+        except Exception as exc:
+            failure = cast(Any, exc)
+            assert failure.reason_code == "ERR_ACL_SID_LOOKUP"
+        else:
+            raise AssertionError("SID lookup should fail")
+
+
+def test_acl_application_failures_map_to_specific_reasons(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    from spikes.windows_encryption import acl_probe
+
+    expected = [
+        "ERR_ACL_APPLY_INHERITANCE",
+        "ERR_ACL_APPLY_SYSTEM",
+        "ERR_ACL_APPLY_ADMINISTRATORS",
+        "ERR_ACL_APPLY_CURRENT_USER",
+    ]
+    for fail_index, reason in enumerate(expected):
+        calls: list[list[str]] = []
+
+        def fake_run(
+            _command: list[str],
+            calls: list[list[str]] = calls,
+            fail_index: int = fail_index,
+        ) -> str:
+            calls.append(_command)
+            if len(calls) == fail_index + 1:
+                raise OSError
+            return ""
+
+        monkeypatch.setattr(acl_probe, "_run_command", fake_run)
+        try:
+            acl_probe._apply_acl(tmp_path, CURRENT_USER)
+        except Exception as exc:
+            failure = cast(Any, exc)
+            assert failure.stage == acl_probe.ACL_STAGE_APPLY
+            assert failure.reason_code == reason
+        else:
+            raise AssertionError("ACL application should fail")
+
+
+def test_acl_inspection_envelope_stage_and_shape_mapping() -> None:
+    from spikes.windows_encryption.acl_probe import _rules_from_acl_envelope
+
+    stage_cases = {
+        '{"ok":false,"stage":"read"}': "ERR_ACL_READ",
+        '{"ok":false,"stage":"normalize"}': "ERR_ACL_NORMALIZE_TO_SID",
+        '{"ok":false,"stage":"serialize"}': "ERR_ACL_JSON_SERIALIZE",
+        "not json": "ERR_ACL_JSON_PARSE",
+        (
+            '{"ok":true,"stage":"complete","rules":{"sid":"bad","rights":"FullControl"}}'
+        ): "ERR_ACL_RESULT_SHAPE",
+    }
+    for payload, reason in stage_cases.items():
+        try:
+            _rules_from_acl_envelope(payload)
+        except Exception as exc:
+            failure = cast(Any, exc)
+            assert failure.reason_code == reason
+        else:
+            raise AssertionError("ACL envelope should fail")
+
+
+def test_acl_inspection_envelope_normalizes_singleton_and_multiple_rows() -> None:
+    from spikes.windows_encryption.acl_probe import _rules_from_acl_envelope
+
+    singleton = _rules_from_acl_envelope(
+        '\ufeff {"ok":true,"stage":"complete","rules":{"sid":"S-1-5-18","rights":"FullControl"}} '
+    )
+    multiple = _rules_from_acl_envelope(
+        '{"ok":true,"stage":"complete","rules":['
+        '{"sid":"S-1-5-18","rights":"FullControl"},'
+        '{"sid":"S-1-5-18","rights":"Read"}]}'
+    )
+    assert singleton == {"S-1-5-18": ["FullControl"]}
+    assert multiple == {"S-1-5-18": ["FullControl", "Read"]}
+
+
+def test_stage_failure_yields_not_demonstrated_rights_and_later_stages() -> None:
+    from spikes.windows_encryption.acl_probe import AclProbeResult, AclStageResult
+
+    checks = _acl_checks(
+        AclProbeResult(
+            "ERR_ACL_APPLY_SYSTEM",
+            directory_removed=True,
+            stages=(
+                AclStageResult("acl-stage-current-user-sid", "PASS", "PASS"),
+                AclStageResult("acl-stage-apply", "FAIL", "ERR_ACL_APPLY_SYSTEM"),
+                AclStageResult("acl-stage-read", "NOT_DEMONSTRATED", "NOT_DEMONSTRATED"),
+                AclStageResult(
+                    "acl-stage-normalize-to-sid", "NOT_DEMONSTRATED", "NOT_DEMONSTRATED"
+                ),
+                AclStageResult("acl-stage-json-serialize", "NOT_DEMONSTRATED", "NOT_DEMONSTRATED"),
+                AclStageResult("acl-stage-json-parse", "NOT_DEMONSTRATED", "NOT_DEMONSTRATED"),
+                AclStageResult("acl-directory-cleanup", "PASS", "PASS"),
+            ),
+        )
+    )
+    assert checks[1].reason_code == "ERR_ACL_APPLY_SYSTEM"
+    assert {check.reason_code for check in checks[6:10]} == {"NOT_DEMONSTRATED"}
+    assert not {check.reason_code for check in checks[6:10]} & {
+        "ERR_ACL_CURRENT_USER_RIGHTS",
+        "ERR_ACL_SYSTEM_RIGHTS",
+        "ERR_ACL_ADMINISTRATORS_RIGHTS",
+    }
 
 
 def test_acl_probe_cleans_up_directory() -> None:
@@ -143,6 +277,18 @@ def test_acl_reason_codes_survive_reason_mapping() -> None:
         "ERR_ACL_BROAD_WRITE",
         "ERR_ACL_CLEANUP_FAILED",
         "ERR_ACL_PROBE_FAILED",
+        "ERR_ACL_SID_LOOKUP",
+        "ERR_ACL_APPLY_INHERITANCE",
+        "ERR_ACL_APPLY_SYSTEM",
+        "ERR_ACL_APPLY_ADMINISTRATORS",
+        "ERR_ACL_APPLY_CURRENT_USER",
+        "ERR_ACL_POWERSHELL_LAUNCH",
+        "ERR_ACL_READ",
+        "ERR_ACL_NORMALIZE_TO_SID",
+        "ERR_ACL_JSON_SERIALIZE",
+        "ERR_ACL_JSON_PARSE",
+        "ERR_ACL_RESULT_SHAPE",
+        "ERR_ACL_UNEXPECTED",
     }
     assert {_reason(code) for code in codes} == codes
 
@@ -155,6 +301,18 @@ def test_acl_reason_codes_are_allowlisted() -> None:
         "ERR_ACL_BROAD_WRITE",
         "ERR_ACL_CLEANUP_FAILED",
         "ERR_ACL_PROBE_FAILED",
+        "ERR_ACL_SID_LOOKUP",
+        "ERR_ACL_APPLY_INHERITANCE",
+        "ERR_ACL_APPLY_SYSTEM",
+        "ERR_ACL_APPLY_ADMINISTRATORS",
+        "ERR_ACL_APPLY_CURRENT_USER",
+        "ERR_ACL_POWERSHELL_LAUNCH",
+        "ERR_ACL_READ",
+        "ERR_ACL_NORMALIZE_TO_SID",
+        "ERR_ACL_JSON_SERIALIZE",
+        "ERR_ACL_JSON_PARSE",
+        "ERR_ACL_RESULT_SHAPE",
+        "ERR_ACL_UNEXPECTED",
     } <= ALLOWED_REASON_CODES
 
 
@@ -191,6 +349,7 @@ def _acl_checks_from(evidence: AclEvidence, directory_removed: bool = True):  # 
             administrators_rights=evidence.administrators_rights,
             broad_write_blocked=evidence.broad_write_blocked,
             directory_removed=directory_removed,
+            rights_evaluated=True,
         )
     )
 
@@ -208,7 +367,7 @@ def test_cleanup_check_independent_for_probe_failure() -> None:
     removed_checks = _acl_checks(AclProbeResult("ERR_ACL_PROBE_FAILED", directory_removed=True))
     failed_checks = _acl_checks(AclProbeResult("ERR_ACL_PROBE_FAILED", directory_removed=False))
 
-    assert [check.reason_code for check in removed_checks[:4]] == ["ERR_ACL_PROBE_FAILED"] * 4
+    assert [check.reason_code for check in removed_checks[:4]] == ["NOT_DEMONSTRATED"] * 4
     assert removed_checks[4].status == ResultStatus.PASS
     assert removed_checks[4].reason_code == "PASS"
     assert failed_checks[4].status == ResultStatus.FAIL

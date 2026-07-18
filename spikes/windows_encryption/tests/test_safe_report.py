@@ -309,6 +309,18 @@ def test_acl_reason_codes_are_allowlisted() -> None:
         "ERR_ACL_BROAD_WRITE",
         "ERR_ACL_CLEANUP_FAILED",
         "ERR_ACL_PROBE_FAILED",
+        "ERR_ACL_SID_LOOKUP",
+        "ERR_ACL_APPLY_INHERITANCE",
+        "ERR_ACL_APPLY_SYSTEM",
+        "ERR_ACL_APPLY_ADMINISTRATORS",
+        "ERR_ACL_APPLY_CURRENT_USER",
+        "ERR_ACL_POWERSHELL_LAUNCH",
+        "ERR_ACL_READ",
+        "ERR_ACL_NORMALIZE_TO_SID",
+        "ERR_ACL_JSON_SERIALIZE",
+        "ERR_ACL_JSON_PARSE",
+        "ERR_ACL_RESULT_SHAPE",
+        "ERR_ACL_UNEXPECTED",
     } <= ALLOWED_REASON_CODES
 
 
@@ -334,6 +346,16 @@ def test_safe_report_accepts_acl_identifiers_and_reasons() -> None:
                 "ERR_ACL_ADMINISTRATORS_RIGHTS",
             ),
             ReportCheck("acl-broad-write-blocked", ResultStatus.FAIL, "ERR_ACL_BROAD_WRITE"),
+            ReportCheck("acl-stage-current-user-sid", ResultStatus.PASS, "PASS"),
+            ReportCheck("acl-stage-apply", ResultStatus.FAIL, "ERR_ACL_APPLY_SYSTEM"),
+            ReportCheck("acl-stage-read", ResultStatus.NOT_DEMONSTRATED, "NOT_DEMONSTRATED"),
+            ReportCheck(
+                "acl-stage-normalize-to-sid", ResultStatus.NOT_DEMONSTRATED, "NOT_DEMONSTRATED"
+            ),
+            ReportCheck(
+                "acl-stage-json-serialize", ResultStatus.NOT_DEMONSTRATED, "NOT_DEMONSTRATED"
+            ),
+            ReportCheck("acl-stage-json-parse", ResultStatus.NOT_DEMONSTRATED, "NOT_DEMONSTRATED"),
             ReportCheck("acl-directory-cleanup", ResultStatus.FAIL, "ERR_ACL_CLEANUP_FAILED"),
         ],
         recommendation="NOT_FEASIBLE",
