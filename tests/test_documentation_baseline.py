@@ -43,6 +43,7 @@ REQUIRED_DOCUMENTS = (
     "docs/tasks/PR-S001-F1-windows-cleanup-acl-evidence.md",
     "docs/tasks/PR-S001-F2-wal-journal-evidence.md",
     "docs/tasks/PR-S001-F3-windows-acl-diagnostics.md",
+    "docs/tasks/PR-S001-F4-windows11-target-attestation.md",
 )
 
 CANONICAL_SOURCE_ORDER = (
@@ -233,7 +234,9 @@ def test_lifecycle_state_records_gate_s1_accepted_state() -> None:
         "b9c07a0c2b152bdad21e5d50126917c55b349e12",
         "PR-S001-F2: COMPLETED AND MERGED THROUGH PR #11",
         "7559dbb6189f6e0181eec8a44a7de262cadf036f",
-        "PR-S001-F3: CURRENT CORRECTION",
+        "PR-S001-F3: COMPLETED AND MERGED THROUGH PR #12",
+        "ceb1e265a85a9af8374afa942fa7a68c7da492e7",
+        "PR-S001-F4: CURRENT CORRECTION",
         "PR-005: UNAUTHORIZED",
         "PR-006: UNAUTHORIZED",
         "PR-007 AND LATER: UNAUTHORIZED",
@@ -274,8 +277,8 @@ def test_lifecycle_state_records_gate_s1_accepted_state() -> None:
         for required in required_by_file:
             assert required in text, filename
         needle = (
-            "complete PR-S001-F3 ACL diagnostics correction before product-owner "
-            "PR-S001 feasibility review"
+            "complete PR-S001-F4 Windows 11 x64 target attestation before "
+            "product-owner PR-S001 feasibility review"
         )
         assert needle in text, filename
         for stale in stale_current_state:
@@ -284,6 +287,7 @@ def test_lifecycle_state_records_gate_s1_accepted_state() -> None:
     progress = (REPO_ROOT / "docs/progress.md").read_text(encoding="utf-8")
     assert "PR-S001-F1 is the current correction" not in progress
     assert "PR-S001-F2 is the current correction" not in progress
+    assert "PR-S001-F3 is the current correction" not in progress
     assert "**Обновлено:** 2026-07-17" in progress
     assert "- [x] GATE-S1: COMPLETED AND HUMAN ACCEPTED;" in progress
     assert "- [x] ADR-018: ACCEPTED;" in progress
@@ -294,7 +298,9 @@ def test_lifecycle_state_records_gate_s1_accepted_state() -> None:
         "at merge commit `b9c07a0c2b152bdad21e5d50126917c55b349e12`; "
         "PR-S001-F2: COMPLETED AND MERGED THROUGH PR #11; PR-S001-F2 merge "
         "commit: `7559dbb6189f6e0181eec8a44a7de262cadf036f`; "
-        "PR-S001-F3: CURRENT CORRECTION;" in progress
+        "PR-S001-F3: COMPLETED AND MERGED THROUGH PR #12; PR-S001-F3 merge "
+        "commit: `ceb1e265a85a9af8374afa942fa7a68c7da492e7`; "
+        "PR-S001-F4: CURRENT CORRECTION;" in progress
     )
     assert "- [ ] PR-005: UNAUTHORIZED;" in progress
     assert "- [ ] PR-006: UNAUTHORIZED;" in progress
@@ -463,7 +469,8 @@ def test_gate_s1_acceptance_security_and_lifecycle_boundaries() -> None:
     for filename in lifecycle_files:
         text = (REPO_ROOT / filename).read_text(encoding="utf-8")
         assert (
-            "PR-S001/PR-S001-F1/PR-S001-F2/PR-S001-F3 use fictional synthetic data only" in text
+            "PR-S001/PR-S001-F1/PR-S001-F2/PR-S001-F3/PR-S001-F4 use fictional synthetic data only"
+            in text
         ), filename
         assert "must not create production database/storage APIs" in text, filename
         assert "PR-005 does not start automatically after PR-S001 merge" in text, filename
@@ -917,6 +924,24 @@ def test_pr_s001_spike_documentation_and_scope() -> None:
     assert "Security" in report or "security" in report.lower()
     assert "Packaging" in report or "packaging" in report.lower()
     assert "Licensing" in report or "licensing" in report.lower()
+    stale_research_phrases = (
+        "Status: CI run #42 results",
+        "Windows runtime probes: NOT EXECUTED",
+        "DPAPI cross-runner: NOT EXECUTED",
+        "No Ubuntu or Windows CI has executed since the last harness correction",
+        "NOT_DEMONSTRATED until Windows CI executes",
+    )
+    for stale_phrase in stale_research_phrases:
+        assert stale_phrase not in report
+    for required_phrase in (
+        "CI #57",
+        "Windows Server 2025 AMD64",
+        "CONDITIONALLY FEASIBLE",
+        "Windows 11 x64: NOT_DEMONSTRATED",
+        "PR-005: UNAUTHORIZED",
+        "PR-006: UNAUTHORIZED",
+    ):
+        assert required_phrase in report
     pyproject = (REPO_ROOT / "pyproject.toml").read_text(encoding="utf-8")
     project_block = pyproject.split("[project.scripts]", maxsplit=1)[0]
     assert "sqlcipher3" not in project_block
@@ -928,7 +953,9 @@ def test_pr_s001_spike_documentation_and_scope() -> None:
         "at merge commit `b9c07a0c2b152bdad21e5d50126917c55b349e12`; "
         "PR-S001-F2: COMPLETED AND MERGED THROUGH PR #11; PR-S001-F2 merge "
         "commit: `7559dbb6189f6e0181eec8a44a7de262cadf036f`; "
-        "PR-S001-F3: CURRENT CORRECTION"
+        "PR-S001-F3: COMPLETED AND MERGED THROUGH PR #12; PR-S001-F3 merge "
+        "commit: `ceb1e265a85a9af8374afa942fa7a68c7da492e7`; "
+        "PR-S001-F4: CURRENT CORRECTION"
         in (REPO_ROOT / "docs/progress.md").read_text(encoding="utf-8")
     )
     lifecycle_files = [
@@ -941,7 +968,10 @@ def test_pr_s001_spike_documentation_and_scope() -> None:
     for lifecycle in lifecycle_files:
         text = (REPO_ROOT / lifecycle).read_text(encoding="utf-8")
         assert "AUTHORIZED, NOT STARTED" not in text
-        assert "PR-S001/PR-S001-F1/PR-S001-F2/PR-S001-F3 use fictional synthetic data only" in text
+        assert (
+            "PR-S001/PR-S001-F1/PR-S001-F2/PR-S001-F3/PR-S001-F4 use fictional synthetic data only"
+            in text
+        )
         assert "PR-S001 contains no production persistence/storage API" in text
         assert "a negative feasibility result is valid" in text
         assert "PR-S001 merge does not authorize PR-005" in text

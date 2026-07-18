@@ -401,3 +401,131 @@ def test_pr_s001_f2_safe_report_excludes_marker_path_and_exception(tmp_path: Pat
     assert "synthetic-record" not in text
     assert str(tmp_path) not in text
     assert "Traceback" not in text
+
+
+def _passing_report_dependencies(monkeypatch: pytest.MonkeyPatch) -> None:
+    from spikes.windows_encryption import run
+    from spikes.windows_encryption.acl_probe import AclProbeResult
+    from spikes.windows_encryption.sqlcipher_probe import CheckResult, SqlcipherEvidence
+
+    monkeypatch.setattr(
+        run,
+        "run_sqlcipher_probe",
+        lambda path: SqlcipherEvidence(
+            status="PASS",
+            sqlcipher_version="4.5.0",
+            sqlite_version="3.45.0",
+            checks=(CheckResult("cipher-status", "PASS", "PASS"),),
+        ),
+    )
+    monkeypatch.setattr(
+        run,
+        "run_acl_probe",
+        lambda: AclProbeResult(
+            status="PASS",
+            stages=(),
+            directory_removed=True,
+            rights_evaluated=True,
+            current_user_rights=True,
+            system_rights=True,
+            administrators_rights=True,
+            broad_write_blocked=True,
+        ),
+    )
+    monkeypatch.setattr(
+        run,
+        "_envelope_check",
+        lambda: ReportCheck("envelope-and-rollback", ResultStatus.PASS, "PASS"),
+    )
+    monkeypatch.setattr(
+        run,
+        "_crash_check",
+        lambda temp_dir: ReportCheck("crash-consistency-model", ResultStatus.PASS, "PASS"),
+    )
+
+    class Offline:
+        status = "PASS"
+
+    monkeypatch.setattr(run, "run_offline_smoke", lambda: Offline())
+
+
+def _target_result(status: ResultStatus) -> object:
+    from spikes.windows_encryption.windows_target_probe import (
+        WindowsArchitectureEvidence,
+        WindowsMachine,
+        WindowsProductType,
+        WindowsVersionEvidence,
+        run_windows_target_probe,
+    )
+
+    def target_version(product: WindowsProductType) -> WindowsVersionEvidence:
+        return WindowsVersionEvidence(10, 0, 22631, product, ResultStatus.PASS, "PASS")
+
+    target_architecture = WindowsArchitectureEvidence(
+        WindowsMachine.AMD64,
+        WindowsMachine.UNKNOWN,
+        8,
+        ResultStatus.PASS,
+        "PASS",
+    )
+    if status == ResultStatus.PASS:
+        return run_windows_target_probe(
+            lambda: target_version(WindowsProductType.WORKSTATION), lambda: target_architecture
+        )
+    return run_windows_target_probe(
+        lambda: target_version(WindowsProductType.SERVER), lambda: target_architecture
+    )
+
+
+def test_build_report_uses_passing_windows_target_evidence(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from spikes.windows_encryption import run
+
+    _passing_report_dependencies(monkeypatch)
+    monkeypatch.setattr(run, "run_windows_target_probe", lambda: _target_result(ResultStatus.PASS))
+    report = build_report(tmp_path)
+    assert report.windows_11_x64_result == ResultStatus.PASS
+    assert "windows11-not-demonstrated" not in report.documented_limitations
+    assert report.recommendation == "CONDITIONALLY_FEASIBLE"
+
+
+def test_build_report_keeps_server_non_target_conditional(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from spikes.windows_encryption import run
+
+    _passing_report_dependencies(monkeypatch)
+    monkeypatch.setattr(
+        run, "run_windows_target_probe", lambda: _target_result(ResultStatus.NOT_DEMONSTRATED)
+    )
+    report = build_report(tmp_path)
+    checks = {check.identifier: check for check in report.checks}
+    assert checks["windows-target-workstation"].status == ResultStatus.NOT_DEMONSTRATED
+    assert checks["windows-11-x64"].status == ResultStatus.NOT_DEMONSTRATED
+    assert report.windows_11_x64_result == ResultStatus.NOT_DEMONSTRATED
+    assert "windows11-not-demonstrated" in report.documented_limitations
+    assert report.recommendation == "CONDITIONALLY_FEASIBLE"
+
+
+def test_windows_target_safe_report_contains_no_raw_private_values(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from spikes.windows_encryption import run
+
+    _passing_report_dependencies(monkeypatch)
+    monkeypatch.setattr(
+        run, "run_windows_target_probe", lambda: _target_result(ResultStatus.NOT_DEMONSTRATED)
+    )
+    text = report_to_json(build_report(tmp_path))
+    for forbidden in (
+        "hostname",
+        "username",
+        "domain",
+        "SID",
+        "registry",
+        "GetLastError",
+        "Traceback",
+        str(tmp_path),
+    ):
+        assert forbidden not in text
