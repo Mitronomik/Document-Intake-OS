@@ -6,7 +6,7 @@ Status: DEMONSTRATED for the repository-local evidence harness structure. PR-S00
 
 ## 2. Accepted ADR-018 boundaries
 
-Status: DEMONSTRATED. ADR-018 is accepted and remains authoritative. PR-S001 may gather evidence for SQLCipher, DPAPI Current User, key hierarchy, authenticated encrypted-object envelopes, rollback anchors, crash consistency, offline packaging, safe diagnostics, licensing and performance. PR-005 and PR-006 remain unauthorized.
+Status: DEMONSTRATED. ADR-018 is accepted and remains authoritative. PR-S001 may gather evidence for SQLCipher, DPAPI Current User, key hierarchy, authenticated encrypted-object envelopes, rollback anchors, crash consistency, offline packaging, safe diagnostics, licensing and performance. PR-005 is AUTHORIZED, NOT STARTED. PR-006 remains UNAUTHORIZED.
 
 ## 3. Environment and evidence date
 
@@ -14,7 +14,7 @@ Status: DEMONSTRATED for source review date. External package and platform evide
 
 GitHub Actions provides preliminary Windows x64 evidence on GitHub-hosted Windows Server. It does not prove Windows 11 compatibility. Windows 11 x64 result: NOT_DEMONSTRATED.
 
-A sanitized run on Windows 11 x64 remains required before product-owner acceptance of PR-S001. No real documents or personal data are needed for that run.
+By product-owner decision, no separate synthetic run will be performed on an actual Windows 11 x64 workstation at this stage. Windows 11 x64 verification remains mandatory before installer, pilot or production-release acceptance. No real documents or personal data are needed for that future verification.
 
 ```powershell
 uv sync --locked --dev --group encryption-spike
@@ -35,7 +35,7 @@ The sanitized report must not contain machine name, username or absolute path.
 
 | Candidate | Evaluation | Technical | Security | Packaging | Licensing/support | Production risk |
 |---|---|---|---|---|---|---|
-| A `sqlcipher3==0.6.2` | Executable Windows probe candidate | Preliminary GitHub Windows Server 2025 evidence demonstrates executable startup, cipher status and integrity, correct-key access, wrong-key rejection, ordinary SQLite rejection, tamper and truncation detection, WAL and rollback-journal protection, and wheelhouse-based offline installation | Preliminary GitHub Windows Server 2025 security checks passed for the research harness; Windows 11 x64 target evidence remains NOT_DEMONSTRATED | Wheelhouse-based offline installation demonstrated on GitHub Windows Server 2025 | NOT_DEMONSTRATED pending legal/product-owner redistribution review | Final package selection, binding-safe production key API and production architecture remain unresolved |
+| A `sqlcipher3==0.6.2` | Executable Windows probe candidate | Preliminary GitHub Windows Server 2025 evidence demonstrates executable startup, cipher status and integrity, correct-key access, wrong-key rejection, ordinary SQLite rejection, tamper and truncation detection, WAL and rollback-journal protection, and wheelhouse-based offline installation | Preliminary GitHub Windows Server 2025 security checks passed for the research harness; Windows 11 x64 target evidence remains NOT_DEMONSTRATED; RISK ACCEPTED BY PRODUCT OWNER FOR PR-005 ENTRY | Wheelhouse-based offline installation demonstrated on GitHub Windows Server 2025 | NOT_DEMONSTRATED pending legal/product-owner redistribution review | Final package selection, binding-safe production key API and production architecture remain unresolved |
 | B official Zetetic Windows package | Metadata-only, commercial-not-tested | NOT_DEMONSTRATED | NOT_DEMONSTRATED | NOT_DEMONSTRATED; no commercial binaries downloaded | NOT_DEMONSTRATED; redistribution subject to approval | No trial code, purchase, commercial binary or secret is used |
 | C `pysqlcipher3==1.2.0` | Legacy control metadata only | NOT_DEMONSTRATED | NOT_DEMONSTRATED | NOT_DEMONSTRATED; not added to lockfile | NOT_DEMONSTRATED | Not selected by this spike |
 | D custom binding/build | Design route only | NOT_DEMONSTRATED | NOT_DEMONSTRATED | NOT_DEMONSTRATED | NOT_DEMONSTRATED | Not implemented or selected |
@@ -96,27 +96,27 @@ Status: UNSUPPORTED on local Linux for Windows-only DPAPI, ACL and SQLCipher run
 
 ## 18. CI run evidence
 
-Status: CI #57 completed successfully on GitHub-hosted Windows Server 2025 AMD64. The recommendation was CONDITIONALLY FEASIBLE. SQLCipher, WAL, rollback journal, controlled-temp-scan, connection-cleanup, DPAPI, ACL stages, ACL rights, ACL cleanup, envelope-and-rollback, crash-consistency-model and offline-smoke evidence passed. Windows 11 x64: NOT_DEMONSTRATED.
+Status: CI #57 completed successfully on GitHub-hosted Windows Server 2025 AMD64. The recommendation was CONDITIONALLY FEASIBLE. SQLCipher, WAL, rollback journal, controlled-temp-scan, connection-cleanup, DPAPI, ACL stages, ACL rights, ACL cleanup, envelope-and-rollback, crash-consistency-model and offline-smoke evidence passed. Windows 11 x64: NOT_DEMONSTRATED; RISK ACCEPTED BY PRODUCT OWNER FOR PR-005 ENTRY.
 
 ## 19. Recommendation
 
-CONDITIONALLY FEASIBLE. The recommendation is conditional because GitHub Windows Server evidence is preliminary, Windows 11 x64 result is NOT_DEMONSTRATED, legal redistribution is unresolved, raw-key API suitability is unresolved, and no final production design is selected.
+CONDITIONALLY FEASIBLE. The recommendation is conditional because GitHub Windows Server evidence is preliminary, Windows 11 x64 result is NOT_DEMONSTRATED; RISK ACCEPTED BY PRODUCT OWNER FOR PR-005 ENTRY, legal redistribution is unresolved, raw-key API suitability is unresolved, and no final production design is selected.
 
 ## 20. Remaining blockers
 
-Status: NOT_DEMONSTRATED for production acceptance. Blockers remain: final SQLCipher edition/binding/version, legal redistribution approval, final key hierarchy, production envelope format, production storage/database transaction boundary, backup/recovery design, installer ACL design, Windows 11 x64 sanitized run and full-system rollback strategy.
+Status: NOT_DEMONSTRATED for production acceptance. Blockers remain: final SQLCipher edition/binding/version, legal redistribution approval, final key hierarchy, production envelope format, production storage/database transaction boundary, backup/recovery design, installer ACL design, Windows 11 target run not performed, legal/redistribution unresolved, production design unresolved, no-final-package-selection and full-system rollback strategy.
 
 ## 21. Explicit non-authorization of PR-005 and PR-006
 
-Status: DEMONSTRATED. PR-S001 is in review only. PR-S001 merge does not authorize PR-005 or PR-006. Human acceptance and separate authorization are required before any production persistence or storage work.
+Status: DEMONSTRATED. PR-S001 is accepted with documented residual risk RISK-S001-W11. PR-005 is AUTHORIZED, NOT STARTED after this decision PR is merged. PR-006 remains UNAUTHORIZED. This acceptance does not create production persistence or storage work.
 
 ## 22. Gate and milestone status
 
 Gate 1: NOT ACCEPTED
 M2: NOT COMPLETED
-PR-S001: IN REVIEW
-PR-005: UNAUTHORIZED
+PR-S001: ACCEPTED WITH DOCUMENTED RESIDUAL RISK
+PR-005: AUTHORIZED, NOT STARTED
 PR-006: UNAUTHORIZED
-Windows 11 x64: NOT_DEMONSTRATED
+Windows 11 x64: NOT_DEMONSTRATED; RISK ACCEPTED BY PRODUCT OWNER FOR PR-005 ENTRY
 
 No final package selection has been made.

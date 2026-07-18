@@ -8,7 +8,7 @@
 - ADR-015 created a narrow exception for PR-001 through PR-003 repository-safety work while M0 remained open;
 - PR-003 is completed and merged through GitHub PR #4 at `ad5782045473d3ef5eb0a097cc8f6982bab821c7`;
 - M1 Safe Repository is accepted;
-- GATE-M0 and M0 are accepted; PR-004 is completed and human accepted; GATE-S1 is completed and human accepted; ADR-018 is accepted; PR #9 merged PR-S001 as a research harness; PR-S001 final acceptance is NOT ACCEPTED and PR-S001-F4 is the current correction; PR-005 and later work remain unauthorized;
+- GATE-M0 and M0 are accepted; PR-004 is completed and human accepted; GATE-S1 is completed and human accepted; ADR-018 is accepted; PR #9 merged PR-S001 as a research harness; PR-S001 is ACCEPTED WITH DOCUMENTED RESIDUAL RISK RISK-S001-W11; PR-005 is authorized, not started; PR-006 and later work remain unauthorized;
 - PR-005 and later tasks remain unauthorized;
 - реальные документы не используются в Codex Web;
 - OCR начинается только после готовности ручного контура.
@@ -81,7 +81,7 @@ Unauthorized. PR-006 remains blocked until PR-S001 is merged, reviewed and human
 
 Unauthorized by GATE-M0. Masked audit model, critical operations and PII-safe tests remain a later task.
 
-**Gate 1:** domain/storage приняты.
+**Gate 1:** NOT ACCEPTED; the roadmap gate requires accepted domain/storage, and storage remains incomplete while PR-005 is only authorized, not started.
 
 ## Этап 2. Изображения
 
@@ -219,9 +219,9 @@ Network block, PII logs, template tampering, formula injection and fault injecti
 
 ## Current authorization state for GATE-S1
 
-GATE-M0: COMPLETED. GATE-M0 merge commit: `3dada63ea82163c7c4497e290b303d2cc781b085`. Human acceptance of GATE-M0 occurred after PR #5 merge. M0: ACCEPTED. M1: ACCEPTED. PR-004: COMPLETED AND HUMAN ACCEPTED. GATE-S1: COMPLETED AND HUMAN ACCEPTED. ADR-018: ACCEPTED. PR-S001: MERGED AS RESEARCH HARNESS; PR-S001 FINAL ACCEPTANCE: NOT ACCEPTED; PR-S001-F1: COMPLETED AND MERGED THROUGH PR #10 at merge commit `b9c07a0c2b152bdad21e5d50126917c55b349e12`; PR-S001-F2: COMPLETED AND MERGED THROUGH PR #11; PR-S001-F2 merge commit: `7559dbb6189f6e0181eec8a44a7de262cadf036f`; PR-S001-F3: COMPLETED AND MERGED THROUGH PR #12; PR-S001-F3 merge commit: `ceb1e265a85a9af8374afa942fa7a68c7da492e7`; PR-S001-F4: CURRENT CORRECTION. PR-005: UNAUTHORIZED. PR-006: UNAUTHORIZED. PR-007 AND LATER: UNAUTHORIZED. Gate 1: NOT ACCEPTED. M2: NOT COMPLETED. Q-010: ACCEPTED. The template enforcement PR remains future work and does not block PR-004. The sensitive-data/private-contour gate remains open for real data. The next safe step is complete PR-S001-F4 Windows 11 x64 target attestation before product-owner PR-S001 feasibility review. PR-005 must not start without accepted encryption staging and later authorization.
+GATE-M0: COMPLETED. GATE-M0 merge commit: `3dada63ea82163c7c4497e290b303d2cc781b085`. Human acceptance of GATE-M0 occurred after PR #5 merge. M0: ACCEPTED. M1: ACCEPTED. PR-004: COMPLETED AND HUMAN ACCEPTED. GATE-S1: COMPLETED AND HUMAN ACCEPTED. ADR-018: ACCEPTED. PR-S001: ACCEPTED WITH DOCUMENTED RESIDUAL RISK RISK-S001-W11; PR-S001-F1: COMPLETED; PR-S001-F2: COMPLETED; PR-S001-F3: COMPLETED; PR-S001-F4: COMPLETED AND MERGED THROUGH PR #13; PR-S001-F4 merge commit: `985fae37c7645e8f65edbe4d1609100ee24a2097`. PR-005: AUTHORIZED, NOT STARTED. PR-006: UNAUTHORIZED. PR-007 AND LATER: UNAUTHORIZED. Gate 1: NOT ACCEPTED. M2: NOT COMPLETED. Q-010: ACCEPTED. The template enforcement PR remains future work and does not block PR-004. The sensitive-data/private-contour gate remains open for real data. The next safe step is prepare and separately review the PR-005 implementation contract. PR-005 must not start without accepted encryption staging and later authorization.
 
-PR-S001-F4 is the only authorized current correction; PR-S001-F1 completed and merged through PR #10. PR-S001/PR-S001-F1/PR-S001-F2/PR-S001-F3/PR-S001-F4 use fictional synthetic data only, may evaluate candidate packages and prototypes, must not create production database/storage APIs, and must not use real documents or personal data. PR-005 does not start automatically after PR-S001 merge; explicit human acceptance and authorization are required after PR-S001. PR-006 remains blocked until PR-S001 acceptance and a separate PR-006 task review. Q-017 remains deferred. The sensitive-data/private-contour gate remains open, and real documents and personal data remain prohibited in Git, Codex and CI.
+PR-S001-F1, PR-S001-F2, PR-S001-F3 and PR-S001-F4 are completed. PR-S001/PR-S001-F1/PR-S001-F2/PR-S001-F3/PR-S001-F4 use fictional synthetic data only, may evaluate candidate packages and prototypes, must not create production database/storage APIs, and must not use real documents or personal data. PR-005 is authorized, not started after accepted PR-S001 feasibility evidence and this decision. PR-005 must be prepared and separately reviewed before implementation. PR-006 remains blocked until PR-S001 acceptance and a separate PR-006 task review. Q-017 remains deferred. The sensitive-data/private-contour gate remains open, and real documents and personal data remain prohibited in Git, Codex and CI.
 
 
-PR-S001 lifecycle boundary: PR-S001/PR-S001-F1/PR-S001-F2/PR-S001-F3/PR-S001-F4 use fictional synthetic data only; PR-S001 contains no production persistence/storage API; a negative feasibility result is valid; PR-S001 merge does not authorize PR-005; human acceptance and separate authorization remain required.
+PR-S001 lifecycle boundary: PR-S001/PR-S001-F1/PR-S001-F2/PR-S001-F3/PR-S001-F4 use fictional synthetic data only; PR-S001 contains no production persistence/storage API; a negative feasibility result is valid; PR-S001 acceptance and this decision authorize PR-005 entry, not implementation start; human acceptance and separate authorization were required and are now recorded for PR-005 only.

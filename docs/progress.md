@@ -34,8 +34,8 @@
 - [x] PR-004: COMPLETED AND HUMAN ACCEPTED;
 - [x] GATE-S1: COMPLETED AND HUMAN ACCEPTED;
 - [x] ADR-018: ACCEPTED;
-- [ ] PR-S001: MERGED AS RESEARCH HARNESS; PR-S001 FINAL ACCEPTANCE: NOT ACCEPTED; PR-S001-F1: COMPLETED AND MERGED THROUGH PR #10 at merge commit `b9c07a0c2b152bdad21e5d50126917c55b349e12`; PR-S001-F2: COMPLETED AND MERGED THROUGH PR #11; PR-S001-F2 merge commit: `7559dbb6189f6e0181eec8a44a7de262cadf036f`; PR-S001-F3: COMPLETED AND MERGED THROUGH PR #12; PR-S001-F3 merge commit: `ceb1e265a85a9af8374afa942fa7a68c7da492e7`; PR-S001-F4: CURRENT CORRECTION;
-- [ ] PR-005: UNAUTHORIZED;
+- [ ] PR-S001: ACCEPTED WITH DOCUMENTED RESIDUAL RISK RISK-S001-W11; PR-S001-F1: COMPLETED; PR-S001-F2: COMPLETED; PR-S001-F3: COMPLETED; PR-S001-F4: COMPLETED AND MERGED THROUGH PR #13; PR-S001-F4 merge commit: `985fae37c7645e8f65edbe4d1609100ee24a2097`;
+- [ ] PR-005: AUTHORIZED, NOT STARTED;
 - [ ] PR-006: UNAUTHORIZED;
 - [ ] PR-007 AND LATER: UNAUTHORIZED;
 - [ ] Gate 1: NOT ACCEPTED;
@@ -46,7 +46,7 @@
 
 ## Not started / unauthorized
 
-- [ ] PR-005 remains blocked until PR-S001 is merged, reviewed and human accepted, followed by separate explicit product-owner authorization;
+- [ ] PR-005 is authorized, not started after accepted PR-S001 feasibility evidence and this product-owner decision;
 - [ ] PR-006 remains unauthorized pending its own task review after accepted encryption staging;
 - [ ] PR-007 and later implementation tasks remain unauthorized;
 - [ ] The template enforcement PR remains future work and does not block PR-004;
@@ -60,15 +60,15 @@
 
 - Q-001 through Q-005 are staged as external terminal confirmations and do not block domain-only PR-004 under ADR-016.
 - Q-008 is accepted by ADR-017: one Windows 11 x64 workstation with one active operator session at a time.
-- Q-010: ACCEPTED; ADR-018 is ACCEPTED and resolves Q-010 at the architecture and sequencing level. PR-005 and PR-006 remain unauthorized.
+- Q-010: ACCEPTED; ADR-018 is ACCEPTED and resolves Q-010 at the architecture and sequencing level. PR-005 is authorized, not started; PR-006 remains unauthorized.
 - Q-012 through Q-015 require local evidence outside Git, Codex and CI.
 - Approved PII-free template artifacts are permitted by product policy after technical privacy inspection and repository-policy enforcement updates; real documents, PII-bearing artifacts and private acceptance materials remain outside Git, Codex and CI.
 
 ## Следующий безопасный шаг
 
-complete PR-S001-F4 Windows 11 x64 target attestation before product-owner PR-S001 feasibility review. Do not start PR-005, PR-006, PR-007 or later tasks until separately authorized. PR #9 merged PR-S001 as a research harness; PR-S001 final acceptance is NOT ACCEPTED; PR-S001-F1 is completed and merged through PR #10; PR-S001-F4 is the current correction; the next safe step is product-owner evidence review.
+prepare and separately review the PR-005 implementation contract. Do not start PR-005, PR-006, PR-007 or later tasks until separately authorized. PR #9 merged PR-S001 as a research harness; PR-S001 is accepted with documented residual risk RISK-S001-W11; PR-S001-F4 is completed and merged through PR #13 at merge commit `985fae37c7645e8f65edbe4d1609100ee24a2097`; the next safe step is prepare and separately review the PR-005 implementation contract.
 
-PR-S001-F4 is the only authorized current correction; PR-S001-F1 completed and merged through PR #10. PR-S001/PR-S001-F1/PR-S001-F2/PR-S001-F3/PR-S001-F4 use fictional synthetic data only, may evaluate candidate packages and prototypes, must not create production database/storage APIs, and must not use real documents or personal data. PR-005 does not start automatically after PR-S001 merge; explicit human acceptance and authorization are required after PR-S001. PR-006 remains blocked until PR-S001 acceptance and a separate PR-006 task review. Q-017 remains deferred. The sensitive-data/private-contour gate remains open, and real documents and personal data remain prohibited in Git, Codex and CI.
+PR-S001-F1, PR-S001-F2, PR-S001-F3 and PR-S001-F4 are completed. PR-S001/PR-S001-F1/PR-S001-F2/PR-S001-F3/PR-S001-F4 use fictional synthetic data only, may evaluate candidate packages and prototypes, must not create production database/storage APIs, and must not use real documents or personal data. PR-005 is authorized, not started after accepted PR-S001 feasibility evidence and this decision. PR-005 must be prepared and separately reviewed before implementation. PR-006 remains blocked until PR-S001 acceptance and a separate PR-006 task review. Q-017 remains deferred. The sensitive-data/private-contour gate remains open, and real documents and personal data remain prohibited in Git, Codex and CI.
 
 
-PR-S001 lifecycle boundary: PR-S001/PR-S001-F1/PR-S001-F2/PR-S001-F3/PR-S001-F4 use fictional synthetic data only; PR-S001 contains no production persistence/storage API; a negative feasibility result is valid; PR-S001 merge does not authorize PR-005; human acceptance and separate authorization remain required.
+PR-S001 lifecycle boundary: PR-S001/PR-S001-F1/PR-S001-F2/PR-S001-F3/PR-S001-F4 use fictional synthetic data only; PR-S001 contains no production persistence/storage API; a negative feasibility result is valid; PR-S001 acceptance and this decision authorize PR-005 entry, not implementation start; human acceptance and separate authorization were required and are now recorded for PR-005 only.
