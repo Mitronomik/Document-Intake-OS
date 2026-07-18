@@ -35,24 +35,24 @@ The sanitized report must not contain machine name, username or absolute path.
 
 | Candidate | Evaluation | Technical | Security | Packaging | Licensing/support | Production risk |
 |---|---|---|---|---|---|---|
-| A `sqlcipher3==0.6.2` | Executable Windows probe candidate | NOT_DEMONSTRATED until Windows CI executes; source harness exists | NOT_DEMONSTRATED until `cipher_status`, integrity, wrong-key, tamper and plaintext absence checks run | NOT_DEMONSTRATED until wheelhouse job succeeds | NOT_DEMONSTRATED pending legal/product-owner review | Raw-key SQL PRAGMA remains a production-selection risk unless binding-safe raw-key API is demonstrated |
+| A `sqlcipher3==0.6.2` | Executable Windows probe candidate | Preliminary GitHub Windows Server 2025 evidence demonstrates executable startup, cipher status and integrity, correct-key access, wrong-key rejection, ordinary SQLite rejection, tamper and truncation detection, WAL and rollback-journal protection, and wheelhouse-based offline installation | Preliminary GitHub Windows Server 2025 security checks passed for the research harness; Windows 11 x64 target evidence remains NOT_DEMONSTRATED | Wheelhouse-based offline installation demonstrated on GitHub Windows Server 2025 | NOT_DEMONSTRATED pending legal/product-owner redistribution review | Final package selection, binding-safe production key API and production architecture remain unresolved |
 | B official Zetetic Windows package | Metadata-only, commercial-not-tested | NOT_DEMONSTRATED | NOT_DEMONSTRATED | NOT_DEMONSTRATED; no commercial binaries downloaded | NOT_DEMONSTRATED; redistribution subject to approval | No trial code, purchase, commercial binary or secret is used |
 | C `pysqlcipher3==1.2.0` | Legacy control metadata only | NOT_DEMONSTRATED | NOT_DEMONSTRATED | NOT_DEMONSTRATED; not added to lockfile | NOT_DEMONSTRATED | Not selected by this spike |
 | D custom binding/build | Design route only | NOT_DEMONSTRATED | NOT_DEMONSTRATED | NOT_DEMONSTRATED | NOT_DEMONSTRATED | Not implemented or selected |
 
 ## 5. SQLCipher executable evidence
 
-Status: NOT_DEMONSTRATED locally on Linux; DEMONSTRATED only after Windows CI runs. The harness executes capability checks for: installed binding version, embedded SQLCipher version, SQLite version, `cipher_status`, `cipher_integrity_check`, compile options, provider PRAGMAs when exposed, journal mode, temp-store mode, raw-key API assessment, logging status, HMAC/integrity evidence, WAL evidence, and rollback journal evidence.
+Status: DEMONSTRATED as preliminary GitHub CI #57 evidence on Windows Server 2025 AMD64; NOT_DEMONSTRATED for Windows 11 x64 target evidence. The harness executes capability checks for: installed binding version, embedded SQLCipher version, SQLite version, `cipher_status`, `cipher_integrity_check`, compile options, provider PRAGMAs when exposed, journal mode, temp-store mode, raw-key API assessment, logging status, HMAC/integrity evidence, WAL evidence, and rollback journal evidence.
 
 Correct-key check reopens the DB with proper key, reads back the previously inserted synthetic marker. Wrong-key, tamper, and truncation checks catch expected database exceptions only. Unexpected exceptions fail the harness. WAL scenario creates a real WAL file via `journal_mode=WAL`, confirms its existence, scans for marker, and verifies encrypted content. Rollback journal scenario detects actual journal files. Empty PRAGMA results yield UNSUPPORTED. Unknown PRAGMAs are not treated as success just because SQLite did not raise. The `sqlcipher-overall` mandatory check reflects `SqlcipherEvidence.status`. If overall status is FAIL, the final recommendation is NOT_FEASIBLE.
 
 ## 6. DPAPI evidence
 
-Status: NOT_DEMONSTRATED locally on Linux; DEMONSTRATED only after Windows CI runs. The spike uses `ctypes` with `use_last_error=True`, explicit `argtypes`/`restype`, `CRYPTPROTECT_UI_FORBIDDEN`, no Local Machine scope, no prompt structure, application wrapper validation, and `LocalFree`. Fresh subprocess verifies that recovered key matches original using a transient expected digest (no raw keys printed or stored). Subprocess status codes: PASS, ERR_DPAPI_SUBPROCESS_KEY_MISMATCH, ERR_DPAPI_SUBPROCESS_VERIFY_FAILED. Cross-runner job accepts only `ERR_DPAPI_UNPROTECT_FAILED`.
+Status: DEMONSTRATED as preliminary GitHub CI #57 evidence on Windows Server 2025 AMD64; NOT_DEMONSTRATED for Windows 11 x64 target evidence. The spike uses `ctypes` with `use_last_error=True`, explicit `argtypes`/`restype`, `CRYPTPROTECT_UI_FORBIDDEN`, no Local Machine scope, no prompt structure, application wrapper validation, and `LocalFree`. Fresh subprocess verifies that recovered key matches original using a transient expected digest (no raw keys printed or stored). Subprocess status codes: PASS, ERR_DPAPI_SUBPROCESS_KEY_MISMATCH, ERR_DPAPI_SUBPROCESS_VERIFY_FAILED. Cross-runner job accepts only `ERR_DPAPI_UNPROTECT_FAILED`.
 
 ## 7. ACL evidence
 
-Status: NOT_DEMONSTRATED locally on Linux; DEMONSTRATED only after Windows CI runs. The temporary ACL probe uses well-known SIDs for SYSTEM (S-1-5-18) and Administrators (S-1-5-32-544). It separately checks current user rights, SYSTEM rights, Administrators rights, and absence of write rights for broad ordinary-user principals (S-1-5-32-545, S-1-5-11). It analyzes specific ACE entries rather than searching for 'W' in all output. Repository ACL is never modified. The probe's cleanup verifies the temporary directory is actually removed.
+Status: DEMONSTRATED as preliminary GitHub CI #57 evidence on Windows Server 2025 AMD64; NOT_DEMONSTRATED for Windows 11 x64 target evidence. The temporary ACL probe uses well-known SIDs for SYSTEM (S-1-5-18) and Administrators (S-1-5-32-544). It separately checks current user rights, SYSTEM rights, Administrators rights, and absence of write rights for broad ordinary-user principals (S-1-5-32-545, S-1-5-11). It analyzes specific ACE entries rather than searching for 'W' in all output. Repository ACL is never modified. The probe's cleanup verifies the temporary directory is actually removed.
 
 ## 8. Key-hierarchy comparison
 
@@ -72,11 +72,11 @@ Status: DEMONSTRATED as an experimental state model. `reconcile()` verifies the 
 
 ## 12. Offline wheelhouse-install evidence
 
-Status: NOT_DEMONSTRATED until Windows CI executes. The workflow downloads binary wheels into `RUNNER_TEMP`, records sanitized filename/tag/SHA-256/size evidence, installs with `--no-index --find-links` into a clean venv, and runs the offline smoke module. This proves only wheelhouse-based package-source independence, not the final Windows installer and not physical network disablement. Wrong-key rejection catches only expected database exceptions; unexpected exceptions fail the harness. Cleanup is verified after directory removal and returns explicit cleanup status (not PENDING_CLEANUP).
+Status: DEMONSTRATED as preliminary GitHub CI #57 evidence on Windows Server 2025 AMD64 for wheelhouse-based offline installation. The workflow downloads binary wheels into `RUNNER_TEMP`, records sanitized filename/tag/SHA-256/size evidence, installs with `--no-index --find-links` into a clean venv, and runs the offline smoke module. This proves only wheelhouse-based package-source independence, not the final Windows installer and not physical network disablement. Wrong-key rejection catches only expected database exceptions; unexpected exceptions fail the harness. Cleanup is verified after directory removal and returns explicit cleanup status (not PENDING_CLEANUP).
 
 ## 13. Performance evidence
 
-Status: NOT_DEMONSTRATED. Measurement code exists for bounded standard SQLite and AES-GCM harness measurements, but runtime performance evidence has not been collected by a runner. SQLCipher and DPAPI performance remain NOT_DEMONSTRATED until Windows CI executes. Absence of `cryptography` does not give a vacuous PASS.
+Status: NOT_DEMONSTRATED. Measurement code exists for bounded standard SQLite and AES-GCM harness measurements, but no performance measurement was collected. SQLCipher and DPAPI performance remain NOT_DEMONSTRATED. Absence of `cryptography` does not give a vacuous PASS.
 
 ## 14. Licensing and attribution obligations
 
@@ -96,16 +96,7 @@ Status: UNSUPPORTED on local Linux for Windows-only DPAPI, ACL and SQLCipher run
 
 ## 18. CI run evidence
 
-Status: CI run #42 results:
-
-- locked dependency installation: PASS
-- Ubuntu Ruff: FAIL
-- Windows Ruff: FAIL
-- Windows spike mypy strict: FAIL
-- Windows runtime probes: NOT EXECUTED
-- DPAPI cross-runner: NOT EXECUTED
-
-Ruff and mypy failures are addressed in this correction. No Ubuntu or Windows CI has executed since the last harness correction; these statuses will update when CI re-runs.
+Status: CI #57 completed successfully on GitHub-hosted Windows Server 2025 AMD64. The recommendation was CONDITIONALLY FEASIBLE. SQLCipher, WAL, rollback journal, controlled-temp-scan, connection-cleanup, DPAPI, ACL stages, ACL rights, ACL cleanup, envelope-and-rollback, crash-consistency-model and offline-smoke evidence passed. Windows 11 x64: NOT_DEMONSTRATED.
 
 ## 19. Recommendation
 
@@ -129,8 +120,3 @@ PR-006: UNAUTHORIZED
 Windows 11 x64: NOT_DEMONSTRATED
 
 No final package selection has been made.
-
-
-## PR-S001-F4 target-attestation update
-
-GitHub CI #57 on Microsoft Windows Server 2025 AMD64 produced CONDITIONALLY_FEASIBLE research evidence: SQLCipher, WAL, rollback journal, controlled-temp-scan, connection-cleanup, ACL stages, ACL rights, envelope-and-rollback, crash-consistency-model and offline-smoke checks passed. Windows 11 x64 remains NOT_DEMONSTRATED until an actual sanitized target workstation run. The current harness is being extended by PR-S001-F4 to add deterministic Windows target attestation that distinguishes Windows client/workstation from Windows Server without WMI, registry identifiers or caller overrides. Final package selection, legal approval and production design remain unresolved.

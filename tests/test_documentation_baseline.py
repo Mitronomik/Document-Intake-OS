@@ -924,6 +924,24 @@ def test_pr_s001_spike_documentation_and_scope() -> None:
     assert "Security" in report or "security" in report.lower()
     assert "Packaging" in report or "packaging" in report.lower()
     assert "Licensing" in report or "licensing" in report.lower()
+    stale_research_phrases = (
+        "Status: CI run #42 results",
+        "Windows runtime probes: NOT EXECUTED",
+        "DPAPI cross-runner: NOT EXECUTED",
+        "No Ubuntu or Windows CI has executed since the last harness correction",
+        "NOT_DEMONSTRATED until Windows CI executes",
+    )
+    for stale_phrase in stale_research_phrases:
+        assert stale_phrase not in report
+    for required_phrase in (
+        "CI #57",
+        "Windows Server 2025 AMD64",
+        "CONDITIONALLY FEASIBLE",
+        "Windows 11 x64: NOT_DEMONSTRATED",
+        "PR-005: UNAUTHORIZED",
+        "PR-006: UNAUTHORIZED",
+    ):
+        assert required_phrase in report
     pyproject = (REPO_ROOT / "pyproject.toml").read_text(encoding="utf-8")
     project_block = pyproject.split("[project.scripts]", maxsplit=1)[0]
     assert "sqlcipher3" not in project_block

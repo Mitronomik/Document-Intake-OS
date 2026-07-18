@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import json
+
 import pytest
 
 from spikes.windows_encryption.safe_report import ResultStatus
@@ -178,3 +180,43 @@ def test_unexpected_internal_failure_is_stable_and_sanitized() -> None:
     )
     assert "secret-hostname" not in text
     assert "0x123" not in text
+
+
+def test_unexpected_architecture_failure_preserves_version_stage_and_sanitizes() -> None:
+    def broken_architecture() -> WindowsArchitectureEvidence:
+        raise RuntimeError("fake-host C:\\private\\runner 123456")
+
+    result = run_windows_target_probe(lambda: version(22631), broken_architecture)
+    got = statuses(result)
+    serialized = json.dumps(
+        [
+            {
+                "identifier": check.identifier,
+                "status": check.status,
+                "reason_code": check.reason_code,
+            }
+            for check in result.checks
+        ],
+        sort_keys=True,
+    )
+    combined = repr(result) + serialized
+
+    assert got["windows-target-version-query"] == (ResultStatus.PASS, "PASS")
+    assert got["windows-target-workstation"] == (ResultStatus.PASS, "PASS")
+    assert got["windows-target-build"] == (ResultStatus.PASS, "PASS")
+    assert got["windows-target-native-amd64"] == (
+        ResultStatus.FAIL,
+        "ERR_WINDOWS_TARGET_UNEXPECTED",
+    )
+    assert got["windows-target-process-amd64"] == (
+        ResultStatus.NOT_DEMONSTRATED,
+        "NOT_DEMONSTRATED",
+    )
+    assert got["windows-11-x64"] == (
+        ResultStatus.NOT_DEMONSTRATED,
+        "NOT_DEMONSTRATED_WINDOWS11",
+    )
+    assert result.windows_11_x64_result == ResultStatus.NOT_DEMONSTRATED
+    assert "fake-host" not in combined
+    assert "private" not in combined
+    assert "123456" not in combined

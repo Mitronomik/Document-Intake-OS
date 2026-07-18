@@ -197,105 +197,150 @@ def _check(identifier: str, status: ResultStatus, reason_code: str) -> ReportChe
     return ReportCheck(identifier, status, reason_code)
 
 
+def _version_dependent_checks(
+    version: WindowsVersionEvidence,
+) -> tuple[bool, bool, ReportCheck, ReportCheck, ReportCheck]:
+    version_ok = version.status == ResultStatus.PASS
+    workstation = version_ok and version.product_type == WindowsProductType.WORKSTATION
+    build = (
+        version_ok
+        and version.major_version == 10
+        and version.minor_version == 0
+        and version.build_number is not None
+        and version.build_number >= WINDOWS_11_MIN_BUILD
+    )
+    version_query_check = _check(
+        "windows-target-version-query", version.status, version.reason_code
+    )
+    if version.status == ResultStatus.UNSUPPORTED:
+        return (
+            workstation,
+            build,
+            version_query_check,
+            _check(
+                "windows-target-workstation", ResultStatus.UNSUPPORTED, "UNSUPPORTED_NON_WINDOWS"
+            ),
+            _check("windows-target-build", ResultStatus.UNSUPPORTED, "UNSUPPORTED_NON_WINDOWS"),
+        )
+    if not version_ok:
+        return (
+            workstation,
+            build,
+            version_query_check,
+            _check("windows-target-workstation", ResultStatus.NOT_DEMONSTRATED, "NOT_DEMONSTRATED"),
+            _check("windows-target-build", ResultStatus.NOT_DEMONSTRATED, "NOT_DEMONSTRATED"),
+        )
+    return (
+        workstation,
+        build,
+        version_query_check,
+        _check(
+            "windows-target-workstation",
+            ResultStatus.PASS if workstation else ResultStatus.NOT_DEMONSTRATED,
+            "PASS" if workstation else "NOT_DEMONSTRATED_WINDOWS11",
+        ),
+        _check(
+            "windows-target-build",
+            ResultStatus.PASS if build else ResultStatus.NOT_DEMONSTRATED,
+            "PASS" if build else "NOT_DEMONSTRATED_WINDOWS11",
+        ),
+    )
+
+
+def _architecture_checks(
+    architecture: WindowsArchitectureEvidence,
+    *,
+    unexpected: bool = False,
+) -> tuple[bool, bool, ReportCheck, ReportCheck]:
+    if unexpected:
+        return (
+            False,
+            False,
+            _check(
+                "windows-target-native-amd64",
+                ResultStatus.FAIL,
+                "ERR_WINDOWS_TARGET_UNEXPECTED",
+            ),
+            _check(
+                "windows-target-process-amd64",
+                ResultStatus.NOT_DEMONSTRATED,
+                "NOT_DEMONSTRATED",
+            ),
+        )
+    arch_ok = architecture.status == ResultStatus.PASS
+    native_amd64 = arch_ok and architecture.native_machine == WindowsMachine.AMD64
+    process_amd64 = (
+        arch_ok
+        and architecture.native_machine == WindowsMachine.AMD64
+        and architecture.process_machine == WindowsMachine.UNKNOWN
+        and architecture.pointer_width == 8
+    )
+    if architecture.status == ResultStatus.UNSUPPORTED:
+        return (
+            native_amd64,
+            process_amd64,
+            _check(
+                "windows-target-native-amd64", ResultStatus.UNSUPPORTED, "UNSUPPORTED_NON_WINDOWS"
+            ),
+            _check(
+                "windows-target-process-amd64", ResultStatus.UNSUPPORTED, "UNSUPPORTED_NON_WINDOWS"
+            ),
+        )
+    if not arch_ok:
+        return (
+            native_amd64,
+            process_amd64,
+            _check("windows-target-native-amd64", ResultStatus.FAIL, architecture.reason_code),
+            _check(
+                "windows-target-process-amd64",
+                ResultStatus.NOT_DEMONSTRATED,
+                "NOT_DEMONSTRATED",
+            ),
+        )
+    return (
+        native_amd64,
+        process_amd64,
+        _check(
+            "windows-target-native-amd64",
+            ResultStatus.PASS if native_amd64 else ResultStatus.NOT_DEMONSTRATED,
+            "PASS" if native_amd64 else "NOT_DEMONSTRATED_WINDOWS11",
+        ),
+        _check(
+            "windows-target-process-amd64",
+            ResultStatus.PASS if process_amd64 else ResultStatus.NOT_DEMONSTRATED,
+            "PASS" if process_amd64 else "NOT_DEMONSTRATED_WINDOWS11",
+        ),
+    )
+
+
+def _target_result(
+    version: WindowsVersionEvidence,
+    architecture: WindowsArchitectureEvidence,
+    checks: tuple[ReportCheck, ...],
+    aggregate: bool,
+) -> WindowsTargetProbeResult:
+    aggregate_status = ResultStatus.PASS if aggregate else ResultStatus.NOT_DEMONSTRATED
+    return WindowsTargetProbeResult(
+        version,
+        architecture,
+        (
+            *checks,
+            _check(
+                "windows-11-x64",
+                aggregate_status,
+                "PASS" if aggregate else "NOT_DEMONSTRATED_WINDOWS11",
+            ),
+        ),
+        aggregate_status,
+    )
+
+
 def run_windows_target_probe(
     version_query: VersionQuery = query_windows_version,
     architecture_query: ArchitectureQuery = query_windows_architecture,
 ) -> WindowsTargetProbeResult:
     try:
         version = version_query()
-        architecture = architecture_query()
-        version_ok = version.status == ResultStatus.PASS
-        arch_ok = architecture.status == ResultStatus.PASS
-        workstation = version_ok and version.product_type == WindowsProductType.WORKSTATION
-        build = (
-            version_ok
-            and version.major_version == 10
-            and version.minor_version == 0
-            and version.build_number is not None
-            and version.build_number >= WINDOWS_11_MIN_BUILD
-        )
-        native_amd64 = arch_ok and architecture.native_machine == WindowsMachine.AMD64
-        process_amd64 = (
-            arch_ok
-            and architecture.native_machine == WindowsMachine.AMD64
-            and architecture.process_machine == WindowsMachine.UNKNOWN
-            and architecture.pointer_width == 8
-        )
-        aggregate = workstation and build and native_amd64 and process_amd64
-
-        version_query_check = _check(
-            "windows-target-version-query", version.status, version.reason_code
-        )
-        if version.status == ResultStatus.UNSUPPORTED:
-            workstation_check = _check(
-                "windows-target-workstation", ResultStatus.UNSUPPORTED, "UNSUPPORTED_NON_WINDOWS"
-            )
-            build_check = _check(
-                "windows-target-build", ResultStatus.UNSUPPORTED, "UNSUPPORTED_NON_WINDOWS"
-            )
-        elif not version_ok:
-            workstation_check = _check(
-                "windows-target-workstation", ResultStatus.NOT_DEMONSTRATED, "NOT_DEMONSTRATED"
-            )
-            build_check = _check(
-                "windows-target-build", ResultStatus.NOT_DEMONSTRATED, "NOT_DEMONSTRATED"
-            )
-        else:
-            workstation_check = _check(
-                "windows-target-workstation",
-                ResultStatus.PASS if workstation else ResultStatus.NOT_DEMONSTRATED,
-                "PASS" if workstation else "NOT_DEMONSTRATED_WINDOWS11",
-            )
-            build_check = _check(
-                "windows-target-build",
-                ResultStatus.PASS if build else ResultStatus.NOT_DEMONSTRATED,
-                "PASS" if build else "NOT_DEMONSTRATED_WINDOWS11",
-            )
-
-        if architecture.status == ResultStatus.UNSUPPORTED:
-            native_check = _check(
-                "windows-target-native-amd64", ResultStatus.UNSUPPORTED, "UNSUPPORTED_NON_WINDOWS"
-            )
-            process_check = _check(
-                "windows-target-process-amd64", ResultStatus.UNSUPPORTED, "UNSUPPORTED_NON_WINDOWS"
-            )
-        elif not arch_ok:
-            native_check = _check(
-                "windows-target-native-amd64", ResultStatus.FAIL, "ERR_WINDOWS_ARCH_QUERY"
-            )
-            process_check = _check(
-                "windows-target-process-amd64", ResultStatus.NOT_DEMONSTRATED, "NOT_DEMONSTRATED"
-            )
-        else:
-            native_check = _check(
-                "windows-target-native-amd64",
-                ResultStatus.PASS if native_amd64 else ResultStatus.NOT_DEMONSTRATED,
-                "PASS" if native_amd64 else "NOT_DEMONSTRATED_WINDOWS11",
-            )
-            process_check = _check(
-                "windows-target-process-amd64",
-                ResultStatus.PASS if process_amd64 else ResultStatus.NOT_DEMONSTRATED,
-                "PASS" if process_amd64 else "NOT_DEMONSTRATED_WINDOWS11",
-            )
-
-        aggregate_status = ResultStatus.PASS if aggregate else ResultStatus.NOT_DEMONSTRATED
-        return WindowsTargetProbeResult(
-            version,
-            architecture,
-            (
-                version_query_check,
-                workstation_check,
-                build_check,
-                native_check,
-                process_check,
-                _check(
-                    "windows-11-x64",
-                    aggregate_status,
-                    "PASS" if aggregate else "NOT_DEMONSTRATED_WINDOWS11",
-                ),
-            ),
-            aggregate_status,
-        )
     except Exception:
         version = WindowsVersionEvidence(
             None,
@@ -309,10 +354,10 @@ def run_windows_target_probe(
             WindowsMachine.UNKNOWN,
             WindowsMachine.UNKNOWN,
             0,
-            ResultStatus.FAIL,
-            "ERR_WINDOWS_TARGET_UNEXPECTED",
+            ResultStatus.NOT_DEMONSTRATED,
+            "NOT_DEMONSTRATED",
         )
-        return WindowsTargetProbeResult(
+        return _target_result(
             version,
             architecture,
             (
@@ -333,9 +378,34 @@ def run_windows_target_probe(
                     ResultStatus.NOT_DEMONSTRATED,
                     "NOT_DEMONSTRATED",
                 ),
-                _check(
-                    "windows-11-x64", ResultStatus.NOT_DEMONSTRATED, "NOT_DEMONSTRATED_WINDOWS11"
-                ),
             ),
-            ResultStatus.NOT_DEMONSTRATED,
+            False,
         )
+
+    workstation, build, version_query_check, workstation_check, build_check = (
+        _version_dependent_checks(version)
+    )
+    try:
+        architecture = architecture_query()
+        native_amd64, process_amd64, native_check, process_check = _architecture_checks(
+            architecture
+        )
+    except Exception:
+        architecture = WindowsArchitectureEvidence(
+            WindowsMachine.UNKNOWN,
+            WindowsMachine.UNKNOWN,
+            0,
+            ResultStatus.FAIL,
+            "ERR_WINDOWS_TARGET_UNEXPECTED",
+        )
+        native_amd64, process_amd64, native_check, process_check = _architecture_checks(
+            architecture,
+            unexpected=True,
+        )
+
+    return _target_result(
+        version,
+        architecture,
+        (version_query_check, workstation_check, build_check, native_check, process_check),
+        workstation and build and native_amd64 and process_amd64,
+    )
