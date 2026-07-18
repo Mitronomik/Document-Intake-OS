@@ -88,30 +88,42 @@ def _reason(value: str) -> str:
     return value if value in allowed else "FAIL"
 
 
+def _acl_cleanup_check(acl_result: AclProbeResult) -> ReportCheck:
+    return ReportCheck(
+        "acl-directory-cleanup",
+        ResultStatus.PASS if acl_result.directory_removed else ResultStatus.FAIL,
+        "PASS" if acl_result.directory_removed else "ERR_ACL_CLEANUP_FAILED",
+    )
+
+
 def _acl_checks(acl_result: AclProbeResult) -> list[ReportCheck]:
     if acl_result.status == "UNSUPPORTED_NON_WINDOWS":
         return [
-            ReportCheck(identifier, ResultStatus.UNSUPPORTED, "UNSUPPORTED_NON_WINDOWS")
-            for identifier in (
-                "acl-current-user-rights",
-                "acl-system-rights",
-                "acl-administrators-rights",
-                "acl-broad-write-blocked",
-                "acl-directory-cleanup",
-            )
+            *(
+                ReportCheck(identifier, ResultStatus.UNSUPPORTED, "UNSUPPORTED_NON_WINDOWS")
+                for identifier in (
+                    "acl-current-user-rights",
+                    "acl-system-rights",
+                    "acl-administrators-rights",
+                    "acl-broad-write-blocked",
+                )
+            ),
+            _acl_cleanup_check(acl_result),
         ]
     if acl_result.status == "ERR_ACL_PROBE_FAILED":
         return [
-            ReportCheck(identifier, ResultStatus.FAIL, "ERR_ACL_PROBE_FAILED")
-            for identifier in (
-                "acl-current-user-rights",
-                "acl-system-rights",
-                "acl-administrators-rights",
-                "acl-broad-write-blocked",
-                "acl-directory-cleanup",
-            )
+            *(
+                ReportCheck(identifier, ResultStatus.FAIL, "ERR_ACL_PROBE_FAILED")
+                for identifier in (
+                    "acl-current-user-rights",
+                    "acl-system-rights",
+                    "acl-administrators-rights",
+                    "acl-broad-write-blocked",
+                )
+            ),
+            _acl_cleanup_check(acl_result),
         ]
-    checks = [
+    return [
         ReportCheck(
             "acl-current-user-rights",
             ResultStatus.PASS if acl_result.current_user_rights else ResultStatus.FAIL,
@@ -132,13 +144,8 @@ def _acl_checks(acl_result: AclProbeResult) -> list[ReportCheck]:
             ResultStatus.PASS if acl_result.broad_write_blocked else ResultStatus.FAIL,
             "PASS" if acl_result.broad_write_blocked else "ERR_ACL_BROAD_WRITE",
         ),
-        ReportCheck(
-            "acl-directory-cleanup",
-            ResultStatus.PASS if acl_result.directory_removed else ResultStatus.FAIL,
-            "PASS" if acl_result.directory_removed else "ERR_ACL_CLEANUP_FAILED",
-        ),
+        _acl_cleanup_check(acl_result),
     ]
-    return checks
 
 
 def _check_from_sql(check: CheckResult) -> ReportCheck:

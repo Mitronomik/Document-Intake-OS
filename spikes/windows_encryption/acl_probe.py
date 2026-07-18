@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import platform
 import shutil
 import subprocess
@@ -41,9 +42,28 @@ def _ace_has_full_control(rights: str) -> bool:
     return "FullControl" in {part.strip() for part in rights.split(",")}
 
 
+BROAD_WRITE_RIGHTS = frozenset(
+    {
+        "Write",
+        "WriteData",
+        "AppendData",
+        "WriteAttributes",
+        "WriteExtendedAttributes",
+        "CreateFiles",
+        "CreateDirectories",
+        "Modify",
+        "FullControl",
+        "Delete",
+        "DeleteSubdirectoriesAndFiles",
+        "ChangePermissions",
+        "TakeOwnership",
+    }
+)
+
+
 def _ace_has_broad_write(rights: str) -> bool:
     parts = {part.strip() for part in rights.split(",")}
-    return bool(parts & {"Write", "Modify", "FullControl"})
+    return bool(parts & BROAD_WRITE_RIGHTS)
 
 
 def _principal_has_allow_full_control(rules: dict[str, list[str]], sid: str) -> bool:
@@ -109,7 +129,6 @@ $rules | Where-Object { $_.AccessControlType -eq 'Allow' } | ForEach-Object {
 } | ConvertTo-Json -Compress
 """
     output = _run_command(["powershell", "-NoProfile", "-Command", script, str(temp_root)])
-    import json
 
     if not output.strip():
         return {}

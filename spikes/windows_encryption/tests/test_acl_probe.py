@@ -193,3 +193,63 @@ def _acl_checks_from(evidence: AclEvidence, directory_removed: bool = True):  # 
             directory_removed=directory_removed,
         )
     )
+
+
+def test_cleanup_check_depends_only_on_directory_removed_for_pass_status() -> None:
+    checks = _acl_checks_from(AclEvidence(True, True, True, True), directory_removed=False)
+    assert checks[4].identifier == "acl-directory-cleanup"
+    assert checks[4].status == ResultStatus.FAIL
+    assert checks[4].reason_code == "ERR_ACL_CLEANUP_FAILED"
+
+
+def test_cleanup_check_independent_for_probe_failure() -> None:
+    from spikes.windows_encryption.acl_probe import AclProbeResult
+
+    removed_checks = _acl_checks(AclProbeResult("ERR_ACL_PROBE_FAILED", directory_removed=True))
+    failed_checks = _acl_checks(AclProbeResult("ERR_ACL_PROBE_FAILED", directory_removed=False))
+
+    assert [check.reason_code for check in removed_checks[:4]] == ["ERR_ACL_PROBE_FAILED"] * 4
+    assert removed_checks[4].status == ResultStatus.PASS
+    assert removed_checks[4].reason_code == "PASS"
+    assert failed_checks[4].status == ResultStatus.FAIL
+    assert failed_checks[4].reason_code == "ERR_ACL_CLEANUP_FAILED"
+
+
+def test_cleanup_check_independent_for_unsupported_non_windows() -> None:
+    from spikes.windows_encryption.acl_probe import AclProbeResult
+
+    removed_checks = _acl_checks(AclProbeResult("UNSUPPORTED_NON_WINDOWS", directory_removed=True))
+    failed_checks = _acl_checks(AclProbeResult("UNSUPPORTED_NON_WINDOWS", directory_removed=False))
+
+    assert [check.status for check in removed_checks[:4]] == [ResultStatus.UNSUPPORTED] * 4
+    assert [check.reason_code for check in removed_checks[:4]] == ["UNSUPPORTED_NON_WINDOWS"] * 4
+    assert removed_checks[4].status == ResultStatus.PASS
+    assert removed_checks[4].reason_code == "PASS"
+    assert failed_checks[4].status == ResultStatus.FAIL
+    assert failed_checks[4].reason_code == "ERR_ACL_CLEANUP_FAILED"
+
+
+def test_cleanup_check_independent_when_principal_check_fails() -> None:
+    checks = _acl_checks_from(AclEvidence(False, True, True, True), directory_removed=True)
+    assert checks[0].status == ResultStatus.FAIL
+    assert checks[0].reason_code == "ERR_ACL_CURRENT_USER_RIGHTS"
+    assert checks[4].status == ResultStatus.PASS
+    assert checks[4].reason_code == "PASS"
+
+
+def test_broad_write_capable_rights_are_blocked() -> None:
+    for right in ("WriteData", "AppendData", "WriteAttributes", "Modify", "FullControl"):
+        rules = _rules()
+        rules[WELL_KNOWN_USERS] = [f"ReadAndExecute, {right}"]
+        evidence = evaluate_acl_rules(rules, CURRENT_USER)
+        assert not evidence.broad_write_blocked, right
+        assert acl_failure_reason(evidence) == "ERR_ACL_BROAD_WRITE"
+
+
+def test_read_only_broad_principal_rights_are_allowed() -> None:
+    for right in ("Read", "ReadAndExecute", "ListDirectory"):
+        rules = _rules()
+        rules[WELL_KNOWN_USERS] = [right]
+        evidence = evaluate_acl_rules(rules, CURRENT_USER)
+        assert evidence.broad_write_blocked, right
+        assert acl_failure_reason(evidence) == "PASS"
