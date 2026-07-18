@@ -279,6 +279,7 @@ def test_lifecycle_state_records_gate_s1_accepted_state() -> None:
             assert stale not in text, filename
 
     progress = (REPO_ROOT / "docs/progress.md").read_text(encoding="utf-8")
+    assert "PR-S001-F1 is the current correction" not in progress
     assert "**Обновлено:** 2026-07-17" in progress
     assert "- [x] GATE-S1: COMPLETED AND HUMAN ACCEPTED;" in progress
     assert "- [x] ADR-018: ACCEPTED;" in progress

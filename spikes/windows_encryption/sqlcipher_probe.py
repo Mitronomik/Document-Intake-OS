@@ -168,10 +168,6 @@ def _marker_payload(marker: bytes) -> bytes:
     return marker * 512
 
 
-def _single_path_marker_absent(path: Path, marker: bytes) -> bool:
-    return marker not in path.read_bytes()
-
-
 def _mode_from_rows(rows: list[tuple[Any, ...]]) -> str:
     if not rows or rows[0][0] is None:
         return ""
@@ -198,8 +194,8 @@ def _wal_checks_from_evidence(
         )
     present = wal_exists
     nonempty = present and wal_size > 0
-    control = nonempty and control_marker_present
-    absent = control and not encrypted_marker_present
+    control = control_marker_present
+    absent = present and nonempty and control and not encrypted_marker_present
     encrypted = present and nonempty and control and absent
     return (
         CheckResult("wal-mode-active", "PASS", "PASS"),
@@ -212,7 +208,7 @@ def _wal_checks_from_evidence(
             "wal-file-nonempty",
             "PASS" if nonempty else "FAIL",
             "PASS" if nonempty else ("ERR_WAL_EMPTY" if present else "ERR_WAL_NOT_CREATED"),
-            wal_size,
+            byte_size=wal_size,
         ),
         CheckResult(
             "wal-control-marker-present",
@@ -274,8 +270,8 @@ def _journal_checks_from_evidence(
         )
     present = journal_exists
     nonempty = present and journal_size > 0
-    control = nonempty and control_marker_present
-    absent = control and not encrypted_marker_present
+    control = control_marker_present
+    absent = present and nonempty and control and not encrypted_marker_present
     return (
         CheckResult("journal-mode-active", "PASS", "PASS"),
         CheckResult(
@@ -287,7 +283,7 @@ def _journal_checks_from_evidence(
             "journal-file-nonempty",
             "PASS" if nonempty else "FAIL",
             "PASS" if nonempty else ("ERR_JOURNAL_EMPTY" if present else "ERR_JOURNAL_NOT_CREATED"),
-            journal_size,
+            byte_size=journal_size,
         ),
         CheckResult(
             "journal-control-marker-present",
@@ -360,21 +356,30 @@ def _run_wal_evidence(
 
 
 def _ordinary_wal_control(temp_dir: Path, payload: bytes, marker: bytes) -> bool:
-    db_path = temp_dir / "wal-control.db"
-    wal_path = db_path.with_name(db_path.name + "-wal")
-    conn = sqlite3.connect(db_path)
-    try:
-        mode = str(conn.execute("PRAGMA journal_mode=WAL").fetchone()[0]).lower()
-        if mode != "wal":
-            return False
-        conn.execute("PRAGMA wal_autocheckpoint=0")
-        conn.execute("CREATE TABLE synthetic_wal(id INTEGER PRIMARY KEY, value BLOB)")
-        conn.commit()
-        conn.execute("INSERT INTO synthetic_wal(value) VALUES (?)", (payload,))
-        conn.commit()
-        return wal_path.exists() and wal_path.stat().st_size > 0 and marker in wal_path.read_bytes()
-    finally:
-        conn.close()
+    with tempfile.TemporaryDirectory(dir=temp_dir, prefix="wal-control-") as control_tmp:
+        control_dir = Path(control_tmp)
+        db_path = control_dir / "wal-control.db"
+        wal_path = db_path.with_name(db_path.name + "-wal")
+        conn = sqlite3.connect(db_path)
+        marker_present = False
+        try:
+            mode = str(conn.execute("PRAGMA journal_mode=WAL").fetchone()[0]).lower()
+            if mode == "wal":
+                conn.execute("PRAGMA wal_autocheckpoint=0")
+                conn.execute("CREATE TABLE synthetic_wal(id INTEGER PRIMARY KEY, value BLOB)")
+                conn.commit()
+                conn.execute("INSERT INTO synthetic_wal(value) VALUES (?)", (payload,))
+                conn.commit()
+                marker_present = (
+                    wal_path.exists()
+                    and wal_path.stat().st_size > 0
+                    and marker in wal_path.read_bytes()
+                )
+        finally:
+            conn.close()
+    if control_dir.exists():
+        raise OSError("ERR_WAL_CONTROL_CLEANUP_FAILED")
+    return marker_present
 
 
 def _run_journal_evidence(
@@ -437,31 +442,36 @@ def _run_journal_evidence(
 def _ordinary_journal_control(
     temp_dir: Path, original: bytes, replacement: bytes, marker: bytes
 ) -> bool:
-    db_path = temp_dir / "journal-control.db"
-    journal_path = db_path.with_name(db_path.name + "-journal")
-    conn = sqlite3.connect(db_path)
-    active = False
-    try:
-        mode = str(conn.execute("PRAGMA journal_mode=DELETE").fetchone()[0]).lower()
-        if mode not in {"delete", "truncate", "persist"}:
-            return False
-        conn.execute("CREATE TABLE synthetic_journal(id INTEGER PRIMARY KEY, value BLOB)")
-        conn.execute("INSERT INTO synthetic_journal(value) VALUES (?)", (original,))
-        conn.commit()
-        conn.execute("BEGIN IMMEDIATE")
-        active = True
-        conn.execute("UPDATE synthetic_journal SET value=? WHERE id=1", (replacement,))
-        return (
-            journal_path.exists()
-            and journal_path.stat().st_size > 0
-            and marker in journal_path.read_bytes()
-        )
-    finally:
+    with tempfile.TemporaryDirectory(dir=temp_dir, prefix="journal-control-") as control_tmp:
+        control_dir = Path(control_tmp)
+        db_path = control_dir / "journal-control.db"
+        journal_path = db_path.with_name(db_path.name + "-journal")
+        conn = sqlite3.connect(db_path)
+        active = False
+        marker_present = False
         try:
-            if active:
-                conn.rollback()
+            mode = str(conn.execute("PRAGMA journal_mode=DELETE").fetchone()[0]).lower()
+            if mode in {"delete", "truncate", "persist"}:
+                conn.execute("CREATE TABLE synthetic_journal(id INTEGER PRIMARY KEY, value BLOB)")
+                conn.execute("INSERT INTO synthetic_journal(value) VALUES (?)", (original,))
+                conn.commit()
+                conn.execute("BEGIN IMMEDIATE")
+                active = True
+                conn.execute("UPDATE synthetic_journal SET value=? WHERE id=1", (replacement,))
+                marker_present = (
+                    journal_path.exists()
+                    and journal_path.stat().st_size > 0
+                    and marker in journal_path.read_bytes()
+                )
         finally:
-            conn.close()
+            try:
+                if active:
+                    conn.rollback()
+            finally:
+                conn.close()
+    if control_dir.exists():
+        raise OSError("ERR_JOURNAL_CONTROL_CLEANUP_FAILED")
+    return marker_present
 
 
 def run_sqlcipher_probe(temp_dir: Path) -> SqlcipherEvidence:

@@ -66,7 +66,7 @@
 
 ## Следующий безопасный шаг
 
-complete PR-S001-F2 WAL/rollback-journal evidence correction before product-owner PR-S001 feasibility review. Do not start PR-005, PR-006, PR-007 or later tasks until separately authorized. PR #9 merged PR-S001 as a research harness; PR-S001 final acceptance is NOT ACCEPTED and PR-S001-F1 is the current correction; the next safe step is product-owner evidence review.
+complete PR-S001-F2 WAL/rollback-journal evidence correction before product-owner PR-S001 feasibility review. Do not start PR-005, PR-006, PR-007 or later tasks until separately authorized. PR #9 merged PR-S001 as a research harness; PR-S001 final acceptance is NOT ACCEPTED; PR-S001-F1 is completed and merged through PR #10; PR-S001-F2 is the current correction; the next safe step is product-owner evidence review.
 
 PR-S001-F2 is the only authorized current correction; PR-S001-F1 completed and merged through PR #10. PR-S001/PR-S001-F1/PR-S001-F2 use fictional synthetic data only, may evaluate candidate packages and prototypes, must not create production database/storage APIs, and must not use real documents or personal data. PR-005 does not start automatically after PR-S001 merge; explicit human acceptance and authorization are required after PR-S001. PR-006 remains blocked until PR-S001 acceptance and a separate PR-006 task review. Q-017 remains deferred. The sensitive-data/private-contour gate remains open, and real documents and personal data remain prohibited in Git, Codex and CI.
 

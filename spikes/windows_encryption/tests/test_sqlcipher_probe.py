@@ -437,6 +437,10 @@ def test_ordinary_sqlite_rejects_only_database_error_is_pass(tmp_path: Path) -> 
 from spikes.windows_encryption.run import _reason  # noqa: E402
 from spikes.windows_encryption.sqlcipher_probe import (  # noqa: E402
     _journal_checks_from_evidence,
+    _marker_payload,
+    _ordinary_journal_control,
+    _ordinary_wal_control,
+    _scan_for_marker,
     _wal_checks_from_evidence,
 )
 
@@ -662,3 +666,125 @@ def test_all_new_reason_codes_survive_run_reason() -> None:
         "ERR_JOURNAL_PROBE_FAILED",
     }
     assert {_reason(code) for code in codes} == codes
+
+
+def test_wal_control_pass_is_independent_when_encrypted_wal_missing() -> None:
+    checks = _by_id(
+        _wal_checks_from_evidence(
+            mode="wal",
+            wal_exists=False,
+            wal_size=0,
+            control_marker_present=True,
+            encrypted_marker_present=False,
+        )
+    )
+    assert checks["wal-control-marker-present"].status == "PASS"
+    assert checks["wal-control-marker-present"].reason_code == "PASS"
+    assert checks["wal-file-present"].reason_code == "ERR_WAL_NOT_CREATED"
+    assert checks["wal-marker-absent"].status == "FAIL"
+    assert checks["wal-encrypted-content"].status == "FAIL"
+
+
+def test_wal_control_pass_is_independent_when_encrypted_wal_empty() -> None:
+    checks = _by_id(
+        _wal_checks_from_evidence(
+            mode="wal",
+            wal_exists=True,
+            wal_size=0,
+            control_marker_present=True,
+            encrypted_marker_present=False,
+        )
+    )
+    assert checks["wal-control-marker-present"].status == "PASS"
+    assert checks["wal-control-marker-present"].reason_code == "PASS"
+    assert checks["wal-file-nonempty"].reason_code == "ERR_WAL_EMPTY"
+
+
+def test_journal_control_pass_is_independent_when_encrypted_journal_missing() -> None:
+    checks = _by_id(
+        _journal_checks_from_evidence(
+            mode="delete",
+            journal_exists=False,
+            journal_size=0,
+            control_marker_present=True,
+            encrypted_marker_present=False,
+        )
+    )
+    assert checks["journal-control-marker-present"].status == "PASS"
+    assert checks["journal-control-marker-present"].reason_code == "PASS"
+    assert checks["journal-file-present"].reason_code == "ERR_JOURNAL_NOT_CREATED"
+    assert checks["journal-marker-absent"].status == "FAIL"
+
+
+def test_journal_control_pass_is_independent_when_encrypted_journal_empty() -> None:
+    checks = _by_id(
+        _journal_checks_from_evidence(
+            mode="delete",
+            journal_exists=True,
+            journal_size=0,
+            control_marker_present=True,
+            encrypted_marker_present=False,
+        )
+    )
+    assert checks["journal-control-marker-present"].status == "PASS"
+    assert checks["journal-control-marker-present"].reason_code == "PASS"
+    assert checks["journal-file-nonempty"].reason_code == "ERR_JOURNAL_EMPTY"
+
+
+def test_wal_file_size_uses_byte_size_not_duration_ms() -> None:
+    checks = _by_id(
+        _wal_checks_from_evidence(
+            mode="wal",
+            wal_exists=True,
+            wal_size=4096,
+            control_marker_present=True,
+            encrypted_marker_present=False,
+        )
+    )
+    assert checks["wal-file-nonempty"].duration_ms == 0
+    assert checks["wal-file-nonempty"].byte_size == 4096
+
+
+def test_journal_file_size_uses_byte_size_not_duration_ms() -> None:
+    checks = _by_id(
+        _journal_checks_from_evidence(
+            mode="delete",
+            journal_exists=True,
+            journal_size=8192,
+            control_marker_present=True,
+            encrypted_marker_present=False,
+        )
+    )
+    assert checks["journal-file-nonempty"].duration_ms == 0
+    assert checks["journal-file-nonempty"].byte_size == 8192
+
+
+def test_ordinary_controls_cleanup_and_do_not_contaminate_controlled_temp_scan(
+    tmp_path: Path,
+) -> None:
+    marker = b"synthetic-record-control-cleanup-001"
+    payload = _marker_payload(marker)
+    before = set(tmp_path.iterdir())
+
+    assert _ordinary_wal_control(tmp_path, payload, marker)
+    after_wal = set(tmp_path.iterdir())
+    assert after_wal == before
+
+    replacement = _marker_payload(b"synthetic-record-control-cleanup-replacement")
+    assert _ordinary_journal_control(tmp_path, payload, replacement, marker)
+    after_journal = set(tmp_path.iterdir())
+    assert after_journal == before
+
+    remaining_files = [path for path in tmp_path.rglob("*") if path.is_file()]
+    assert _scan_for_marker(remaining_files, marker)
+
+
+def test_controlled_temp_scan_still_detects_encrypted_scenario_marker_leakage(
+    tmp_path: Path,
+) -> None:
+    marker = b"synthetic-record-leakage-detection-001"
+    leaked = tmp_path / "wal-probe.db-wal"
+    leaked.write_bytes(b"prefix" + marker + b"suffix")
+
+    remaining_files = [path for path in tmp_path.rglob("*") if path.is_file()]
+    assert not _scan_for_marker(remaining_files, marker)
