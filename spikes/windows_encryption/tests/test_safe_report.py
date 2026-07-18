@@ -299,3 +299,43 @@ def test_new_reason_codes_are_allowlisted() -> None:
         "ERR_ENCRYPTED_DB_NOT_CREATED",
     }
     assert new_codes <= ALLOWED_REASON_CODES
+
+
+def test_acl_reason_codes_are_allowlisted() -> None:
+    assert {
+        "ERR_ACL_CURRENT_USER_RIGHTS",
+        "ERR_ACL_SYSTEM_RIGHTS",
+        "ERR_ACL_ADMINISTRATORS_RIGHTS",
+        "ERR_ACL_BROAD_WRITE",
+        "ERR_ACL_CLEANUP_FAILED",
+        "ERR_ACL_PROBE_FAILED",
+    } <= ALLOWED_REASON_CODES
+
+
+def test_safe_report_accepts_acl_identifiers_and_reasons() -> None:
+    report = SafeReport(
+        report_schema_version=1,
+        timestamp_utc="2026-07-17T12:00:00+00:00",
+        os_family="Windows",
+        os_release="Server2022",
+        architecture="AMD64",
+        python_version="3.12",
+        candidate_name="sqlcipher3-0.6.2",
+        checks=[
+            ReportCheck(
+                "acl-current-user-rights",
+                ResultStatus.FAIL,
+                "ERR_ACL_CURRENT_USER_RIGHTS",
+            ),
+            ReportCheck("acl-system-rights", ResultStatus.FAIL, "ERR_ACL_SYSTEM_RIGHTS"),
+            ReportCheck(
+                "acl-administrators-rights",
+                ResultStatus.FAIL,
+                "ERR_ACL_ADMINISTRATORS_RIGHTS",
+            ),
+            ReportCheck("acl-broad-write-blocked", ResultStatus.FAIL, "ERR_ACL_BROAD_WRITE"),
+            ReportCheck("acl-directory-cleanup", ResultStatus.FAIL, "ERR_ACL_CLEANUP_FAILED"),
+        ],
+        recommendation="NOT_FEASIBLE",
+    )
+    assert "S-" not in report_to_json(report)

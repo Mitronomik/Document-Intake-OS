@@ -40,6 +40,7 @@ REQUIRED_DOCUMENTS = (
     "docs/tasks/PR-004-core-domain.md",
     "docs/tasks/GATE-S1-encryption-staging.md",
     "docs/tasks/GATE-S1-acceptance.md",
+    "docs/tasks/PR-S001-F1-windows-cleanup-acl-evidence.md",
 )
 
 CANONICAL_SOURCE_ORDER = (
@@ -224,7 +225,9 @@ def test_lifecycle_state_records_gate_s1_accepted_state() -> None:
         "GATE-S1: COMPLETED AND HUMAN ACCEPTED",
         "ADR-018: ACCEPTED",
         "Q-010: ACCEPTED",
-        "PR-S001: IN REVIEW",
+        "PR-S001: MERGED AS RESEARCH HARNESS",
+        "PR-S001 FINAL ACCEPTANCE: NOT ACCEPTED",
+        "PR-S001-F1: CURRENT CORRECTION",
         "PR-005: UNAUTHORIZED",
         "PR-006: UNAUTHORIZED",
         "PR-007 AND LATER: UNAUTHORIZED",
@@ -254,6 +257,9 @@ def test_lifecycle_state_records_gate_s1_accepted_state() -> None:
         "ADR-018: PROPOSED",
         "Q-010: OPEN",
         "PR-S001: PROPOSED, NOT AUTHORIZED",
+        "PR-S001: IN REVIEW",
+        "PR-S001 is in review",
+        "review PR-S001 evidence and make a product-owner feasibility decision",
         "review and product-owner decision on GATE-S1 / ADR-018",
     )
 
@@ -261,7 +267,10 @@ def test_lifecycle_state_records_gate_s1_accepted_state() -> None:
         text = (REPO_ROOT / filename).read_text(encoding="utf-8")
         for required in required_by_file:
             assert required in text, filename
-        needle = "review PR-S001 evidence and make a product-owner feasibility decision"
+        needle = (
+            "complete PR-S001-F1 cleanup/ACL evidence correction before product-owner "
+            "PR-S001 feasibility review"
+        )
         assert needle in text, filename
         for stale in stale_current_state:
             assert stale not in text, filename
@@ -271,7 +280,10 @@ def test_lifecycle_state_records_gate_s1_accepted_state() -> None:
     assert "- [x] GATE-S1: COMPLETED AND HUMAN ACCEPTED;" in progress
     assert "- [x] ADR-018: ACCEPTED;" in progress
     assert "- [x] Q-010: ACCEPTED;" in progress
-    assert "- [ ] PR-S001: IN REVIEW;" in progress
+    assert (
+        "- [ ] PR-S001: MERGED AS RESEARCH HARNESS; PR-S001 FINAL ACCEPTANCE: "
+        "NOT ACCEPTED; PR-S001-F1: CURRENT CORRECTION;" in progress
+    )
     assert "- [ ] PR-005: UNAUTHORIZED;" in progress
     assert "- [ ] PR-006: UNAUTHORIZED;" in progress
     assert "- [ ] GATE-S1: COMPLETED AND HUMAN ACCEPTED;" not in progress
@@ -438,7 +450,7 @@ def test_gate_s1_acceptance_security_and_lifecycle_boundaries() -> None:
 
     for filename in lifecycle_files:
         text = (REPO_ROOT / filename).read_text(encoding="utf-8")
-        assert "PR-S001 uses fictional synthetic data only" in text, filename
+        assert "PR-S001/PR-S001-F1 use fictional synthetic data only" in text, filename
         assert "must not create production database/storage APIs" in text, filename
         assert "PR-005 does not start automatically after PR-S001 merge" in text, filename
         assert "explicit human acceptance and authorization are required after PR-S001" in text, (
@@ -896,7 +908,11 @@ def test_pr_s001_spike_documentation_and_scope() -> None:
     assert "sqlcipher3" not in project_block
     assert "cryptography" not in project_block
     assert "encryption-spike" in pyproject
-    assert "PR-S001: IN REVIEW" in (REPO_ROOT / "docs/progress.md").read_text(encoding="utf-8")
+    assert (
+        "PR-S001: MERGED AS RESEARCH HARNESS; PR-S001 FINAL ACCEPTANCE: "
+        "NOT ACCEPTED; PR-S001-F1: CURRENT CORRECTION"
+        in (REPO_ROOT / "docs/progress.md").read_text(encoding="utf-8")
+    )
     lifecycle_files = [
         "docs/progress.md",
         "docs/handoff.md",
@@ -907,7 +923,7 @@ def test_pr_s001_spike_documentation_and_scope() -> None:
     for lifecycle in lifecycle_files:
         text = (REPO_ROOT / lifecycle).read_text(encoding="utf-8")
         assert "AUTHORIZED, NOT STARTED" not in text
-        assert "PR-S001 uses fictional synthetic data only" in text
+        assert "PR-S001/PR-S001-F1 use fictional synthetic data only" in text
         assert "PR-S001 contains no production persistence/storage API" in text
         assert "a negative feasibility result is valid" in text
         assert "PR-S001 merge does not authorize PR-005" in text

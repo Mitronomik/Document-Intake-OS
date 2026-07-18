@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import os
 import platform
+import sqlite3
 from pathlib import Path
 from typing import Any, cast
 
@@ -376,3 +377,54 @@ def test_read_created_db_existing_does_not_return_none(tmp_path: Path) -> None:
     db.write_bytes(b"content")
     _check, data = _read_created_db(db)
     assert data is not None
+
+
+class _OrdinaryCursor:
+    def __init__(self, should_raise: bool) -> None:
+        self._should_raise = should_raise
+
+    def fetchone(self) -> tuple[int] | None:
+        if self._should_raise:
+            raise RuntimeError("not used")
+        return (1,)
+
+
+class _OrdinaryConn:
+    def __init__(self, *, raise_database_error: bool) -> None:
+        self.raise_database_error = raise_database_error
+        self.closed = False
+
+    def execute(self, sql: str) -> _OrdinaryCursor:
+        if self.raise_database_error:
+            raise sqlite3.DatabaseError("expected encrypted database rejection")
+        return _OrdinaryCursor(False)
+
+    def close(self) -> None:
+        self.closed = True
+
+
+def test_ordinary_sqlite_rejects_closes_after_database_error(tmp_path: Path) -> None:
+
+    from spikes.windows_encryption.sqlcipher_probe import _ordinary_sqlite_rejects
+
+    conn = _OrdinaryConn(raise_database_error=True)
+    assert _ordinary_sqlite_rejects(tmp_path / "probe.db", lambda _path: conn)
+    assert conn.closed
+
+
+def test_ordinary_sqlite_rejects_closes_after_unexpected_success(tmp_path: Path) -> None:
+    from spikes.windows_encryption.sqlcipher_probe import _ordinary_sqlite_rejects
+
+    conn = _OrdinaryConn(raise_database_error=False)
+    assert not _ordinary_sqlite_rejects(tmp_path / "probe.db", lambda _path: conn)
+    assert conn.closed
+
+
+def test_ordinary_sqlite_rejects_only_database_error_is_pass(tmp_path: Path) -> None:
+
+    from spikes.windows_encryption.sqlcipher_probe import _ordinary_sqlite_rejects
+
+    ok = _OrdinaryConn(raise_database_error=True)
+    accepted = _OrdinaryConn(raise_database_error=False)
+    assert _ordinary_sqlite_rejects(tmp_path / "probe.db", lambda _path: ok)
+    assert not _ordinary_sqlite_rejects(tmp_path / "probe.db", lambda _path: accepted)
