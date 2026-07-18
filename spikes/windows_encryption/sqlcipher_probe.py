@@ -45,9 +45,11 @@ class SqlcipherEvidence:
 
 
 def raw_key_pragma_fragment(key: bytes) -> str:
+    if not isinstance(key, bytes):
+        raise TypeError("ERR_INVALID_DB_KEY_TYPE")
     if len(key) != 32:
         raise ValueError("ERR_INVALID_DB_KEY")
-    return "x'" + key.hex() + "'"
+    return "\"x'" + key.hex() + "'\""
 
 
 def inspect_raw_key_api(binding: Any) -> str:

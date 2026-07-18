@@ -76,6 +76,7 @@ def unwrap_dek(root_key: bytes, salt: bytes, wrapped: WrappedDek) -> bytes:
             importlib.import_module("cryptography.hazmat.primitives.keywrap"),
         )
         aes_key_unwrap_with_padding = keywrap_mod.aes_key_unwrap_with_padding
+        InvalidUnwrap = keywrap_mod.InvalidUnwrap
     except ImportError as exc:  # pragma: no cover
         raise RuntimeError("ERR_CRYPTOGRAPHY_UNAVAILABLE") from exc
     try:
@@ -84,5 +85,5 @@ def unwrap_dek(root_key: bytes, salt: bytes, wrapped: WrappedDek) -> bytes:
                 derive_kek(root_key, salt, wrapped.purpose), wrapped.wrapped
             )
         )
-    except ValueError as exc:
+    except InvalidUnwrap as exc:
         raise ValueError("ERR_DEK_UNWRAP_FAILED") from exc

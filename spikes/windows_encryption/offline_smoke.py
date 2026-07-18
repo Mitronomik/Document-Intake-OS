@@ -10,16 +10,14 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, cast
 
+from spikes.windows_encryption.sqlcipher_probe import raw_key_pragma_fragment
+
 
 @dataclass(frozen=True)
 class OfflineSmokeResult:
     status: str
     sqlcipher_version: str = "UNSUPPORTED"
     cleanup_status: str = "NOT_DEMONSTRATED"
-
-
-def _raw_key_fragment(key: bytes) -> str:
-    return "x'" + key.hex() + "'"
 
 
 def _try_import_aesgcm() -> Any:
@@ -52,7 +50,7 @@ def run_offline_smoke() -> OfflineSmokeResult:
         db_path = temp_dir / "offline.db"
         conn = sqlcipher3.connect(str(db_path))
         try:
-            conn.execute("PRAGMA key = " + _raw_key_fragment(key))
+            conn.execute("PRAGMA key = " + raw_key_pragma_fragment(key))
             conn.execute("CREATE TABLE t(id INTEGER PRIMARY KEY, value BLOB)")
             conn.execute("INSERT INTO t(value) VALUES (?)", (os.urandom(32),))
             conn.commit()
@@ -62,7 +60,7 @@ def run_offline_smoke() -> OfflineSmokeResult:
         correct = sqlcipher3.connect(str(db_path))
         correct_ok = True
         try:
-            correct.execute("PRAGMA key = " + _raw_key_fragment(key))
+            correct.execute("PRAGMA key = " + raw_key_pragma_fragment(key))
             correct.execute("SELECT count(*) FROM sqlite_master").fetchone()
         except Exception:
             correct_ok = False
@@ -73,7 +71,7 @@ def run_offline_smoke() -> OfflineSmokeResult:
         wrong_rejected = False
         wrong_conn = sqlcipher3.connect(str(db_path))
         try:
-            wrong_conn.execute("PRAGMA key = " + _raw_key_fragment(wrong))
+            wrong_conn.execute("PRAGMA key = " + raw_key_pragma_fragment(wrong))
             wrong_conn.execute("SELECT count(*) FROM sqlite_master").fetchone()
         except Exception:
             wrong_rejected = True

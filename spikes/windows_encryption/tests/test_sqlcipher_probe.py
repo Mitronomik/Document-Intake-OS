@@ -3,7 +3,9 @@ from __future__ import annotations
 import os
 import platform
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
+
+import pytest
 
 from spikes.windows_encryption.sqlcipher_probe import (
     CheckResult,
@@ -46,10 +48,47 @@ class _FakeCursor:
         return self._rows[0] if self._rows else None
 
 
+def test_raw_key_pragma_exact_literal() -> None:
+    key = bytes(range(32))
+    expected = "\"x'" + key.hex() + "'\""
+    actual = raw_key_pragma_fragment(key)
+    assert actual == expected
+
+
 def test_raw_key_pragma_is_isolated_and_not_logged() -> None:
     fragment = raw_key_pragma_fragment(b"a" * 32)
-    assert fragment.startswith("x'") and fragment.endswith("'")
+    assert fragment.startswith('"x') and fragment.endswith("'\"")
+    assert len(fragment) == 1 + 1 + 1 + 64 + 1 + 1  # "x'<64 hex>'"
     assert raw_key_pragma_fragment(os.urandom(32)) != fragment
+
+
+def test_raw_key_pragma_rejects_invalid_length() -> None:
+    with pytest.raises(ValueError, match="ERR_INVALID_DB_KEY"):
+        raw_key_pragma_fragment(b"short")
+    with pytest.raises(ValueError, match="ERR_INVALID_DB_KEY"):
+        raw_key_pragma_fragment(b"a" * 33)
+    with pytest.raises(ValueError, match="ERR_INVALID_DB_KEY"):
+        raw_key_pragma_fragment(b"")
+
+
+def test_raw_key_pragma_hex_is_lowercase_64_chars() -> None:
+    key = bytes(range(32))
+    fragment = raw_key_pragma_fragment(key)
+    hex_part = key.hex()
+    assert len(hex_part) == 64
+    assert hex_part == hex_part.lower()
+    assert hex_part in fragment
+    assert " " not in fragment
+
+
+def test_raw_key_pragma_rejects_str_with_typeerror() -> None:
+    with pytest.raises(TypeError, match="ERR_INVALID_DB_KEY_TYPE"):
+        raw_key_pragma_fragment(cast(Any, "a" * 32))
+
+
+def test_raw_key_pragma_rejects_bytearray_with_typeerror() -> None:
+    with pytest.raises(TypeError, match="ERR_INVALID_DB_KEY_TYPE"):
+        raw_key_pragma_fragment(cast(Any, bytearray(b"a" * 32)))
 
 
 def test_raw_key_api_inspection() -> None:

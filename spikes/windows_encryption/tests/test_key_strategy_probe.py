@@ -45,3 +45,18 @@ def test_wrapped_dek_binds_purpose_and_rejects_tamper() -> None:
     tampered = replace(wrapped, wrapped=wrapped.wrapped[:-1] + bytes([wrapped.wrapped[-1] ^ 1]))
     with pytest.raises(ValueError, match="ERR_DEK_UNWRAP_FAILED"):
         unwrap_dek(root, salt, tampered)
+
+
+def test_key_strategy_functions_importable() -> None:
+    """Platform-independent: all key strategy functions are importable."""
+    assert callable(generate_dek)
+    assert callable(derive_purpose_key)
+    assert callable(derive_kek)
+    assert callable(wrap_dek)
+    assert callable(unwrap_dek)
+
+
+def test_generate_dek_returns_32_bytes() -> None:
+    dek = generate_dek()
+    assert len(dek) == 32
+    assert isinstance(dek, bytes)

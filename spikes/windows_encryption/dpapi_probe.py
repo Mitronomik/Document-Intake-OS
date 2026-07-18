@@ -8,6 +8,7 @@ import struct
 import subprocess
 import sys
 import tempfile
+import textwrap
 from ctypes import wintypes
 from dataclasses import dataclass
 from pathlib import Path
@@ -164,6 +165,80 @@ def _transient_expected_digest(key: bytes, marker: bytes) -> str:
     return hashlib.sha256(key + marker).hexdigest()
 
 
+def _mutate_opaque_blob(blob: bytes, positions: list[int]) -> dict[int, bytes]:
+    """Return dict mapping position index -> mutated blob copy."""
+    result: dict[int, bytes] = {}
+    for pos in positions:
+        if pos < len(blob):
+            mutated = bytearray(blob)
+            mutated[pos] ^= 0xFF
+            result[pos] = bytes(mutated)
+    return result
+
+
+def classify_dpapi_mutations(protected_blob: bytes, expected_key: bytes) -> str:
+    """Attempt mutations at multiple positions in the opaque DPAPI blob.
+
+    Returns PASS only if:
+    - the original blob successfully recovers the exact key;
+    - all deterministic mutations have been attempted;
+    - at least one mutation was properly rejected;
+    - no mutation returned a different key;
+    - after all mutations the original blob remains valid.
+
+    A mutation that is accepted and returns the same key is treated as
+    an acceptable non-semantic mutation and does not prevent PASS.
+    """
+    if not protected_blob:
+        return "ERR_DPAPI_ARTIFACT_INVALID"
+    original = unprotect_current_user(protected_blob)
+    if original.status != "PASS" or original.data != expected_key:
+        return "ERR_DPAPI_ORIGINAL_INVALID"
+    if len(protected_blob) < 32:
+        return "ERR_DPAPI_BLOB_TOO_SMALL"
+    # Deterministic positions: start, middle area, near end
+    positions = [0, len(protected_blob) // 2, len(protected_blob) - 8]
+    mutated_copies = _mutate_opaque_blob(protected_blob, positions)
+    if not mutated_copies:
+        return "ERR_DPAPI_NO_MUTATIONS_POSSIBLE"
+    rejected_count = 0
+    for _pos, mutated in mutated_copies.items():
+        result = unprotect_current_user(mutated)
+        if result.status != "PASS":
+            rejected_count += 1
+            continue
+        # Mutation accepted — different key is a hard error
+        if result.data != expected_key:
+            return "ERR_DPAPI_MUTATION_ACCEPTED_WITH_DIFFERENT_KEY"
+        # Same key — acceptable non-semantic mutation, continue checking
+    if rejected_count == 0:
+        return "ERR_DPAPI_NO_MUTATIONS_REJECTED"
+    # Verify original blob still valid after all operations
+    final = unprotect_current_user(protected_blob)
+    if final.status != "PASS" or final.data != expected_key:
+        return "ERR_DPAPI_ORIGINAL_CORRUPTED"
+    return "PASS"
+
+
+def _build_dpapi_subprocess_script(blob_path: Path, marker_path: Path) -> str:
+    return textwrap.dedent(
+        f"""\
+import hashlib, sys
+from pathlib import Path
+from spikes.windows_encryption.dpapi_probe import unprotect_current_user
+
+blob = Path({str(blob_path)!r}).read_bytes()
+mk = Path({str(marker_path)!r}).read_bytes()
+r = unprotect_current_user(blob)
+if r.status != "PASS":
+    print("ERR_DPAPI_SUBPROCESS_KEY_MISMATCH")
+    sys.exit(1)
+transient = hashlib.sha256(r.data + mk).hexdigest()
+print(transient)
+"""
+    )
+
+
 def verify_same_runner_blob(protected_blob: bytes, expected_key: bytes) -> str:
     current = unprotect_current_user(protected_blob)
     if current.status != "PASS" or current.data != expected_key:
@@ -175,19 +250,7 @@ def verify_same_runner_blob(protected_blob: bytes, expected_key: bytes) -> str:
         marker_path = Path(tmp_name) / "marker.bin"
         blob_path.write_bytes(protected_blob)
         marker_path.write_bytes(marker)
-        code = (
-            "import hashlib, sys;"
-            "from pathlib import Path;"
-            "from spikes.windows_encryption.dpapi_probe import unprotect_current_user;"
-            "blob = Path(r'" + str(blob_path) + "').read_bytes();"
-            "mk = Path(r'" + str(marker_path) + "').read_bytes();"
-            "r = unprotect_current_user(blob);"
-            "if r.status != 'PASS':"
-            "  print('ERR_DPAPI_SUBPROCESS_KEY_MISMATCH'); sys.exit(1);"
-            "transient = hashlib.sha256(r.data + mk).hexdigest();"
-            "print(transient);"
-            "sys.exit(0 if transient == r'" + expected + "' else 1)"
-        )
+        code = _build_dpapi_subprocess_script(blob_path, marker_path)
         completed = subprocess.run(
             [sys.executable, "-c", code],
             check=False,
@@ -199,6 +262,11 @@ def verify_same_runner_blob(protected_blob: bytes, expected_key: bytes) -> str:
         if "ERR_DPAPI_SUBPROCESS_KEY_MISMATCH" in stdout_val:
             return "ERR_DPAPI_SUBPROCESS_KEY_MISMATCH"
         return "ERR_DPAPI_SUBPROCESS_VERIFY_FAILED"
+    actual = completed.stdout.strip()
+    if not actual or actual.count("\n") > 0:
+        return "ERR_DPAPI_SUBPROCESS_UNEXPECTED_OUTPUT"
+    if actual != expected:
+        return "ERR_DPAPI_SUBPROCESS_DIGEST_MISMATCH"
     return "PASS"
 
 
