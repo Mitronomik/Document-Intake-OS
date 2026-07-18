@@ -164,6 +164,306 @@ def _corruption_detected(sqlcipher3: Any, source: Path, key: bytes, mutate: str)
         conn.close()
 
 
+def _marker_payload(marker: bytes) -> bytes:
+    return marker * 512
+
+
+def _single_path_marker_absent(path: Path, marker: bytes) -> bool:
+    return marker not in path.read_bytes()
+
+
+def _mode_from_rows(rows: list[tuple[Any, ...]]) -> str:
+    if not rows or rows[0][0] is None:
+        return ""
+    return str(rows[0][0]).strip().lower()
+
+
+def _wal_checks_from_evidence(
+    *,
+    mode: str,
+    wal_exists: bool,
+    wal_size: int,
+    control_marker_present: bool,
+    encrypted_marker_present: bool,
+    mode_unsupported: bool = False,
+) -> tuple[CheckResult, ...]:
+    if mode_unsupported or mode != "wal":
+        return (
+            CheckResult("wal-mode-active", "UNSUPPORTED", "UNSUPPORTED_WAL_MODE"),
+            CheckResult("wal-file-present", "UNSUPPORTED", "UNSUPPORTED_WAL_MODE"),
+            CheckResult("wal-file-nonempty", "UNSUPPORTED", "UNSUPPORTED_WAL_MODE"),
+            CheckResult("wal-control-marker-present", "UNSUPPORTED", "UNSUPPORTED_WAL_MODE"),
+            CheckResult("wal-marker-absent", "UNSUPPORTED", "UNSUPPORTED_WAL_MODE"),
+            CheckResult("wal-encrypted-content", "UNSUPPORTED", "UNSUPPORTED_WAL_MODE"),
+        )
+    present = wal_exists
+    nonempty = present and wal_size > 0
+    control = nonempty and control_marker_present
+    absent = control and not encrypted_marker_present
+    encrypted = present and nonempty and control and absent
+    return (
+        CheckResult("wal-mode-active", "PASS", "PASS"),
+        CheckResult(
+            "wal-file-present",
+            "PASS" if present else "FAIL",
+            "PASS" if present else "ERR_WAL_NOT_CREATED",
+        ),
+        CheckResult(
+            "wal-file-nonempty",
+            "PASS" if nonempty else "FAIL",
+            "PASS" if nonempty else ("ERR_WAL_EMPTY" if present else "ERR_WAL_NOT_CREATED"),
+            wal_size,
+        ),
+        CheckResult(
+            "wal-control-marker-present",
+            "PASS" if control else "FAIL",
+            "PASS" if control else "ERR_WAL_CONTROL_MARKER_MISSING",
+        ),
+        CheckResult(
+            "wal-marker-absent",
+            "PASS" if absent else "FAIL",
+            "PASS"
+            if absent
+            else (
+                "ERR_MARKER_IN_WAL"
+                if encrypted_marker_present
+                else "ERR_WAL_CONTROL_MARKER_MISSING"
+            ),
+        ),
+        CheckResult(
+            "wal-encrypted-content",
+            "PASS" if encrypted else "FAIL",
+            "PASS"
+            if encrypted
+            else (
+                "ERR_MARKER_IN_WAL"
+                if encrypted_marker_present
+                else (
+                    "ERR_WAL_CONTROL_MARKER_MISSING"
+                    if nonempty
+                    else ("ERR_WAL_EMPTY" if present else "ERR_WAL_NOT_CREATED")
+                )
+            ),
+        ),
+    )
+
+
+def _journal_checks_from_evidence(
+    *,
+    mode: str,
+    journal_exists: bool,
+    journal_size: int,
+    control_marker_present: bool,
+    encrypted_marker_present: bool,
+    mode_unsupported: bool = False,
+) -> tuple[CheckResult, ...]:
+    active = mode in {"delete", "truncate", "persist"}
+    if mode_unsupported or not active:
+        return (
+            CheckResult("journal-mode-active", "UNSUPPORTED", "UNSUPPORTED_ROLLBACK_JOURNAL_MODE"),
+            CheckResult("journal-file-present", "UNSUPPORTED", "UNSUPPORTED_ROLLBACK_JOURNAL_MODE"),
+            CheckResult(
+                "journal-file-nonempty", "UNSUPPORTED", "UNSUPPORTED_ROLLBACK_JOURNAL_MODE"
+            ),
+            CheckResult(
+                "journal-control-marker-present", "UNSUPPORTED", "UNSUPPORTED_ROLLBACK_JOURNAL_MODE"
+            ),
+            CheckResult(
+                "journal-marker-absent", "UNSUPPORTED", "UNSUPPORTED_ROLLBACK_JOURNAL_MODE"
+            ),
+        )
+    present = journal_exists
+    nonempty = present and journal_size > 0
+    control = nonempty and control_marker_present
+    absent = control and not encrypted_marker_present
+    return (
+        CheckResult("journal-mode-active", "PASS", "PASS"),
+        CheckResult(
+            "journal-file-present",
+            "PASS" if present else "FAIL",
+            "PASS" if present else "ERR_JOURNAL_NOT_CREATED",
+        ),
+        CheckResult(
+            "journal-file-nonempty",
+            "PASS" if nonempty else "FAIL",
+            "PASS" if nonempty else ("ERR_JOURNAL_EMPTY" if present else "ERR_JOURNAL_NOT_CREATED"),
+            journal_size,
+        ),
+        CheckResult(
+            "journal-control-marker-present",
+            "PASS" if control else "FAIL",
+            "PASS" if control else "ERR_JOURNAL_CONTROL_MARKER_MISSING",
+        ),
+        CheckResult(
+            "journal-marker-absent",
+            "PASS" if absent else "FAIL",
+            "PASS"
+            if absent
+            else (
+                "ERR_MARKER_IN_JOURNAL"
+                if encrypted_marker_present
+                else "ERR_JOURNAL_CONTROL_MARKER_MISSING"
+            ),
+        ),
+    )
+
+
+def _run_wal_evidence(
+    sqlcipher3: Any, temp_dir: Path, key: bytes, marker: bytes
+) -> tuple[CheckResult, ...]:
+    payload = _marker_payload(marker)
+    db_path = temp_dir / "wal-probe.db"
+    wal_path = db_path.with_name(db_path.name + "-wal")
+    conn = None
+    try:
+        conn = sqlcipher3.connect(str(db_path))
+        _key_connection(conn, key)
+        rows = list(conn.execute("PRAGMA journal_mode=WAL").fetchall())
+        mode = _mode_from_rows(rows)
+        if mode != "wal":
+            return _wal_checks_from_evidence(
+                mode=mode,
+                wal_exists=False,
+                wal_size=0,
+                control_marker_present=False,
+                encrypted_marker_present=False,
+                mode_unsupported=True,
+            )
+        conn.execute("PRAGMA wal_autocheckpoint=0")
+        conn.execute("CREATE TABLE synthetic_wal(id INTEGER PRIMARY KEY, value BLOB)")
+        conn.commit()
+        conn.execute("INSERT INTO synthetic_wal(value) VALUES (?)", (payload,))
+        conn.commit()
+        exists = wal_path.exists()
+        size = wal_path.stat().st_size if exists else 0
+        encrypted_has = exists and marker in wal_path.read_bytes()
+        control = _ordinary_wal_control(temp_dir, payload, marker)
+        return _wal_checks_from_evidence(
+            mode=mode,
+            wal_exists=exists,
+            wal_size=size,
+            control_marker_present=control,
+            encrypted_marker_present=encrypted_has,
+        )
+    except Exception:
+        return (
+            CheckResult("wal-mode-active", "FAIL", "ERR_WAL_PROBE_FAILED"),
+            CheckResult("wal-file-present", "FAIL", "ERR_WAL_PROBE_FAILED"),
+            CheckResult("wal-file-nonempty", "FAIL", "ERR_WAL_PROBE_FAILED"),
+            CheckResult("wal-control-marker-present", "FAIL", "ERR_WAL_PROBE_FAILED"),
+            CheckResult("wal-marker-absent", "FAIL", "ERR_WAL_PROBE_FAILED"),
+            CheckResult("wal-encrypted-content", "FAIL", "ERR_WAL_PROBE_FAILED"),
+        )
+    finally:
+        if conn is not None:
+            conn.close()
+
+
+def _ordinary_wal_control(temp_dir: Path, payload: bytes, marker: bytes) -> bool:
+    db_path = temp_dir / "wal-control.db"
+    wal_path = db_path.with_name(db_path.name + "-wal")
+    conn = sqlite3.connect(db_path)
+    try:
+        mode = str(conn.execute("PRAGMA journal_mode=WAL").fetchone()[0]).lower()
+        if mode != "wal":
+            return False
+        conn.execute("PRAGMA wal_autocheckpoint=0")
+        conn.execute("CREATE TABLE synthetic_wal(id INTEGER PRIMARY KEY, value BLOB)")
+        conn.commit()
+        conn.execute("INSERT INTO synthetic_wal(value) VALUES (?)", (payload,))
+        conn.commit()
+        return wal_path.exists() and wal_path.stat().st_size > 0 and marker in wal_path.read_bytes()
+    finally:
+        conn.close()
+
+
+def _run_journal_evidence(
+    sqlcipher3: Any, temp_dir: Path, key: bytes, marker: bytes
+) -> tuple[CheckResult, ...]:
+    original = _marker_payload(marker)
+    replacement = _marker_payload(b"synthetic-replacement-")
+    db_path = temp_dir / "journal-probe.db"
+    journal_path = db_path.with_name(db_path.name + "-journal")
+    conn = None
+    transaction_active = False
+    try:
+        conn = sqlcipher3.connect(str(db_path))
+        _key_connection(conn, key)
+        rows = list(conn.execute("PRAGMA journal_mode=DELETE").fetchall())
+        mode = _mode_from_rows(rows)
+        if mode not in {"delete", "truncate", "persist"}:
+            return _journal_checks_from_evidence(
+                mode=mode,
+                journal_exists=False,
+                journal_size=0,
+                control_marker_present=False,
+                encrypted_marker_present=False,
+                mode_unsupported=True,
+            )
+        conn.execute("CREATE TABLE synthetic_journal(id INTEGER PRIMARY KEY, value BLOB)")
+        conn.execute("INSERT INTO synthetic_journal(value) VALUES (?)", (original,))
+        conn.commit()
+        conn.execute("BEGIN IMMEDIATE")
+        transaction_active = True
+        conn.execute("UPDATE synthetic_journal SET value=? WHERE id=1", (replacement,))
+        exists = journal_path.exists()
+        size = journal_path.stat().st_size if exists else 0
+        encrypted_has = exists and marker in journal_path.read_bytes()
+        control = _ordinary_journal_control(temp_dir, original, replacement, marker)
+        return _journal_checks_from_evidence(
+            mode=mode,
+            journal_exists=exists,
+            journal_size=size,
+            control_marker_present=control,
+            encrypted_marker_present=encrypted_has,
+        )
+    except Exception:
+        return (
+            CheckResult("journal-mode-active", "FAIL", "ERR_JOURNAL_PROBE_FAILED"),
+            CheckResult("journal-file-present", "FAIL", "ERR_JOURNAL_PROBE_FAILED"),
+            CheckResult("journal-file-nonempty", "FAIL", "ERR_JOURNAL_PROBE_FAILED"),
+            CheckResult("journal-control-marker-present", "FAIL", "ERR_JOURNAL_PROBE_FAILED"),
+            CheckResult("journal-marker-absent", "FAIL", "ERR_JOURNAL_PROBE_FAILED"),
+        )
+    finally:
+        if conn is not None:
+            try:
+                if transaction_active:
+                    conn.rollback()
+            finally:
+                conn.close()
+
+
+def _ordinary_journal_control(
+    temp_dir: Path, original: bytes, replacement: bytes, marker: bytes
+) -> bool:
+    db_path = temp_dir / "journal-control.db"
+    journal_path = db_path.with_name(db_path.name + "-journal")
+    conn = sqlite3.connect(db_path)
+    active = False
+    try:
+        mode = str(conn.execute("PRAGMA journal_mode=DELETE").fetchone()[0]).lower()
+        if mode not in {"delete", "truncate", "persist"}:
+            return False
+        conn.execute("CREATE TABLE synthetic_journal(id INTEGER PRIMARY KEY, value BLOB)")
+        conn.execute("INSERT INTO synthetic_journal(value) VALUES (?)", (original,))
+        conn.commit()
+        conn.execute("BEGIN IMMEDIATE")
+        active = True
+        conn.execute("UPDATE synthetic_journal SET value=? WHERE id=1", (replacement,))
+        return (
+            journal_path.exists()
+            and journal_path.stat().st_size > 0
+            and marker in journal_path.read_bytes()
+        )
+    finally:
+        try:
+            if active:
+                conn.rollback()
+        finally:
+            conn.close()
+
+
 def run_sqlcipher_probe(temp_dir: Path) -> SqlcipherEvidence:
     if platform.system() != "Windows":
         return SqlcipherEvidence(
@@ -331,42 +631,15 @@ def run_sqlcipher_probe(temp_dir: Path) -> SqlcipherEvidence:
         )
     )
 
-    wal_paths = list(temp_dir.glob("*.db-wal"))
-    if wal_paths:
-        wal_evidence = "PRESENT"
-        checks.append(
-            _status_from_bool(
-                "wal-marker-absent",
-                _scan_for_marker(wal_paths, marker),
-                "ERR_MARKER_IN_WAL",
-            )
-        )
-        wal_data = wal_paths[0].read_bytes()
-        checks.append(
-            _status_from_bool(
-                "wal-encrypted-content",
-                b"SQLite format 3" not in wal_data[:16],
-                "ERR_PLAINTEXT_WAL",
-            )
-        )
-    else:
-        wal_evidence = "NOT_DEMONSTRATED"
-        checks.append(CheckResult("wal-marker-absent", "NOT_DEMONSTRATED", "NOT_DEMONSTRATED"))
-        checks.append(CheckResult("wal-encrypted-content", "NOT_DEMONSTRATED", "NOT_DEMONSTRATED"))
+    wal_checks = _run_wal_evidence(sqlcipher3, temp_dir, key, marker)
+    checks.extend(wal_checks)
+    wal_evidence = "PRESENT" if all(check.status == "PASS" for check in wal_checks) else "FAILED"
 
-    journal_paths = list(temp_dir.glob("*.db-journal"))
-    if journal_paths:
-        journal_evidence = "PRESENT"
-        checks.append(
-            _status_from_bool(
-                "journal-marker-absent",
-                _scan_for_marker(journal_paths, marker),
-                "ERR_MARKER_IN_JOURNAL",
-            )
-        )
-    else:
-        journal_evidence = "NOT_DEMONSTRATED"
-        checks.append(CheckResult("journal-marker-absent", "NOT_DEMONSTRATED", "NOT_DEMONSTRATED"))
+    journal_checks = _run_journal_evidence(sqlcipher3, temp_dir, key, marker)
+    checks.extend(journal_checks)
+    journal_evidence = (
+        "PRESENT" if all(check.status == "PASS" for check in journal_checks) else "FAILED"
+    )
 
     controlled_files = [path for path in temp_dir.rglob("*") if path.is_file()]
     checks.append(
