@@ -42,6 +42,7 @@ REQUIRED_DOCUMENTS = (
     "docs/tasks/GATE-S1-acceptance.md",
     "docs/tasks/PR-S001-F1-windows-cleanup-acl-evidence.md",
     "docs/tasks/PR-S001-F2-wal-journal-evidence.md",
+    "docs/tasks/PR-S001-F3-windows-acl-diagnostics.md",
 )
 
 CANONICAL_SOURCE_ORDER = (
@@ -230,7 +231,9 @@ def test_lifecycle_state_records_gate_s1_accepted_state() -> None:
         "PR-S001 FINAL ACCEPTANCE: NOT ACCEPTED",
         "PR-S001-F1: COMPLETED AND MERGED THROUGH PR #10",
         "b9c07a0c2b152bdad21e5d50126917c55b349e12",
-        "PR-S001-F2: CURRENT CORRECTION",
+        "PR-S001-F2: COMPLETED AND MERGED THROUGH PR #11",
+        "7559dbb6189f6e0181eec8a44a7de262cadf036f",
+        "PR-S001-F3: CURRENT CORRECTION",
         "PR-005: UNAUTHORIZED",
         "PR-006: UNAUTHORIZED",
         "PR-007 AND LATER: UNAUTHORIZED",
@@ -271,7 +274,7 @@ def test_lifecycle_state_records_gate_s1_accepted_state() -> None:
         for required in required_by_file:
             assert required in text, filename
         needle = (
-            "complete PR-S001-F2 WAL/rollback-journal evidence correction before product-owner "
+            "complete PR-S001-F3 ACL diagnostics correction before product-owner "
             "PR-S001 feasibility review"
         )
         assert needle in text, filename
@@ -280,6 +283,7 @@ def test_lifecycle_state_records_gate_s1_accepted_state() -> None:
 
     progress = (REPO_ROOT / "docs/progress.md").read_text(encoding="utf-8")
     assert "PR-S001-F1 is the current correction" not in progress
+    assert "PR-S001-F2 is the current correction" not in progress
     assert "**Обновлено:** 2026-07-17" in progress
     assert "- [x] GATE-S1: COMPLETED AND HUMAN ACCEPTED;" in progress
     assert "- [x] ADR-018: ACCEPTED;" in progress
@@ -288,7 +292,9 @@ def test_lifecycle_state_records_gate_s1_accepted_state() -> None:
         "- [ ] PR-S001: MERGED AS RESEARCH HARNESS; PR-S001 FINAL ACCEPTANCE: "
         "NOT ACCEPTED; PR-S001-F1: COMPLETED AND MERGED THROUGH PR #10 "
         "at merge commit `b9c07a0c2b152bdad21e5d50126917c55b349e12`; "
-        "PR-S001-F2: CURRENT CORRECTION;" in progress
+        "PR-S001-F2: COMPLETED AND MERGED THROUGH PR #11; PR-S001-F2 merge "
+        "commit: `7559dbb6189f6e0181eec8a44a7de262cadf036f`; "
+        "PR-S001-F3: CURRENT CORRECTION;" in progress
     )
     assert "- [ ] PR-005: UNAUTHORIZED;" in progress
     assert "- [ ] PR-006: UNAUTHORIZED;" in progress
@@ -456,7 +462,9 @@ def test_gate_s1_acceptance_security_and_lifecycle_boundaries() -> None:
 
     for filename in lifecycle_files:
         text = (REPO_ROOT / filename).read_text(encoding="utf-8")
-        assert "PR-S001/PR-S001-F1/PR-S001-F2 use fictional synthetic data only" in text, filename
+        assert (
+            "PR-S001/PR-S001-F1/PR-S001-F2/PR-S001-F3 use fictional synthetic data only" in text
+        ), filename
         assert "must not create production database/storage APIs" in text, filename
         assert "PR-005 does not start automatically after PR-S001 merge" in text, filename
         assert "explicit human acceptance and authorization are required after PR-S001" in text, (
@@ -918,7 +926,9 @@ def test_pr_s001_spike_documentation_and_scope() -> None:
         "PR-S001: MERGED AS RESEARCH HARNESS; PR-S001 FINAL ACCEPTANCE: "
         "NOT ACCEPTED; PR-S001-F1: COMPLETED AND MERGED THROUGH PR #10 "
         "at merge commit `b9c07a0c2b152bdad21e5d50126917c55b349e12`; "
-        "PR-S001-F2: CURRENT CORRECTION"
+        "PR-S001-F2: COMPLETED AND MERGED THROUGH PR #11; PR-S001-F2 merge "
+        "commit: `7559dbb6189f6e0181eec8a44a7de262cadf036f`; "
+        "PR-S001-F3: CURRENT CORRECTION"
         in (REPO_ROOT / "docs/progress.md").read_text(encoding="utf-8")
     )
     lifecycle_files = [
@@ -931,7 +941,7 @@ def test_pr_s001_spike_documentation_and_scope() -> None:
     for lifecycle in lifecycle_files:
         text = (REPO_ROOT / lifecycle).read_text(encoding="utf-8")
         assert "AUTHORIZED, NOT STARTED" not in text
-        assert "PR-S001/PR-S001-F1/PR-S001-F2 use fictional synthetic data only" in text
+        assert "PR-S001/PR-S001-F1/PR-S001-F2/PR-S001-F3 use fictional synthetic data only" in text
         assert "PR-S001 contains no production persistence/storage API" in text
         assert "a negative feasibility result is valid" in text
         assert "PR-S001 merge does not authorize PR-005" in text

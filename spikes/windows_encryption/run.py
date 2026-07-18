@@ -56,6 +56,19 @@ def _reason(value: str) -> str:
         "NOT_DEMONSTRATED",
         "ERR_SQLCIPHER_IMPORT",
         "ERR_ACL_PROBE_FAILED",
+        "ERR_ACL_SID_LOOKUP",
+        "ERR_ACL_APPLY_INHERITANCE",
+        "ERR_ACL_APPLY_SYSTEM",
+        "ERR_ACL_APPLY_ADMINISTRATORS",
+        "ERR_ACL_APPLY_CURRENT_USER",
+        "ERR_ACL_POWERSHELL_LAUNCH",
+        "ERR_ACL_POWERSHELL_PROCESS",
+        "ERR_ACL_READ",
+        "ERR_ACL_NORMALIZE_TO_SID",
+        "ERR_ACL_JSON_SERIALIZE",
+        "ERR_ACL_JSON_PARSE",
+        "ERR_ACL_RESULT_SHAPE",
+        "ERR_ACL_UNEXPECTED",
         "ERR_ACL_CURRENT_USER_RIGHTS",
         "ERR_ACL_SYSTEM_RIGHTS",
         "ERR_ACL_ADMINISTRATORS_RIGHTS",
@@ -107,10 +120,19 @@ def _acl_cleanup_check(acl_result: AclProbeResult) -> ReportCheck:
 
 
 def _acl_checks(acl_result: AclProbeResult) -> list[ReportCheck]:
+    checks = [
+        ReportCheck(stage.identifier, _status(stage.status), _reason(stage.reason_code))
+        for stage in acl_result.stages
+    ]
+    if not checks:
+        checks = [_acl_cleanup_check(acl_result)]
     if acl_result.status == "UNSUPPORTED_NON_WINDOWS":
+        rights_status = ResultStatus.UNSUPPORTED
+        rights_reason = "UNSUPPORTED_NON_WINDOWS"
         return [
+            *checks[:-1],
             *(
-                ReportCheck(identifier, ResultStatus.UNSUPPORTED, "UNSUPPORTED_NON_WINDOWS")
+                ReportCheck(identifier, rights_status, rights_reason)
                 for identifier in (
                     "acl-current-user-rights",
                     "acl-system-rights",
@@ -118,12 +140,13 @@ def _acl_checks(acl_result: AclProbeResult) -> list[ReportCheck]:
                     "acl-broad-write-blocked",
                 )
             ),
-            _acl_cleanup_check(acl_result),
+            checks[-1],
         ]
-    if acl_result.status == "ERR_ACL_PROBE_FAILED":
+    if not acl_result.rights_evaluated:
         return [
+            *checks[:-1],
             *(
-                ReportCheck(identifier, ResultStatus.FAIL, "ERR_ACL_PROBE_FAILED")
+                ReportCheck(identifier, ResultStatus.NOT_DEMONSTRATED, "NOT_DEMONSTRATED")
                 for identifier in (
                     "acl-current-user-rights",
                     "acl-system-rights",
@@ -131,9 +154,10 @@ def _acl_checks(acl_result: AclProbeResult) -> list[ReportCheck]:
                     "acl-broad-write-blocked",
                 )
             ),
-            _acl_cleanup_check(acl_result),
+            checks[-1],
         ]
     return [
+        *checks[:-1],
         ReportCheck(
             "acl-current-user-rights",
             ResultStatus.PASS if acl_result.current_user_rights else ResultStatus.FAIL,
@@ -154,7 +178,7 @@ def _acl_checks(acl_result: AclProbeResult) -> list[ReportCheck]:
             ResultStatus.PASS if acl_result.broad_write_blocked else ResultStatus.FAIL,
             "PASS" if acl_result.broad_write_blocked else "ERR_ACL_BROAD_WRITE",
         ),
-        _acl_cleanup_check(acl_result),
+        checks[-1],
     ]
 
 
