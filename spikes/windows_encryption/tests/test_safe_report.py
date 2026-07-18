@@ -339,3 +339,42 @@ def test_safe_report_accepts_acl_identifiers_and_reasons() -> None:
         recommendation="NOT_FEASIBLE",
     )
     assert "S-" not in report_to_json(report)
+
+
+def test_pr_s001_f2_reason_codes_are_allowlisted() -> None:
+    assert {
+        "UNSUPPORTED_WAL_MODE",
+        "UNSUPPORTED_ROLLBACK_JOURNAL_MODE",
+        "ERR_WAL_NOT_CREATED",
+        "ERR_WAL_EMPTY",
+        "ERR_WAL_CONTROL_MARKER_MISSING",
+        "ERR_WAL_PROBE_FAILED",
+        "ERR_JOURNAL_NOT_CREATED",
+        "ERR_JOURNAL_EMPTY",
+        "ERR_JOURNAL_CONTROL_MARKER_MISSING",
+        "ERR_JOURNAL_PROBE_FAILED",
+        "ERR_MARKER_IN_WAL",
+        "ERR_MARKER_IN_JOURNAL",
+    } <= ALLOWED_REASON_CODES
+
+
+def test_pr_s001_f2_safe_report_excludes_marker_path_and_exception(tmp_path: Path) -> None:
+    report = SafeReport(
+        report_schema_version=1,
+        timestamp_utc="2026-07-17T12:00:00+00:00",
+        os_family="Windows",
+        os_release="Server2022",
+        architecture="AMD64",
+        python_version="3.12",
+        candidate_name="sqlcipher3-0.6.2",
+        checks=[
+            ReportCheck(
+                "wal-encrypted-content", ResultStatus.FAIL, "ERR_WAL_CONTROL_MARKER_MISSING"
+            )
+        ],
+        recommendation="NOT_FEASIBLE",
+    )
+    text = report_to_json(report)
+    assert "synthetic-record" not in text
+    assert str(tmp_path) not in text
+    assert "Traceback" not in text

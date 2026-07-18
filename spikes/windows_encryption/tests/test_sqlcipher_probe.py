@@ -428,3 +428,444 @@ def test_ordinary_sqlite_rejects_only_database_error_is_pass(tmp_path: Path) -> 
     accepted = _OrdinaryConn(raise_database_error=False)
     assert _ordinary_sqlite_rejects(tmp_path / "probe.db", lambda _path: ok)
     assert not _ordinary_sqlite_rejects(tmp_path / "probe.db", lambda _path: accepted)
+
+
+# ---------------------------------------------------------------------------
+# PR-S001-F2 WAL / rollback journal evidence decision tests
+# ---------------------------------------------------------------------------
+
+from spikes.windows_encryption.run import _reason  # noqa: E402
+from spikes.windows_encryption.sqlcipher_probe import (  # noqa: E402
+    _journal_checks_from_evidence,
+    _marker_payload,
+    _ordinary_journal_control,
+    _ordinary_wal_control,
+    _scan_for_marker,
+    _wal_checks_from_evidence,
+)
+
+
+def _by_id(checks: tuple[CheckResult, ...]) -> dict[str, CheckResult]:
+    return {check.identifier: check for check in checks}
+
+
+def _assert_check(check: CheckResult, status: str, reason_code: str) -> None:
+    assert check.status == status
+    assert check.reason_code == reason_code
+
+
+@pytest.mark.parametrize(
+    (
+        "wal_exists",
+        "wal_size",
+        "control_marker_present",
+        "encrypted_marker_present",
+        "expected_reason",
+    ),
+    [
+        (False, 0, True, False, "ERR_WAL_NOT_CREATED"),
+        (True, 0, True, False, "ERR_WAL_EMPTY"),
+        (True, 128, False, False, "ERR_WAL_CONTROL_MARKER_MISSING"),
+        (True, 128, True, True, "ERR_MARKER_IN_WAL"),
+        (True, 128, True, False, "PASS"),
+    ],
+)
+def test_wal_marker_absent_and_encrypted_content_reason_precedence(
+    wal_exists: bool,
+    wal_size: int,
+    control_marker_present: bool,
+    encrypted_marker_present: bool,
+    expected_reason: str,
+) -> None:
+    checks = _by_id(
+        _wal_checks_from_evidence(
+            mode="wal",
+            wal_exists=wal_exists,
+            wal_size=wal_size,
+            control_marker_present=control_marker_present,
+            encrypted_marker_present=encrypted_marker_present,
+        )
+    )
+    expected_status = "PASS" if expected_reason == "PASS" else "FAIL"
+    _assert_check(checks["wal-marker-absent"], expected_status, expected_reason)
+    _assert_check(checks["wal-encrypted-content"], expected_status, expected_reason)
+
+
+@pytest.mark.parametrize(
+    (
+        "journal_exists",
+        "journal_size",
+        "control_marker_present",
+        "encrypted_marker_present",
+        "expected_reason",
+    ),
+    [
+        (False, 0, True, False, "ERR_JOURNAL_NOT_CREATED"),
+        (True, 0, True, False, "ERR_JOURNAL_EMPTY"),
+        (True, 128, False, False, "ERR_JOURNAL_CONTROL_MARKER_MISSING"),
+        (True, 128, True, True, "ERR_MARKER_IN_JOURNAL"),
+        (True, 128, True, False, "PASS"),
+    ],
+)
+def test_journal_marker_absent_reason_precedence(
+    journal_exists: bool,
+    journal_size: int,
+    control_marker_present: bool,
+    encrypted_marker_present: bool,
+    expected_reason: str,
+) -> None:
+    checks = _by_id(
+        _journal_checks_from_evidence(
+            mode="delete",
+            journal_exists=journal_exists,
+            journal_size=journal_size,
+            control_marker_present=control_marker_present,
+            encrypted_marker_present=encrypted_marker_present,
+        )
+    )
+    expected_status = "PASS" if expected_reason == "PASS" else "FAIL"
+    _assert_check(checks["journal-marker-absent"], expected_status, expected_reason)
+
+
+def test_wal_mode_accepted_as_wal_produces_mode_pass() -> None:
+    checks = _by_id(
+        _wal_checks_from_evidence(
+            mode="wal",
+            wal_exists=True,
+            wal_size=1,
+            control_marker_present=True,
+            encrypted_marker_present=False,
+        )
+    )
+    assert checks["wal-mode-active"].status == "PASS"
+
+
+def test_rejected_wal_mode_is_unsupported() -> None:
+    checks = _by_id(
+        _wal_checks_from_evidence(
+            mode="delete",
+            wal_exists=False,
+            wal_size=0,
+            control_marker_present=False,
+            encrypted_marker_present=False,
+            mode_unsupported=True,
+        )
+    )
+    assert checks["wal-mode-active"].reason_code == "UNSUPPORTED_WAL_MODE"
+
+
+def test_active_wal_missing_file_fails() -> None:
+    checks = _by_id(
+        _wal_checks_from_evidence(
+            mode="wal",
+            wal_exists=False,
+            wal_size=0,
+            control_marker_present=True,
+            encrypted_marker_present=False,
+        )
+    )
+    assert checks["wal-file-present"].reason_code == "ERR_WAL_NOT_CREATED"
+
+
+def test_active_wal_empty_file_fails() -> None:
+    checks = _by_id(
+        _wal_checks_from_evidence(
+            mode="wal",
+            wal_exists=True,
+            wal_size=0,
+            control_marker_present=True,
+            encrypted_marker_present=False,
+        )
+    )
+    assert checks["wal-file-nonempty"].reason_code == "ERR_WAL_EMPTY"
+    _assert_check(checks["wal-marker-absent"], "FAIL", "ERR_WAL_EMPTY")
+    _assert_check(checks["wal-encrypted-content"], "FAIL", "ERR_WAL_EMPTY")
+
+
+def test_wal_missing_control_marker_fails() -> None:
+    checks = _by_id(
+        _wal_checks_from_evidence(
+            mode="wal",
+            wal_exists=True,
+            wal_size=1,
+            control_marker_present=False,
+            encrypted_marker_present=False,
+        )
+    )
+    assert checks["wal-control-marker-present"].reason_code == "ERR_WAL_CONTROL_MARKER_MISSING"
+
+
+def test_marker_present_in_encrypted_wal_fails() -> None:
+    checks = _by_id(
+        _wal_checks_from_evidence(
+            mode="wal",
+            wal_exists=True,
+            wal_size=1,
+            control_marker_present=True,
+            encrypted_marker_present=True,
+        )
+    )
+    assert checks["wal-marker-absent"].reason_code == "ERR_MARKER_IN_WAL"
+
+
+def test_valid_non_vacuous_wal_evidence_passes_all_required_checks() -> None:
+    checks = _wal_checks_from_evidence(
+        mode="wal",
+        wal_exists=True,
+        wal_size=1,
+        control_marker_present=True,
+        encrypted_marker_present=False,
+    )
+    assert all(check.status == "PASS" and check.reason_code == "PASS" for check in checks)
+
+
+def test_rollback_mode_accepted_produces_mode_pass() -> None:
+    checks = _by_id(
+        _journal_checks_from_evidence(
+            mode="delete",
+            journal_exists=True,
+            journal_size=1,
+            control_marker_present=True,
+            encrypted_marker_present=False,
+        )
+    )
+    assert checks["journal-mode-active"].status == "PASS"
+
+
+def test_unsupported_rollback_mode_is_unsupported() -> None:
+    checks = _by_id(
+        _journal_checks_from_evidence(
+            mode="wal",
+            journal_exists=False,
+            journal_size=0,
+            control_marker_present=False,
+            encrypted_marker_present=False,
+            mode_unsupported=True,
+        )
+    )
+    assert checks["journal-mode-active"].reason_code == "UNSUPPORTED_ROLLBACK_JOURNAL_MODE"
+
+
+def test_active_rollback_missing_journal_fails() -> None:
+    checks = _by_id(
+        _journal_checks_from_evidence(
+            mode="delete",
+            journal_exists=False,
+            journal_size=0,
+            control_marker_present=True,
+            encrypted_marker_present=False,
+        )
+    )
+    assert checks["journal-file-present"].reason_code == "ERR_JOURNAL_NOT_CREATED"
+
+
+def test_active_rollback_empty_journal_fails() -> None:
+    checks = _by_id(
+        _journal_checks_from_evidence(
+            mode="delete",
+            journal_exists=True,
+            journal_size=0,
+            control_marker_present=True,
+            encrypted_marker_present=False,
+        )
+    )
+    assert checks["journal-file-nonempty"].reason_code == "ERR_JOURNAL_EMPTY"
+    _assert_check(checks["journal-marker-absent"], "FAIL", "ERR_JOURNAL_EMPTY")
+
+
+def test_rollback_missing_control_marker_fails() -> None:
+    checks = _by_id(
+        _journal_checks_from_evidence(
+            mode="delete",
+            journal_exists=True,
+            journal_size=1,
+            control_marker_present=False,
+            encrypted_marker_present=False,
+        )
+    )
+    assert (
+        checks["journal-control-marker-present"].reason_code == "ERR_JOURNAL_CONTROL_MARKER_MISSING"
+    )
+
+
+def test_marker_present_in_encrypted_journal_fails() -> None:
+    checks = _by_id(
+        _journal_checks_from_evidence(
+            mode="delete",
+            journal_exists=True,
+            journal_size=1,
+            control_marker_present=True,
+            encrypted_marker_present=True,
+        )
+    )
+    assert checks["journal-marker-absent"].reason_code == "ERR_MARKER_IN_JOURNAL"
+
+
+def test_valid_non_vacuous_journal_evidence_passes_all_required_checks() -> None:
+    checks = _journal_checks_from_evidence(
+        mode="delete",
+        journal_exists=True,
+        journal_size=1,
+        control_marker_present=True,
+        encrypted_marker_present=False,
+    )
+    assert all(check.status == "PASS" and check.reason_code == "PASS" for check in checks)
+
+
+def test_wal_and_journal_checks_never_not_demonstrated() -> None:
+    checks = (
+        *_wal_checks_from_evidence(
+            mode="wal",
+            wal_exists=False,
+            wal_size=0,
+            control_marker_present=False,
+            encrypted_marker_present=False,
+        ),
+        *_journal_checks_from_evidence(
+            mode="delete",
+            journal_exists=False,
+            journal_size=0,
+            control_marker_present=False,
+            encrypted_marker_present=False,
+        ),
+    )
+    assert "NOT_DEMONSTRATED" not in {check.status for check in checks}
+    assert "NOT_DEMONSTRATED" not in {check.reason_code for check in checks}
+
+
+def test_all_new_reason_codes_survive_run_reason() -> None:
+    codes = {
+        "UNSUPPORTED_WAL_MODE",
+        "UNSUPPORTED_ROLLBACK_JOURNAL_MODE",
+        "ERR_WAL_NOT_CREATED",
+        "ERR_WAL_EMPTY",
+        "ERR_WAL_CONTROL_MARKER_MISSING",
+        "ERR_WAL_PROBE_FAILED",
+        "ERR_JOURNAL_NOT_CREATED",
+        "ERR_JOURNAL_EMPTY",
+        "ERR_JOURNAL_CONTROL_MARKER_MISSING",
+        "ERR_JOURNAL_PROBE_FAILED",
+    }
+    assert {_reason(code) for code in codes} == codes
+
+
+def test_wal_control_pass_is_independent_when_encrypted_wal_missing() -> None:
+    checks = _by_id(
+        _wal_checks_from_evidence(
+            mode="wal",
+            wal_exists=False,
+            wal_size=0,
+            control_marker_present=True,
+            encrypted_marker_present=False,
+        )
+    )
+    assert checks["wal-control-marker-present"].status == "PASS"
+    assert checks["wal-control-marker-present"].reason_code == "PASS"
+    assert checks["wal-file-present"].reason_code == "ERR_WAL_NOT_CREATED"
+    _assert_check(checks["wal-marker-absent"], "FAIL", "ERR_WAL_NOT_CREATED")
+    _assert_check(checks["wal-encrypted-content"], "FAIL", "ERR_WAL_NOT_CREATED")
+
+
+def test_wal_control_pass_is_independent_when_encrypted_wal_empty() -> None:
+    checks = _by_id(
+        _wal_checks_from_evidence(
+            mode="wal",
+            wal_exists=True,
+            wal_size=0,
+            control_marker_present=True,
+            encrypted_marker_present=False,
+        )
+    )
+    assert checks["wal-control-marker-present"].status == "PASS"
+    assert checks["wal-control-marker-present"].reason_code == "PASS"
+    assert checks["wal-file-nonempty"].reason_code == "ERR_WAL_EMPTY"
+
+
+def test_journal_control_pass_is_independent_when_encrypted_journal_missing() -> None:
+    checks = _by_id(
+        _journal_checks_from_evidence(
+            mode="delete",
+            journal_exists=False,
+            journal_size=0,
+            control_marker_present=True,
+            encrypted_marker_present=False,
+        )
+    )
+    assert checks["journal-control-marker-present"].status == "PASS"
+    assert checks["journal-control-marker-present"].reason_code == "PASS"
+    assert checks["journal-file-present"].reason_code == "ERR_JOURNAL_NOT_CREATED"
+    _assert_check(checks["journal-marker-absent"], "FAIL", "ERR_JOURNAL_NOT_CREATED")
+
+
+def test_journal_control_pass_is_independent_when_encrypted_journal_empty() -> None:
+    checks = _by_id(
+        _journal_checks_from_evidence(
+            mode="delete",
+            journal_exists=True,
+            journal_size=0,
+            control_marker_present=True,
+            encrypted_marker_present=False,
+        )
+    )
+    assert checks["journal-control-marker-present"].status == "PASS"
+    assert checks["journal-control-marker-present"].reason_code == "PASS"
+    assert checks["journal-file-nonempty"].reason_code == "ERR_JOURNAL_EMPTY"
+
+
+def test_wal_file_size_uses_byte_size_not_duration_ms() -> None:
+    checks = _by_id(
+        _wal_checks_from_evidence(
+            mode="wal",
+            wal_exists=True,
+            wal_size=4096,
+            control_marker_present=True,
+            encrypted_marker_present=False,
+        )
+    )
+    assert checks["wal-file-nonempty"].duration_ms == 0
+    assert checks["wal-file-nonempty"].byte_size == 4096
+
+
+def test_journal_file_size_uses_byte_size_not_duration_ms() -> None:
+    checks = _by_id(
+        _journal_checks_from_evidence(
+            mode="delete",
+            journal_exists=True,
+            journal_size=8192,
+            control_marker_present=True,
+            encrypted_marker_present=False,
+        )
+    )
+    assert checks["journal-file-nonempty"].duration_ms == 0
+    assert checks["journal-file-nonempty"].byte_size == 8192
+
+
+def test_ordinary_controls_cleanup_and_do_not_contaminate_controlled_temp_scan(
+    tmp_path: Path,
+) -> None:
+    marker = b"synthetic-record-control-cleanup-001"
+    payload = _marker_payload(marker)
+    before = set(tmp_path.iterdir())
+
+    assert _ordinary_wal_control(tmp_path, payload, marker)
+    after_wal = set(tmp_path.iterdir())
+    assert after_wal == before
+
+    replacement = _marker_payload(b"synthetic-record-control-cleanup-replacement")
+    assert _ordinary_journal_control(tmp_path, payload, replacement, marker)
+    after_journal = set(tmp_path.iterdir())
+    assert after_journal == before
+
+    remaining_files = [path for path in tmp_path.rglob("*") if path.is_file()]
+    assert _scan_for_marker(remaining_files, marker)
+
+
+def test_controlled_temp_scan_still_detects_encrypted_scenario_marker_leakage(
+    tmp_path: Path,
+) -> None:
+    marker = b"synthetic-record-leakage-detection-001"
+    leaked = tmp_path / "wal-probe.db-wal"
+    leaked.write_bytes(b"prefix" + marker + b"suffix")
+
+    remaining_files = [path for path in tmp_path.rglob("*") if path.is_file()]
+    assert not _scan_for_marker(remaining_files, marker)
