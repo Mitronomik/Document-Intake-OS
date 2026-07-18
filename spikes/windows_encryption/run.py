@@ -76,6 +76,9 @@ def _reason(value: str) -> str:
         "ERR_MARKER_IN_JOURNAL",
         "ERR_MARKER_IN_TEMP",
         "ERR_PLAINTEXT_WAL",
+        "ERR_CIPHER_STATUS_INACTIVE",
+        "ERR_CIPHER_INTEGRITY_FAILED",
+        "ERR_ENCRYPTED_DB_NOT_CREATED",
     }
     return value if value in allowed else "FAIL"
 

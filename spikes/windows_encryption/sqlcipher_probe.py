@@ -76,6 +76,48 @@ def _status_from_bool(identifier: str, value: bool, fail_reason: str) -> CheckRe
     return CheckResult(identifier, "PASS" if value else "FAIL", "PASS" if value else fail_reason)
 
 
+def _cipher_status_check(status: str, rows: list[tuple[Any, ...]]) -> tuple[str, CheckResult]:
+    """Return (cipher_status_value, CheckResult).
+
+    cipher_status_value is the raw PRAGMA value (for SqlcipherEvidence.cipher_status).
+    CheckResult has semantic status/reason_code.
+    """
+    if status == "PASS" and rows and str(rows[0][0]) == "1":
+        return "1", CheckResult("cipher-status", "PASS", "PASS")
+    raw_value = str(rows[0][0]) if status == "PASS" and rows else "UNSUPPORTED"
+    return raw_value, CheckResult("cipher-status", "FAIL", "ERR_CIPHER_STATUS_INACTIVE")
+
+
+def _cipher_integrity_check(status: str, rows: list[tuple[Any, ...]]) -> tuple[str, CheckResult]:
+    """Return (integrity_result, CheckResult).
+
+    cipher_integrity_check returns one row per error; empty means clean.
+    """
+    if status == "PASS" and not rows:
+        return "PASS", CheckResult("cipher-integrity", "PASS", "PASS")
+    return "FAIL", CheckResult("cipher-integrity", "FAIL", "ERR_CIPHER_INTEGRITY_FAILED")
+
+
+def _read_created_db(db_path: Path) -> tuple[CheckResult, bytes | None]:
+    """Return (CheckResult, data_or_None).
+
+    If db_path does not exist:
+      - returns FAIL / ERR_ENCRYPTED_DB_NOT_CREATED with data=None
+      - never calls read_bytes()
+    If db_path exists:
+      - returns PASS / PASS with exact file bytes.
+    """
+    if not db_path.exists():
+        return (
+            CheckResult("encrypted-db-created", "FAIL", "ERR_ENCRYPTED_DB_NOT_CREATED"),
+            None,
+        )
+    return (
+        CheckResult("encrypted-db-created", "PASS", "PASS"),
+        db_path.read_bytes(),
+    )
+
+
 def _scan_for_marker(paths: list[Path], marker: bytes) -> bool:
     return all(marker not in path.read_bytes() for path in paths if path.exists())
 
@@ -141,9 +183,8 @@ def run_sqlcipher_probe(temp_dir: Path) -> SqlcipherEvidence:
         _key_connection(conn, key)
         checks.append(CheckResult("sqlcipher-startup", "PASS", "PASS", startup_ms))
         status, rows = _execute_pragma(conn, "PRAGMA cipher_status")
-        if status == "PASS" and rows:
-            cipher_status_value = str(rows[0][0])
-        checks.append(CheckResult("cipher-status", status, cipher_status_value))
+        cipher_status_value, cs_check = _cipher_status_check(status, rows)
+        checks.append(cs_check)
         conn.execute("CREATE TABLE t(id INTEGER PRIMARY KEY, value BLOB)")
         conn.execute("CREATE INDEX ix_t_value ON t(value)")
         conn.execute("INSERT INTO t(value) VALUES (?)", (marker,))
@@ -155,8 +196,8 @@ def run_sqlcipher_probe(temp_dir: Path) -> SqlcipherEvidence:
         if status == "PASS" and rows:
             sqlite_version = str(rows[0][0])
         status, rows = _execute_pragma(conn, "PRAGMA cipher_integrity_check")
-        integrity_result = "PASS" if status == "PASS" and not rows else status
-        checks.append(CheckResult("cipher-integrity", integrity_result, integrity_result))
+        integrity_result, ci_check = _cipher_integrity_check(status, rows)
+        checks.append(ci_check)
         status, rows = _execute_pragma(conn, "PRAGMA compile_options")
         compile_options = tuple(str(row[0]) for row in rows) if status == "PASS" else ()
         for pragma in ("PRAGMA cipher_provider", "PRAGMA cipher_provider_version"):
@@ -176,10 +217,30 @@ def run_sqlcipher_probe(temp_dir: Path) -> SqlcipherEvidence:
     finally:
         conn.close()
 
-    main_bytes = db_path.read_bytes()
+    created_check, main_bytes = _read_created_db(db_path)
+    checks.append(created_check)
+    if main_bytes is None:
+        return SqlcipherEvidence(
+            status="FAIL",
+            binding_version=importlib.metadata.version("sqlcipher3"),
+            cipher_status=cipher_status_value,
+            integrity_result=integrity_result,
+            sqlcipher_version=sqlcipher_version,
+            sqlite_version=sqlite_version,
+            journal_mode=journal_mode,
+            temp_store=temp_store,
+            compile_options=compile_options,
+            cryptographic_provider=crypto_provider,
+            logging_status=logging_status,
+            hmac_evidence=hmac_evidence,
+            wal_evidence=wal_evidence,
+            journal_evidence=journal_evidence,
+            raw_key_api_assessment=inspect_raw_key_api(sqlcipher3),
+            checks=tuple(checks),
+        )
+
     checks.extend(
         [
-            CheckResult("encrypted-db-created", "PASS" if db_path.exists() else "FAIL", "PASS"),
             _status_from_bool(
                 "encrypted-main-header",
                 b"SQLite format 3" not in main_bytes[:100],

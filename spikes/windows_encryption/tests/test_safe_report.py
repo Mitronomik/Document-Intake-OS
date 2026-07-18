@@ -8,12 +8,14 @@ import pytest
 
 from spikes.windows_encryption.run import build_report
 from spikes.windows_encryption.safe_report import (
+    ALLOWED_REASON_CODES,
     PackageEvidence,
     ReportCheck,
     ResultStatus,
     SafeReport,
     report_to_json,
     validate_report_file,
+    validate_report_object,
 )
 
 # Known synthetic values that probes would inject for privacy testing.
@@ -103,8 +105,6 @@ def test_invalid_timestamp_rejected() -> None:
         "windows_11_x64_result": "NOT_DEMONSTRATED",
     }
     with pytest.raises(ValueError, match="ERR_REPORT_TIMESTAMP"):
-        from spikes.windows_encryption.safe_report import validate_report_object
-
         validate_report_object(data)
 
 
@@ -167,6 +167,135 @@ def test_status_reason_consistency() -> None:
         "windows_11_x64_result": "NOT_DEMONSTRATED",
     }
     with pytest.raises(ValueError, match="ERR_REPORT_REASON"):
-        from spikes.windows_encryption.safe_report import validate_report_object
-
         validate_report_object(data)
+
+
+# ---------------------------------------------------------------------------
+# New safe_report tests for sqlcipher reason codes
+# ---------------------------------------------------------------------------
+
+
+def test_synthetic_report_with_sqlcipher_checks_accepted() -> None:
+    """Synthetic report containing cipher-status, cipher-integrity,
+    encrypted-db-created with PASS/PASS should be accepted."""
+    report = SafeReport(
+        report_schema_version=1,
+        timestamp_utc="2026-07-17T12:00:00+00:00",
+        os_family="Windows",
+        os_release="Server2022",
+        architecture="AMD64",
+        python_version="3.12",
+        candidate_name="sqlcipher3-0.6.2",
+        checks=[
+            ReportCheck("cipher-status", ResultStatus.PASS, "PASS"),
+            ReportCheck("cipher-integrity", ResultStatus.PASS, "PASS"),
+            ReportCheck("encrypted-db-created", ResultStatus.PASS, "PASS"),
+        ],
+    )
+    report_to_json(report)  # should not raise
+
+
+def test_pass_status_with_fail_reason_rejected() -> None:
+    """PASS status with FAIL reason (not 'PASS') should be rejected."""
+    data = {
+        "architecture": "x86_64",
+        "candidate_name": "sqlcipher3-0.6.2",
+        "checks": [
+            {
+                "byte_size": 0,
+                "duration_ms": 0,
+                "identifier": "bad",
+                "reason_code": "ERR_CIPHER_STATUS_INACTIVE",
+                "status": "PASS",
+            }
+        ],
+        "documented_limitations": [],
+        "licensing_classifications": [],
+        "os_family": "Linux",
+        "os_release": "6.8",
+        "packages": [],
+        "python_version": "3.12",
+        "recommendation": "NOT_FEASIBLE",
+        "report_schema_version": 1,
+        "sqlcipher_version": "UNSUPPORTED",
+        "sqlite_version": "UNSUPPORTED",
+        "timestamp_utc": "2026-07-17T12:00:00+00:00",
+        "wheels": [],
+        "windows_11_x64_result": "NOT_DEMONSTRATED",
+    }
+    with pytest.raises(ValueError, match="ERR_REPORT_REASON"):
+        validate_report_object(data)
+
+
+def test_fail_status_with_pass_reason_rejected() -> None:
+    """FAIL status with PASS reason should be rejected."""
+    data = {
+        "architecture": "x86_64",
+        "candidate_name": "sqlcipher3-0.6.2",
+        "checks": [
+            {
+                "byte_size": 0,
+                "duration_ms": 0,
+                "identifier": "bad",
+                "reason_code": "PASS",
+                "status": "FAIL",
+            }
+        ],
+        "documented_limitations": [],
+        "licensing_classifications": [],
+        "os_family": "Linux",
+        "os_release": "6.8",
+        "packages": [],
+        "python_version": "3.12",
+        "recommendation": "NOT_FEASIBLE",
+        "report_schema_version": 1,
+        "sqlcipher_version": "UNSUPPORTED",
+        "sqlite_version": "UNSUPPORTED",
+        "timestamp_utc": "2026-07-17T12:00:00+00:00",
+        "wheels": [],
+        "windows_11_x64_result": "NOT_DEMONSTRATED",
+    }
+    with pytest.raises(ValueError, match="ERR_REPORT_REASON"):
+        validate_report_object(data)
+
+
+def test_pass_status_with_raw_value_rejected() -> None:
+    """PASS status with raw PRAGMA value ('1') as reason should be rejected."""
+    data = {
+        "architecture": "x86_64",
+        "candidate_name": "sqlcipher3-0.6.2",
+        "checks": [
+            {
+                "byte_size": 0,
+                "duration_ms": 0,
+                "identifier": "cipher-status",
+                "reason_code": "1",
+                "status": "PASS",
+            }
+        ],
+        "documented_limitations": [],
+        "licensing_classifications": [],
+        "os_family": "Linux",
+        "os_release": "6.8",
+        "packages": [],
+        "python_version": "3.12",
+        "recommendation": "NOT_FEASIBLE",
+        "report_schema_version": 1,
+        "sqlcipher_version": "UNSUPPORTED",
+        "sqlite_version": "UNSUPPORTED",
+        "timestamp_utc": "2026-07-17T12:00:00+00:00",
+        "wheels": [],
+        "windows_11_x64_result": "NOT_DEMONSTRATED",
+    }
+    with pytest.raises(ValueError, match="ERR_REPORT_REASON"):
+        validate_report_object(data)
+
+
+def test_new_reason_codes_are_allowlisted() -> None:
+    """All new SQLCipher reason codes must be in ALLOWED_REASON_CODES."""
+    new_codes = {
+        "ERR_CIPHER_STATUS_INACTIVE",
+        "ERR_CIPHER_INTEGRITY_FAILED",
+        "ERR_ENCRYPTED_DB_NOT_CREATED",
+    }
+    assert new_codes <= ALLOWED_REASON_CODES
