@@ -57,6 +57,7 @@ def test_acl_probe_returns_stable_status_and_no_raw_output() -> None:
             "ERR_ACL_APPLY_ADMINISTRATORS",
             "ERR_ACL_APPLY_CURRENT_USER",
             "ERR_ACL_POWERSHELL_LAUNCH",
+            "ERR_ACL_POWERSHELL_PROCESS",
             "ERR_ACL_READ",
             "ERR_ACL_NORMALIZE_TO_SID",
             "ERR_ACL_JSON_SERIALIZE",
@@ -121,6 +122,19 @@ def test_acl_application_failures_map_to_specific_reasons(
             raise AssertionError("ACL application should fail")
 
 
+def test_acl_inspection_script_uses_directory_security_access_only() -> None:
+    from spikes.windows_encryption.acl_probe import _acl_inspection_script
+
+    script = _acl_inspection_script()
+    assert "Get-Acl" not in script
+    assert "[System.IO.Directory]::GetAccessControl" in script
+    assert "[System.Security.AccessControl.AccessControlSections]::Access" in script
+    assert "$ErrorActionPreference = 'Stop'" in script
+    assert "Audit" not in script
+    assert "Owner" not in script
+    assert "Group" not in script
+
+
 def test_acl_inspection_envelope_stage_and_shape_mapping() -> None:
     from spikes.windows_encryption.acl_probe import _rules_from_acl_envelope
 
@@ -128,6 +142,7 @@ def test_acl_inspection_envelope_stage_and_shape_mapping() -> None:
         '{"ok":false,"stage":"read"}': "ERR_ACL_READ",
         '{"ok":false,"stage":"normalize"}': "ERR_ACL_NORMALIZE_TO_SID",
         '{"ok":false,"stage":"serialize"}': "ERR_ACL_JSON_SERIALIZE",
+        '{"ok":false,"stage":"process"}': "ERR_ACL_POWERSHELL_PROCESS",
         "not json": "ERR_ACL_JSON_PARSE",
         (
             '{"ok":true,"stage":"complete","rules":{"sid":"bad","rights":"FullControl"}}'
@@ -368,7 +383,7 @@ def test_acl_inspection_launch_and_process_failures_are_distinct(
     except Exception as exc:
         failure = cast(Any, exc)
         assert failure.stage == "acl-stage-read"
-        assert failure.reason_code == "ERR_ACL_READ"
+        assert failure.reason_code == "ERR_ACL_POWERSHELL_PROCESS"
         assert "raw" not in repr(failure)
         assert "secret" not in repr(failure)
         assert str(tmp_path) not in repr(failure)
@@ -474,6 +489,7 @@ def test_acl_reason_codes_survive_reason_mapping() -> None:
         "ERR_ACL_APPLY_ADMINISTRATORS",
         "ERR_ACL_APPLY_CURRENT_USER",
         "ERR_ACL_POWERSHELL_LAUNCH",
+        "ERR_ACL_POWERSHELL_PROCESS",
         "ERR_ACL_READ",
         "ERR_ACL_NORMALIZE_TO_SID",
         "ERR_ACL_JSON_SERIALIZE",
@@ -498,6 +514,7 @@ def test_acl_reason_codes_are_allowlisted() -> None:
         "ERR_ACL_APPLY_ADMINISTRATORS",
         "ERR_ACL_APPLY_CURRENT_USER",
         "ERR_ACL_POWERSHELL_LAUNCH",
+        "ERR_ACL_POWERSHELL_PROCESS",
         "ERR_ACL_READ",
         "ERR_ACL_NORMALIZE_TO_SID",
         "ERR_ACL_JSON_SERIALIZE",

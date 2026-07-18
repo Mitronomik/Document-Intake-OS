@@ -204,17 +204,25 @@ def _apply_acl(temp_root: Path, current_user_sid: str) -> None:
 
 def _acl_inspection_script() -> str:
     return r"""
-$target = $env:PR_S001_ACL_TARGET
-try { $acl = Get-Acl -LiteralPath $target } catch { '{"ok":false,"stage":"read"}'; exit 0 }
+$ErrorActionPreference = 'Stop'
 try {
-  $rules = $acl.GetAccessRules($true, $false, [System.Security.Principal.SecurityIdentifier])
-  $rows = @($rules | Where-Object { $_.AccessControlType -eq 'Allow' } | ForEach-Object {
-    [PSCustomObject]@{ sid = $_.IdentityReference.Value; rights = $_.FileSystemRights.ToString() }
-  })
-} catch { '{"ok":false,"stage":"normalize"}'; exit 0 }
-try {
-  @{ ok = $true; stage = 'complete'; rules = $rows } | ConvertTo-Json -Compress -Depth 4
-} catch { '{"ok":false,"stage":"serialize"}'; exit 0 }
+  $target = $env:PR_S001_ACL_TARGET
+  try {
+    $acl = [System.IO.Directory]::GetAccessControl(
+      $target,
+      [System.Security.AccessControl.AccessControlSections]::Access
+    )
+  } catch { '{"ok":false,"stage":"read"}'; exit 0 }
+  try {
+    $rules = $acl.GetAccessRules($true, $false, [System.Security.Principal.SecurityIdentifier])
+    $rows = @($rules | Where-Object { $_.AccessControlType -eq 'Allow' } | ForEach-Object {
+      [PSCustomObject]@{ sid = $_.IdentityReference.Value; rights = $_.FileSystemRights.ToString() }
+    })
+  } catch { '{"ok":false,"stage":"normalize"}'; exit 0 }
+  try {
+    @{ ok = $true; stage = 'complete'; rules = $rows } | ConvertTo-Json -Compress -Depth 4
+  } catch { '{"ok":false,"stage":"serialize"}'; exit 0 }
+} catch { '{"ok":false,"stage":"process"}'; exit 0 }
 """
 
 
@@ -254,6 +262,8 @@ def _rules_from_acl_envelope(output: str) -> dict[str, list[str]]:
             raise _AclStageFailure(ACL_STAGE_NORMALIZE_TO_SID, "ERR_ACL_NORMALIZE_TO_SID")
         if stage == "serialize":
             raise _AclStageFailure(ACL_STAGE_JSON_SERIALIZE, "ERR_ACL_JSON_SERIALIZE")
+        if stage == "process":
+            raise _AclStageFailure(ACL_STAGE_READ, "ERR_ACL_POWERSHELL_PROCESS")
         raise _AclStageFailure(ACL_STAGE_JSON_PARSE, "ERR_ACL_RESULT_SHAPE")
     return _normalize_rule_rows(data)
 
@@ -263,7 +273,7 @@ def _acl_inspection_output(temp_root: Path) -> str:
     try:
         return _run_powershell(_acl_inspection_script(), env=env)
     except subprocess.CalledProcessError as exc:
-        raise _AclStageFailure(ACL_STAGE_READ, "ERR_ACL_READ") from exc
+        raise _AclStageFailure(ACL_STAGE_READ, "ERR_ACL_POWERSHELL_PROCESS") from exc
 
 
 def _normalized_acl_rules(temp_root: Path) -> dict[str, list[str]]:

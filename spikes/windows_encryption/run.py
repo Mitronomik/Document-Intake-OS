@@ -62,6 +62,7 @@ def _reason(value: str) -> str:
         "ERR_ACL_APPLY_ADMINISTRATORS",
         "ERR_ACL_APPLY_CURRENT_USER",
         "ERR_ACL_POWERSHELL_LAUNCH",
+        "ERR_ACL_POWERSHELL_PROCESS",
         "ERR_ACL_READ",
         "ERR_ACL_NORMALIZE_TO_SID",
         "ERR_ACL_JSON_SERIALIZE",
