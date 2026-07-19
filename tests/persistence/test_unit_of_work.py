@@ -4,11 +4,11 @@ import sqlite3
 from pathlib import Path
 
 import pytest
-from tests.persistence.test_repositories import eid, migrated_connection, person
 
 from document_intake.persistence import database
 from document_intake.persistence.database import SqlCipherUnitOfWork
 from document_intake.persistence.errors import PersistenceError, PersistenceErrorCode
+from tests.persistence.test_repositories import eid, migrated_connection, person
 
 
 class Provider:

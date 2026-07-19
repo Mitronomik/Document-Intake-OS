@@ -6,11 +6,11 @@ import sqlite3
 from pathlib import Path
 
 import pytest
-from tests.persistence.test_repositories import eid
 
 from document_intake.domain import NonEmptyText, Person
 from document_intake.persistence import APPLICATION_ID, CURRENT_SCHEMA_VERSION, EncryptedDatabase
 from document_intake.persistence.errors import PersistenceError, PersistenceErrorCode
+from tests.persistence.test_repositories import eid
 
 pytestmark = pytest.mark.skipif(
     not (platform.system() == "Windows" and platform.machine() == "AMD64"),
