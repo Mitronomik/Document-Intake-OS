@@ -5,9 +5,10 @@ from __future__ import annotations
 
 import importlib
 from collections.abc import Callable
+from enum import Enum, auto
 from pathlib import Path
 from types import TracebackType
-from typing import Any, Literal, Self
+from typing import Any, Literal, Self, TypeVar
 
 from document_intake.application.ports.persistence import DatabaseKeyProvider
 from document_intake.domain import *
@@ -20,6 +21,7 @@ from document_intake.persistence.migrations import (
 )
 
 Connection = Any
+RepositoryT = TypeVar("RepositoryT")
 
 
 def _load_sqlcipher3() -> Any:
@@ -636,58 +638,152 @@ class SnapshotRepo(_Repo):
         )
 
 
+class _UowState(Enum):
+    NEW = auto()
+    ACTIVE = auto()
+    COMMITTED = auto()
+    ROLLED_BACK = auto()
+    CLOSED = auto()
+
+
 class SqlCipherUnitOfWork:
     def __init__(self, path: Path, key_provider: DatabaseKeyProvider) -> None:
         self._path = path
         self._key_provider = key_provider
         self._conn: Connection | None = None
-        self._closed = False
-        self._entered = False
-        self._committed = False
-        self.persons = PersonRepo(self)
-        self.identity_documents = IdentityRepo(self)
-        self.migration_documents = MigrationRepo(self)
-        self.vehicles = VehicleRepo(self)
-        self.terminals = TerminalRepo(self)
-        self.documents = DocumentRepo(self)
-        self.field_candidates = CandidateRepo(self)
-        self.applications = ApplicationRepo(self)
-        self.application_snapshots = SnapshotRepo(self)
+        self._state = _UowState.NEW
+        self._persons: PersonRepo | None = None
+        self._identity_documents: IdentityRepo | None = None
+        self._migration_documents: MigrationRepo | None = None
+        self._vehicles: VehicleRepo | None = None
+        self._terminals: TerminalRepo | None = None
+        self._documents: DocumentRepo | None = None
+        self._field_candidates: CandidateRepo | None = None
+        self._applications: ApplicationRepo | None = None
+        self._application_snapshots: SnapshotRepo | None = None
 
     def __repr__(self) -> str:
         return "SqlCipherUnitOfWork(<redacted>)"
 
     def _connection(self) -> Connection:
-        if self._closed or self._conn is None:
+        if self._state is _UowState.CLOSED:
             raise PersistenceError(PersistenceErrorCode.UOW_CLOSED)
+        if self._state is not _UowState.ACTIVE or self._conn is None:
+            raise PersistenceError(PersistenceErrorCode.UOW_STATE)
         return self._conn
 
-    def __enter__(self) -> Self:
-        if self._closed or self._entered:
+    def _repository(self, repository: RepositoryT | None) -> RepositoryT:
+        if self._state is _UowState.CLOSED:
+            raise PersistenceError(PersistenceErrorCode.UOW_CLOSED)
+        if self._state is not _UowState.ACTIVE or repository is None:
             raise PersistenceError(PersistenceErrorCode.UOW_STATE)
-        self._conn = _open_connection(self._path, self._key_provider)
-        _validate_schema(self._conn)
-        if int(_fetch_one(self._conn, "PRAGMA user_version")) != CURRENT_SCHEMA_VERSION:
-            self._conn.close()
-            self._closed = True
-            raise PersistenceError(PersistenceErrorCode.SCHEMA_VERSION_UNSUPPORTED)
-        self._conn.execute("BEGIN IMMEDIATE")
-        self._entered = True
+        return repository
+
+    @property
+    def persons(self) -> PersonRepo:
+        return self._repository(self._persons)
+
+    @property
+    def identity_documents(self) -> IdentityRepo:
+        return self._repository(self._identity_documents)
+
+    @property
+    def migration_documents(self) -> MigrationRepo:
+        return self._repository(self._migration_documents)
+
+    @property
+    def vehicles(self) -> VehicleRepo:
+        return self._repository(self._vehicles)
+
+    @property
+    def terminals(self) -> TerminalRepo:
+        return self._repository(self._terminals)
+
+    @property
+    def documents(self) -> DocumentRepo:
+        return self._repository(self._documents)
+
+    @property
+    def field_candidates(self) -> CandidateRepo:
+        return self._repository(self._field_candidates)
+
+    @property
+    def applications(self) -> ApplicationRepo:
+        return self._repository(self._applications)
+
+    @property
+    def application_snapshots(self) -> SnapshotRepo:
+        return self._repository(self._application_snapshots)
+
+    def _construct_repositories(self) -> None:
+        self._persons = PersonRepo(self)
+        self._identity_documents = IdentityRepo(self)
+        self._migration_documents = MigrationRepo(self)
+        self._vehicles = VehicleRepo(self)
+        self._terminals = TerminalRepo(self)
+        self._documents = DocumentRepo(self)
+        self._field_candidates = CandidateRepo(self)
+        self._applications = ApplicationRepo(self)
+        self._application_snapshots = SnapshotRepo(self)
+
+    def _close_after_failed_entry(self, *, transaction_started: bool) -> None:
+        if self._conn is not None:
+            if transaction_started:
+                try:
+                    self._conn.execute("ROLLBACK")
+                except Exception:
+                    pass
+            try:
+                self._conn.close()
+            except Exception:
+                pass
+        self._conn = None
+        self._state = _UowState.CLOSED
+
+    def __enter__(self) -> Self:
+        if self._state is _UowState.CLOSED:
+            raise PersistenceError(PersistenceErrorCode.UOW_CLOSED)
+        if self._state is not _UowState.NEW:
+            raise PersistenceError(PersistenceErrorCode.UOW_STATE)
+        transaction_started = False
+        try:
+            self._conn = _open_connection(self._path, self._key_provider)
+            _validate_schema(self._conn)
+            if int(_fetch_one(self._conn, "PRAGMA user_version")) != CURRENT_SCHEMA_VERSION:
+                raise PersistenceError(PersistenceErrorCode.SCHEMA_VERSION_UNSUPPORTED)
+            self._conn.execute("BEGIN IMMEDIATE")
+            transaction_started = True
+            self._construct_repositories()
+        except PersistenceError:
+            self._close_after_failed_entry(transaction_started=transaction_started)
+            raise
+        except Exception:
+            self._close_after_failed_entry(transaction_started=transaction_started)
+            raise PersistenceError(PersistenceErrorCode.PERSISTENCE_UNEXPECTED) from None
+        self._state = _UowState.ACTIVE
         return self
 
     def commit(self) -> None:
-        if self._closed:
+        if self._state is _UowState.CLOSED:
             raise PersistenceError(PersistenceErrorCode.UOW_CLOSED)
-        if not self._entered or self._conn is None:
+        if self._state is not _UowState.ACTIVE or self._conn is None:
             raise PersistenceError(PersistenceErrorCode.UOW_STATE)
-        self._conn.execute("COMMIT")
-        self._committed = True
+        try:
+            self._conn.execute("COMMIT")
+        except Exception:
+            raise PersistenceError(PersistenceErrorCode.PERSISTENCE_UNEXPECTED) from None
+        self._state = _UowState.COMMITTED
 
     def rollback(self) -> None:
-        if self._closed:
+        if self._state is _UowState.CLOSED:
             raise PersistenceError(PersistenceErrorCode.UOW_CLOSED)
-        if self._conn is not None:
+        if self._state is not _UowState.ACTIVE or self._conn is None:
+            raise PersistenceError(PersistenceErrorCode.UOW_STATE)
+        try:
             self._conn.execute("ROLLBACK")
+        except Exception:
+            raise PersistenceError(PersistenceErrorCode.PERSISTENCE_UNEXPECTED) from None
+        self._state = _UowState.ROLLED_BACK
 
     def __exit__(
         self,
@@ -696,13 +792,18 @@ class SqlCipherUnitOfWork:
         traceback: TracebackType | None,
     ) -> Literal[False]:
         try:
-            if self._conn is not None and not self._committed:
+            if self._conn is not None and self._state is _UowState.ACTIVE:
                 try:
                     self._conn.execute("ROLLBACK")
                 except Exception:
                     pass
+                self._state = _UowState.ROLLED_BACK
         finally:
             if self._conn is not None:
-                self._conn.close()
-            self._closed = True
+                try:
+                    self._conn.close()
+                except Exception:
+                    pass
+            self._conn = None
+            self._state = _UowState.CLOSED
         return False
