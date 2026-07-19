@@ -228,16 +228,14 @@ def test_lifecycle_state_records_gate_s1_accepted_state() -> None:
         "GATE-S1: COMPLETED AND HUMAN ACCEPTED",
         "ADR-018: ACCEPTED",
         "Q-010: ACCEPTED",
-        "PR-S001: MERGED AS RESEARCH HARNESS",
-        "PR-S001 FINAL ACCEPTANCE: NOT ACCEPTED",
-        "PR-S001-F1: COMPLETED AND MERGED THROUGH PR #10",
-        "b9c07a0c2b152bdad21e5d50126917c55b349e12",
-        "PR-S001-F2: COMPLETED AND MERGED THROUGH PR #11",
-        "7559dbb6189f6e0181eec8a44a7de262cadf036f",
-        "PR-S001-F3: COMPLETED AND MERGED THROUGH PR #12",
-        "ceb1e265a85a9af8374afa942fa7a68c7da492e7",
-        "PR-S001-F4: CURRENT CORRECTION",
-        "PR-005: UNAUTHORIZED",
+        "PR-S001: ACCEPTED WITH DOCUMENTED RESIDUAL RISK",
+        "RISK-S001-W11",
+        "PR-S001-F1: COMPLETED",
+        "PR-S001-F2: COMPLETED",
+        "PR-S001-F3: COMPLETED",
+        "PR-S001-F4: COMPLETED AND MERGED THROUGH PR #13",
+        "985fae37c7645e8f65edbe4d1609100ee24a2097",
+        "PR-005: AUTHORIZED, NOT STARTED",
         "PR-006: UNAUTHORIZED",
         "PR-007 AND LATER: UNAUTHORIZED",
         "Gate 1: NOT ACCEPTED",
@@ -266,8 +264,18 @@ def test_lifecycle_state_records_gate_s1_accepted_state() -> None:
         "ADR-018: PROPOSED",
         "Q-010: OPEN",
         "PR-S001: PROPOSED, NOT AUTHORIZED",
+        "PR-S001 FINAL ACCEPTANCE: NOT ACCEPTED",
         "PR-S001: IN REVIEW",
         "PR-S001 is in review",
+        "PR-S001-F4: CURRENT CORRECTION",
+        "PR-005 and later tasks remain unauthorized",
+        "PR-005: UNAUTHORIZED",
+        "PR-005 remains unauthorized",
+        "authorize PR-005 entry, not implementation start",
+        "do not start PR-005 until separately authorized",
+        "PR-005 must not start without",
+        "later authorization",
+        "Explicit non-authorization of PR-005 and PR-006",
         "review PR-S001 evidence and make a product-owner feasibility decision",
         "review and product-owner decision on GATE-S1 / ADR-018",
     )
@@ -277,8 +285,8 @@ def test_lifecycle_state_records_gate_s1_accepted_state() -> None:
         for required in required_by_file:
             assert required in text, filename
         needle = (
-            "complete PR-S001-F4 Windows 11 x64 target attestation before "
-            "product-owner PR-S001 feasibility review"
+            "prepare and review the exact PR-005 implementation contract, then implement "
+            "PR-005 under the authorization recorded by PR #14 after PR #14 is merged"
         )
         assert needle in text, filename
         for stale in stale_current_state:
@@ -288,21 +296,19 @@ def test_lifecycle_state_records_gate_s1_accepted_state() -> None:
     assert "PR-S001-F1 is the current correction" not in progress
     assert "PR-S001-F2 is the current correction" not in progress
     assert "PR-S001-F3 is the current correction" not in progress
-    assert "**Обновлено:** 2026-07-17" in progress
+    assert "**Обновлено:** 2026-07-17" not in progress
+    assert "**Обновлено:** 2026-07-18" in progress
     assert "- [x] GATE-S1: COMPLETED AND HUMAN ACCEPTED;" in progress
     assert "- [x] ADR-018: ACCEPTED;" in progress
     assert "- [x] Q-010: ACCEPTED;" in progress
     assert (
-        "- [ ] PR-S001: MERGED AS RESEARCH HARNESS; PR-S001 FINAL ACCEPTANCE: "
-        "NOT ACCEPTED; PR-S001-F1: COMPLETED AND MERGED THROUGH PR #10 "
-        "at merge commit `b9c07a0c2b152bdad21e5d50126917c55b349e12`; "
-        "PR-S001-F2: COMPLETED AND MERGED THROUGH PR #11; PR-S001-F2 merge "
-        "commit: `7559dbb6189f6e0181eec8a44a7de262cadf036f`; "
-        "PR-S001-F3: COMPLETED AND MERGED THROUGH PR #12; PR-S001-F3 merge "
-        "commit: `ceb1e265a85a9af8374afa942fa7a68c7da492e7`; "
-        "PR-S001-F4: CURRENT CORRECTION;" in progress
+        "- [x] PR-S001: ACCEPTED WITH DOCUMENTED RESIDUAL RISK RISK-S001-W11; "
+        "PR-S001-F1: COMPLETED; PR-S001-F2: COMPLETED; PR-S001-F3: COMPLETED; "
+        "PR-S001-F4: COMPLETED AND MERGED THROUGH PR #13; PR-S001-F4 merge "
+        "commit: `985fae37c7645e8f65edbe4d1609100ee24a2097`;" in progress
     )
-    assert "- [ ] PR-005: UNAUTHORIZED;" in progress
+    assert "- [ ] PR-S001: ACCEPTED WITH DOCUMENTED RESIDUAL RISK" not in progress
+    assert "- [ ] PR-005: AUTHORIZED, NOT STARTED;" in progress
     assert "- [ ] PR-006: UNAUTHORIZED;" in progress
     assert "- [ ] GATE-S1: COMPLETED AND HUMAN ACCEPTED;" not in progress
     assert "- [ ] ADR-018: ACCEPTED;" not in progress
@@ -473,10 +479,12 @@ def test_gate_s1_acceptance_security_and_lifecycle_boundaries() -> None:
             in text
         ), filename
         assert "must not create production database/storage APIs" in text, filename
-        assert "PR-005 does not start automatically after PR-S001 merge" in text, filename
-        assert "explicit human acceptance and authorization are required after PR-S001" in text, (
-            filename
-        )
+        assert "PR-005: AUTHORIZED, NOT STARTED" in text, filename
+        assert (
+            "No additional authorization PR is required for PR-005 within the accepted scope"
+            in text
+        ), filename
+        assert "the contract review is not a second authorization gate" in text, filename
         assert "Q-017 remains deferred" in text, filename
         assert "real documents and personal data remain prohibited in Git, Codex and CI" in text, (
             filename
@@ -490,17 +498,26 @@ def test_pr005_pr006_sequences_remain_blocked_after_gate_s1_acceptance() -> None
         "accepted PR-S001 review and explicit follow-up authorization, accepted PR-S001"
         not in implementation_plan
     )
+    assert "AUTHORIZED, NOT STARTED. PR-S001 is accepted with RISK-S001-W11" in implementation_plan
     assert (
-        "PR-005 remains blocked until PR-S001 is merged, reviewed and human accepted"
+        "PR #14 provides the explicit product-owner authorization for PR-005" in implementation_plan
+    )
+    assert (
+        "No additional authorization PR is required for PR-005 within the accepted scope"
         in implementation_plan
     )
-    assert "separate explicit product-owner authorization of PR-005" in implementation_plan
+    assert "separate explicit product-owner authorization of PR-005" not in implementation_plan
     assert "PR-S001 does not create a production persistence API" in implementation_plan
     assert (
         "PR-006 remains blocked until PR-S001 is merged, reviewed and human accepted"
+        not in implementation_plan
+    )
+    assert "PR-006 remains blocked" not in implementation_plan
+    assert "PR-006 and later tasks remain UNAUTHORIZED" in implementation_plan
+    assert (
+        "PR-006 remains subject to its own task review and explicit authorization"
         in implementation_plan
     )
-    assert "separate PR-006 task review and explicit authorization" in implementation_plan
     assert "PR-S001 does not create production filesystem storage" in implementation_plan
 
 
@@ -910,6 +927,49 @@ def test_open_questions_q001_through_q020_remain_present() -> None:
     assert not missing, "Missing open-question headings: " + ", ".join(missing)
 
 
+def test_pr_s001_d1_acceptance_decision_document() -> None:
+    decision = REPO_ROOT / "docs/decisions/PR-S001-D1-encryption-feasibility-acceptance.md"
+    assert decision.exists()
+    text = decision.read_text(encoding="utf-8")
+    for required in (
+        "## Status",
+        "ACCEPTED",
+        "## Decision owner",
+        "Product owner",
+        "Accept PR-S001 feasibility with residual risk RISK-S001-W11",
+        "An actual Windows 11 x64 execution was not performed by product-owner decision.",
+        "ACCEPTED BY PRODUCT OWNER",
+        "Windows 11 x64 remains the first production platform",
+        "Windows 11 x64 remains NOT_DEMONSTRATED",
+        (
+            "Windows 11 x64 verification is mandatory before installer, "
+            "pilot or production-release acceptance."
+        ),
+        "Gate 1 remains NOT ACCEPTED",
+        "M2 remains NOT COMPLETED",
+        "final SQLCipher package/edition",
+        "final production key API",
+        "final key hierarchy",
+        "final encrypted-object format",
+        "backup/recovery design",
+        "installer design",
+        "licensing/redistribution disposition",
+        "PR-005: AUTHORIZED, NOT STARTED",
+        "PR-006: UNAUTHORIZED",
+        "PR-007 AND LATER: UNAUTHORIZED",
+    ):
+        assert required in text
+    for forbidden in (
+        "report JSON",
+        "host identifiers",
+        "paths, SIDs",
+        "wheel binaries",
+        "DPAPI blobs",
+        "raw logs",
+    ):
+        assert forbidden in text
+
+
 def test_pr_s001_spike_documentation_and_scope() -> None:
     task_doc = REPO_ROOT / "docs/tasks/PR-S001-windows-encryption-feasibility.md"
     assert task_doc.exists()
@@ -938,7 +998,7 @@ def test_pr_s001_spike_documentation_and_scope() -> None:
         "Windows Server 2025 AMD64",
         "CONDITIONALLY FEASIBLE",
         "Windows 11 x64: NOT_DEMONSTRATED",
-        "PR-005: UNAUTHORIZED",
+        "PR-005: AUTHORIZED, NOT STARTED",
         "PR-006: UNAUTHORIZED",
     ):
         assert required_phrase in report
@@ -948,14 +1008,10 @@ def test_pr_s001_spike_documentation_and_scope() -> None:
     assert "cryptography" not in project_block
     assert "encryption-spike" in pyproject
     assert (
-        "PR-S001: MERGED AS RESEARCH HARNESS; PR-S001 FINAL ACCEPTANCE: "
-        "NOT ACCEPTED; PR-S001-F1: COMPLETED AND MERGED THROUGH PR #10 "
-        "at merge commit `b9c07a0c2b152bdad21e5d50126917c55b349e12`; "
-        "PR-S001-F2: COMPLETED AND MERGED THROUGH PR #11; PR-S001-F2 merge "
-        "commit: `7559dbb6189f6e0181eec8a44a7de262cadf036f`; "
-        "PR-S001-F3: COMPLETED AND MERGED THROUGH PR #12; PR-S001-F3 merge "
-        "commit: `ceb1e265a85a9af8374afa942fa7a68c7da492e7`; "
-        "PR-S001-F4: CURRENT CORRECTION"
+        "PR-S001: ACCEPTED WITH DOCUMENTED RESIDUAL RISK RISK-S001-W11; "
+        "PR-S001-F1: COMPLETED; PR-S001-F2: COMPLETED; PR-S001-F3: COMPLETED; "
+        "PR-S001-F4: COMPLETED AND MERGED THROUGH PR #13; PR-S001-F4 merge "
+        "commit: `985fae37c7645e8f65edbe4d1609100ee24a2097`"
         in (REPO_ROOT / "docs/progress.md").read_text(encoding="utf-8")
     )
     lifecycle_files = [
@@ -967,12 +1023,15 @@ def test_pr_s001_spike_documentation_and_scope() -> None:
     ]
     for lifecycle in lifecycle_files:
         text = (REPO_ROOT / lifecycle).read_text(encoding="utf-8")
-        assert "AUTHORIZED, NOT STARTED" not in text
+        assert "PR-005: AUTHORIZED, NOT STARTED" in text
         assert (
             "PR-S001/PR-S001-F1/PR-S001-F2/PR-S001-F3/PR-S001-F4 use fictional synthetic data only"
             in text
         )
         assert "PR-S001 contains no production persistence/storage API" in text
         assert "a negative feasibility result is valid" in text
-        assert "PR-S001 merge does not authorize PR-005" in text
-        assert "human acceptance and separate authorization remain required" in text
+        assert (
+            "No additional authorization PR is required for PR-005 within the accepted scope"
+            in text
+        )
+        assert "PR-005 has not started" in text
