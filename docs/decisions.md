@@ -547,8 +547,45 @@ Non-decisions:
 - no authentication;
 - no installer design.
 
-## ADR-019 — Immutable encrypted filesystem storage v1
+## ADR-020 — Immutable encrypted filesystem storage v1
 
 Status: `ACCEPTED`.
 
 Decision: PR-006 uses `cryptography==49.0.0`, AES-256-GCM, a storage-specific `StorageKeyProvider`, envelope format v1 with `DIOSOBJ1` magic, immutable UUID-derived object paths, no update/delete API, object-first/database-second publication, migration v0002 `stored_artifacts`, read-time expected-state verification and read-only reconciliation. Coordinated rollback of the full encrypted database plus full encrypted filesystem is not claimed as detected.
+
+
+## ADR-021 — Immutable PII-safe audit events
+
+Status: `ACCEPTED`.
+
+Date: 2026-07-19
+
+Decision owner: Product owner
+
+Decision: PR-007 is authorized, not started, as the next production-code pull request only after this lifecycle pull request is merged into `main`. PR-007 must implement immutable, append-only, locally persisted, PII-safe audit events in encrypted SQLCipher persistence. Audit events are security-relevant and business-critical records, not application logs, diagnostic journals or exception journals.
+
+Binding contract:
+
+- audit events record actor reference, UTC occurrence time, controlled action code, controlled subject type, subject identifier, optional field key, safe before and after summaries, optional controlled reason code and optional correlation identifier;
+- PR-007 must not implement users, passwords, authentication, sessions, permissions, local account persistence or operator profile data; it reuses existing immutable `ActorRef` with `actor_id: EntityId` and `kind: ActorKind`;
+- audit events must not store operator display names, email addresses, logins, usernames, free-text identities, workstation usernames or Windows profile names; PR-031 remains responsible for local users and authentication;
+- `AuditEvent` must be a frozen, slotted immutable domain object with exactly `event_id`, `occurred_at`, `actor`, `action_code`, `subject_type`, `subject_id`, `field_key`, `before`, `after`, `reason_code` and `correlation_id`;
+- timestamps must be timezone-aware, normalized to UTC during construction and persisted canonically; naive datetimes must be rejected;
+- no arbitrary metadata dictionary, free-text message, filesystem path, original filename, document bytes, OCR payload, MRZ payload, exception trace, secret/key material, raw SQL or direct PII-bearing actor identity may be stored; `repr()` must be safe;
+- `AuditReasonCode` is an immutable value object whose canonical value is 1 to 64 characters and matches `^[A-Z][A-Z0-9_]{0,63}$`; reason codes are code-defined machine values, not operator comments;
+- `AuditAction` initially contains exactly `ENTITY_CREATED`, `ENTITY_UPDATED`, `FIELD_CORRECTED`, `FIELD_VERIFIED`, `SNAPSHOT_CREATED`, `ARTIFACT_REGISTERED` and `EXPORT_CREATED`;
+- `AuditSubjectType` initially contains exactly `PERSON`, `IDENTITY_DOCUMENT`, `MIGRATION_DOCUMENT`, `VEHICLE`, `DOCUMENT`, `FIELD_CANDIDATE`, `APPLICATION`, `APPLICATION_SNAPSHOT` and `STORED_ARTIFACT`;
+- deletion, retention, purge, backup and restore actions remain prohibited while Q-009 and Q-017 are deferred;
+- `AuditValueClassification` contains exactly `ABSENT`, `NON_SENSITIVE` and `SENSITIVE_REDACTED`; immutable `AuditValueSummary` contains `classification`, `display_value` and `was_present`;
+- valid summaries are only: `ABSENT` with `was_present is False` and no display value; `NON_SENSITIVE` with `was_present is True` and a controlled display value 1 to 64 characters matching `^[A-Z0-9][A-Z0-9_.:-]{0,63}$`; `SENSITIVE_REDACTED` with `was_present is True` and no display value;
+- sensitive before/after values must not store raw values, hashes, salted hashes, prefixes, suffixes, last digits, masked substrings, reconstructive lengths or normalization results;
+- PR-007 advances FR-12 and FR-13 but does not complete FR-12; `FieldCandidate`, `VerifiedField` and persisted business entities remain sources of operational values; PR-017 remains responsible for correction and verification workflow integration and `FIELD_CORRECTED`/`FIELD_VERIFIED` emission;
+- PR-007 creates forward-only migration `v0003_audit_events.py`, version `3`, name `audit_events_pr007`, keeps v0001/v0002 byte-for-byte unchanged, increases `CURRENT_SCHEMA_VERSION` to `3`, appends v0003 to the migration tuple and stores audit events in encrypted SQLCipher using canonical payload plus projection-integrity validation;
+- database-level immutable-row protection must reject UPDATE, DELETE, `INSERT OR REPLACE` replacement and `REPLACE INTO` replacement; no update, replace, delete or purge repository methods are exposed;
+- the repository API is exactly `add`, `get`, `list_for_subject` and `list_by_correlation`; list ordering is deterministic ascending by `occurred_at` then `event_id`; no `list_all`, arbitrary SQL filters, caller-supplied sorting or pagination is authorized in PR-007;
+- the Unit of Work gains `audit_events: AuditEventRepository` using the same connection and transaction and no independent commits or connections;
+- low-level repositories must not auto-write audit events or infer actor, action, reason or business meaning; future application services explicitly add audit events through the same Unit of Work;
+- failures fail closed with stable sanitized errors and never expose PII, keys, SQL, database paths, payloads or raw driver messages;
+- tests and the verifier may use only fictional synthetic values and must prove forbidden synthetic PII markers do not appear in payloads, projections, repr output, exceptions, verification reports or console output.
+
+Non-decisions: no retention periods, deletion rules, backup destinations, restore procedures, local authentication, users, permissions, UI, OCR, MRZ, barcode, Excel, terminal adapters, upload batches, source-file workflows, document-region workflows, telemetry, cloud services, automatic audit emission or complete FR-12 workflow integration.

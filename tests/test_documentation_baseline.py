@@ -47,6 +47,8 @@ REQUIRED_DOCUMENTS = (
     "docs/tasks/PR-S001-F3-windows-acl-diagnostics.md",
     "docs/tasks/PR-S001-F4-windows11-target-attestation.md",
     "docs/tasks/PR-005-encrypted-sqlite-persistence.md",
+    "docs/tasks/PR-006-immutable-filesystem-storage.md",
+    "docs/tasks/PR-007-audit-events.md",
 )
 
 CANONICAL_SOURCE_ORDER = (
@@ -265,8 +267,9 @@ def test_lifecycle_state_records_pr005_accepted_state() -> None:
         "PR-S001-F4: COMPLETED AND MERGED THROUGH PR #13",
         "985fae37c7645e8f65edbe4d1609100ee24a2097",
         "PR-005: COMPLETED AND HUMAN ACCEPTED",
-        "PR-006: `AUTHORIZED AND IN REVIEW, NOT ACCEPTED`",
-        "PR-007 and later: `UNAUTHORIZED`",
+        "PR-006: `COMPLETED AND HUMAN ACCEPTED`",
+        "PR-007: `AUTHORIZED, NOT STARTED`",
+        "PR-008 and later: `UNAUTHORIZED`",
         "Gate 1: `NOT ACCEPTED`",
         "M2: `NOT COMPLETED`",
         "2161fbbf7fb4065a5913fb6e62c207546caf5dd9",
@@ -321,6 +324,9 @@ def test_lifecycle_state_records_pr005_accepted_state() -> None:
         "review and product-owner decision on GATE-S1 / ADR-018",
         "PR-006: UNAUTHORIZED",
         "PR-006 remains UNAUTHORIZED",
+        "PR-006: `AUTHORIZED AND IN REVIEW, NOT ACCEPTED`",
+        "PR #17 corrections are the next step",
+        "completing and reviewing PR #17 corrections",
         "implementation remains prohibited",
         "filesystem-storage implementation cannot start",
         "Prepare and review the exact PR-006 task",
@@ -330,10 +336,12 @@ def test_lifecycle_state_records_pr005_accepted_state() -> None:
         text = (REPO_ROOT / filename).read_text(encoding="utf-8")
         for required in required_by_file:
             assert required in text, filename
-        assert "PR-006: `AUTHORIZED AND IN REVIEW, NOT ACCEPTED`" in text, filename
-        assert "PR-006: COMPLETED" not in text, filename
-        assert "PR-006: ACCEPTED" not in text, filename
-        assert "PR-006: HUMAN ACCEPTED" not in text, filename
+        assert "PR-006: `COMPLETED AND HUMAN ACCEPTED`" in text, filename
+        assert "PR-007: `AUTHORIZED, NOT STARTED`" in text, filename
+        assert "PR-008 and later: `UNAUTHORIZED`" in text, filename
+        assert "PR-007: `IMPLEMENTED`" not in text, filename
+        assert "PR-007: `IN REVIEW`" not in text, filename
+        assert "PR-007: `COMPLETED`" not in text, filename
         assert "Q-009: `DEFERRED`" in text, filename
         assert "Q-017: `DEFERRED`" in text, filename
         _assert_pr_s001_followups_completed(text, filename)
@@ -370,7 +378,7 @@ def test_lifecycle_state_records_pr005_accepted_state() -> None:
     assert "- [ ] PR-S001: ACCEPTED WITH DOCUMENTED RESIDUAL RISK" not in progress
     assert "- [x] PR-005: COMPLETED AND HUMAN ACCEPTED;" in progress
     assert "- [ ] PR-005: IN REVIEW, NOT ACCEPTED;" not in progress
-    assert "PR-006: `AUTHORIZED AND IN REVIEW, NOT ACCEPTED`" in progress
+    assert "PR-006: `COMPLETED AND HUMAN ACCEPTED`" in progress
     assert "- [ ] GATE-S1: COMPLETED AND HUMAN ACCEPTED;" not in progress
     assert "- [ ] ADR-018: ACCEPTED;" not in progress
     assert "- [ ] Q-010: ACCEPTED;" not in progress
@@ -552,7 +560,7 @@ def test_gate_s1_acceptance_security_and_lifecycle_boundaries() -> None:
     for filename in lifecycle_files:
         text = (REPO_ROOT / filename).read_text(encoding="utf-8")
         assert "PR-005: COMPLETED AND HUMAN ACCEPTED" in text, filename
-        assert "PR-006: `AUTHORIZED AND IN REVIEW, NOT ACCEPTED`" in text, filename
+        assert "PR-006: `COMPLETED AND HUMAN ACCEPTED`" in text, filename
         assert (
             "PR-S001/PR-S001-F1/PR-S001-F2/PR-S001-F3/PR-S001-F4 use fictional synthetic data only"
             in text
@@ -584,7 +592,8 @@ def test_pr005_pr006_sequences_remain_blocked_after_gate_s1_acceptance() -> None
         not in implementation_plan
     )
     assert "PR-006 remains blocked" not in implementation_plan
-    assert "PR-007 and later: `UNAUTHORIZED`" in implementation_plan
+    assert "PR-007: `AUTHORIZED, NOT STARTED`" in implementation_plan
+    assert "PR-008 and later: `UNAUTHORIZED`" in implementation_plan
 
 
 def test_q001_through_q020_statuses_other_than_q010_are_unchanged() -> None:
@@ -1090,7 +1099,7 @@ def test_pr_s001_spike_documentation_and_scope() -> None:
     for lifecycle in lifecycle_files:
         text = (REPO_ROOT / lifecycle).read_text(encoding="utf-8")
         assert "PR-005: COMPLETED AND HUMAN ACCEPTED" in text
-        assert "PR-006: `AUTHORIZED AND IN REVIEW, NOT ACCEPTED`" in text
+        assert "PR-006: `COMPLETED AND HUMAN ACCEPTED`" in text
         assert (
             "PR-S001/PR-S001-F1/PR-S001-F2/PR-S001-F3/PR-S001-F4 use fictional synthetic data only"
             in text
@@ -1100,3 +1109,52 @@ def test_pr_s001_spike_documentation_and_scope() -> None:
         assert "a negative feasibility result is valid" in text
         assert "PR-005 has not started" not in text
         assert "PR-005: IN REVIEW, NOT ACCEPTED" not in text
+
+
+def test_pr006_acceptance_and_pr007_authorization_contract() -> None:
+    pr006 = (REPO_ROOT / "docs/tasks/PR-006-immutable-filesystem-storage.md").read_text(
+        encoding="utf-8"
+    )
+    pr007 = (REPO_ROOT / "docs/tasks/PR-007-audit-events.md").read_text(encoding="utf-8")
+    decisions = (REPO_ROOT / "docs/decisions.md").read_text(encoding="utf-8")
+    open_questions = (REPO_ROOT / "docs/open-questions.md").read_text(encoding="utf-8")
+
+    assert "Status: `COMPLETED AND HUMAN ACCEPTED`" in pr006
+    assert "GitHub PR: `#17`" in pr006
+    assert "28d8b590adb7a7ae11e35f631eb9895c930b3cef" in pr006
+    assert "4c117ededc250d57961e2f5f4c8b4de01edf0c54" in pr006
+    assert "e1e1f5f6d8d675a146f3d0c538a0d544b6f8a984c301d177ee1ad86e42f2d500" in pr006
+    assert "fb953af64efd3e860960eae8ef1f4078afd0a6ec078a33594e271a9285d7db3d" in pr006
+    assert "Storage decision: ADR-020" in pr006
+    assert "Status: `AUTHORIZED, NOT STARTED`" in pr007
+    assert (
+        "only after the lifecycle pull request that created this task is merged into `main`"
+        in pr007
+    )
+    assert "ActorRef" in pr007 and "FieldKey" in pr007
+    assert "Do not use a raw unrestricted string for `reason_code`" in pr007
+    assert "No arbitrary metadata dictionary" in pr007
+    assert "ABSENT" in pr007 and "NON_SENSITIVE" in pr007 and "SENSITIVE_REDACTED" in pr007
+    assert "list_for_subject" in pr007 and "list_by_correlation" in pr007
+    assert "occurred_at" in pr007 and "event_id" in pr007
+    assert "PR-007 advances FR-12 and FR-13 but does not fully complete FR-12" in pr007
+    assert "PR-017 remains responsible" in pr007
+    assert "v0003_audit_events.py" in pr007
+    assert "UPDATE" in pr007 and "DELETE" in pr007 and "INSERT OR REPLACE" in pr007
+    assert "must not authorize UI" in pr007
+    assert "real-document fixtures" in pr007
+    assert "## ADR-019 — PR-005 SQLCipher binding and raw-key staging" in decisions
+    assert "## ADR-020 — Immutable encrypted filesystem storage v1" in decisions
+    assert "## ADR-021 — Immutable PII-safe audit events" in decisions
+    assert "Q-009: `DEFERRED`" in open_questions
+    assert "Q-017: `DEFERRED`" in open_questions
+
+
+def test_adr_numbers_are_unique_and_current() -> None:
+    decisions = (REPO_ROOT / "docs/decisions.md").read_text(encoding="utf-8")
+    headings = re.findall(r"^## ADR-(\d{3}) — (.+)$", decisions, flags=re.MULTILINE)
+    numbers = [number for number, _title in headings]
+    assert len(numbers) == len(set(numbers))
+    assert ("019", "PR-005 SQLCipher binding and raw-key staging") in headings
+    assert ("020", "Immutable encrypted filesystem storage v1") in headings
+    assert ("021", "Immutable PII-safe audit events") in headings

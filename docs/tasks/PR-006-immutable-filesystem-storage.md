@@ -1,23 +1,54 @@
 # PR-006 — Immutable encrypted filesystem storage
 
-Status: `AUTHORIZED AND IN REVIEW, NOT ACCEPTED`.
+Status: `COMPLETED AND HUMAN ACCEPTED`
 
-Goal: implement production-structured immutable encrypted filesystem storage for original source bytes, prepared document artifacts and future export artifacts. Inputs are caller-supplied `EntityId`, `ArtifactKind`, plaintext bytes and timezone-aware creation time. Outputs are immutable `StoredArtifactRecord` rows and exact plaintext reads only when an authoritative expected record is supplied.
+GitHub PR: `#17`
 
-Key-provider contract: `StorageKey(version: int, key_bytes: bytes)` validates positive non-bool versions and exactly 32-byte keys; `StorageKeyProvider.get_current_key()` and `get_key(version)` are the only key boundary. No DPAPI, HKDF, DEK wrapping, key generation or plaintext key persistence is implemented.
+Title: `PR-006: Add immutable encrypted filesystem storage`
 
-Envelope v1: `DIOSOBJ1` magic, 4-byte big-endian canonical-header length, canonical UTF-8 JSON header, AES-256-GCM ciphertext plus 16-byte tag. Format version is 1, nonce is 12 bytes, AAD is magic plus encoded header length plus header, and the complete envelope SHA-256 is stored in expected state.
+Final reviewed head: `28d8b590adb7a7ae11e35f631eb9895c930b3cef`
 
-Filesystem layout: `objects/<uuid_hex[0:2]>/<uuid_hex[2:4]>/<canonical_uuid>.diosobj`; temporary encrypted files are `.tmp-<uuid>.diosobj` in the final directory. Paths contain only UUID-derived components and never source names or PII.
+Merge commit: `4c117ededc250d57961e2f5f4c8b4de01edf0c54`
 
-Migration v0002 schema: `stored_artifacts` with immutable artifact metadata projections and `canonical_payload`; constraints enforce generation 1, non-negative plaintext length, 64-character digests, positive key version, storage format 1 and the three accepted artifact kinds. UPDATE and DELETE triggers reject mutation. Final v0002 checksum: `fb953af64efd3e860960eae8ef1f4078afd0a6ec078a33594e271a9285d7db3d`.
+Merge date: `2026-07-19`
 
-Transaction boundary: object first, database second. Failures before publication leave no final object; failures after final publication and before commit create read-only reconciliation orphans. No PENDING state and no SQLite/filesystem distributed transaction are claimed.
+Final migration v0001 checksum: `e1e1f5f6d8d675a146f3d0c538a0d544b6f8a984c301d177ee1ad86e42f2d500`
 
-Reconciliation: classifies healthy, missing, invalid, orphan final objects and encrypted temporary files using artifact IDs, stable codes and counts only. It is read-only. Temporary cleanup removes only exact managed temporary filenames; retention, deletion and secure deletion are non-goals.
+Final migration v0002 checksum: `fb953af64efd3e860960eae8ef1f4078afd0a6ec078a33594e271a9285d7db3d`
 
-Security invariants: plaintext is never written to managed disk files, final artifact IDs publish once, reads require `StoredArtifactRecord`, old-envelope replay with unchanged expected state is detected, copied envelopes are detected, and coordinated full database plus filesystem rollback is outside the claim.
+Local macOS verification: `306 passed, 2 skipped on macOS`
 
-Stable errors: storage diagnostics expose only `ERR_STORAGE_*` codes and suppress paths, keys, digests, content and raw exceptions.
+Exact-head CI workflow run: `CI #85`, successful.
 
-Acceptance criteria and tests cover envelope tamper rejection, immutable publication, expected-state rollback anchors, reconciliation, migration, repository immutability, crash boundaries and synthetic manual verification. Lifecycle: PR-005 is `COMPLETED AND HUMAN ACCEPTED`; PR-006 is `AUTHORIZED AND IN REVIEW, NOT ACCEPTED`; PR-007 and later are `UNAUTHORIZED`; Gate 1 is `NOT ACCEPTED`; M2 is `NOT COMPLETED`; Q-009 and Q-017 remain `DEFERRED`; real documents and personal data remain prohibited in Git, Codex and CI.
+Exact-head GitHub Actions jobs passed:
+
+- Python checks, Ubuntu;
+- Python checks, Windows;
+- PR-S001 Windows encryption spike;
+- PR-S001 DPAPI cross-runner negative.
+
+## Accepted closure
+
+PR-006 is completed and human accepted. Storage decision: ADR-020 after the ADR numbering repair. The GitHub PR #17 description historically referred to the storage decision as ADR-019 before this documentation numbering correction; historical Git commits and the merged PR description are not rewritten.
+
+Accepted scope: immutable encrypted filesystem storage with AES-256-GCM envelope v1, `DIOSOBJ1` magic, immutable UUID-derived object paths, object-first/database-second publication, SQLCipher expected-state records, read-time verification and read-only reconciliation.
+
+Accepted non-goals remain: no retention, deletion, purge, secure deletion, backup/restore, import workflow, image-processing workflow, snapshot workflow, export workflow, UI, OCR, MRZ, barcode, telemetry, network or cloud service.
+
+## Continuing lifecycle
+
+PR-007: `AUTHORIZED, NOT STARTED`. PR-007 implementation may begin only after the lifecycle pull request that records this closure is merged into `main`.
+
+PR-008 and later: `UNAUTHORIZED`.
+
+Gate 1: `NOT ACCEPTED`.
+
+M2: `NOT COMPLETED`.
+
+Gate 1 and M2 remain incomplete until PR-007 is implemented, reviewed, merged and separately human accepted through a later lifecycle decision.
+
+Q-009 remains `DEFERRED`. Q-017 remains `DEFERRED`. Q-010 remains `ACCEPTED`.
+
+`RISK-PR005-RAWKEY-PRAGMA` remains open for installer, pilot and production release. Existing unresolved SQLCipher legal, redistribution and release-binding questions remain unresolved.
+
+Real documents and personal data remain prohibited in Git, Codex, CI, logs and test reports. The sensitive-data/private-contour gate remains open for real data.
