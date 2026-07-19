@@ -47,7 +47,7 @@
 | M1 Safe Repository | ADR-016 | ACCEPTED | documentation baseline test |
 | M0 Requirements Locked | ADR-016 | DECISION APPROVED during GATE-M0 PR; recorded in `main` only after merge and human acceptance | documentation baseline test |
 | PR-004 authorization boundary | ADR-016 | Limited to PR-004 Core Domain after gate merge and acceptance | documentation baseline test |
-| PR-005/PR-006 encryption staging | ADR-016 / Q-010 / ADR-018 / PR #14 | PR-005 AUTHORIZED, NOT STARTED; PR-006 UNAUTHORIZED | documentation baseline test |
+| PR-005/PR-006 encryption staging | ADR-016 / Q-010 / ADR-018 / PR #14 | PR-005 IN REVIEW, NOT ACCEPTED; PR-006 UNAUTHORIZED | documentation baseline test |
 | MVP workstation topology | ADR-017 / Q-008 | One Windows 11 x64 workstation with one active operator session at a time | documentation baseline test |
 | Terminal-specific staged questions | Q-001–Q-005 | External confirmation required before target adapter/export PRs | documentation baseline test |
 | Local evidence staged questions | Q-012–Q-015 | Real-document and environment evidence remains outside Git, Codex and CI | documentation baseline test |
@@ -65,15 +65,24 @@
 | GATE-S1 | ADR-018 / Q-010 | COMPLETED AND HUMAN ACCEPTED at merge commit `fb9984036f7df0c34badfc3a93f6faec1bc5d38e` | documentation baseline test |
 | ADR-018 | Q-010 | ACCEPTED | documentation baseline test |
 | PR-S001 | ADR-018 acceptance / PR #14 | ACCEPTED WITH DOCUMENTED RESIDUAL RISK RISK-S001-W11 | documentation baseline test |
-| PR-005 | Q-010 / PR #14 authorization boundary | AUTHORIZED, NOT STARTED | documentation baseline test |
+| PR-005 | Q-010 / PR #14 authorization boundary | IN REVIEW, NOT ACCEPTED | documentation baseline test |
 | PR-006 | Q-010 / authorization boundary | UNAUTHORIZED | documentation baseline test |
 | PR-007 AND LATER | authorization boundary | UNAUTHORIZED | documentation baseline test |
 
 ## Current lifecycle state
 
-GATE-M0: COMPLETED. M0: ACCEPTED. M1: ACCEPTED. PR-004: COMPLETED AND HUMAN ACCEPTED. GATE-S1: COMPLETED AND HUMAN ACCEPTED. ADR-018: ACCEPTED. Q-010: ACCEPTED. PR-S001: ACCEPTED WITH DOCUMENTED RESIDUAL RISK RISK-S001-W11; PR-S001-F1: COMPLETED; PR-S001-F2: COMPLETED; PR-S001-F3: COMPLETED; PR-S001-F4: COMPLETED AND MERGED THROUGH PR #13; PR-S001-F4 merge commit: `985fae37c7645e8f65edbe4d1609100ee24a2097`. PR-005: AUTHORIZED, NOT STARTED. PR-006: UNAUTHORIZED. PR-007 AND LATER: UNAUTHORIZED. Gate 1: NOT ACCEPTED. M2: NOT COMPLETED. The next safe step is prepare and review the exact PR-005 implementation contract, then implement PR-005 under the authorization recorded by PR #14 after PR #14 is merged.
+GATE-M0: COMPLETED. M0: ACCEPTED. M1: ACCEPTED. PR-004: COMPLETED AND HUMAN ACCEPTED. GATE-S1: COMPLETED AND HUMAN ACCEPTED. ADR-018: ACCEPTED. Q-010: ACCEPTED. PR-S001: ACCEPTED WITH DOCUMENTED RESIDUAL RISK RISK-S001-W11; PR-S001-F1: COMPLETED; PR-S001-F2: COMPLETED; PR-S001-F3: COMPLETED; PR-S001-F4: COMPLETED AND MERGED THROUGH PR #13; PR-S001-F4 merge commit: `985fae37c7645e8f65edbe4d1609100ee24a2097`. PR-005: IN REVIEW, NOT ACCEPTED. PR-006: UNAUTHORIZED. PR-007 AND LATER: UNAUTHORIZED. Gate 1: NOT ACCEPTED. M2: NOT COMPLETED. The next safe step is review PR-005 code, Windows SQLCipher CI evidence, migrations, repository round trips, transaction tests and privacy checks.
 
-PR-S001-F1, PR-S001-F2, PR-S001-F3 and PR-S001-F4 are completed. PR-S001/PR-S001-F1/PR-S001-F2/PR-S001-F3/PR-S001-F4 use fictional synthetic data only, may evaluate candidate packages and prototypes, must not create production database/storage APIs, and must not use real documents or personal data. PR-005 is AUTHORIZED, NOT STARTED after PR #14 is merged. The exact PR-005 implementation contract must be prepared and reviewed before implementation; the contract review is not a second authorization gate. No additional authorization PR is required for PR-005 within the accepted scope. PR-006 remains UNAUTHORIZED pending its own task review and explicit authorization. Q-017 remains deferred. The sensitive-data/private-contour gate remains open, and real documents and personal data remain prohibited in Git, Codex and CI.
+PR-S001-F1, PR-S001-F2, PR-S001-F3 and PR-S001-F4 are completed. PR-S001/PR-S001-F1/PR-S001-F2/PR-S001-F3/PR-S001-F4 use fictional synthetic data only, may evaluate candidate packages and prototypes, must not create production database/storage APIs, and must not use real documents or personal data. PR-005 is IN REVIEW, NOT ACCEPTED after PR #14 is merged. PR-005 implementation must be reviewed with Windows SQLCipher evidence, migration history checks, repository round trips, transaction tests and privacy checks before merge and acceptance. PR-006 remains UNAUTHORIZED pending its own task review and explicit authorization. Q-017 remains deferred. The sensitive-data/private-contour gate remains open, and real documents and personal data remain prohibited in Git, Codex and CI.
 
 
-PR-S001 lifecycle boundary: PR-S001/PR-S001-F1/PR-S001-F2/PR-S001-F3/PR-S001-F4 use fictional synthetic data only; PR-S001 contains no production persistence/storage API; a negative feasibility result is valid; PR #14 records the explicit product-owner authorization for PR-005. No additional authorization PR is required for PR-005 within the accepted scope. PR-005 has not started.
+PR-S001 lifecycle boundary: PR-S001/PR-S001-F1/PR-S001-F2/PR-S001-F3/PR-S001-F4 use fictional synthetic data only; PR-S001 contains no production persistence/storage API; a negative feasibility result is valid; PR #14 records the explicit product-owner authorization for PR-005. PR-005 is already authorized for this scope but remains in review and not accepted. PR-005 implementation is in review and not accepted.
+
+
+## PR-005 traceability update
+
+FR-13: PR-005 IN REVIEW. Verification references migration tests, SQLCipher Windows integration, repository round trips, Unit of Work transaction tests, immutable snapshot persistence and privacy tests. FR-13 is not accepted.
+
+PR-005 raw-key staging risk: RISK-PR005-RAWKEY-PRAGMA remains accepted for PR-005 development and open for release.
+
+PR-005 final-audit correction verification covers UoW terminal-state enforcement and cleanup, canonical payload/projection consistency, projection tamper detection, complete immutable snapshot ordinals, applied migration-prefix validation, independent literal v0001 checksum verification, stable persistence/deserialization errors, the intentionally opaque vehicle registration-document reference and real Windows production-adapter ciphertext tamper/truncation tests. PR-005 remains IN REVIEW, NOT ACCEPTED pending review and Windows evidence; Gate 1 and M2 remain incomplete and PR-006 remains unauthorized.

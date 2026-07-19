@@ -116,3 +116,46 @@ def create_application_snapshot(
     )
     application._mark_snapshotted(at=created_at)
     return snapshot
+
+
+def rehydrate_application_snapshot(
+    *,
+    snapshot_id: EntityId,
+    application_id: EntityId,
+    terminal_code: TerminalCode,
+    template_version: NonEmptyText,
+    rules_version: NonEmptyText,
+    created_by: ActorRef,
+    created_at: datetime,
+    payload: SnapshotPayload,
+    document_artifact_refs: tuple[EntityId, ...],
+    sha256: str,
+) -> ApplicationSnapshot:
+    """Reconstruct a persisted application snapshot without mutating an application."""
+    _require_aware(created_at, "rehydrate_application_snapshot.created_at")
+    artifact_refs = tuple(document_artifact_refs)
+    expected = _calculate_snapshot_sha256(
+        application_id=application_id,
+        terminal_code=terminal_code,
+        template_version=template_version,
+        rules_version=rules_version,
+        created_by=created_by,
+        created_at=created_at,
+        payload=payload,
+        document_artifact_refs=artifact_refs,
+    )
+    if sha256 != expected:
+        raise SnapshotInvariantError("application_snapshot.sha256: mismatch")
+    return ApplicationSnapshot(
+        id=snapshot_id,
+        application_id=application_id,
+        terminal_code=terminal_code,
+        template_version=template_version,
+        rules_version=rules_version,
+        created_by=created_by,
+        created_at=created_at,
+        payload=payload,
+        document_artifact_refs=artifact_refs,
+        sha256=sha256,
+        _factory_token=_SNAPSHOT_FACTORY_TOKEN,
+    )

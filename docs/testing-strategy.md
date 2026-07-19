@@ -113,3 +113,8 @@ No secrets/PII in logs, formula injection, template checksum, timeout, permissio
 ## 13. Acceptance protocol
 
 Фиксировать build, OS, Excel version, models, template hashes, sample count, results, defects and release decision without PII.
+
+
+## PR-005 persistence testing
+
+PR-005 testing covers Windows SQLCipher integration, migration checksum/history validation, repository round trips and projection-tamper rejection, Unit of Work lifecycle/cleanup behavior, ordinary SQLite rejection, wrong-key behavior, deterministic multi-page ciphertext tamper and truncation, key/PII leak checks and database-trigger snapshot immutability. The real `sqlcipher3==0.6.2` integration remains active on Windows AMD64 and skips only off that target; a macOS skip is not Windows acceptance.

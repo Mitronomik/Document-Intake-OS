@@ -28,6 +28,7 @@ from document_intake.domain import (
     create_application_snapshot,
     mark_conflict,
     mark_not_applicable,
+    rehydrate_application_snapshot,
     verify_by_human,
 )
 from document_intake.domain.policies.snapshots import (
@@ -284,4 +285,37 @@ def test_direct_snapshot_construction_requires_factory_token_and_tamper_rejected
             (eid(8),),
             "bad",
             _factory_token=_SNAPSHOT_FACTORY_TOKEN,
+        )
+
+
+def test_rehydrate_application_snapshot_verifies_hash_without_mutating_application() -> None:
+    application = app()
+    snapshot = make_snapshot(application)
+    before = (application.status, application.updated_at)
+    restored = rehydrate_application_snapshot(
+        snapshot_id=snapshot.id,
+        application_id=snapshot.application_id,
+        terminal_code=snapshot.terminal_code,
+        template_version=snapshot.template_version,
+        rules_version=snapshot.rules_version,
+        created_by=snapshot.created_by,
+        created_at=snapshot.created_at,
+        payload=snapshot.payload,
+        document_artifact_refs=snapshot.document_artifact_refs,
+        sha256=snapshot.sha256,
+    )
+    assert restored == snapshot
+    assert (application.status, application.updated_at) == before
+    with pytest.raises(SnapshotInvariantError):
+        rehydrate_application_snapshot(
+            snapshot_id=snapshot.id,
+            application_id=snapshot.application_id,
+            terminal_code=snapshot.terminal_code,
+            template_version=snapshot.template_version,
+            rules_version=snapshot.rules_version,
+            created_by=snapshot.created_by,
+            created_at=snapshot.created_at,
+            payload=snapshot.payload,
+            document_artifact_refs=snapshot.document_artifact_refs,
+            sha256="0" * 64,
         )

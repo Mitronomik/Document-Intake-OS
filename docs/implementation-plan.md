@@ -8,8 +8,8 @@
 - ADR-015 created a narrow exception for PR-001 through PR-003 repository-safety work while M0 remained open;
 - PR-003 is completed and merged through GitHub PR #4 at `ad5782045473d3ef5eb0a097cc8f6982bab821c7`;
 - M1 Safe Repository is accepted;
-- GATE-M0 and M0 are accepted; PR-004 is completed and human accepted; GATE-S1 is completed and human accepted; ADR-018 is accepted; PR #9 merged PR-S001 as a research harness; PR-S001 is ACCEPTED WITH DOCUMENTED RESIDUAL RISK RISK-S001-W11; PR-005 is AUTHORIZED, NOT STARTED. PR-006 and later tasks remain UNAUTHORIZED;
-- PR-005 is AUTHORIZED, NOT STARTED. PR-006 and later tasks remain UNAUTHORIZED;
+- GATE-M0 and M0 are accepted; PR-004 is completed and human accepted; GATE-S1 is completed and human accepted; ADR-018 is accepted; PR #9 merged PR-S001 as a research harness; PR-S001 is ACCEPTED WITH DOCUMENTED RESIDUAL RISK RISK-S001-W11; PR-005 is IN REVIEW, NOT ACCEPTED. PR-006 and later tasks remain UNAUTHORIZED;
+- PR-005 is IN REVIEW, NOT ACCEPTED. PR-006 and later tasks remain UNAUTHORIZED;
 - реальные документы не используются в Codex Web;
 - OCR начинается только после готовности ручного контура.
 
@@ -71,7 +71,7 @@ Entities, value objects, enums, transitions, verification policy and snapshot in
 
 ### PR-005 — SQLite persistence
 
-AUTHORIZED, NOT STARTED. PR-S001 is accepted with RISK-S001-W11. PR #14 provides the explicit product-owner authorization for PR-005. Implementation may begin only after PR #14 is merged and the exact PR-005 implementation contract is reviewed. The contract review is not a second authorization gate. No additional authorization PR is required for PR-005 within the accepted scope. PR-S001 does not create a production persistence API. Do not implement PR-005 in PR #14.
+IN REVIEW, NOT ACCEPTED. PR-S001 is accepted with RISK-S001-W11. PR #14 provided the explicit product-owner authorization for PR-005. PR-005 implementation is now in review and is not accepted until merge and separate product-owner acceptance. PR-S001 does not create a production persistence API.
 
 ### PR-006 — Immutable filesystem storage
 
@@ -219,9 +219,16 @@ Network block, PII logs, template tampering, formula injection and fault injecti
 
 ## Current authorization state for GATE-S1
 
-GATE-M0: COMPLETED. GATE-M0 merge commit: `3dada63ea82163c7c4497e290b303d2cc781b085`. Human acceptance of GATE-M0 occurred after PR #5 merge. M0: ACCEPTED. M1: ACCEPTED. PR-004: COMPLETED AND HUMAN ACCEPTED. GATE-S1: COMPLETED AND HUMAN ACCEPTED. ADR-018: ACCEPTED. PR-S001: ACCEPTED WITH DOCUMENTED RESIDUAL RISK RISK-S001-W11; PR-S001-F1: COMPLETED; PR-S001-F2: COMPLETED; PR-S001-F3: COMPLETED; PR-S001-F4: COMPLETED AND MERGED THROUGH PR #13; PR-S001-F4 merge commit: `985fae37c7645e8f65edbe4d1609100ee24a2097`. PR-005: AUTHORIZED, NOT STARTED. PR-006: UNAUTHORIZED. PR-007 AND LATER: UNAUTHORIZED. Gate 1: NOT ACCEPTED. M2: NOT COMPLETED. Q-010: ACCEPTED. The template enforcement PR remains future work and does not block PR-004. The sensitive-data/private-contour gate remains open for real data. The next safe step is prepare and review the exact PR-005 implementation contract, then implement PR-005 under the authorization recorded by PR #14 after PR #14 is merged. PR-005 may begin after PR #14 is merged and the exact PR-005 implementation contract is reviewed; the contract review is not a second authorization gate.
+GATE-M0: COMPLETED. GATE-M0 merge commit: `3dada63ea82163c7c4497e290b303d2cc781b085`. Human acceptance of GATE-M0 occurred after PR #5 merge. M0: ACCEPTED. M1: ACCEPTED. PR-004: COMPLETED AND HUMAN ACCEPTED. GATE-S1: COMPLETED AND HUMAN ACCEPTED. ADR-018: ACCEPTED. PR-S001: ACCEPTED WITH DOCUMENTED RESIDUAL RISK RISK-S001-W11; PR-S001-F1: COMPLETED; PR-S001-F2: COMPLETED; PR-S001-F3: COMPLETED; PR-S001-F4: COMPLETED AND MERGED THROUGH PR #13; PR-S001-F4 merge commit: `985fae37c7645e8f65edbe4d1609100ee24a2097`. PR-005: IN REVIEW, NOT ACCEPTED. PR-006: UNAUTHORIZED. PR-007 AND LATER: UNAUTHORIZED. Gate 1: NOT ACCEPTED. M2: NOT COMPLETED. Q-010: ACCEPTED. The template enforcement PR remains future work and does not block PR-004. The sensitive-data/private-contour gate remains open for real data. The next safe step is review PR-005 code, Windows SQLCipher CI evidence, migrations, repository round trips, transaction tests and privacy checks. PR-005 remains in review and must not be marked accepted before merge and separate product-owner acceptance.
 
-PR-S001-F1, PR-S001-F2, PR-S001-F3 and PR-S001-F4 are completed. PR-S001/PR-S001-F1/PR-S001-F2/PR-S001-F3/PR-S001-F4 use fictional synthetic data only, may evaluate candidate packages and prototypes, must not create production database/storage APIs, and must not use real documents or personal data. PR-005 is AUTHORIZED, NOT STARTED after PR #14 is merged. The exact PR-005 implementation contract must be prepared and reviewed before implementation; the contract review is not a second authorization gate. No additional authorization PR is required for PR-005 within the accepted scope. PR-006 remains UNAUTHORIZED pending its own task review and explicit authorization. Q-017 remains deferred. The sensitive-data/private-contour gate remains open, and real documents and personal data remain prohibited in Git, Codex and CI.
+PR-S001-F1, PR-S001-F2, PR-S001-F3 and PR-S001-F4 are completed. PR-S001/PR-S001-F1/PR-S001-F2/PR-S001-F3/PR-S001-F4 use fictional synthetic data only, may evaluate candidate packages and prototypes, must not create production database/storage APIs, and must not use real documents or personal data. PR-005 is IN REVIEW, NOT ACCEPTED after PR #14 is merged. PR-005 implementation must be reviewed with Windows SQLCipher evidence, migration history checks, repository round trips, transaction tests and privacy checks before merge and acceptance. PR-006 remains UNAUTHORIZED pending its own task review and explicit authorization. Q-017 remains deferred. The sensitive-data/private-contour gate remains open, and real documents and personal data remain prohibited in Git, Codex and CI.
 
 
-PR-S001 lifecycle boundary: PR-S001/PR-S001-F1/PR-S001-F2/PR-S001-F3/PR-S001-F4 use fictional synthetic data only; PR-S001 contains no production persistence/storage API; a negative feasibility result is valid; PR #14 records the explicit product-owner authorization for PR-005. No additional authorization PR is required for PR-005 within the accepted scope. PR-005 has not started.
+PR-S001 lifecycle boundary: PR-S001/PR-S001-F1/PR-S001-F2/PR-S001-F3/PR-S001-F4 use fictional synthetic data only; PR-S001 contains no production persistence/storage API; a negative feasibility result is valid; PR #14 records the explicit product-owner authorization for PR-005. PR-005 is already authorized for this scope but remains in review and not accepted. PR-005 implementation is in review and not accepted.
+
+
+## PR-005 lifecycle update
+
+PR-S001: ACCEPTED WITH DOCUMENTED RESIDUAL RISK RISK-S001-W11. PR-005: IN REVIEW, NOT ACCEPTED. PR-006: UNAUTHORIZED. PR-007 AND LATER: UNAUTHORIZED. Gate 1: NOT ACCEPTED. M2: NOT COMPLETED. Next safe step: review PR-005 code, Windows SQLCipher CI evidence, migrations, repository round trips, transaction tests and privacy checks.
+
+PR-005 raw-key staging risk: RISK-PR005-RAWKEY-PRAGMA remains accepted for PR-005 development and open for release.

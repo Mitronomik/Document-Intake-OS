@@ -41,11 +41,11 @@ ADR-017 fixes the first MVP topology as one Windows 11 x64 workstation with one 
 
 ## Current lifecycle state
 
-GATE-M0: COMPLETED. GATE-M0 merge commit: `3dada63ea82163c7c4497e290b303d2cc781b085`. Human acceptance of GATE-M0 occurred after PR #5 merge. M0: ACCEPTED. M1: ACCEPTED. PR-004: COMPLETED AND HUMAN ACCEPTED. GATE-S1: COMPLETED AND HUMAN ACCEPTED. ADR-018: ACCEPTED. PR-S001: ACCEPTED WITH DOCUMENTED RESIDUAL RISK RISK-S001-W11; PR-S001-F1: COMPLETED; PR-S001-F2: COMPLETED; PR-S001-F3: COMPLETED; PR-S001-F4: COMPLETED AND MERGED THROUGH PR #13; PR-S001-F4 merge commit: `985fae37c7645e8f65edbe4d1609100ee24a2097`. PR-005: AUTHORIZED, NOT STARTED. PR-006: UNAUTHORIZED. PR-007 AND LATER: UNAUTHORIZED. Gate 1: NOT ACCEPTED. M2: NOT COMPLETED. Q-010: ACCEPTED. Under ADR-016, the template enforcement PR remains future work and does not block PR-004. The sensitive-data/private-contour gate remains open for real data.
+GATE-M0: COMPLETED. GATE-M0 merge commit: `3dada63ea82163c7c4497e290b303d2cc781b085`. Human acceptance of GATE-M0 occurred after PR #5 merge. M0: ACCEPTED. M1: ACCEPTED. PR-004: COMPLETED AND HUMAN ACCEPTED. GATE-S1: COMPLETED AND HUMAN ACCEPTED. ADR-018: ACCEPTED. PR-S001: ACCEPTED WITH DOCUMENTED RESIDUAL RISK RISK-S001-W11; PR-S001-F1: COMPLETED; PR-S001-F2: COMPLETED; PR-S001-F3: COMPLETED; PR-S001-F4: COMPLETED AND MERGED THROUGH PR #13; PR-S001-F4 merge commit: `985fae37c7645e8f65edbe4d1609100ee24a2097`. PR-005: IN REVIEW, NOT ACCEPTED. PR-006: UNAUTHORIZED. PR-007 AND LATER: UNAUTHORIZED. Gate 1: NOT ACCEPTED. M2: NOT COMPLETED. Q-010: ACCEPTED. Under ADR-016, the template enforcement PR remains future work and does not block PR-004. The sensitive-data/private-contour gate remains open for real data.
 
 ## Authorization boundary
 
-GATE-S1 is completed and human accepted after GitHub PR #7. PR #9 merged PR-S001 as a research harness; PR-S001 is ACCEPTED WITH DOCUMENTED RESIDUAL RISK RISK-S001-W11. PR-005 is AUTHORIZED, NOT STARTED. PR-006, PR-007 and later work remain UNAUTHORIZED.
+GATE-S1 is completed and human accepted after GitHub PR #7. PR #9 merged PR-S001 as a research harness; PR-S001 is ACCEPTED WITH DOCUMENTED RESIDUAL RISK RISK-S001-W11. PR-005 is IN REVIEW, NOT ACCEPTED. PR-006, PR-007 and later work remain UNAUTHORIZED.
 
 ## Риски
 
@@ -53,9 +53,16 @@ GATE-S1 is completed and human accepted after GitHub PR #7. PR #9 merged PR-S001
 
 ## Продолжение
 
-The next safe step is prepare and review the exact PR-005 implementation contract, then implement PR-005 under the authorization recorded by PR #14 after PR #14 is merged. Before each later task, read the authoritative sources, check the applicable gate, form a single PR contract and preserve unresolved questions unless an accepted ADR explicitly resolves them.
+The next safe step is review PR-005 code, Windows SQLCipher CI evidence, migrations, repository round trips, transaction tests and privacy checks. Before each later task, read the authoritative sources, check the applicable gate, form a single PR contract and preserve unresolved questions unless an accepted ADR explicitly resolves them.
 
-PR-S001-F1, PR-S001-F2, PR-S001-F3 and PR-S001-F4 are completed. PR-S001/PR-S001-F1/PR-S001-F2/PR-S001-F3/PR-S001-F4 use fictional synthetic data only, may evaluate candidate packages and prototypes, must not create production database/storage APIs, and must not use real documents or personal data. PR-005 is AUTHORIZED, NOT STARTED after PR #14 is merged. The exact PR-005 implementation contract must be prepared and reviewed before implementation; the contract review is not a second authorization gate. No additional authorization PR is required for PR-005 within the accepted scope. PR-006 remains UNAUTHORIZED pending its own task review and explicit authorization. Q-017 remains deferred. The sensitive-data/private-contour gate remains open, and real documents and personal data remain prohibited in Git, Codex and CI.
+PR-S001-F1, PR-S001-F2, PR-S001-F3 and PR-S001-F4 are completed. PR-S001/PR-S001-F1/PR-S001-F2/PR-S001-F3/PR-S001-F4 use fictional synthetic data only, may evaluate candidate packages and prototypes, must not create production database/storage APIs, and must not use real documents or personal data. PR-005 is IN REVIEW, NOT ACCEPTED after PR #14 is merged. PR-005 implementation must be reviewed with Windows SQLCipher evidence, migration history checks, repository round trips, transaction tests and privacy checks before merge and acceptance. PR-006 remains UNAUTHORIZED pending its own task review and explicit authorization. Q-017 remains deferred. The sensitive-data/private-contour gate remains open, and real documents and personal data remain prohibited in Git, Codex and CI.
 
 
-PR-S001 lifecycle boundary: PR-S001/PR-S001-F1/PR-S001-F2/PR-S001-F3/PR-S001-F4 use fictional synthetic data only; PR-S001 contains no production persistence/storage API; a negative feasibility result is valid; PR #14 records the explicit product-owner authorization for PR-005. No additional authorization PR is required for PR-005 within the accepted scope. PR-005 has not started.
+PR-S001 lifecycle boundary: PR-S001/PR-S001-F1/PR-S001-F2/PR-S001-F3/PR-S001-F4 use fictional synthetic data only; PR-S001 contains no production persistence/storage API; a negative feasibility result is valid; PR #14 records the explicit product-owner authorization for PR-005. PR-005 is already authorized for this scope but remains in review and not accepted. PR-005 implementation is in review and not accepted.
+
+
+## PR-005 handoff
+
+Review encrypted SQLCipher persistence, migration checksums/history, repository round trips, UoW transaction behavior, immutable snapshots, privacy checks and Windows SQLCipher CI evidence. Do not treat PR-005 as accepted before merge and product-owner acceptance. PR-006 remains unauthorized.
+
+PR-005 raw-key staging risk: RISK-PR005-RAWKEY-PRAGMA remains accepted for PR-005 development and open for release.
