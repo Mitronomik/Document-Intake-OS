@@ -55,6 +55,15 @@ class _ManagedPath:
     directory: Path
 
 
+@dataclass(frozen=True, slots=True)
+class _DiscoveredObject:
+    path: Path
+    artifact_id: EntityId | None
+    is_temporary: bool
+    is_canonical: bool
+    code: StorageErrorCode | None = None
+
+
 class _FilesystemOperations:
     """Private OS boundary used by tests for deterministic failure injection."""
 
@@ -427,13 +436,14 @@ class ImmutableFilesystemStorage:
                     )
                 )
 
-        seen_artifact_ids: set[EntityId] = set()
         objects = self._root / "objects"
         if objects.exists() and not _is_safe_existing_directory(objects):
             raise StorageError(StorageErrorCode.ROOT_INVALID)
         if _is_safe_existing_directory(objects):
-            for path in self._iter_managed_entries(objects):
-                if path.name.startswith(".tmp-"):
+            discovered = self._discover_managed_objects(objects)
+            by_artifact_id: dict[EntityId, list[_DiscoveredObject]] = {}
+            for candidate in discovered:
+                if candidate.is_temporary:
                     temporary.append(
                         StorageReconciliationItem(
                             status=StorageReconciliationStatus.TEMPORARY,
@@ -442,30 +452,37 @@ class ImmutableFilesystemStorage:
                         )
                     )
                     continue
-                if not _FINAL_RE.fullmatch(path.name):
+                if candidate.artifact_id is None or candidate.code is not None:
                     invalid.append(
                         StorageReconciliationItem(
                             status=StorageReconciliationStatus.INVALID,
                             artifact_id=None,
-                            code=StorageErrorCode.ENVELOPE_FORMAT.value,
+                            code=(candidate.code or StorageErrorCode.ENVELOPE_FORMAT).value,
                         )
                     )
                     continue
-                try:
-                    data = self._fs.read_bytes_no_follow(path)
-                    parsed = parse_envelope(data)
-                    artifact_id = parsed.artifact_id
-                    canonical = self._managed_path(artifact_id).final
-                except (OSError, StorageError):
-                    invalid.append(
+                by_artifact_id.setdefault(candidate.artifact_id, []).append(candidate)
+
+            for artifact_id, candidates in sorted(
+                by_artifact_id.items(), key=lambda item: str(item[0])
+            ):
+                canonical_candidates = tuple(
+                    candidate for candidate in candidates if candidate.is_canonical
+                )
+                extra_candidates = tuple(
+                    candidate for candidate in candidates if not candidate.is_canonical
+                )
+                if len(canonical_candidates) == 1 and str(artifact_id) not in expected_by_id:
+                    orphan.append(
                         StorageReconciliationItem(
-                            status=StorageReconciliationStatus.INVALID,
-                            artifact_id=None,
-                            code=StorageErrorCode.ENVELOPE_FORMAT.value,
+                            status=StorageReconciliationStatus.ORPHAN,
+                            artifact_id=artifact_id,
+                            code="ORPHAN",
                         )
                     )
-                    continue
-                if path != canonical or artifact_id in seen_artifact_ids:
+                elif len(canonical_candidates) > 1:
+                    extra_candidates = (*extra_candidates, *canonical_candidates[1:])
+                for _candidate in extra_candidates:
                     invalid.append(
                         StorageReconciliationItem(
                             status=StorageReconciliationStatus.INVALID,
@@ -473,14 +490,23 @@ class ImmutableFilesystemStorage:
                             code=StorageErrorCode.CONTEXT_MISMATCH.value,
                         )
                     )
-                    continue
-                seen_artifact_ids.add(artifact_id)
-                if str(artifact_id) not in expected_by_id:
-                    orphan.append(
+                if not canonical_candidates:
+                    for _candidate in candidates:
+                        if _candidate in extra_candidates:
+                            continue
+                        invalid.append(
+                            StorageReconciliationItem(
+                                status=StorageReconciliationStatus.INVALID,
+                                artifact_id=artifact_id,
+                                code=StorageErrorCode.CONTEXT_MISMATCH.value,
+                            )
+                        )
+                elif len(canonical_candidates) > 1:
+                    invalid.append(
                         StorageReconciliationItem(
-                            status=StorageReconciliationStatus.ORPHAN,
+                            status=StorageReconciliationStatus.INVALID,
                             artifact_id=artifact_id,
-                            code="ORPHAN",
+                            code=StorageErrorCode.CONTEXT_MISMATCH.value,
                         )
                     )
         return StorageReconciliationReport(
@@ -491,36 +517,112 @@ class ImmutableFilesystemStorage:
             temporary=tuple(temporary),
         )
 
-    def _iter_managed_entries(self, objects: Path) -> tuple[Path, ...]:
+    def _iter_managed_entries(
+        self,
+        objects: Path,
+        *,
+        error_code: StorageErrorCode,
+    ) -> tuple[Path, ...]:
         entries: list[Path] = []
         try:
-            first_level = tuple(objects.iterdir())
+            first_level = tuple(sorted(objects.iterdir(), key=lambda path: path.name))
         except OSError:
-            return ()
+            raise StorageError(error_code) from None
         for first in first_level:
             if not re.fullmatch(r"[0-9a-f]{2}", first.name):
                 continue
             if not _is_safe_existing_directory(first):
-                continue
+                raise StorageError(error_code)
             try:
-                second_level = tuple(first.iterdir())
+                second_level = tuple(sorted(first.iterdir(), key=lambda path: path.name))
             except OSError:
-                continue
+                raise StorageError(error_code) from None
             for second in second_level:
                 if not re.fullmatch(r"[0-9a-f]{2}", second.name):
                     continue
                 if not _is_safe_existing_directory(second):
-                    continue
+                    raise StorageError(error_code)
                 try:
-                    candidates = tuple(second.iterdir())
+                    candidates = tuple(sorted(second.iterdir(), key=lambda path: path.name))
                 except OSError:
-                    continue
+                    raise StorageError(error_code) from None
                 for candidate in candidates:
-                    if candidate.is_dir() or not _is_safe_regular_file(candidate):
-                        continue
                     if candidate.name.endswith(".diosobj"):
                         entries.append(candidate)
         return tuple(entries)
+
+    def _discover_managed_objects(self, objects: Path) -> tuple[_DiscoveredObject, ...]:
+        discovered: list[_DiscoveredObject] = []
+        for path in self._iter_managed_entries(objects, error_code=StorageErrorCode.ROOT_INVALID):
+            if path.name.startswith(".tmp-"):
+                if not _TMP_RE.fullmatch(path.name):
+                    discovered.append(
+                        _DiscoveredObject(
+                            path=path,
+                            artifact_id=None,
+                            is_temporary=False,
+                            is_canonical=False,
+                            code=StorageErrorCode.ENVELOPE_FORMAT,
+                        )
+                    )
+                    continue
+                if not _is_safe_regular_file(path):
+                    raise StorageError(StorageErrorCode.ROOT_INVALID)
+                discovered.append(
+                    _DiscoveredObject(
+                        path=path,
+                        artifact_id=None,
+                        is_temporary=True,
+                        is_canonical=False,
+                    )
+                )
+                continue
+            if not _FINAL_RE.fullmatch(path.name):
+                discovered.append(
+                    _DiscoveredObject(
+                        path=path,
+                        artifact_id=None,
+                        is_temporary=False,
+                        is_canonical=False,
+                        code=StorageErrorCode.ENVELOPE_FORMAT,
+                    )
+                )
+                continue
+            if not _is_safe_regular_file(path):
+                discovered.append(
+                    _DiscoveredObject(
+                        path=path,
+                        artifact_id=None,
+                        is_temporary=False,
+                        is_canonical=False,
+                        code=StorageErrorCode.IO_FAILED,
+                    )
+                )
+                continue
+            try:
+                data = self._fs.read_bytes_no_follow(path)
+                parsed = parse_envelope(data)
+                artifact_id = parsed.artifact_id
+            except (OSError, StorageError):
+                discovered.append(
+                    _DiscoveredObject(
+                        path=path,
+                        artifact_id=None,
+                        is_temporary=False,
+                        is_canonical=False,
+                        code=StorageErrorCode.ENVELOPE_FORMAT,
+                    )
+                )
+                continue
+            discovered.append(
+                _DiscoveredObject(
+                    path=path,
+                    artifact_id=artifact_id,
+                    is_temporary=False,
+                    is_canonical=path == self._managed_path(artifact_id).final,
+                )
+            )
+        return tuple(discovered)
 
     def cleanup_temporary_files(self) -> int:
         count = 0
@@ -530,10 +632,17 @@ class ImmutableFilesystemStorage:
         if not _is_safe_existing_directory(objects):
             return 0
         try:
-            for path in self._iter_managed_entries(objects):
-                if _TMP_RE.fullmatch(path.name) and _is_safe_regular_file(path):
+            for path in self._iter_managed_entries(
+                objects,
+                error_code=StorageErrorCode.TEMP_CLEANUP_FAILED,
+            ):
+                if not _TMP_RE.fullmatch(path.name):
+                    continue
+                if _is_safe_regular_file(path):
                     self._fs.unlink(path)
                     count += 1
+                elif path.is_symlink() or is_windows_reparse_point(path):
+                    raise StorageError(StorageErrorCode.TEMP_CLEANUP_FAILED)
         except OSError:
             raise StorageError(StorageErrorCode.TEMP_CLEANUP_FAILED) from None
         return count

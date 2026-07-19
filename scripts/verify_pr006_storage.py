@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import getpass
 import platform
+import socket
 import tempfile
 from datetime import UTC, datetime
 from pathlib import Path
@@ -17,11 +19,12 @@ from document_intake.domain.value_objects import EntityId
 from document_intake.persistence.migrations import CURRENT_SCHEMA_VERSION
 from document_intake.persistence.migrations.model import migration_checksum
 from document_intake.persistence.migrations.v0002_stored_artifacts import CHECKSUM, STATEMENTS
-from document_intake.storage.envelope import ALGORITHM, FORMAT_VERSION
+from document_intake.storage.envelope import ALGORITHM, FORMAT_VERSION, build_envelope, sha256_hex
 from document_intake.storage.errors import StorageError, StorageErrorCode
 from document_intake.storage.filesystem import ImmutableFilesystemStorage
 
 _SYNTHETIC_MARKER = b"synthetic-pr006-marker"
+_EXPECTED_V0002_CHECKSUM = "fb953af64efd3e860960eae8ef1f4078afd0a6ec078a33594e271a9285d7db3d"
 
 
 class _KeyProvider:
@@ -35,12 +38,17 @@ class _KeyProvider:
         return StorageKey(version, self._key)
 
 
-def _expect_storage_error(function: object, code: StorageErrorCode) -> bool:
+def _expect_storage_error(
+    function: object,
+    code: StorageErrorCode,
+    captured: list[str],
+) -> bool:
     if not callable(function):
         return False
     try:
         function()
     except StorageError as error:
+        captured.extend((str(error), repr(error)))
         return error.code is code and str(error) == code.value and repr(error) == code.value
     return False
 
@@ -52,6 +60,7 @@ def _object_path(root: Path, record: StoredArtifactRecord) -> Path:
 
 def run_checks() -> dict[str, str]:
     statuses: dict[str, str] = {}
+    captured_public_diagnostics: list[str] = []
     with tempfile.TemporaryDirectory() as temporary_directory:
         root = Path(temporary_directory)
         key = b"M" * 32
@@ -74,6 +83,7 @@ def run_checks() -> dict[str, str]:
             if _expect_storage_error(
                 lambda: wrong_key_storage.read_bytes(expected=record),
                 StorageErrorCode.AUTH_FAILED,
+                captured_public_diagnostics,
             )
             else "FAIL"
         )
@@ -86,6 +96,7 @@ def run_checks() -> dict[str, str]:
             if _expect_storage_error(
                 lambda: storage.read_bytes(expected=record),
                 StorageErrorCode.EXPECTED_STATE_MISMATCH,
+                captured_public_diagnostics,
             )
             else "FAIL"
         )
@@ -101,35 +112,45 @@ def run_checks() -> dict[str, str]:
                     created_at=datetime.now(UTC),
                 ),
                 StorageErrorCode.ARTIFACT_EXISTS,
+                captured_public_diagnostics,
             )
             else "FAIL"
         )
 
-        old = storage.publish_bytes(
-            artifact_id=EntityId(uuid4()),
+        older_envelope = build_envelope(
+            key=StorageKey(1, key),
+            artifact_id=record.artifact_id,
             artifact_kind=ArtifactKind.ORIGINAL,
-            plaintext=b"old synthetic",
-            created_at=datetime.now(UTC),
+            plaintext=b"older same id synthetic",
         )
-        current = storage.publish_bytes(
-            artifact_id=EntityId(uuid4()),
-            artifact_kind=ArtifactKind.ORIGINAL,
-            plaintext=b"current synthetic",
-            created_at=datetime.now(UTC),
-        )
-        _object_path(root, current).write_bytes(_object_path(root, old).read_bytes())
+        object_path.write_bytes(older_envelope)
         statuses["rollback"] = (
             "PASS"
-            if _expect_storage_error(
-                lambda: storage.read_bytes(expected=current),
+            if sha256_hex(older_envelope) != record.ciphertext_sha256
+            and _expect_storage_error(
+                lambda: storage.read_bytes(expected=record),
                 StorageErrorCode.EXPECTED_STATE_MISMATCH,
+                captured_public_diagnostics,
             )
             else "FAIL"
         )
+        object_path.write_bytes(original_envelope)
 
-        statuses["orphan_detection"] = (
-            "PASS" if storage.reconcile(expected=(record,)).counts["orphan"] >= 1 else "FAIL"
+        orphan_record = storage.publish_bytes(
+            artifact_id=EntityId(uuid4()),
+            artifact_kind=ArtifactKind.ORIGINAL,
+            plaintext=b"orphan synthetic",
+            created_at=datetime.now(UTC),
         )
+        report = storage.reconcile(expected=(record,))
+        statuses["orphan_detection"] = "PASS" if report.counts["orphan"] == 1 else "FAIL"
+        captured_public_diagnostics.extend(
+            [
+                repr(report),
+                *(repr(item) for group in (report.healthy, report.orphan) for item in group),
+            ]
+        )
+
         temp = object_path.parent / ".tmp-00000000-0000-0000-0000-000000000000.diosobj"
         temp.write_bytes(original_envelope)
         statuses["temp_cleanup"] = (
@@ -144,18 +165,36 @@ def run_checks() -> dict[str, str]:
             )
             else "FAIL"
         )
-        diagnostics = " ".join(statuses.values())
-        statuses["sanitized_privacy"] = (
-            "PASS"
-            if all(
-                forbidden not in diagnostics
-                for forbidden in (str(root), str(artifact_id), _SYNTHETIC_MARKER.decode())
-            )
-            else "FAIL"
-        )
         statuses["schema_version"] = "PASS" if CURRENT_SCHEMA_VERSION == 2 else "FAIL"
         statuses["migration_v0002_checksum"] = (
-            "PASS" if migration_checksum(STATEMENTS) == CHECKSUM else "FAIL"
+            "PASS"
+            if migration_checksum(STATEMENTS) == CHECKSUM == _EXPECTED_V0002_CHECKSUM
+            else "FAIL"
+        )
+        provisional_report = format_report({**statuses, "sanitized_privacy": "PENDING"})
+        forbidden_values = (
+            str(root),
+            str(object_path),
+            str(artifact_id),
+            str(orphan_record.artifact_id),
+            key.decode("ascii"),
+            _SYNTHETIC_MARKER.decode("ascii"),
+            record.plaintext_sha256,
+            record.ciphertext_sha256,
+            sha256_hex(older_envelope),
+            getpass.getuser(),
+            socket.gethostname(),
+            "Traceback",
+            "InvalidTag",
+            "No such file",
+        )
+        statuses["sanitized_privacy"] = (
+            "PASS"
+            if report_is_sanitized(
+                "\n".join((provisional_report, *captured_public_diagnostics)),
+                forbidden_values,
+            )
+            else "FAIL"
         )
     return statuses
 

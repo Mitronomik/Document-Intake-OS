@@ -62,7 +62,7 @@
 - [ ] PR-006 is AUTHORIZED AND IN REVIEW, NOT ACCEPTED through PR #17; it is not completed, merged, accepted or human accepted;
 - [ ] PR-007 and later implementation tasks remain UNAUTHORIZED;
 - [ ] The template enforcement PR remains future work and does not block PR-004 or PR-005 closure;
-- [ ] storage implementation;
+- [ ] integration of immutable storage into the future file-import workflow;
 - [ ] image pipeline;
 - [ ] terminal adapters;
 - [ ] OCR benchmark;

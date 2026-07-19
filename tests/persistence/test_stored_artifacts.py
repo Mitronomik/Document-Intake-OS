@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import sqlite3
 from datetime import UTC, datetime
 from uuid import uuid4
@@ -22,6 +23,25 @@ def memory_connection() -> sqlite3.Connection:
     connection = sqlite3.connect(":memory:", isolation_level=None)
     database._apply_migrations(connection)
     return connection
+
+
+def _sqlite_uow_classes(monkeypatch: pytest.MonkeyPatch):
+    from document_intake.persistence.database import SqlCipherUnitOfWork
+    from tests.persistence.test_unit_of_work import Provider, open_sqlite
+
+    monkeypatch.setattr(database, "_open_connection", open_sqlite)
+    return SqlCipherUnitOfWork, Provider
+
+
+def _write_migrated_file(db, monkeypatch: pytest.MonkeyPatch) -> None:
+    from tests.persistence.test_unit_of_work import migrated_file
+
+    migrated_file(db)
+    _sqlite_uow_classes(monkeypatch)
+
+
+def _drop_stored_artifact_update_trigger(connection: sqlite3.Connection) -> None:
+    connection.execute("DROP TRIGGER stored_artifacts_no_update")
 
 
 def record() -> StoredArtifactRecord:
@@ -158,11 +178,14 @@ def test_stored_artifact_repository_projection_mismatches_are_invalid(
     from tests.persistence.test_unit_of_work import Provider, migrated_file, open_sqlite
 
     columns_and_values = {
+        "artifact_id": str(EntityId(uuid4())),
         "artifact_kind": ArtifactKind.PREPARED_DOCUMENT.value,
+        "object_generation": 2,
         "plaintext_length": 4,
         "plaintext_sha256": "c" * 64,
         "ciphertext_sha256": "d" * 64,
         "key_version": 2,
+        "storage_format_version": 2,
         "created_at": ser.utc_iso(datetime(2026, 1, 1, tzinfo=UTC)),
     }
     for column, value in columns_and_values.items():
@@ -174,7 +197,8 @@ def test_stored_artifact_repository_projection_mismatches_are_invalid(
             uow.stored_artifacts.add(base)
             uow.commit()
         raw = sqlite3.connect(db, isolation_level=None)
-        raw.execute("DROP TRIGGER stored_artifacts_no_update")
+        _drop_stored_artifact_update_trigger(raw)
+        raw.execute("PRAGMA ignore_check_constraints = ON")
         raw.execute(
             f"UPDATE stored_artifacts SET {column}=? WHERE artifact_id=?",
             (value, str(base.artifact_id)),
@@ -182,14 +206,33 @@ def test_stored_artifact_repository_projection_mismatches_are_invalid(
         raw.close()
         with SqlCipherUnitOfWork(db, Provider()) as uow:
             with pytest.raises(PersistenceError) as error:
-                uow.stored_artifacts.get(base.artifact_id)
+                if column == "artifact_id":
+                    uow.stored_artifacts.list_all()
+                else:
+                    uow.stored_artifacts.get(base.artifact_id)
             assert error.value.code is PersistenceErrorCode.PERSISTED_DATA_INVALID
+            rendered = f"{error.value!s} {error.value!r}"
+            assert "SELECT" not in rendered
+            assert "stored_artifacts" not in rendered
+            assert base.plaintext_sha256 not in rendered
 
-    for payload_fragment in (
-        ('"object_generation":1', '"object_generation":2'),
-        ('"storage_format_version":1', '"storage_format_version":2'),
-    ):
-        db = tmp_path / f"payload-tamper-{payload_fragment[1][1]}.db"
+    payload_mutations = {
+        "missing_field": lambda d: d.pop("artifact_kind"),
+        "extra_field": lambda d: d.update({"extra": 1}),
+        "invalid_uuid": lambda d: d.update({"artifact_id": "not-a-uuid"}),
+        "invalid_kind": lambda d: d.update({"artifact_kind": "OTHER"}),
+        "bool_integer": lambda d: d.update({"key_version": True}),
+        "zero_key": lambda d: d.update({"key_version": 0}),
+        "negative_key": lambda d: d.update({"key_version": -1}),
+        "unsupported_generation": lambda d: d.update({"object_generation": 2}),
+        "unsupported_format": lambda d: d.update({"storage_format_version": 2}),
+        "malformed_digest": lambda d: d.update({"plaintext_sha256": "g" * 64}),
+        "malformed_datetime": lambda d: d.update({"created_at": "not-a-date"}),
+        "naive_datetime": lambda d: d.update({"created_at": "2026-07-19T00:00:00"}),
+        "artifact_id_mismatch": lambda d: d.update({"artifact_id": str(EntityId(uuid4()))}),
+    }
+    for name, mutate in payload_mutations.items():
+        db = tmp_path / f"payload-{name}.db"
         migrated_file(db)
         base = record()
         with SqlCipherUnitOfWork(db, Provider()) as uow:
@@ -200,16 +243,37 @@ def test_stored_artifact_repository_projection_mismatches_are_invalid(
             "SELECT canonical_payload FROM stored_artifacts WHERE artifact_id=?",
             (str(base.artifact_id),),
         ).fetchone()[0]
-        raw.execute("DROP TRIGGER stored_artifacts_no_update")
+        parsed = json.loads(payload)
+        mutate(parsed)
+        corrupted = ser.dumps(parsed)
+        _drop_stored_artifact_update_trigger(raw)
         raw.execute(
             "UPDATE stored_artifacts SET canonical_payload=? WHERE artifact_id=?",
-            (payload.replace(*payload_fragment), str(base.artifact_id)),
+            (corrupted, str(base.artifact_id)),
         )
         raw.close()
         with SqlCipherUnitOfWork(db, Provider()) as uow:
             with pytest.raises(PersistenceError) as error:
                 uow.stored_artifacts.get(base.artifact_id)
             assert error.value.code is PersistenceErrorCode.PERSISTED_DATA_INVALID
+
+    db = tmp_path / "payload-malformed-json.db"
+    migrated_file(db)
+    base = record()
+    with SqlCipherUnitOfWork(db, Provider()) as uow:
+        uow.stored_artifacts.add(base)
+        uow.commit()
+    raw = sqlite3.connect(db, isolation_level=None)
+    _drop_stored_artifact_update_trigger(raw)
+    raw.execute(
+        "UPDATE stored_artifacts SET canonical_payload=? WHERE artifact_id=?",
+        ("{not-json", str(base.artifact_id)),
+    )
+    raw.close()
+    with SqlCipherUnitOfWork(db, Provider()) as uow:
+        with pytest.raises(PersistenceError) as error:
+            uow.stored_artifacts.get(base.artifact_id)
+        assert error.value.code is PersistenceErrorCode.PERSISTED_DATA_INVALID
 
 
 def test_v0001_to_v0002_preserves_populated_rows() -> None:
@@ -226,21 +290,161 @@ def test_v0001_to_v0002_preserves_populated_rows() -> None:
         (V1.version, V1.name, V1.checksum, "2026-07-19T00:00:00Z"),
     )
     connection.execute("PRAGMA user_version = 1")
+    connection.execute("PRAGMA foreign_keys = ON")
+    payload = '{"synthetic":"pr006"}'
     connection.execute(
-        "INSERT INTO persons(id, payload) VALUES ('00000000-0000-0000-0000-000000000001','{}')"
+        "INSERT INTO persons(id, payload) VALUES (?,?)",
+        ("00000000-0000-0000-0000-000000000001", payload),
     )
     connection.execute(
-        "INSERT INTO vehicles(id, payload) VALUES ('00000000-0000-0000-0000-000000000002','{}')"
+        "INSERT INTO identity_documents(id, person_id, payload) VALUES (?,?,?)",
+        (
+            "00000000-0000-0000-0000-000000000011",
+            "00000000-0000-0000-0000-000000000001",
+            payload,
+        ),
+    )
+    connection.execute(
+        "INSERT INTO documents(id, owner_kind, owner_id, payload) VALUES (?,?,?,?)",
+        (
+            "00000000-0000-0000-0000-000000000021",
+            "PERSON",
+            "00000000-0000-0000-0000-000000000001",
+            payload,
+        ),
+    )
+    connection.execute(
+        "INSERT INTO document_sides(document_id, order_index, side_id) VALUES (?,?,?)",
+        ("00000000-0000-0000-0000-000000000021", 0, "front"),
+    )
+    connection.execute(
+        "INSERT INTO vehicles(id, payload) VALUES (?,?)",
+        ("00000000-0000-0000-0000-000000000002", payload),
+    )
+    connection.execute(
+        "INSERT INTO vehicles(id, payload) VALUES (?,?)",
+        ("00000000-0000-0000-0000-000000000003", payload),
+    )
+    connection.execute(
+        "INSERT INTO terminals(code, is_active, payload) VALUES (?,?,?)",
+        ("SYN", 1, payload),
+    )
+    connection.execute(
+        "INSERT INTO applications(id, batch_id, terminal_code, status, created_by_actor_id, "
+        "created_by_actor_kind, created_at_utc, updated_at_utc, payload) "
+        "VALUES (?,?,?,?,?,?,?,?,?)",
+        (
+            "00000000-0000-0000-0000-000000000031",
+            "batch-synthetic",
+            "SYN",
+            "DRAFT",
+            "00000000-0000-0000-0000-000000000041",
+            "SYSTEM",
+            "2026-07-19T00:00:00Z",
+            "2026-07-19T00:00:00Z",
+            payload,
+        ),
+    )
+    connection.execute(
+        "INSERT INTO application_assignments(application_id, order_index, person_id, "
+        "tractor_id, trailer_id, payload) VALUES (?,?,?,?,?,?)",
+        (
+            "00000000-0000-0000-0000-000000000031",
+            0,
+            "00000000-0000-0000-0000-000000000001",
+            "00000000-0000-0000-0000-000000000002",
+            "00000000-0000-0000-0000-000000000003",
+            payload,
+        ),
+    )
+    connection.execute(
+        "INSERT INTO application_snapshots(id, application_id, terminal_code, template_version, "
+        "rules_version, created_by_actor_id, created_by_actor_kind, created_at_utc, "
+        "payload_json, sha256, expected_artifact_ref_count, payload) "
+        "VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
+        (
+            "00000000-0000-0000-0000-000000000051",
+            "00000000-0000-0000-0000-000000000031",
+            "SYN",
+            "template-v1",
+            "rules-v1",
+            "00000000-0000-0000-0000-000000000041",
+            "SYSTEM",
+            "2026-07-19T00:00:00Z",
+            payload,
+            "a" * 64,
+            1,
+            payload,
+        ),
+    )
+    connection.execute(
+        "INSERT INTO application_snapshot_artifact_refs(snapshot_id, order_index, artifact_ref) "
+        "VALUES (?,?,?)",
+        ("00000000-0000-0000-0000-000000000051", 0, "opaque-artifact-ref"),
+    )
+    populated_tables = (
+        "persons",
+        "identity_documents",
+        "documents",
+        "document_sides",
+        "vehicles",
+        "terminals",
+        "applications",
+        "application_assignments",
+        "application_snapshots",
+        "application_snapshot_artifact_refs",
     )
     before = {
         table: tuple(connection.execute(f"SELECT * FROM {table}").fetchall())
-        for table in ("persons", "vehicles")
+        for table in populated_tables
     }
+    before_history = tuple(
+        connection.execute("SELECT version, name, checksum FROM schema_migrations").fetchall()
+    )
+    assert before_history == ((1, V1.name, V1.checksum),)
+    assert (
+        connection.execute(
+            "SELECT name FROM sqlite_master WHERE type='table' AND name='stored_artifacts'"
+        ).fetchone()
+        is None
+    )
     connection.execute("COMMIT")
     assert connection.execute("PRAGMA user_version").fetchone()[0] == 1
     assert len(MIGRATIONS) == 2
     database._apply_migrations(connection)
     assert connection.execute("PRAGMA user_version").fetchone()[0] == 2
+    assert connection.execute(
+        "SELECT version, name, checksum FROM schema_migrations ORDER BY version"
+    ).fetchall() == [
+        (1, V1.name, V1.checksum),
+        (2, V0002_MIGRATION.name, V0002_MIGRATION.checksum),
+    ]
     for table, rows in before.items():
         assert tuple(connection.execute(f"SELECT * FROM {table}").fetchall()) == rows
+    assert connection.execute("PRAGMA foreign_key_check").fetchall() == []
     assert connection.execute("SELECT count(*) FROM stored_artifacts").fetchone()[0] == 0
+    assert (
+        connection.execute(
+            "SELECT count(*) FROM sqlite_master WHERE type='trigger' "
+            "AND name IN ('stored_artifacts_no_update','stored_artifacts_no_delete')"
+        ).fetchone()[0]
+        == 2
+    )
+    with pytest.raises(sqlite3.IntegrityError):
+        connection.execute(
+            "INSERT INTO stored_artifacts(artifact_id, artifact_kind, object_generation, "
+            "plaintext_length, plaintext_sha256, ciphertext_sha256, key_version, "
+            "storage_format_version, created_at, canonical_payload) VALUES (?,?,?,?,?,?,?,?,?,?)",
+            (
+                str(EntityId(uuid4())),
+                ArtifactKind.ORIGINAL.value,
+                1,
+                1,
+                "g" * 64,
+                "b" * 64,
+                1,
+                1,
+                ser.utc_iso(datetime.now(UTC)),
+                ser.stored_artifact_to_json(record()),
+            ),
+        )

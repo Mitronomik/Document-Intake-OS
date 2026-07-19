@@ -66,3 +66,27 @@ def test_existing_valid_object_unchanged_after_failure(tmp_path) -> None:
             created_at=aware_now(),
         )
     assert final.read_bytes() == before
+
+
+def test_after_temporary_creation_failure_releases_descriptor_and_removes_temp(tmp_path) -> None:
+    ops = _FailingFilesystemOperations(FilesystemFailurePoint.AFTER_TEMPORARY_CREATION)
+    storage = ImmutableFilesystemStorage(tmp_path, StaticKeyProvider(), filesystem_operations=ops)
+    artifact_id = entity_id()
+    plaintext = b"descriptor-release-marker"
+    with pytest.raises(StorageError):
+        storage.publish_bytes(
+            artifact_id=artifact_id,
+            artifact_kind=ArtifactKind.ORIGINAL,
+            plaintext=plaintext,
+            created_at=aware_now(),
+        )
+    final = object_path(tmp_path, artifact_id)
+    assert not final.exists()
+    assert ops.created_temporary is not None
+    assert not ops.created_temporary.exists()
+    for file in tmp_path.rglob("*"):
+        if file.is_file() and not file.is_symlink():
+            assert plaintext not in file.read_bytes()
+    shard = final.parent
+    shard.rmdir()
+    shard.parent.rmdir()
