@@ -452,12 +452,27 @@ class ImmutableFilesystemStorage:
                         )
                     )
                     continue
-                if candidate.artifact_id is None or candidate.code is not None:
+                if candidate.code is not None:
+                    already_reported_expected = (
+                        candidate.artifact_id is not None
+                        and candidate.is_canonical
+                        and str(candidate.artifact_id) in expected_by_id
+                    )
+                    if not already_reported_expected:
+                        invalid.append(
+                            StorageReconciliationItem(
+                                status=StorageReconciliationStatus.INVALID,
+                                artifact_id=candidate.artifact_id,
+                                code=candidate.code.value,
+                            )
+                        )
+                    continue
+                if candidate.artifact_id is None:
                     invalid.append(
                         StorageReconciliationItem(
                             status=StorageReconciliationStatus.INVALID,
                             artifact_id=None,
-                            code=(candidate.code or StorageErrorCode.ENVELOPE_FORMAT).value,
+                            code=StorageErrorCode.ENVELOPE_FORMAT.value,
                         )
                     )
                     continue
@@ -599,6 +614,15 @@ class ImmutableFilesystemStorage:
                     )
                 )
                 continue
+            filename_artifact_id = EntityId(
+                uuid.UUID(path.name.removesuffix(".diosobj"))
+            )
+            filename_uuid_hex = filename_artifact_id.value.hex
+            is_canonical_path = (
+                path.parent.parent.name == filename_uuid_hex[:2]
+                and path.parent.name == filename_uuid_hex[2:4]
+                and path.name == f"{filename_artifact_id.value}.diosobj"
+            )
             try:
                 data = self._fs.read_bytes_no_follow(path)
                 parsed = parse_envelope(data)
@@ -607,9 +631,9 @@ class ImmutableFilesystemStorage:
                 discovered.append(
                     _DiscoveredObject(
                         path=path,
-                        artifact_id=None,
+                        artifact_id=filename_artifact_id,
                         is_temporary=False,
-                        is_canonical=False,
+                        is_canonical=is_canonical_path,
                         code=StorageErrorCode.ENVELOPE_FORMAT,
                     )
                 )
@@ -619,7 +643,10 @@ class ImmutableFilesystemStorage:
                     path=path,
                     artifact_id=artifact_id,
                     is_temporary=False,
-                    is_canonical=path == self._managed_path(artifact_id).final,
+                    is_canonical=(
+                        is_canonical_path
+                        and artifact_id.value == filename_artifact_id.value
+                    ),
                 )
             )
         return tuple(discovered)

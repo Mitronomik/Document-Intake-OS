@@ -216,3 +216,26 @@ def test_unsafe_objects_directory_fails_closed(tmp_path) -> None:
         storage.reconcile(expected=())
     assert error.value.code is StorageErrorCode.ROOT_INVALID
     assert str(tmp_path) not in str(error.value)
+
+
+def test_malformed_expected_object_is_reported_invalid_once(tmp_path) -> None:
+    storage = ImmutableFilesystemStorage(tmp_path, StaticKeyProvider())
+    record = storage.publish_bytes(
+        artifact_id=entity_id(),
+        artifact_kind=ArtifactKind.ORIGINAL,
+        plaintext=b"payload",
+        created_at=aware_now(),
+    )
+    path = object_path(tmp_path, record.artifact_id)
+    path.write_bytes(b"not an envelope")
+
+    report = storage.reconcile(expected=(record,))
+
+    assert report.counts == {
+        "healthy": 0,
+        "missing": 0,
+        "invalid": 1,
+        "orphan": 0,
+        "temporary": 0,
+    }
+    assert report.invalid[0].artifact_id == record.artifact_id
