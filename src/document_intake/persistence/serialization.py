@@ -518,3 +518,53 @@ def snapshot_from_json(payload: str) -> ApplicationSnapshot:
         document_artifact_refs=tuple(req_id(x) for x in d.get("document_artifact_refs", ())),
         sha256=d["sha256"],
     )
+
+
+def application_scalar_to_json(o: Application) -> str:
+    return dumps(
+        {
+            "id": str(o.id),
+            "batch_id": str(o.batch_id),
+            "terminal_code": _enum(o.terminal_code),
+            "status": o.status.value,
+            "created_by": _actor(o.created_by),
+            "created_at": utc_iso(o.created_at),
+            "updated_at": utc_iso(o.updated_at),
+        }
+    )
+
+
+def application_from_components(
+    payload: str,
+    assignments: tuple[ParticipantAssignment, ...],
+    verified_fields: tuple[VerifiedField, ...],
+    issues: tuple[ValidationIssue, ...],
+) -> Application:
+    d = loads(payload)
+    created_by = parse_actor(d["created_by"])
+    if created_by is None:
+        raise PersistenceError(PersistenceErrorCode.PERSISTED_DATA_INVALID)
+    return Application(
+        req_id(d["id"]),
+        req_id(d["batch_id"]),
+        parse_enum(TerminalCode, d.get("terminal_code")),
+        assignments,
+        verified_fields,
+        ValidationReport(issues),
+        parse_enum(ApplicationStatus, d["status"]),
+        created_by,
+        parse_datetime(d["created_at"]),
+        parse_datetime(d["updated_at"]),
+    )
+
+
+def assignment_from_json(payload: str) -> ParticipantAssignment:
+    return _assignment_from_dict(loads(payload))
+
+
+def verified_field_from_json(payload: str) -> VerifiedField:
+    return _verified_from_dict(loads(payload))
+
+
+def validation_issue_from_json(payload: str) -> ValidationIssue:
+    return _issue_from_dict(loads(payload))

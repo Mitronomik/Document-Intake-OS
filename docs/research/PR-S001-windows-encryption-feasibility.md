@@ -125,3 +125,5 @@ No final package selection has been made.
 ## PR-005 follow-on note
 
 PR-005 is IN REVIEW, NOT ACCEPTED, using the product-owner accepted `sqlcipher3==0.6.2` development binding and accepted development residual risk `RISK-PR005-RAWKEY-PRAGMA`. RISK-S001-W11 remains documented and Windows 11 x64 verification remains a release-boundary requirement.
+
+PR-005: IN REVIEW, NOT ACCEPTED. RISK-PR005-RAWKEY-PRAGMA remains open for release. PR-006: UNAUTHORIZED.

@@ -35,7 +35,7 @@
 - [x] GATE-S1: COMPLETED AND HUMAN ACCEPTED;
 - [x] ADR-018: ACCEPTED;
 - [x] PR-S001: ACCEPTED WITH DOCUMENTED RESIDUAL RISK RISK-S001-W11; PR-S001-F1: COMPLETED; PR-S001-F2: COMPLETED; PR-S001-F3: COMPLETED; PR-S001-F4: COMPLETED AND MERGED THROUGH PR #13; PR-S001-F4 merge commit: `985fae37c7645e8f65edbe4d1609100ee24a2097`;
-- [ ] PR-005: AUTHORIZED, NOT STARTED;
+- [ ] PR-005: IN REVIEW, NOT ACCEPTED;
 - [ ] PR-006: UNAUTHORIZED;
 - [ ] PR-007 AND LATER: UNAUTHORIZED;
 - [ ] Gate 1: NOT ACCEPTED;
@@ -46,7 +46,7 @@
 
 ## Not started / unauthorized
 
-- [ ] PR-005 is AUTHORIZED, NOT STARTED;
+- [ ] PR-005 is IN REVIEW, NOT ACCEPTED;
 - [ ] PR-006 remains unauthorized pending its own task review after accepted encryption staging;
 - [ ] PR-007 and later implementation tasks remain UNAUTHORIZED;
 - [ ] The template enforcement PR remains future work and does not block PR-004;
@@ -66,14 +66,16 @@
 
 ## Следующий безопасный шаг
 
-prepare and review the exact PR-005 implementation contract, then implement PR-005 under the authorization recorded by PR #14 after PR #14 is merged. PR #9 merged PR-S001 as a research harness; PR-S001 is accepted with documented residual risk RISK-S001-W11; PR-S001-F4 is completed and merged through PR #13 at merge commit `985fae37c7645e8f65edbe4d1609100ee24a2097`.
+review PR-005 code, Windows SQLCipher CI evidence, migrations, repository round trips, transaction tests and privacy checks. PR #9 merged PR-S001 as a research harness; PR-S001 is accepted with documented residual risk RISK-S001-W11; PR-S001-F4 is completed and merged through PR #13 at merge commit `985fae37c7645e8f65edbe4d1609100ee24a2097`.
 
-PR-S001-F1, PR-S001-F2, PR-S001-F3 and PR-S001-F4 are completed. PR-S001/PR-S001-F1/PR-S001-F2/PR-S001-F3/PR-S001-F4 use fictional synthetic data only, may evaluate candidate packages and prototypes, must not create production database/storage APIs, and must not use real documents or personal data. PR-005 is AUTHORIZED, NOT STARTED after PR #14 is merged. The exact PR-005 implementation contract must be prepared and reviewed before implementation; the contract review is not a second authorization gate. No additional authorization PR is required for PR-005 within the accepted scope. PR-006 remains UNAUTHORIZED pending its own task review and explicit authorization. Q-017 remains deferred. The sensitive-data/private-contour gate remains open, and real documents and personal data remain prohibited in Git, Codex and CI.
+PR-S001-F1, PR-S001-F2, PR-S001-F3 and PR-S001-F4 are completed. PR-S001/PR-S001-F1/PR-S001-F2/PR-S001-F3/PR-S001-F4 use fictional synthetic data only, may evaluate candidate packages and prototypes, must not create production database/storage APIs, and must not use real documents or personal data. PR-005 is IN REVIEW, NOT ACCEPTED after PR #14 is merged. PR-005 implementation must be reviewed with Windows SQLCipher evidence, migration history checks, repository round trips, transaction tests and privacy checks before merge and acceptance. PR-006 remains UNAUTHORIZED pending its own task review and explicit authorization. Q-017 remains deferred. The sensitive-data/private-contour gate remains open, and real documents and personal data remain prohibited in Git, Codex and CI.
 
 
-PR-S001 lifecycle boundary: PR-S001/PR-S001-F1/PR-S001-F2/PR-S001-F3/PR-S001-F4 use fictional synthetic data only; PR-S001 contains no production persistence/storage API; a negative feasibility result is valid; PR #14 records the explicit product-owner authorization for PR-005. No additional authorization PR is required for PR-005 within the accepted scope. PR-005 has not started.
+PR-S001 lifecycle boundary: PR-S001/PR-S001-F1/PR-S001-F2/PR-S001-F3/PR-S001-F4 use fictional synthetic data only; PR-S001 contains no production persistence/storage API; a negative feasibility result is valid; PR #14 records the explicit product-owner authorization for PR-005. PR-005 is already authorized for this scope but remains in review and not accepted. PR-005 implementation is in review and not accepted.
 
 
 ## 2026-07-19 — PR-005 in review
 
 PR-005 encrypted SQLite persistence is IN REVIEW, NOT ACCEPTED. PR-S001 remains ACCEPTED WITH DOCUMENTED RESIDUAL RISK RISK-S001-W11. PR-006 and later remain UNAUTHORIZED. Gate 1 is NOT ACCEPTED and M2 is NOT COMPLETED.
+
+PR-005 raw-key staging risk: RISK-PR005-RAWKEY-PRAGMA remains accepted for PR-005 development and open for release.

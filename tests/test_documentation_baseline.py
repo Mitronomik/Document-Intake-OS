@@ -44,6 +44,7 @@ REQUIRED_DOCUMENTS = (
     "docs/tasks/PR-S001-F2-wal-journal-evidence.md",
     "docs/tasks/PR-S001-F3-windows-acl-diagnostics.md",
     "docs/tasks/PR-S001-F4-windows11-target-attestation.md",
+    "docs/tasks/PR-005-encrypted-sqlite-persistence.md",
 )
 
 CANONICAL_SOURCE_ORDER = (
@@ -235,7 +236,6 @@ def test_lifecycle_state_records_gate_s1_accepted_state() -> None:
         "PR-S001-F3: COMPLETED",
         "PR-S001-F4: COMPLETED AND MERGED THROUGH PR #13",
         "985fae37c7645e8f65edbe4d1609100ee24a2097",
-        "PR-005: AUTHORIZED, NOT STARTED",
         "PR-006: UNAUTHORIZED",
         "PR-007 AND LATER: UNAUTHORIZED",
         "Gate 1: NOT ACCEPTED",
@@ -277,6 +277,11 @@ def test_lifecycle_state_records_gate_s1_accepted_state() -> None:
         "later authorization",
         "Explicit non-authorization of PR-005 and PR-006",
         "review PR-S001 evidence and make a product-owner feasibility decision",
+        "PR-005: AUTHORIZED, NOT STARTED",
+        "PR-005: COMPLETED",
+        "PR-005: ACCEPTED",
+        "Gate 1: ACCEPTED",
+        "M2: COMPLETED",
         "review and product-owner decision on GATE-S1 / ADR-018",
     )
 
@@ -285,8 +290,8 @@ def test_lifecycle_state_records_gate_s1_accepted_state() -> None:
         for required in required_by_file:
             assert required in text, filename
         needle = (
-            "prepare and review the exact PR-005 implementation contract, then implement "
-            "PR-005 under the authorization recorded by PR #14 after PR #14 is merged"
+            "review PR-005 code, Windows SQLCipher CI evidence, migrations, "
+            "repository round trips, transaction tests and privacy checks"
         )
         assert needle in text, filename
         for stale in stale_current_state:
@@ -308,7 +313,7 @@ def test_lifecycle_state_records_gate_s1_accepted_state() -> None:
         "commit: `985fae37c7645e8f65edbe4d1609100ee24a2097`;" in progress
     )
     assert "- [ ] PR-S001: ACCEPTED WITH DOCUMENTED RESIDUAL RISK" not in progress
-    assert "- [ ] PR-005: AUTHORIZED, NOT STARTED;" in progress
+    assert "- [ ] PR-005: IN REVIEW, NOT ACCEPTED;" in progress
     assert "- [ ] PR-006: UNAUTHORIZED;" in progress
     assert "- [ ] GATE-S1: COMPLETED AND HUMAN ACCEPTED;" not in progress
     assert "- [ ] ADR-018: ACCEPTED;" not in progress
@@ -479,12 +484,10 @@ def test_gate_s1_acceptance_security_and_lifecycle_boundaries() -> None:
             in text
         ), filename
         assert "must not create production database/storage APIs" in text, filename
-        assert "PR-005: AUTHORIZED, NOT STARTED" in text, filename
+        assert "PR-005: IN REVIEW, NOT ACCEPTED" in text, filename
         assert (
-            "No additional authorization PR is required for PR-005 within the accepted scope"
-            in text
+            "PR-005 remains in review" in text or "PR-005 implementation must be reviewed" in text
         ), filename
-        assert "the contract review is not a second authorization gate" in text, filename
         assert "Q-017 remains deferred" in text, filename
         assert "real documents and personal data remain prohibited in Git, Codex and CI" in text, (
             filename
@@ -498,12 +501,12 @@ def test_pr005_pr006_sequences_remain_blocked_after_gate_s1_acceptance() -> None
         "accepted PR-S001 review and explicit follow-up authorization, accepted PR-S001"
         not in implementation_plan
     )
-    assert "AUTHORIZED, NOT STARTED. PR-S001 is accepted with RISK-S001-W11" in implementation_plan
+    assert "IN REVIEW, NOT ACCEPTED. PR-S001 is accepted with RISK-S001-W11" in implementation_plan
     assert (
-        "PR #14 provides the explicit product-owner authorization for PR-005" in implementation_plan
+        "PR #14 provided the explicit product-owner authorization for PR-005" in implementation_plan
     )
     assert (
-        "No additional authorization PR is required for PR-005 within the accepted scope"
+        "PR-005 is already authorized for this scope but remains in review and not accepted"
         in implementation_plan
     )
     assert "separate explicit product-owner authorization of PR-005" not in implementation_plan
@@ -954,7 +957,6 @@ def test_pr_s001_d1_acceptance_decision_document() -> None:
         "backup/recovery design",
         "installer design",
         "licensing/redistribution disposition",
-        "PR-005: AUTHORIZED, NOT STARTED",
         "PR-006: UNAUTHORIZED",
         "PR-007 AND LATER: UNAUTHORIZED",
     ):
@@ -998,13 +1000,17 @@ def test_pr_s001_spike_documentation_and_scope() -> None:
         "Windows Server 2025 AMD64",
         "CONDITIONALLY FEASIBLE",
         "Windows 11 x64: NOT_DEMONSTRATED",
-        "PR-005: AUTHORIZED, NOT STARTED",
+        "PR-005: IN REVIEW, NOT ACCEPTED",
+        "RISK-PR005-RAWKEY-PRAGMA",
         "PR-006: UNAUTHORIZED",
     ):
         assert required_phrase in report
     pyproject = (REPO_ROOT / "pyproject.toml").read_text(encoding="utf-8")
     project_block = pyproject.split("[project.scripts]", maxsplit=1)[0]
-    assert "sqlcipher3" not in project_block
+    assert (
+        "sqlcipher3==0.6.2; sys_platform == 'win32' and platform_machine == 'AMD64'"
+        in project_block
+    )
     assert "cryptography" not in project_block
     assert "encryption-spike" in pyproject
     assert (
@@ -1023,15 +1029,12 @@ def test_pr_s001_spike_documentation_and_scope() -> None:
     ]
     for lifecycle in lifecycle_files:
         text = (REPO_ROOT / lifecycle).read_text(encoding="utf-8")
-        assert "PR-005: AUTHORIZED, NOT STARTED" in text
+        assert "PR-005: IN REVIEW, NOT ACCEPTED" in text
         assert (
             "PR-S001/PR-S001-F1/PR-S001-F2/PR-S001-F3/PR-S001-F4 use fictional synthetic data only"
             in text
         )
         assert "PR-S001 contains no production persistence/storage API" in text
         assert "a negative feasibility result is valid" in text
-        assert (
-            "No additional authorization PR is required for PR-005 within the accepted scope"
-            in text
-        )
-        assert "PR-005 has not started" in text
+        assert "PR-005: IN REVIEW, NOT ACCEPTED" in text
+        assert "PR-005 has not started" not in text

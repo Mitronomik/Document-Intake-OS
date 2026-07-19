@@ -206,7 +206,7 @@ class _Repo:
         uow: SqlCipherUnitOfWork,
         table: str,
         to_json: Callable[[Any], str],
-        from_json: Callable[[str], Any],
+        from_json: Callable[..., Any],
     ) -> None:
         self._uow = uow
         self._table = table
@@ -462,7 +462,9 @@ class CandidateRepo(_Repo):
 
 class ApplicationRepo(_Repo):
     def __init__(self, uow: SqlCipherUnitOfWork) -> None:
-        super().__init__(uow, "applications", ser.application_to_json, ser.application_from_json)
+        super().__init__(
+            uow, "applications", ser.application_scalar_to_json, ser.application_from_components
+        )
 
     def add(self, application: Application) -> None:
         self._add(
@@ -473,7 +475,36 @@ class ApplicationRepo(_Repo):
         self._children(application)
 
     def get(self, entity_id: EntityId) -> Application | None:
-        return self._get(str(entity_id))
+        return self._get_application(str(entity_id))
+
+    def _get_application(self, application_id: str) -> Application | None:
+        row = self.c.execute(
+            "SELECT payload FROM applications WHERE id=?", (application_id,)
+        ).fetchone()
+        if row is None:
+            return None
+        assignments = tuple(
+            ser.assignment_from_json(child[0])
+            for child in self.c.execute(
+                "SELECT payload FROM application_assignments WHERE application_id=? ORDER BY order_index",
+                (application_id,),
+            )
+        )
+        verified_fields = tuple(
+            ser.verified_field_from_json(child[0])
+            for child in self.c.execute(
+                "SELECT payload FROM application_verified_fields WHERE application_id=? ORDER BY field_entity_id, field_key",
+                (application_id,),
+            )
+        )
+        issues = tuple(
+            ser.validation_issue_from_json(child[0])
+            for child in self.c.execute(
+                "SELECT payload FROM application_validation_issues WHERE application_id=? ORDER BY order_index",
+                (application_id,),
+            )
+        )
+        return ser.application_from_components(row[0], assignments, verified_fields, issues)
 
     def update(self, application: Application) -> None:
         self.c.execute(
