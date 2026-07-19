@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import sqlite3
+from dataclasses import replace
 from datetime import UTC, date, datetime
 from decimal import Decimal
 from uuid import UUID
@@ -41,6 +42,7 @@ from document_intake.domain import (
     VerifiedField,
     create_application_snapshot,
 )
+from document_intake.persistence import serialization as ser
 from document_intake.persistence.database import (
     ApplicationRepo,
     CandidateRepo,
@@ -118,6 +120,14 @@ def person() -> Person:
         phone=IdentifierText("000123456789"),
         registration_address=NonEmptyText("Synthetic Address, Apt 'Quote'"),
     )
+
+
+def second_person() -> Person:
+    return Person(id=eid(2), full_name_latin=NonEmptyText("Second Synthetic"))
+
+
+def second_identity_document() -> IdentityDocument:
+    return replace(identity_document(), id=eid(12), person_id=eid(2))
 
 
 def identity_document() -> IdentityDocument:
@@ -249,18 +259,22 @@ def application(status: ApplicationStatus = ApplicationStatus.READY_FOR_SNAPSHOT
     )
 
 
-def snapshot(app: Application):
+def snapshot_with_refs(app: Application, snapshot_id: EntityId, refs: tuple[EntityId, ...]):
     return create_application_snapshot(
         app,
-        snapshot_id=eid(80),
+        snapshot_id=snapshot_id,
         payload=SnapshotPayload({"safe": "payload", "order": [1, 2]}),
-        document_artifact_refs=(eid(81), eid(82)),
+        document_artifact_refs=refs,
         template_version=NonEmptyText("template-v1"),
         rules_version=NonEmptyText("rules-v1"),
         created_by=actor(),
         created_at=NOW,
         required_critical_fields=frozenset({field_ref()}),
     )
+
+
+def snapshot(app: Application):
+    return snapshot_with_refs(app, eid(80), (eid(81), eid(82)))
 
 
 def test_every_repository_round_trip_and_ordered_children() -> None:
@@ -312,6 +326,161 @@ def test_every_repository_round_trip_and_ordered_children() -> None:
     assert conn.execute("SELECT confidence FROM field_candidates").fetchone()[0] == "0.8700"
 
 
+def test_vehicle_registration_document_id_is_an_opaque_round_trip_reference() -> None:
+    conn = migrated_connection()
+    repo = VehicleRepo(FakeUow(conn))
+    entity = vehicle()
+    assert conn.execute("SELECT count(*) FROM documents").fetchone()[0] == 0
+    repo.add(entity)
+    stored = repo.get(entity.id)
+    assert stored == entity
+    assert stored is not None
+    assert stored.registration_document_id == eid(40)
+
+
+def test_updates_move_relation_projections_and_queries_with_payload() -> None:
+    conn = migrated_connection()
+    uow = FakeUow(conn)
+    persons = PersonRepo(uow)
+    persons.add(person())
+    persons.add(second_person())
+
+    identities = IdentityRepo(uow)
+    identities.add(identity_document())
+    identities.add(second_identity_document())
+    moved_identity = replace(identity_document(), person_id=eid(2))
+    identities.update(moved_identity)
+    assert identities.get(eid(10)) == moved_identity
+    assert identities.list_by_person(eid(1)) == ()
+    assert identities.list_by_person(eid(2)) == (moved_identity, second_identity_document())
+
+    migrations = MigrationRepo(uow)
+    migrations.add(migration_document())
+    moved_migration = replace(migration_document(), person_id=eid(2), related_passport_id=eid(12))
+    migrations.update(moved_migration)
+    assert migrations.get(eid(11)) == moved_migration
+    assert migrations.list_by_person(eid(1)) == ()
+    assert migrations.list_by_person(eid(2)) == (moved_migration,)
+
+    vehicles = VehicleRepo(uow)
+    vehicles.add(vehicle())
+    documents = DocumentRepo(uow)
+    documents.add(document())
+    moved_document = Document(
+        id=document().id,
+        document_type=document().document_type,
+        workflow_status=document().workflow_status,
+        country_code=document().country_code,
+        template_version=document().template_version,
+        owner_ref=OwnerRef(OwnerKind.VEHICLE, eid(20)),
+        side_ids=(eid(42), eid(41)),
+        prepared_artifact_id=document().prepared_artifact_id,
+    )
+    documents.update(moved_document)
+    assert documents.get(eid(40)) == moved_document
+    assert documents.list_by_owner(OwnerRef(OwnerKind.PERSON, eid(1))) == ()
+    assert documents.list_by_owner(OwnerRef(OwnerKind.VEHICLE, eid(20))) == (moved_document,)
+
+    candidates = CandidateRepo(uow)
+    candidates.add(candidate())
+    moved_candidate = replace(
+        candidate(),
+        field_ref=field_ref(2, "identity_document.full_number"),
+        validation_results=(NonEmptyText("replacement-result"),),
+    )
+    candidates.update(moved_candidate)
+    assert candidates.get(eid(50)) == moved_candidate
+    assert candidates.list_for_field(field_ref()) == ()
+    assert candidates.list_for_field(moved_candidate.field_ref) == (moved_candidate,)
+
+
+@pytest.mark.parametrize(
+    ("tamper", "read"),
+    [
+        (
+            lambda c: c.execute(
+                "UPDATE identity_documents SET person_id=? WHERE id=?",
+                (str(eid(2)), str(eid(10))),
+            ),
+            lambda u: IdentityRepo(u).get(eid(10)),
+        ),
+        (
+            lambda c: c.execute(
+                "UPDATE documents SET owner_kind=?, owner_id=? WHERE id=?",
+                (OwnerKind.VEHICLE.value, str(eid(20)), str(eid(40))),
+            ),
+            lambda u: DocumentRepo(u).get(eid(40)),
+        ),
+        (
+            lambda c: c.execute(
+                "UPDATE field_candidate_validation_results SET result=? "
+                "WHERE candidate_id=? AND order_index=0",
+                ("tampered-result", str(eid(50))),
+            ),
+            lambda u: CandidateRepo(u).get(eid(50)),
+        ),
+        (
+            lambda c: c.execute(
+                "UPDATE applications SET status=? WHERE id=?",
+                (ApplicationStatus.DRAFT.value, str(eid(70))),
+            ),
+            lambda u: ApplicationRepo(u).get(eid(70)),
+        ),
+    ],
+)
+def test_projection_tampering_is_rejected(tamper, read) -> None:  # type: ignore[no-untyped-def]
+    conn = migrated_connection()
+    uow = FakeUow(conn)
+    seed_person_vehicle_terminal(uow)
+    PersonRepo(uow).add(second_person())
+    IdentityRepo(uow).add(identity_document())
+    DocumentRepo(uow).add(document())
+    CandidateRepo(uow).add(candidate())
+    ApplicationRepo(uow).add(application())
+    tamper(conn)
+    with pytest.raises(PersistenceError) as excinfo:
+        read(uow)
+    assert excinfo.value.code == PersistenceErrorCode.PERSISTED_DATA_INVALID
+
+
+def test_child_projection_failure_rolls_back_complete_repository_update() -> None:
+    conn = migrated_connection()
+    uow = FakeUow(conn)
+    PersonRepo(uow).add(person())
+    document_repo = DocumentRepo(uow)
+    document_repo.add(document())
+    conn.execute(
+        f"CREATE TRIGGER synthetic_side_failure BEFORE INSERT ON document_sides "
+        f"WHEN NEW.side_id = '{eid(99)}' BEGIN SELECT RAISE(ABORT, 'synthetic'); END"
+    )
+    changed_document = Document(
+        id=document().id,
+        document_type=document().document_type,
+        workflow_status=document().workflow_status,
+        owner_ref=OwnerRef(OwnerKind.VEHICLE, eid(20)),
+        side_ids=(eid(41), eid(99)),
+    )
+    with pytest.raises(PersistenceError) as document_error:
+        document_repo.update(changed_document)
+    assert document_error.value.code == PersistenceErrorCode.PERSISTENCE_CONSTRAINT
+    assert document_repo.get(eid(40)) == document()
+
+    candidate_repo = CandidateRepo(uow)
+    candidate_repo.add(candidate())
+    conn.execute(
+        "CREATE TRIGGER synthetic_candidate_failure BEFORE INSERT "
+        "ON field_candidate_validation_results WHEN NEW.result = 'synthetic-failure' "
+        "BEGIN SELECT RAISE(ABORT, 'synthetic'); END"
+    )
+    changed_candidate = replace(
+        candidate(), validation_results=(NonEmptyText("synthetic-failure"),)
+    )
+    with pytest.raises(PersistenceError) as candidate_error:
+        candidate_repo.update(changed_candidate)
+    assert candidate_error.value.code == PersistenceErrorCode.PERSISTENCE_CONSTRAINT
+    assert candidate_repo.get(eid(50)) == candidate()
+
+
 def test_application_repository_uses_structured_children_and_round_trips() -> None:
     conn = migrated_connection()
     uow = FakeUow(conn)
@@ -324,7 +493,7 @@ def test_application_repository_uses_structured_children_and_round_trips() -> No
     assert conn.execute("SELECT count(*) FROM application_assignments").fetchone()[0] == 1
     assert conn.execute("SELECT count(*) FROM application_verified_fields").fetchone()[0] == 1
     assert conn.execute("SELECT count(*) FROM application_validation_issues").fetchone()[0] == 1
-    assert "payload" not in [row[1] for row in conn.execute("PRAGMA table_info(applications)")]
+    assert "payload" in [row[1] for row in conn.execute("PRAGMA table_info(applications)")]
     conn.execute("UPDATE applications SET status=? WHERE id=?", ("UNKNOWN_STATUS", str(eid(70))))
     with pytest.raises(PersistenceError) as invalid:
         repo.get(eid(70))
@@ -357,6 +526,30 @@ def test_application_update_replaces_children_inside_transaction() -> None:
     conn.execute("ROLLBACK")
     assert repo.get(eid(70)) == app
 
+    PersonRepo(uow).add(second_person())
+    moved_assignment = replace(app.assignments[0], person_id=eid(2), trailer_id=None)
+    persisted_update = Application(
+        id=app.id,
+        batch_id=eid(72),
+        terminal_code=app.terminal_code,
+        assignments=(moved_assignment,),
+        verified_fields=(),
+        validation_report=ValidationReport(),
+        status=ApplicationStatus.DRAFT,
+        created_by=app.created_by,
+        created_at=app.created_at,
+        updated_at=datetime(2026, 7, 19, 14, 0, tzinfo=UTC),
+    )
+    repo.update(persisted_update)
+    assert repo.get(eid(70)) == persisted_update
+    assert conn.execute(
+        "SELECT batch_id, status FROM applications WHERE id=?", (str(eid(70)),)
+    ).fetchone() == (str(eid(72)), ApplicationStatus.DRAFT.value)
+    assert conn.execute(
+        "SELECT person_id, trailer_id FROM application_assignments WHERE application_id=?",
+        (str(eid(70)),),
+    ).fetchone() == (str(eid(2)), None)
+
 
 def test_snapshot_repository_round_trip_and_triggers() -> None:
     conn = migrated_connection()
@@ -383,6 +576,64 @@ def test_snapshot_repository_round_trip_and_triggers() -> None:
         conn.execute(
             "DELETE FROM application_snapshot_artifact_refs WHERE snapshot_id=?", (str(eid(80)),)
         )
+    with pytest.raises(sqlite3.DatabaseError):
+        conn.execute(
+            "INSERT INTO application_snapshot_artifact_refs"
+            "(snapshot_id, order_index, artifact_ref) VALUES (?,?,?)",
+            (str(eid(80)), 2, str(eid(83))),
+        )
+
+    zero = snapshot_with_refs(application(), eid(90), ())
+    repo.add(zero)
+    assert repo.get(eid(90)) == zero
+    with pytest.raises(sqlite3.DatabaseError):
+        conn.execute(
+            "INSERT INTO application_snapshot_artifact_refs"
+            "(snapshot_id, order_index, artifact_ref) VALUES (?,?,?)",
+            (str(eid(90)), 0, str(eid(91))),
+        )
+
+
+def test_incomplete_snapshot_projection_is_invalid_and_add_is_atomic() -> None:
+    conn = migrated_connection()
+    uow = FakeUow(conn)
+    seed_person_vehicle_terminal(uow)
+    CandidateRepo(uow).add(candidate())
+    app = application()
+    ApplicationRepo(uow).add(app)
+    repo = SnapshotRepo(uow)
+    incomplete = snapshot_with_refs(app, eid(84), (eid(85), eid(86)))
+    conn.execute(
+        "INSERT INTO application_snapshots"
+        "(id, application_id, terminal_code, template_version, rules_version, "
+        "created_by_actor_id, created_by_actor_kind, created_at_utc, payload_json, "
+        "sha256, expected_artifact_ref_count, payload) "
+        "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        (
+            *ser.snapshot_columns(incomplete),
+            len(incomplete.document_artifact_refs),
+            ser.snapshot_to_json(incomplete),
+        ),
+    )
+    with pytest.raises(PersistenceError) as invalid:
+        repo.get(eid(84))
+    assert invalid.value.code == PersistenceErrorCode.PERSISTED_DATA_INVALID
+
+    conn.execute(
+        "CREATE TRIGGER synthetic_snapshot_child_failure BEFORE INSERT "
+        "ON application_snapshot_artifact_refs WHEN NEW.order_index = 1 "
+        "BEGIN SELECT RAISE(ABORT, 'synthetic'); END"
+    )
+    rejected = snapshot_with_refs(application(), eid(87), (eid(88), eid(89)))
+    with pytest.raises(PersistenceError) as constraint:
+        repo.add(rejected)
+    assert constraint.value.code == PersistenceErrorCode.PERSISTENCE_CONSTRAINT
+    assert (
+        conn.execute(
+            "SELECT count(*) FROM application_snapshots WHERE id=?", (str(eid(87)),)
+        ).fetchone()[0]
+        == 0
+    )
 
 
 def test_duplicate_missing_invalid_persisted_and_closed_errors_are_safe() -> None:

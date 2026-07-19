@@ -4,7 +4,8 @@
 from __future__ import annotations
 
 import importlib
-from collections.abc import Callable
+from collections.abc import Callable, Iterator
+from contextlib import contextmanager
 from enum import Enum, auto
 from pathlib import Path
 from types import TracebackType
@@ -13,7 +14,11 @@ from typing import Any, Literal, Self, TypeVar
 from document_intake.application.ports.persistence import DatabaseKeyProvider
 from document_intake.domain import *
 from document_intake.persistence import serialization as ser
-from document_intake.persistence.errors import PersistenceError, PersistenceErrorCode
+from document_intake.persistence.errors import (
+    PersistenceError,
+    PersistenceErrorCode,
+    translate_driver_error,
+)
 from document_intake.persistence.migrations import (
     APPLICATION_ID,
     CURRENT_SCHEMA_VERSION,
@@ -230,11 +235,13 @@ class _Repo:
         table: str,
         to_json: Callable[[Any], str],
         from_json: Callable[..., Any],
+        payload_key: Callable[[Any], str],
     ) -> None:
         self._uow = uow
         self._table = table
         self._to_json = to_json
         self._from_json = from_json
+        self._payload_key = payload_key
 
     def __repr__(self) -> str:
         return f"Repository({self._table})"
@@ -242,6 +249,58 @@ class _Repo:
     @property
     def c(self) -> Connection:
         return self._uow._connection()
+
+    def _execute(
+        self,
+        sql: str,
+        parameters: tuple[Any, ...] = (),
+        *,
+        duplicate_is_already_exists: bool = False,
+    ) -> Any:
+        try:
+            return self.c.execute(sql, parameters)
+        except PersistenceError:
+            raise
+        except Exception as error:
+            raise translate_driver_error(
+                error, duplicate_is_already_exists=duplicate_is_already_exists
+            ) from None
+
+    def _fetchall(self, sql: str, parameters: tuple[Any, ...] = ()) -> tuple[Any, ...]:
+        try:
+            return tuple(self._execute(sql, parameters).fetchall())
+        except PersistenceError:
+            raise
+        except Exception as error:
+            raise translate_driver_error(error) from None
+
+    def _deserialize(self, payload: str) -> Any:
+        try:
+            return self._from_json(payload)
+        except PersistenceError:
+            raise
+        except Exception:
+            raise PersistenceError(PersistenceErrorCode.PERSISTED_DATA_INVALID) from None
+
+    def _entity_from_payload_row(self, key: Any, payload: str) -> Any:
+        entity = self._deserialize(payload)
+        if self._payload_key(entity) != str(key):
+            raise PersistenceError(PersistenceErrorCode.PERSISTED_DATA_INVALID)
+        return entity
+
+    @contextmanager
+    def _atomic_write(self) -> Iterator[None]:
+        self._execute("SAVEPOINT repository_write")
+        try:
+            yield
+            self._execute("RELEASE SAVEPOINT repository_write")
+        except BaseException:
+            try:
+                self._execute("ROLLBACK TO SAVEPOINT repository_write")
+                self._execute("RELEASE SAVEPOINT repository_write")
+            except PersistenceError:
+                pass
+            raise
 
     def _add(self, key: str, payload: str, extra: tuple[Any, ...] = ()) -> None:
         placeholders = ", ".join("?" for _ in (key, *extra, payload))
@@ -254,15 +313,11 @@ class _Repo:
             "documents": "id, owner_kind, owner_id, payload",
             "field_candidates": "id, field_entity_id, field_key, confidence, payload",
         }[self._table]
-        try:
-            self.c.execute(
-                f"INSERT INTO {self._table} ({cols}) VALUES ({placeholders})",
-                (key, *extra, payload),
-            )
-        except PersistenceError:
-            raise
-        except Exception:
-            raise PersistenceError(PersistenceErrorCode.ENTITY_ALREADY_EXISTS) from None
+        self._execute(
+            f"INSERT INTO {self._table} ({cols}) VALUES ({placeholders})",
+            (key, *extra, payload),
+            duplicate_is_already_exists=True,
+        )
 
     def _update(
         self,
@@ -272,7 +327,7 @@ class _Repo:
         extra_set: str = "",
         params: tuple[Any, ...] = (),
     ) -> None:
-        cur = self.c.execute(
+        cur = self._execute(
             f"UPDATE {self._table} SET payload=?{extra_set} WHERE {where_col}=?",
             (payload, *params, key),
         )
@@ -280,15 +335,21 @@ class _Repo:
             raise PersistenceError(PersistenceErrorCode.ENTITY_NOT_FOUND)
 
     def _get(self, key: Any, where_col: str = "id") -> Any | None:
-        row = self.c.execute(
-            f"SELECT payload FROM {self._table} WHERE {where_col}=?", (key,)
-        ).fetchone()
-        return None if row is None else self._from_json(row[0])
+        rows = self._fetchall(
+            f"SELECT {where_col}, payload FROM {self._table} WHERE {where_col}=?", (key,)
+        )
+        if not rows:
+            return None
+        if len(rows) != 1:
+            raise PersistenceError(PersistenceErrorCode.PERSISTED_DATA_INVALID)
+        return self._entity_from_payload_row(rows[0][0], rows[0][1])
 
 
 class PersonRepo(_Repo):
     def __init__(self, uow: SqlCipherUnitOfWork) -> None:
-        super().__init__(uow, "persons", ser.person_to_json, ser.person_from_json)
+        super().__init__(
+            uow, "persons", ser.person_to_json, ser.person_from_json, lambda x: str(x.id)
+        )
 
     def add(self, person: Person) -> None:
         self._add(str(person.id), self._to_json(person))
@@ -301,36 +362,64 @@ class PersonRepo(_Repo):
 
     def list_all(self) -> tuple[Person, ...]:
         return tuple(
-            self._from_json(r[0]) for r in self.c.execute("SELECT payload FROM persons ORDER BY id")
+            self._entity_from_payload_row(r[0], r[1])
+            for r in self._fetchall("SELECT id, payload FROM persons ORDER BY id")
         )
 
 
 class IdentityRepo(_Repo):
     def __init__(self, uow: SqlCipherUnitOfWork) -> None:
-        super().__init__(uow, "identity_documents", ser.identity_to_json, ser.identity_from_json)
+        super().__init__(
+            uow,
+            "identity_documents",
+            ser.identity_to_json,
+            ser.identity_from_json,
+            lambda x: str(x.id),
+        )
 
     def add(self, document: IdentityDocument) -> None:
         self._add(str(document.id), self._to_json(document), (str(document.person_id),))
 
     def get(self, entity_id: EntityId) -> IdentityDocument | None:
-        return self._get(str(entity_id))
+        rows = self._fetchall(
+            "SELECT id, person_id, payload FROM identity_documents WHERE id=?",
+            (str(entity_id),),
+        )
+        return None if not rows else self._from_projection(rows[0])
 
     def update(self, document: IdentityDocument) -> None:
-        self._update(str(document.id), self._to_json(document))
+        self._update(
+            str(document.id),
+            self._to_json(document),
+            extra_set=", person_id=?",
+            params=(str(document.person_id),),
+        )
 
     def list_by_person(self, person_id: EntityId) -> tuple[IdentityDocument, ...]:
         return tuple(
-            self._from_json(r[0])
-            for r in self.c.execute(
-                "SELECT payload FROM identity_documents WHERE person_id=? ORDER BY id",
+            self._from_projection(r)
+            for r in self._fetchall(
+                "SELECT id, person_id, payload FROM identity_documents WHERE person_id=? ORDER BY id",
                 (str(person_id),),
             )
         )
 
+    def _from_projection(self, row: tuple[str, str, str]) -> IdentityDocument:
+        entity = self._entity_from_payload_row(row[0], row[2])
+        if not isinstance(entity, IdentityDocument) or str(entity.person_id) != row[1]:
+            raise PersistenceError(PersistenceErrorCode.PERSISTED_DATA_INVALID)
+        return entity
+
 
 class MigrationRepo(_Repo):
     def __init__(self, uow: SqlCipherUnitOfWork) -> None:
-        super().__init__(uow, "migration_documents", ser.migration_to_json, ser.migration_from_json)
+        super().__init__(
+            uow,
+            "migration_documents",
+            ser.migration_to_json,
+            ser.migration_from_json,
+            lambda x: str(x.id),
+        )
 
     def add(self, document: MigrationDocument) -> None:
         self._add(
@@ -343,24 +432,47 @@ class MigrationRepo(_Repo):
         )
 
     def get(self, entity_id: EntityId) -> MigrationDocument | None:
-        return self._get(str(entity_id))
+        rows = self._fetchall(
+            "SELECT id, person_id, related_passport_id, payload FROM migration_documents WHERE id=?",
+            (str(entity_id),),
+        )
+        return None if not rows else self._from_projection(rows[0])
 
     def update(self, document: MigrationDocument) -> None:
-        self._update(str(document.id), self._to_json(document))
+        self._update(
+            str(document.id),
+            self._to_json(document),
+            extra_set=", person_id=?, related_passport_id=?",
+            params=(
+                str(document.person_id),
+                None if document.related_passport_id is None else str(document.related_passport_id),
+            ),
+        )
 
     def list_by_person(self, person_id: EntityId) -> tuple[MigrationDocument, ...]:
         return tuple(
-            self._from_json(r[0])
-            for r in self.c.execute(
-                "SELECT payload FROM migration_documents WHERE person_id=? ORDER BY id",
+            self._from_projection(r)
+            for r in self._fetchall(
+                "SELECT id, person_id, related_passport_id, payload FROM migration_documents WHERE person_id=? ORDER BY id",
                 (str(person_id),),
             )
         )
 
+    def _from_projection(self, row: tuple[str, str, str | None, str]) -> MigrationDocument:
+        entity = self._entity_from_payload_row(row[0], row[3])
+        if not isinstance(entity, MigrationDocument):
+            raise PersistenceError(PersistenceErrorCode.PERSISTED_DATA_INVALID)
+        related = None if entity.related_passport_id is None else str(entity.related_passport_id)
+        if str(entity.person_id) != row[1] or related != row[2]:
+            raise PersistenceError(PersistenceErrorCode.PERSISTED_DATA_INVALID)
+        return entity
+
 
 class VehicleRepo(_Repo):
     def __init__(self, uow: SqlCipherUnitOfWork) -> None:
-        super().__init__(uow, "vehicles", ser.vehicle_to_json, ser.vehicle_from_json)
+        super().__init__(
+            uow, "vehicles", ser.vehicle_to_json, ser.vehicle_from_json, lambda x: str(x.id)
+        )
 
     def add(self, vehicle: Vehicle) -> None:
         self._add(str(vehicle.id), self._to_json(vehicle))
@@ -373,20 +485,29 @@ class VehicleRepo(_Repo):
 
     def list_all(self) -> tuple[Vehicle, ...]:
         return tuple(
-            self._from_json(r[0])
-            for r in self.c.execute("SELECT payload FROM vehicles ORDER BY id")
+            self._entity_from_payload_row(r[0], r[1])
+            for r in self._fetchall("SELECT id, payload FROM vehicles ORDER BY id")
         )
 
 
 class TerminalRepo(_Repo):
     def __init__(self, uow: SqlCipherUnitOfWork) -> None:
-        super().__init__(uow, "terminals", ser.terminal_to_json, ser.terminal_from_json)
+        super().__init__(
+            uow,
+            "terminals",
+            ser.terminal_to_json,
+            ser.terminal_from_json,
+            lambda x: x.code.value,
+        )
 
     def add(self, terminal: Terminal) -> None:
         self._add(terminal.code.value, self._to_json(terminal), (1 if terminal.is_active else 0,))
 
     def get(self, code: TerminalCode) -> Terminal | None:
-        return self._get(code.value, "code")
+        rows = self._fetchall(
+            "SELECT code, is_active, payload FROM terminals WHERE code=?", (code.value,)
+        )
+        return None if not rows else self._from_projection(rows[0])
 
     def update(self, terminal: Terminal) -> None:
         self._update(
@@ -399,161 +520,291 @@ class TerminalRepo(_Repo):
 
     def list_active(self) -> tuple[Terminal, ...]:
         return tuple(
-            self._from_json(r[0])
-            for r in self.c.execute("SELECT payload FROM terminals WHERE is_active=1 ORDER BY code")
+            self._from_projection(r)
+            for r in self._fetchall(
+                "SELECT code, is_active, payload FROM terminals WHERE is_active=1 ORDER BY code"
+            )
         )
+
+    def _from_projection(self, row: tuple[str, int, str]) -> Terminal:
+        entity = self._entity_from_payload_row(row[0], row[2])
+        if not isinstance(entity, Terminal) or int(entity.is_active) != row[1]:
+            raise PersistenceError(PersistenceErrorCode.PERSISTED_DATA_INVALID)
+        return entity
 
 
 class DocumentRepo(_Repo):
     def __init__(self, uow: SqlCipherUnitOfWork) -> None:
-        super().__init__(uow, "documents", ser.document_to_json, ser.document_from_json)
+        super().__init__(
+            uow, "documents", ser.document_to_json, ser.document_from_json, lambda x: str(x.id)
+        )
 
     def add(self, document: Document) -> None:
         owner = document.owner_ref
-        self._add(
-            str(document.id),
-            self._to_json(document),
-            (
-                None if owner is None else owner.owner_kind.value,
-                None if owner is None else str(owner.owner_id),
-            ),
-        )
-        for i, sid in enumerate(document.side_ids):
-            self.c.execute(
-                "INSERT INTO document_sides(document_id, order_index, side_id) VALUES (?,?,?)",
-                (str(document.id), i, str(sid)),
+        with self._atomic_write():
+            self._add(
+                str(document.id),
+                self._to_json(document),
+                (
+                    None if owner is None else owner.owner_kind.value,
+                    None if owner is None else str(owner.owner_id),
+                ),
             )
+            self._replace_sides(document)
 
     def get(self, entity_id: EntityId) -> Document | None:
-        return self._get(str(entity_id))
+        return self._get_document(str(entity_id))
 
     def update(self, document: Document) -> None:
-        self.c.execute("DELETE FROM document_sides WHERE document_id=?", (str(document.id),))
-        self._update(str(document.id), self._to_json(document))
-        [
-            self.c.execute(
-                "INSERT INTO document_sides(document_id, order_index, side_id) VALUES (?,?,?)",
-                (str(document.id), i, str(s)),
+        owner = document.owner_ref
+        with self._atomic_write():
+            self._update(
+                str(document.id),
+                self._to_json(document),
+                extra_set=", owner_kind=?, owner_id=?",
+                params=(
+                    None if owner is None else owner.owner_kind.value,
+                    None if owner is None else str(owner.owner_id),
+                ),
             )
-            for i, s in enumerate(document.side_ids)
-        ]
+            self._execute("DELETE FROM document_sides WHERE document_id=?", (str(document.id),))
+            self._replace_sides(document)
+
+    def _replace_sides(self, document: Document) -> None:
+        for i, side_id in enumerate(document.side_ids):
+            self._execute(
+                "INSERT INTO document_sides(document_id, order_index, side_id) VALUES (?,?,?)",
+                (str(document.id), i, str(side_id)),
+            )
+
+    def _get_document(self, document_id: str) -> Document | None:
+        rows = self._fetchall(
+            "SELECT id, owner_kind, owner_id, payload FROM documents WHERE id=?",
+            (document_id,),
+        )
+        if not rows:
+            return None
+        row = rows[0]
+        entity = self._entity_from_payload_row(row[0], row[3])
+        if not isinstance(entity, Document):
+            raise PersistenceError(PersistenceErrorCode.PERSISTED_DATA_INVALID)
+        owner = entity.owner_ref
+        expected_owner = (
+            None if owner is None else owner.owner_kind.value,
+            None if owner is None else str(owner.owner_id),
+        )
+        if expected_owner != (row[1], row[2]):
+            raise PersistenceError(PersistenceErrorCode.PERSISTED_DATA_INVALID)
+        side_rows = self._fetchall(
+            "SELECT order_index, side_id FROM document_sides WHERE document_id=? ORDER BY order_index",
+            (document_id,),
+        )
+        expected_sides = tuple(
+            (index, str(side_id)) for index, side_id in enumerate(entity.side_ids)
+        )
+        if side_rows != expected_sides:
+            raise PersistenceError(PersistenceErrorCode.PERSISTED_DATA_INVALID)
+        return entity
 
     def list_by_owner(self, owner_ref: OwnerRef) -> tuple[Document, ...]:
-        return tuple(
-            self._from_json(r[0])
-            for r in self.c.execute(
-                "SELECT payload FROM documents WHERE owner_kind=? AND owner_id=? ORDER BY id",
+        ids = tuple(
+            row[0]
+            for row in self._fetchall(
+                "SELECT id FROM documents WHERE owner_kind=? AND owner_id=? ORDER BY id",
                 (owner_ref.owner_kind.value, str(owner_ref.owner_id)),
             )
         )
+        result: list[Document] = []
+        for document_id in ids:
+            entity = self._get_document(document_id)
+            if entity is None:
+                raise PersistenceError(PersistenceErrorCode.PERSISTED_DATA_INVALID)
+            result.append(entity)
+        return tuple(result)
 
 
 class CandidateRepo(_Repo):
     def __init__(self, uow: SqlCipherUnitOfWork) -> None:
-        super().__init__(uow, "field_candidates", ser.candidate_to_json, ser.candidate_from_json)
+        super().__init__(
+            uow,
+            "field_candidates",
+            ser.candidate_to_json,
+            ser.candidate_from_json,
+            lambda x: str(x.id),
+        )
 
     def add(self, candidate: FieldCandidate) -> None:
-        self._add(
-            str(candidate.id),
-            self._to_json(candidate),
-            (
-                str(candidate.field_ref.entity_id),
-                candidate.field_ref.field_key.value,
-                str(candidate.confidence.value),
-            ),
-        )
-        for i, v in enumerate(candidate.validation_results):
-            self.c.execute(
-                "INSERT INTO field_candidate_validation_results(candidate_id, order_index, result) VALUES (?,?,?)",
-                (str(candidate.id), i, v.value),
+        with self._atomic_write():
+            self._add(
+                str(candidate.id),
+                self._to_json(candidate),
+                (
+                    str(candidate.field_ref.entity_id),
+                    candidate.field_ref.field_key.value,
+                    str(candidate.confidence.value),
+                ),
             )
+            self._replace_validation_results(candidate)
 
     def get(self, entity_id: EntityId) -> FieldCandidate | None:
-        return self._get(str(entity_id))
+        return self._get_candidate(str(entity_id))
+
+    def update(self, candidate: FieldCandidate) -> None:
+        with self._atomic_write():
+            self._update(
+                str(candidate.id),
+                self._to_json(candidate),
+                extra_set=", field_entity_id=?, field_key=?, confidence=?",
+                params=(
+                    str(candidate.field_ref.entity_id),
+                    candidate.field_ref.field_key.value,
+                    str(candidate.confidence.value),
+                ),
+            )
+            self._execute(
+                "DELETE FROM field_candidate_validation_results WHERE candidate_id=?",
+                (str(candidate.id),),
+            )
+            self._replace_validation_results(candidate)
+
+    def _replace_validation_results(self, candidate: FieldCandidate) -> None:
+        for index, result in enumerate(candidate.validation_results):
+            self._execute(
+                "INSERT INTO field_candidate_validation_results(candidate_id, order_index, result) VALUES (?,?,?)",
+                (str(candidate.id), index, result.value),
+            )
+
+    def _get_candidate(self, candidate_id: str) -> FieldCandidate | None:
+        rows = self._fetchall(
+            "SELECT id, field_entity_id, field_key, confidence, payload FROM field_candidates WHERE id=?",
+            (candidate_id,),
+        )
+        if not rows:
+            return None
+        row = rows[0]
+        entity = self._entity_from_payload_row(row[0], row[4])
+        if not isinstance(entity, FieldCandidate):
+            raise PersistenceError(PersistenceErrorCode.PERSISTED_DATA_INVALID)
+        field_ref = entity.field_ref
+        if (
+            str(field_ref.entity_id) != row[1]
+            or field_ref.field_key.value != row[2]
+            or str(entity.confidence.value) != row[3]
+        ):
+            raise PersistenceError(PersistenceErrorCode.PERSISTED_DATA_INVALID)
+        validation_rows = self._fetchall(
+            "SELECT order_index, result FROM field_candidate_validation_results WHERE candidate_id=? ORDER BY order_index",
+            (candidate_id,),
+        )
+        expected = tuple(
+            (index, result.value) for index, result in enumerate(entity.validation_results)
+        )
+        if validation_rows != expected:
+            raise PersistenceError(PersistenceErrorCode.PERSISTED_DATA_INVALID)
+        return entity
 
     def list_for_field(self, field_ref: FieldRef) -> tuple[FieldCandidate, ...]:
-        return tuple(
-            self._from_json(r[0])
-            for r in self.c.execute(
-                "SELECT payload FROM field_candidates WHERE field_entity_id=? AND field_key=? ORDER BY id",
+        ids = tuple(
+            row[0]
+            for row in self._fetchall(
+                "SELECT id FROM field_candidates WHERE field_entity_id=? AND field_key=? ORDER BY id",
                 (str(field_ref.entity_id), field_ref.field_key.value),
             )
         )
+        result: list[FieldCandidate] = []
+        for candidate_id in ids:
+            entity = self._get_candidate(candidate_id)
+            if entity is None:
+                raise PersistenceError(PersistenceErrorCode.PERSISTED_DATA_INVALID)
+            result.append(entity)
+        return tuple(result)
 
 
 class ApplicationRepo(_Repo):
     def __init__(self, uow: SqlCipherUnitOfWork) -> None:
         super().__init__(
-            uow, "applications", ser.application_scalar_to_json, ser.application_from_components
+            uow,
+            "applications",
+            ser.application_to_json,
+            ser.application_from_json,
+            lambda x: str(x.id),
         )
 
     def add(self, application: Application) -> None:
-        try:
-            self.c.execute(
-                "INSERT INTO applications(id, batch_id, terminal_code, status, created_by_actor_id, created_by_actor_kind, created_at_utc, updated_at_utc) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-                ser.application_columns(application),
+        with self._atomic_write():
+            self._execute(
+                "INSERT INTO applications(id, batch_id, terminal_code, status, created_by_actor_id, created_by_actor_kind, created_at_utc, updated_at_utc, payload) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                (*ser.application_columns(application), self._to_json(application)),
+                duplicate_is_already_exists=True,
             )
-        except PersistenceError:
-            raise
-        except Exception:
-            raise PersistenceError(PersistenceErrorCode.ENTITY_ALREADY_EXISTS) from None
-        self._children(application)
+            self._children(application)
 
     def get(self, entity_id: EntityId) -> Application | None:
         return self._get_application(str(entity_id))
 
     def _get_application(self, application_id: str) -> Application | None:
-        row = self.c.execute(
-            "SELECT id, batch_id, terminal_code, status, created_by_actor_id, created_by_actor_kind, created_at_utc, updated_at_utc FROM applications WHERE id=?",
+        rows = self._fetchall(
+            "SELECT id, batch_id, terminal_code, status, created_by_actor_id, created_by_actor_kind, created_at_utc, updated_at_utc, payload FROM applications WHERE id=?",
             (application_id,),
-        ).fetchone()
-        if row is None:
+        )
+        if not rows:
             return None
-        assignments = tuple(
-            ser.assignment_from_json(child[0])
-            for child in self.c.execute(
-                "SELECT payload FROM application_assignments WHERE application_id=? ORDER BY order_index",
+        row = rows[0]
+        entity = self._entity_from_payload_row(row[0], row[8])
+        if not isinstance(entity, Application) or tuple(row[:8]) != ser.application_columns(entity):
+            raise PersistenceError(PersistenceErrorCode.PERSISTED_DATA_INVALID)
+        self._validate_assignments(
+            entity,
+            self._fetchall(
+                "SELECT order_index, person_id, tractor_id, trailer_id, payload FROM application_assignments WHERE application_id=? ORDER BY order_index",
                 (application_id,),
-            )
+            ),
         )
-        verified_fields = tuple(
-            ser.verified_field_from_json(child[0])
-            for child in self.c.execute(
-                "SELECT payload FROM application_verified_fields WHERE application_id=? ORDER BY field_entity_id, field_key",
+        self._validate_verified_fields(
+            entity,
+            self._fetchall(
+                "SELECT order_index, field_entity_id, field_key, source_candidate_id, payload FROM application_verified_fields WHERE application_id=? ORDER BY order_index",
                 (application_id,),
-            )
+            ),
         )
-        issues = tuple(
-            ser.validation_issue_from_json(child[0])
-            for child in self.c.execute(
-                "SELECT payload FROM application_validation_issues WHERE application_id=? ORDER BY order_index",
+        self._validate_issues(
+            entity,
+            self._fetchall(
+                "SELECT order_index, payload FROM application_validation_issues WHERE application_id=? ORDER BY order_index",
                 (application_id,),
-            )
+            ),
         )
-        return ser.application_from_row(row, assignments, verified_fields, issues)
+        return entity
 
     def update(self, application: Application) -> None:
-        self.c.execute(
-            "DELETE FROM application_assignments WHERE application_id=?", (str(application.id),)
-        )
-        self.c.execute(
-            "DELETE FROM application_verified_fields WHERE application_id=?", (str(application.id),)
-        )
-        self.c.execute(
-            "DELETE FROM application_validation_issues WHERE application_id=?",
-            (str(application.id),),
-        )
-        cur = self.c.execute(
-            "UPDATE applications SET batch_id=?, terminal_code=?, status=?, created_by_actor_id=?, created_by_actor_kind=?, created_at_utc=?, updated_at_utc=? WHERE id=?",
-            (*ser.application_columns(application)[1:], str(application.id)),
-        )
-        if cur.rowcount != 1:
-            raise PersistenceError(PersistenceErrorCode.ENTITY_NOT_FOUND)
-        self._children(application)
+        application_id = str(application.id)
+        with self._atomic_write():
+            cur = self._execute(
+                "UPDATE applications SET batch_id=?, terminal_code=?, status=?, created_by_actor_id=?, created_by_actor_kind=?, created_at_utc=?, updated_at_utc=?, payload=? WHERE id=?",
+                (
+                    *ser.application_columns(application)[1:],
+                    self._to_json(application),
+                    application_id,
+                ),
+            )
+            if cur.rowcount != 1:
+                raise PersistenceError(PersistenceErrorCode.ENTITY_NOT_FOUND)
+            self._execute(
+                "DELETE FROM application_assignments WHERE application_id=?", (application_id,)
+            )
+            self._execute(
+                "DELETE FROM application_verified_fields WHERE application_id=?",
+                (application_id,),
+            )
+            self._execute(
+                "DELETE FROM application_validation_issues WHERE application_id=?",
+                (application_id,),
+            )
+            self._children(application)
 
     def _children(self, a: Application) -> None:
         for i, x in enumerate(a.assignments):
-            self.c.execute(
+            self._execute(
                 "INSERT INTO application_assignments(application_id, order_index, person_id, tractor_id, trailer_id, payload) VALUES (?,?,?,?,?,?)",
                 (
                     str(a.id),
@@ -564,11 +815,12 @@ class ApplicationRepo(_Repo):
                     ser.dumps(ser._assignment_to_dict(x)),
                 ),
             )
-        for verified_field in a.verified_fields:
-            self.c.execute(
-                "INSERT INTO application_verified_fields(application_id, field_entity_id, field_key, source_candidate_id, payload) VALUES (?,?,?,?,?)",
+        for index, verified_field in enumerate(a.verified_fields):
+            self._execute(
+                "INSERT INTO application_verified_fields(application_id, order_index, field_entity_id, field_key, source_candidate_id, payload) VALUES (?,?,?,?,?,?)",
                 (
                     str(a.id),
+                    index,
                     str(verified_field.field_ref.entity_id),
                     verified_field.field_ref.field_key.value,
                     None
@@ -578,64 +830,122 @@ class ApplicationRepo(_Repo):
                 ),
             )
         for issue_index, issue in enumerate(a.validation_report.issues):
-            self.c.execute(
+            self._execute(
                 "INSERT INTO application_validation_issues(application_id, order_index, payload) VALUES (?,?,?)",
                 (str(a.id), issue_index, ser.dumps(ser._issue_to_dict(issue))),
             )
 
+    def _validate_assignments(self, application: Application, rows: tuple[Any, ...]) -> None:
+        if len(rows) != len(application.assignments):
+            raise PersistenceError(PersistenceErrorCode.PERSISTED_DATA_INVALID)
+        for index, (expected, row) in enumerate(zip(application.assignments, rows, strict=True)):
+            actual = ser.assignment_from_json(row[4])
+            expected_projection = (
+                index,
+                str(expected.person_id),
+                str(expected.tractor_id),
+                None if expected.trailer_id is None else str(expected.trailer_id),
+            )
+            if actual != expected or tuple(row[:4]) != expected_projection:
+                raise PersistenceError(PersistenceErrorCode.PERSISTED_DATA_INVALID)
+
+    def _validate_verified_fields(self, application: Application, rows: tuple[Any, ...]) -> None:
+        if len(rows) != len(application.verified_fields):
+            raise PersistenceError(PersistenceErrorCode.PERSISTED_DATA_INVALID)
+        for index, (expected, row) in enumerate(
+            zip(application.verified_fields, rows, strict=True)
+        ):
+            actual = ser.verified_field_from_json(row[4])
+            expected_projection = (
+                index,
+                str(expected.field_ref.entity_id),
+                expected.field_ref.field_key.value,
+                None if expected.source_candidate_id is None else str(expected.source_candidate_id),
+            )
+            if actual != expected or tuple(row[:4]) != expected_projection:
+                raise PersistenceError(PersistenceErrorCode.PERSISTED_DATA_INVALID)
+
+    def _validate_issues(self, application: Application, rows: tuple[Any, ...]) -> None:
+        issues = application.validation_report.issues
+        if len(rows) != len(issues):
+            raise PersistenceError(PersistenceErrorCode.PERSISTED_DATA_INVALID)
+        for index, (expected, row) in enumerate(zip(issues, rows, strict=True)):
+            actual = ser.validation_issue_from_json(row[1])
+            if actual != expected or row[0] != index:
+                raise PersistenceError(PersistenceErrorCode.PERSISTED_DATA_INVALID)
+
 
 class SnapshotRepo(_Repo):
     def __init__(self, uow: SqlCipherUnitOfWork) -> None:
-        super().__init__(uow, "application_snapshots", ser.snapshot_to_json, ser.snapshot_from_json)
+        super().__init__(
+            uow,
+            "application_snapshots",
+            ser.snapshot_to_json,
+            ser.snapshot_from_json,
+            lambda x: str(x.id),
+        )
 
     def add(self, snapshot: ApplicationSnapshot) -> None:
-        try:
-            self.c.execute(
-                "INSERT INTO application_snapshots(id, application_id, terminal_code, template_version, rules_version, created_by_actor_id, created_by_actor_kind, created_at_utc, payload_json, sha256) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-                ser.snapshot_columns(snapshot),
+        with self._atomic_write():
+            self._execute(
+                "INSERT INTO application_snapshots(id, application_id, terminal_code, template_version, rules_version, created_by_actor_id, created_by_actor_kind, created_at_utc, payload_json, sha256, expected_artifact_ref_count, payload) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                (
+                    *ser.snapshot_columns(snapshot),
+                    len(snapshot.document_artifact_refs),
+                    self._to_json(snapshot),
+                ),
+                duplicate_is_already_exists=True,
             )
-        except PersistenceError:
-            raise
-        except Exception:
-            raise PersistenceError(PersistenceErrorCode.ENTITY_ALREADY_EXISTS) from None
-        for i, x in enumerate(snapshot.document_artifact_refs):
-            self.c.execute(
-                "INSERT INTO application_snapshot_artifact_refs(snapshot_id, order_index, artifact_ref) VALUES (?,?,?)",
-                (str(snapshot.id), i, str(x)),
-            )
+            for index, artifact_ref in enumerate(snapshot.document_artifact_refs):
+                self._execute(
+                    "INSERT INTO application_snapshot_artifact_refs(snapshot_id, order_index, artifact_ref) VALUES (?,?,?)",
+                    (str(snapshot.id), index, str(artifact_ref)),
+                )
 
     def get(self, entity_id: EntityId) -> ApplicationSnapshot | None:
         return self._get_snapshot(str(entity_id))
 
     def _get_snapshot(self, snapshot_id: str) -> ApplicationSnapshot | None:
-        row = self.c.execute(
-            "SELECT id, application_id, terminal_code, template_version, rules_version, created_by_actor_id, created_by_actor_kind, created_at_utc, payload_json, sha256 FROM application_snapshots WHERE id=?",
+        rows = self._fetchall(
+            "SELECT id, application_id, terminal_code, template_version, rules_version, created_by_actor_id, created_by_actor_kind, created_at_utc, payload_json, sha256, expected_artifact_ref_count, payload FROM application_snapshots WHERE id=?",
             (snapshot_id,),
-        ).fetchone()
-        if row is None:
-            return None
-        refs = tuple(
-            ser.req_id(child[0])
-            for child in self.c.execute(
-                "SELECT artifact_ref FROM application_snapshot_artifact_refs WHERE snapshot_id=? ORDER BY order_index",
-                (snapshot_id,),
-            )
         )
-        return ser.snapshot_from_row(row, refs)
+        if not rows:
+            return None
+        row = rows[0]
+        entity = self._entity_from_payload_row(row[0], row[11])
+        if not isinstance(entity, ApplicationSnapshot):
+            raise PersistenceError(PersistenceErrorCode.PERSISTED_DATA_INVALID)
+        if tuple(row[:10]) != ser.snapshot_columns(entity):
+            raise PersistenceError(PersistenceErrorCode.PERSISTED_DATA_INVALID)
+        artifact_rows = self._fetchall(
+            "SELECT order_index, artifact_ref FROM application_snapshot_artifact_refs WHERE snapshot_id=? ORDER BY order_index",
+            (snapshot_id,),
+        )
+        expected_count = len(entity.document_artifact_refs)
+        expected_rows = tuple(
+            (index, str(artifact_ref))
+            for index, artifact_ref in enumerate(entity.document_artifact_refs)
+        )
+        if row[10] != expected_count or artifact_rows != expected_rows:
+            raise PersistenceError(PersistenceErrorCode.PERSISTED_DATA_INVALID)
+        return entity
 
     def list_by_application(self, application_id: EntityId) -> tuple[ApplicationSnapshot, ...]:
         ids = tuple(
             r[0]
-            for r in self.c.execute(
+            for r in self._fetchall(
                 "SELECT id FROM application_snapshots WHERE application_id=? ORDER BY created_at_utc, id",
                 (str(application_id),),
             )
         )
-        return tuple(
-            snapshot
-            for snapshot_id in ids
-            if (snapshot := self._get_snapshot(snapshot_id)) is not None
-        )
+        snapshots: list[ApplicationSnapshot] = []
+        for stored_snapshot_id in ids:
+            stored = self._get_snapshot(stored_snapshot_id)
+            if stored is None:
+                raise PersistenceError(PersistenceErrorCode.PERSISTED_DATA_INVALID)
+            snapshots.append(stored)
+        return tuple(snapshots)
 
 
 class _UowState(Enum):

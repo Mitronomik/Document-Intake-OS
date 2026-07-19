@@ -154,7 +154,7 @@ def foreign_keys(connection: sqlite3.Connection, table: str) -> set[tuple[str, s
     }
 
 
-def test_application_and_snapshot_tables_use_explicit_columns_not_opaque_payload() -> None:
+def test_application_and_snapshot_tables_store_canonical_payload_and_projections() -> None:
     connection = apply()
     assert table_columns(connection, "applications") == (
         "id",
@@ -165,11 +165,12 @@ def test_application_and_snapshot_tables_use_explicit_columns_not_opaque_payload
         "created_by_actor_kind",
         "created_at_utc",
         "updated_at_utc",
+        "payload",
     )
-    assert "payload" not in table_columns(connection, "applications")
     snapshot_columns = table_columns(connection, "application_snapshots")
     assert "payload_json" in snapshot_columns
-    assert "payload" not in snapshot_columns
+    assert "expected_artifact_ref_count" in snapshot_columns
+    assert "payload" in snapshot_columns
 
 
 def test_required_foreign_keys_are_restrict_and_no_false_foreign_keys_exist() -> None:
@@ -217,6 +218,7 @@ def test_required_foreign_keys_are_restrict_and_no_false_foreign_keys_exist() ->
         connection, "application_snapshot_artifact_refs"
     )
     assert not foreign_keys(connection, "documents")
+    assert not foreign_keys(connection, "vehicles")
     assert not foreign_keys(connection, "document_sides") - {
         ("document_id", "documents", "id", "RESTRICT")
     }

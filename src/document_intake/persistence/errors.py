@@ -36,3 +36,28 @@ class PersistenceError(Exception):
 
     def __repr__(self) -> str:
         return f"PersistenceError(code={self.code.value})"
+
+
+_DUPLICATE_CONSTRAINT_CODES = frozenset({1555, 2067})
+_INTEGRITY_CONSTRAINT_BASE_CODE = 19
+
+
+def translate_driver_error(
+    error: BaseException, *, duplicate_is_already_exists: bool = False
+) -> PersistenceError:
+    """Translate a DB-API failure without exposing its message or parameters."""
+
+    code = getattr(error, "sqlite_errorcode", None)
+    class_name = type(error).__name__
+    is_integrity = class_name == "IntegrityError" or (
+        isinstance(code, int) and code & 0xFF == _INTEGRITY_CONSTRAINT_BASE_CODE
+    )
+    if is_integrity:
+        is_duplicate = code in _DUPLICATE_CONSTRAINT_CODES
+        if not is_duplicate and duplicate_is_already_exists:
+            normalized = str(error).casefold()
+            is_duplicate = "unique constraint" in normalized or "primary key" in normalized
+        if is_duplicate and duplicate_is_already_exists:
+            return PersistenceError(PersistenceErrorCode.ENTITY_ALREADY_EXISTS)
+        return PersistenceError(PersistenceErrorCode.PERSISTENCE_CONSTRAINT)
+    return PersistenceError(PersistenceErrorCode.PERSISTENCE_UNEXPECTED)

@@ -22,7 +22,7 @@ Inputs are a database path whose parent already exists and a `DatabaseKeyProvide
 
 ## Allowed scope
 
-Only PR-004 domain persistence is in scope. UploadBatch, SourceFile, DocumentRegion, RecognitionRun, ExportRun, AuditEvent, filesystem artifact behavior, deduplication and terminal completeness matrices remain deferred. `Application.batch_id`, document side IDs, prepared artifact IDs and snapshot artifact references remain opaque IDs.
+Only PR-004 domain persistence is in scope. UploadBatch, SourceFile, DocumentRegion, RecognitionRun, ExportRun, AuditEvent, filesystem artifact behavior, deduplication and terminal completeness matrices remain deferred. `Application.batch_id`, document side IDs, prepared artifact IDs, snapshot artifact references and `Vehicle.registration_document_id` remain opaque IDs. In PR-005, `Vehicle.registration_document_id` is deliberately not a foreign key to `documents`; a future migration may normalize it only after the document ownership contract is designed and accepted.
 
 ## Security invariants
 
@@ -38,7 +38,7 @@ Migrations are Python modules, forward-only, static statement tuples with SHA-25
 
 ## Repository contracts
 
-Repositories expose add/get/update/list operations only as defined by the application ports. Snapshot repositories expose add/get/list only. No repository exposes delete, commit, rollback, raw SQL, database path or key.
+The canonical serialized payload is authoritative for each complete persisted domain entity. Structured scalar, relationship and child-table columns are deterministic projections for foreign keys, indexing and queries. Every add/update writes the payload and projections from the same entity atomically, and every read rejects projection mismatch as `ERR_PERSISTED_DATA_INVALID`. Repositories expose add/get/update/list operations only as defined by the application ports. Snapshot repositories expose add/get/list only. No repository exposes delete, commit, rollback, raw SQL, database path or key.
 
 ## Unit of Work semantics
 
