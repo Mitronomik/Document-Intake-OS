@@ -1,5 +1,9 @@
 """Value object public API."""
 
+from document_intake.domain.value_objects.audit import (
+    AuditReasonCode,
+    AuditValueSummary,
+)
 from document_intake.domain.value_objects.core import (
     ActorRef,
     Confidence,
@@ -17,6 +21,8 @@ from document_intake.domain.value_objects.core import (
 
 __all__ = [
     "ActorRef",
+    "AuditReasonCode",
+    "AuditValueSummary",
     "Confidence",
     "CountryCode",
     "EntityId",

@@ -268,7 +268,7 @@ def test_lifecycle_state_records_pr005_accepted_state() -> None:
         "985fae37c7645e8f65edbe4d1609100ee24a2097",
         "PR-005: COMPLETED AND HUMAN ACCEPTED",
         "PR-006: `COMPLETED AND HUMAN ACCEPTED`",
-        "PR-007: `AUTHORIZED, NOT STARTED`",
+        "PR-007: `AUTHORIZED AND IN REVIEW, NOT ACCEPTED`",
         "PR-008 and later: `UNAUTHORIZED`",
         "Gate 1: `NOT ACCEPTED`",
         "M2: `NOT COMPLETED`",
@@ -337,10 +337,10 @@ def test_lifecycle_state_records_pr005_accepted_state() -> None:
         for required in required_by_file:
             assert required in text, filename
         assert "PR-006: `COMPLETED AND HUMAN ACCEPTED`" in text, filename
-        assert "PR-007: `AUTHORIZED, NOT STARTED`" in text, filename
+        assert "PR-007: `AUTHORIZED AND IN REVIEW, NOT ACCEPTED`" in text, filename
         assert "PR-008 and later: `UNAUTHORIZED`" in text, filename
         assert "PR-007: `IMPLEMENTED`" not in text, filename
-        assert "PR-007: `IN REVIEW`" not in text, filename
+        assert "PR-007: `COMPLETED`" not in text, filename
         assert "PR-007: `COMPLETED`" not in text, filename
         assert "Q-009: `DEFERRED`" in text, filename
         assert "Q-017: `DEFERRED`" in text, filename
@@ -511,7 +511,7 @@ def test_gate_s1_encryption_staging_acceptance_contract() -> None:
     assert "staged pending state" in adr_018
     assert "recovery reconciliation" in adr_018
     assert "PR-005 and PR-006 remain unauthorized" in adr_018
-    assert "PR-007 AND LATER: UNAUTHORIZED" in task
+    assert "PR-005 and later remain unauthorized" in task
     assert "Gate 1: NOT ACCEPTED" in task
     assert "M2: NOT COMPLETED" in task
     assert "## Original task base SHA\n\n`6f3021a38305cb92d733a46426cde427828bac04`" in task
@@ -592,7 +592,7 @@ def test_pr005_pr006_sequences_remain_blocked_after_gate_s1_acceptance() -> None
         not in implementation_plan
     )
     assert "PR-006 remains blocked" not in implementation_plan
-    assert "PR-007: `AUTHORIZED, NOT STARTED`" in implementation_plan
+    assert "PR-007: `AUTHORIZED AND IN REVIEW, NOT ACCEPTED`" in implementation_plan
     assert "PR-008 and later: `UNAUTHORIZED`" in implementation_plan
 
 
@@ -1126,11 +1126,8 @@ def test_pr006_acceptance_and_pr007_authorization_contract() -> None:
     assert "e1e1f5f6d8d675a146f3d0c538a0d544b6f8a984c301d177ee1ad86e42f2d500" in pr006
     assert "fb953af64efd3e860960eae8ef1f4078afd0a6ec078a33594e271a9285d7db3d" in pr006
     assert "Storage decision: ADR-020" in pr006
-    assert "Status: `AUTHORIZED, NOT STARTED`" in pr007
-    assert (
-        "only after the lifecycle pull request that created this task is merged into `main`"
-        in pr007
-    )
+    assert "Status: `AUTHORIZED AND IN REVIEW, NOT ACCEPTED`" in pr007
+    assert "lifecycle pull request that created this task has been merged into `main`" in pr007
     assert "ActorRef" in pr007 and "FieldKey" in pr007
     assert "Do not use a raw unrestricted string for `reason_code`" in pr007
     assert "No arbitrary metadata dictionary" in pr007
@@ -1158,3 +1155,21 @@ def test_adr_numbers_are_unique_and_current() -> None:
     assert ("019", "PR-005 SQLCipher binding and raw-key staging") in headings
     assert ("020", "Immutable encrypted filesystem storage v1") in headings
     assert ("021", "Immutable PII-safe audit events") in headings
+
+
+def test_pr007_current_lifecycle_status_has_no_stale_blockers() -> None:
+    current = "\n".join(
+        (REPO_ROOT / name).read_text(encoding="utf-8")
+        for name in (
+            "docs/progress.md",
+            "docs/handoff.md",
+            "docs/roadmap.md",
+            "docs/implementation-plan.md",
+        )
+    )
+    assert "PR-007: `AUTHORIZED AND IN REVIEW, NOT ACCEPTED`" in current
+    assert "PR-008 AND LATER: UNAUTHORIZED" in current
+    assert "PR-007 and later tasks remain UNAUTHORIZED" not in current
+    assert "Unauthorized by GATE-M0" not in current
+    assert "Merge this lifecycle PR before starting PR-007" not in current
+    assert "immutable filesystem storage, audit and later M2 work are not complete" not in current

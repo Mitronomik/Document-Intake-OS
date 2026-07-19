@@ -756,3 +756,114 @@ def stored_artifact_columns(
         o.storage_format_version,
         utc_iso(o.created_at),
     )
+
+
+_AUDIT_EVENT_FIELDS = frozenset(
+    {
+        "event_id",
+        "occurred_at",
+        "actor",
+        "action_code",
+        "subject_type",
+        "subject_id",
+        "field_key",
+        "before",
+        "after",
+        "reason_code",
+        "correlation_id",
+    }
+)
+_AUDIT_SUMMARY_FIELDS = frozenset({"classification", "display_value", "was_present"})
+
+
+def _audit_summary(value: AuditValueSummary | None) -> dict[str, object] | None:
+    if value is None:
+        return None
+    return {
+        "classification": value.classification.value,
+        "display_value": value.display_value,
+        "was_present": value.was_present,
+    }
+
+
+def _parse_audit_summary(value: object) -> AuditValueSummary | None:
+    if value is None:
+        return None
+    if not isinstance(value, dict) or set(value) != _AUDIT_SUMMARY_FIELDS:
+        raise PersistenceError(PersistenceErrorCode.PERSISTED_DATA_INVALID)
+    return AuditValueSummary(
+        parse_enum(AuditValueClassification, value["classification"]),
+        value["display_value"],
+        value["was_present"],
+    )
+
+
+def audit_event_to_json(event: AuditEvent) -> str:
+    if not isinstance(event, AuditEvent):
+        raise PersistenceError(PersistenceErrorCode.PERSISTED_DATA_INVALID)
+    return dumps(
+        {
+            "event_id": str(event.event_id),
+            "occurred_at": utc_iso(event.occurred_at),
+            "actor": _actor(event.actor),
+            "action_code": event.action_code.value,
+            "subject_type": event.subject_type.value,
+            "subject_id": str(event.subject_id),
+            "field_key": None if event.field_key is None else event.field_key.value,
+            "before": _audit_summary(event.before),
+            "after": _audit_summary(event.after),
+            "reason_code": None if event.reason_code is None else event.reason_code.value,
+            "correlation_id": _id(event.correlation_id),
+        }
+    )
+
+
+@persisted_data_boundary
+def audit_event_from_json(payload: str) -> AuditEvent:
+    d = loads(payload)
+    if set(d) != _AUDIT_EVENT_FIELDS:
+        raise PersistenceError(PersistenceErrorCode.PERSISTED_DATA_INVALID)
+    actor = parse_actor(d["actor"])
+    if actor is None:
+        raise PersistenceError(PersistenceErrorCode.PERSISTED_DATA_INVALID)
+    field_key = d["field_key"]
+    reason = d["reason_code"]
+    return AuditEvent(
+        event_id=req_id(d["event_id"]),
+        occurred_at=parse_datetime(d["occurred_at"]),
+        actor=actor,
+        action_code=parse_enum(AuditAction, d["action_code"]),
+        subject_type=parse_enum(AuditSubjectType, d["subject_type"]),
+        subject_id=req_id(d["subject_id"]),
+        field_key=None if field_key is None else FieldKey(field_key),
+        before=_parse_audit_summary(d["before"]),
+        after=_parse_audit_summary(d["after"]),
+        reason_code=None if reason is None else AuditReasonCode(reason),
+        correlation_id=parse_id(d["correlation_id"]),
+    )
+
+
+def audit_event_columns(event: AuditEvent) -> tuple[object, ...]:
+    def parts(summary: AuditValueSummary | None) -> tuple[object, object, object]:
+        if summary is None:
+            return (None, None, None)
+        return (
+            summary.classification.value,
+            1 if summary.was_present else 0,
+            summary.display_value,
+        )
+
+    return (
+        str(event.event_id),
+        utc_iso(event.occurred_at),
+        str(event.actor.actor_id),
+        event.actor.kind.value,
+        event.action_code.value,
+        event.subject_type.value,
+        str(event.subject_id),
+        None if event.field_key is None else event.field_key.value,
+        *parts(event.before),
+        *parts(event.after),
+        None if event.reason_code is None else event.reason_code.value,
+        None if event.correlation_id is None else str(event.correlation_id),
+    )

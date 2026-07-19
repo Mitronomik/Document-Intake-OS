@@ -12,6 +12,7 @@ from document_intake.persistence.migrations.v0001_initial import MIGRATION
 from document_intake.persistence.migrations.v0002_stored_artifacts import (
     MIGRATION as V0002_MIGRATION,
 )
+from document_intake.persistence.migrations.v0003_audit_events import MIGRATION as V0003_MIGRATION
 
 REQUIRED_TABLES = {
     "schema_migrations",
@@ -31,6 +32,7 @@ REQUIRED_TABLES = {
     "application_snapshots",
     "application_snapshot_artifact_refs",
     "stored_artifacts",
+    "audit_events",
 }
 
 
@@ -57,13 +59,14 @@ def test_migration_1_creates_tables_metadata_user_version_and_application_id() -
     ).fetchall() == [
         (MIGRATION.version, MIGRATION.name, MIGRATION.checksum),
         (V0002_MIGRATION.version, V0002_MIGRATION.name, V0002_MIGRATION.checksum),
+        (V0003_MIGRATION.version, V0003_MIGRATION.name, V0003_MIGRATION.checksum),
     ]
 
 
 def test_initialize_migrations_are_idempotent() -> None:
     connection = apply()
     database._apply_migrations(connection)
-    assert connection.execute("SELECT count(*) FROM schema_migrations").fetchone()[0] == 2
+    assert connection.execute("SELECT count(*) FROM schema_migrations").fetchone()[0] == 3
 
 
 def test_applied_prefix_validates_and_future_migration_applies(
@@ -72,23 +75,26 @@ def test_applied_prefix_validates_and_future_migration_applies(
     connection = apply()
     future_statements = ("CREATE TABLE future_projection(id INTEGER PRIMARY KEY)",)
     future = Migration(
-        3,
+        4,
         "future_projection",
         future_statements,
         migration_checksum(future_statements),
     )
-    monkeypatch.setattr(database, "MIGRATIONS", (MIGRATION, V0002_MIGRATION, future))
-    monkeypatch.setattr(database, "CURRENT_SCHEMA_VERSION", 3)
+    monkeypatch.setattr(
+        database, "MIGRATIONS", (MIGRATION, V0002_MIGRATION, V0003_MIGRATION, future)
+    )
+    monkeypatch.setattr(database, "CURRENT_SCHEMA_VERSION", 4)
 
     database._validate_schema(connection)
     database._apply_migrations(connection)
 
-    assert connection.execute("PRAGMA user_version").fetchone()[0] == 3
+    assert connection.execute("PRAGMA user_version").fetchone()[0] == 4
     assert connection.execute(
         "SELECT version, name, checksum FROM schema_migrations ORDER BY version"
     ).fetchall() == [
         (MIGRATION.version, MIGRATION.name, MIGRATION.checksum),
         (V0002_MIGRATION.version, V0002_MIGRATION.name, V0002_MIGRATION.checksum),
+        (V0003_MIGRATION.version, V0003_MIGRATION.name, V0003_MIGRATION.checksum),
         (future.version, future.name, future.checksum),
     ]
     assert connection.execute(
@@ -101,7 +107,7 @@ def test_applied_prefix_validates_and_future_migration_applies(
     [
         lambda c: c.execute(
             "INSERT INTO schema_migrations(version, name, checksum, applied_at_utc) "
-            "VALUES (3, 'extra', 'extra', '2026-07-19T00:00:00Z')"
+            "VALUES (4, 'extra', 'extra', '2026-07-19T00:00:00Z')"
         ),
         lambda c: c.execute("UPDATE schema_migrations SET name='reordered' WHERE version=1"),
         lambda c: (
@@ -278,3 +284,17 @@ def test_required_foreign_keys_are_restrict_and_no_false_foreign_keys_exist() ->
         ("document_id", "documents", "id", "RESTRICT")
     }
     assert all(fk[0] != "batch_id" for fk in foreign_keys(connection, "applications"))
+
+
+def test_v0003_checksum_literal_and_prior_migrations_unchanged() -> None:
+    assert MIGRATION.checksum == "e1e1f5f6d8d675a146f3d0c538a0d544b6f8a984c301d177ee1ad86e42f2d500"
+    assert (
+        V0002_MIGRATION.checksum
+        == "fb953af64efd3e860960eae8ef1f4078afd0a6ec078a33594e271a9285d7db3d"
+    )
+    assert V0003_MIGRATION.version == 3
+    assert V0003_MIGRATION.name == "audit_events_pr007"
+    assert (
+        V0003_MIGRATION.checksum
+        == "11fdd034c0e5705ef532987f0cb4f3568bc402d3f489c0077cd5bde2a2748e53"
+    )

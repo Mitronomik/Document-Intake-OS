@@ -119,3 +119,5 @@ Q-009: `DEFERRED`. Q-017: `DEFERRED`. Q-010: `ACCEPTED`. `RISK-PR005-RAWKEY-PRAG
 | --- | --- | --- | --- |
 | FR-12 | Technical specification / ADR-021 / PR-007 / PR-017 | PR-007 provides immutable PII-safe audit foundation only; FR-12 remains incomplete after PR-007 alone; PR-017 remains responsible for operator correction and verification event emission | future PR-007 and PR-017 tests |
 | FR-13 | Technical specification / ADR-021 / PR-007 | PR-007 authorized to add append-only audit persistence foundation | future PR-007 tests |
+
+Current lifecycle: PR-007: `AUTHORIZED AND IN REVIEW, NOT ACCEPTED`; PR-008 and later: `UNAUTHORIZED`; Gate 1: `NOT ACCEPTED`; M2: `NOT COMPLETED`.

@@ -1034,6 +1034,66 @@ class StoredArtifactRepo(_Repo):
         return entity
 
 
+class AuditEventRepo(_Repo):
+    def __init__(self, uow: SqlCipherUnitOfWork) -> None:
+        super().__init__(
+            uow,
+            "audit_events",
+            ser.audit_event_to_json,
+            ser.audit_event_from_json,
+            lambda x: str(x.event_id),
+        )
+
+    def add(self, event: AuditEvent) -> None:
+        if self.get(event.event_id) is not None:
+            raise PersistenceError(PersistenceErrorCode.ENTITY_ALREADY_EXISTS)
+        with self._atomic_write():
+            self._execute(
+                "INSERT INTO audit_events(event_id, occurred_at_utc, actor_id, actor_kind, action_code, subject_type, subject_id, field_key, before_classification, before_was_present, before_display_value, after_classification, after_was_present, after_display_value, reason_code, correlation_id, payload) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                (*ser.audit_event_columns(event), self._to_json(event)),
+                duplicate_is_already_exists=True,
+            )
+
+    def get(self, event_id: EntityId) -> AuditEvent | None:
+        rows = self._fetchall(
+            "SELECT event_id, occurred_at_utc, actor_id, actor_kind, action_code, subject_type, subject_id, field_key, before_classification, before_was_present, before_display_value, after_classification, after_was_present, after_display_value, reason_code, correlation_id, payload FROM audit_events WHERE event_id=?",
+            (str(event_id),),
+        )
+        return None if not rows else self._from_projection(rows[0])
+
+    def list_for_subject(
+        self, subject_type: AuditSubjectType, subject_id: EntityId
+    ) -> tuple[AuditEvent, ...]:
+        if not isinstance(subject_type, AuditSubjectType) or not isinstance(subject_id, EntityId):
+            raise PersistenceError(PersistenceErrorCode.PERSISTED_DATA_INVALID)
+        return tuple(
+            self._from_projection(row)
+            for row in self._fetchall(
+                "SELECT event_id, occurred_at_utc, actor_id, actor_kind, action_code, subject_type, subject_id, field_key, before_classification, before_was_present, before_display_value, after_classification, after_was_present, after_display_value, reason_code, correlation_id, payload FROM audit_events WHERE subject_type=? AND subject_id=? ORDER BY occurred_at_utc, event_id",
+                (subject_type.value, str(subject_id)),
+            )
+        )
+
+    def list_by_correlation(self, correlation_id: EntityId) -> tuple[AuditEvent, ...]:
+        if not isinstance(correlation_id, EntityId):
+            raise PersistenceError(PersistenceErrorCode.PERSISTED_DATA_INVALID)
+        return tuple(
+            self._from_projection(row)
+            for row in self._fetchall(
+                "SELECT event_id, occurred_at_utc, actor_id, actor_kind, action_code, subject_type, subject_id, field_key, before_classification, before_was_present, before_display_value, after_classification, after_was_present, after_display_value, reason_code, correlation_id, payload FROM audit_events WHERE correlation_id=? ORDER BY occurred_at_utc, event_id",
+                (str(correlation_id),),
+            )
+        )
+
+    def _from_projection(self, row: tuple[Any, ...]) -> AuditEvent:
+        entity = self._deserialize(row[16])
+        if not isinstance(entity, AuditEvent) or ser.audit_event_columns(entity) != tuple(row[:16]):
+            raise PersistenceError(PersistenceErrorCode.PERSISTED_DATA_INVALID)
+        if ser.audit_event_to_json(entity) != row[16]:
+            raise PersistenceError(PersistenceErrorCode.PERSISTED_DATA_INVALID)
+        return entity
+
+
 class _UowState(Enum):
     NEW = auto()
     ACTIVE = auto()
@@ -1058,6 +1118,7 @@ class SqlCipherUnitOfWork:
         self._applications: ApplicationRepo | None = None
         self._application_snapshots: SnapshotRepo | None = None
         self._stored_artifacts: StoredArtifactRepo | None = None
+        self._audit_events: AuditEventRepo | None = None
 
     def __repr__(self) -> str:
         return "SqlCipherUnitOfWork(<redacted>)"
@@ -1116,6 +1177,10 @@ class SqlCipherUnitOfWork:
     def stored_artifacts(self) -> StoredArtifactRepo:
         return self._repository(self._stored_artifacts)
 
+    @property
+    def audit_events(self) -> AuditEventRepo:
+        return self._repository(self._audit_events)
+
     def _construct_repositories(self) -> None:
         self._persons = PersonRepo(self)
         self._identity_documents = IdentityRepo(self)
@@ -1127,6 +1192,7 @@ class SqlCipherUnitOfWork:
         self._applications = ApplicationRepo(self)
         self._application_snapshots = SnapshotRepo(self)
         self._stored_artifacts = StoredArtifactRepo(self)
+        self._audit_events = AuditEventRepo(self)
 
     def _invalidate(self) -> None:
         connection = self._conn

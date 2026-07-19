@@ -58,3 +58,43 @@ def test_safe_repr_errors_and_logs_do_not_leak_sensitive_values(
         person().registration_address.value,
     ):
         assert forbidden not in combined
+
+
+def test_audit_repr_payload_projection_and_errors_do_not_leak_forbidden_marker() -> None:
+    from datetime import UTC, datetime
+    from uuid import UUID
+
+    from document_intake.domain import (
+        ActorKind,
+        ActorRef,
+        AuditAction,
+        AuditEvent,
+        AuditReasonCode,
+        AuditSubjectType,
+        AuditValueClassification,
+        AuditValueSummary,
+        EntityId,
+    )
+    from document_intake.persistence import serialization as ser
+    from document_intake.persistence.database import AuditEventRepo
+
+    marker = "SYNTH_FORBIDDEN_MARKER"
+
+    def eid_local(value: int) -> EntityId:
+        return EntityId(UUID(int=value))
+
+    event = AuditEvent(
+        event_id=eid_local(1),
+        occurred_at=datetime(2026, 7, 19, 12, tzinfo=UTC),
+        actor=ActorRef(eid_local(900), ActorKind.SYSTEM),
+        action_code=AuditAction.FIELD_VERIFIED,
+        subject_type=AuditSubjectType.PERSON,
+        subject_id=eid_local(2),
+        after=AuditValueSummary(AuditValueClassification.SENSITIVE_REDACTED, None, True),
+        reason_code=AuditReasonCode("SYSTEM_ACTION"),
+    )
+    repo = AuditEventRepo(FakeUow(migrated_connection()))
+    repo.add(event)
+    row = repo._fetchall("SELECT * FROM audit_events WHERE event_id=?", (str(event.event_id),))[0]
+    combined = repr(event) + ser.audit_event_to_json(event) + repr(row)
+    assert marker not in combined

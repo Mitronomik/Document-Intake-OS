@@ -20,6 +20,7 @@ from document_intake.persistence.migrations.v0002_stored_artifacts import (
 from document_intake.persistence.migrations.v0002_stored_artifacts import (
     STATEMENTS as V0002_STATEMENTS,
 )
+from document_intake.persistence.migrations.v0003_audit_events import MIGRATION as V0003_MIGRATION
 
 
 class Provider:
@@ -35,7 +36,7 @@ class Provider:
 def test_package_imports_without_sqlcipher3_eager_import() -> None:
     import document_intake.persistence as persistence
 
-    assert persistence.CURRENT_SCHEMA_VERSION == 2
+    assert persistence.CURRENT_SCHEMA_VERSION == 3
 
 
 def test_production_persistence_contains_no_sqlite3_import() -> None:
@@ -66,7 +67,7 @@ def test_raw_key_helper_is_private_and_rejects_bad_key() -> None:
 
 
 def test_migration_metadata_contract() -> None:
-    assert CURRENT_SCHEMA_VERSION == 2
+    assert CURRENT_SCHEMA_VERSION == 3
     assert APPLICATION_ID == 0x44494F53
     assert MIGRATION.version == 1
     assert MIGRATION.checksum == CHECKSUM
@@ -74,6 +75,10 @@ def test_migration_metadata_contract() -> None:
     assert len(STATEMENTS) == 23
     assert V0002_CHECKSUM == "fb953af64efd3e860960eae8ef1f4078afd0a6ec078a33594e271a9285d7db3d"
     assert migration_checksum(V0002_STATEMENTS) == V0002_CHECKSUM
+    assert (
+        V0003_MIGRATION.checksum
+        == "11fdd034c0e5705ef532987f0cb4f3568bc402d3f489c0077cd5bde2a2748e53"
+    )
     for table in (
         "schema_migrations",
         "persons",

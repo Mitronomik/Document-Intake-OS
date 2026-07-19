@@ -9,6 +9,7 @@ from document_intake.application.dto.storage import StoredArtifactRecord
 from document_intake.domain import (
     Application,
     ApplicationSnapshot,
+    AuditEvent,
     Document,
     FieldCandidate,
     FieldRef,
@@ -20,6 +21,7 @@ from document_intake.domain import (
     TerminalCode,
     Vehicle,
 )
+from document_intake.domain.enums import AuditSubjectType
 from document_intake.domain.value_objects import EntityId
 
 
@@ -94,6 +96,20 @@ class StoredArtifactRepository(Protocol):
     def list_all(self) -> tuple[StoredArtifactRecord, ...]: ...
 
 
+class AuditEventRepository(Protocol):
+    def add(self, event: AuditEvent) -> None: ...
+    def get(self, event_id: EntityId) -> AuditEvent | None: ...
+    def list_for_subject(
+        self,
+        subject_type: AuditSubjectType,
+        subject_id: EntityId,
+    ) -> tuple[AuditEvent, ...]: ...
+    def list_by_correlation(
+        self,
+        correlation_id: EntityId,
+    ) -> tuple[AuditEvent, ...]: ...
+
+
 class UnitOfWork(Protocol):
     persons: PersonRepository
     identity_documents: IdentityDocumentRepository
@@ -105,6 +121,7 @@ class UnitOfWork(Protocol):
     applications: ApplicationRepository
     application_snapshots: ApplicationSnapshotRepository
     stored_artifacts: StoredArtifactRepository
+    audit_events: AuditEventRepository
 
     def __enter__(self) -> Self: ...
     def __exit__(
