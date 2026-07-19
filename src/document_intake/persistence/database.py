@@ -180,6 +180,9 @@ class EncryptedDatabase:
             conn = _open_connection(self._path, self._key_provider)
             _apply_migrations(conn)
         except PersistenceError:
+            if conn is not None:
+                conn.close()
+                conn = None
             if not existed:
                 self._cleanup_new_database()
             raise
@@ -230,8 +233,6 @@ class _Repo:
             "migration_documents": "id, person_id, related_passport_id, payload",
             "documents": "id, owner_kind, owner_id, payload",
             "field_candidates": "id, field_entity_id, field_key, confidence, payload",
-            "applications": "id, terminal_code, payload",
-            "application_snapshots": "id, application_id, terminal_code, created_at_utc, canonical_json, sha256, payload",
         }[self._table]
         try:
             self.c.execute(
@@ -467,11 +468,15 @@ class ApplicationRepo(_Repo):
         )
 
     def add(self, application: Application) -> None:
-        self._add(
-            str(application.id),
-            self._to_json(application),
-            (None if application.terminal_code is None else application.terminal_code.value,),
-        )
+        try:
+            self.c.execute(
+                "INSERT INTO applications(id, batch_id, terminal_code, status, created_by_actor_id, created_by_actor_kind, created_at_utc, updated_at_utc) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                ser.application_columns(application),
+            )
+        except PersistenceError:
+            raise
+        except Exception:
+            raise PersistenceError(PersistenceErrorCode.ENTITY_ALREADY_EXISTS) from None
         self._children(application)
 
     def get(self, entity_id: EntityId) -> Application | None:
@@ -479,7 +484,8 @@ class ApplicationRepo(_Repo):
 
     def _get_application(self, application_id: str) -> Application | None:
         row = self.c.execute(
-            "SELECT payload FROM applications WHERE id=?", (application_id,)
+            "SELECT id, batch_id, terminal_code, status, created_by_actor_id, created_by_actor_kind, created_at_utc, updated_at_utc FROM applications WHERE id=?",
+            (application_id,),
         ).fetchone()
         if row is None:
             return None
@@ -504,7 +510,7 @@ class ApplicationRepo(_Repo):
                 (application_id,),
             )
         )
-        return ser.application_from_components(row[0], assignments, verified_fields, issues)
+        return ser.application_from_row(row, assignments, verified_fields, issues)
 
     def update(self, application: Application) -> None:
         self.c.execute(
@@ -517,7 +523,12 @@ class ApplicationRepo(_Repo):
             "DELETE FROM application_validation_issues WHERE application_id=?",
             (str(application.id),),
         )
-        self._update(str(application.id), self._to_json(application))
+        cur = self.c.execute(
+            "UPDATE applications SET batch_id=?, terminal_code=?, status=?, created_by_actor_id=?, created_by_actor_kind=?, created_at_utc=?, updated_at_utc=? WHERE id=?",
+            (*ser.application_columns(application)[1:], str(application.id)),
+        )
+        if cur.rowcount != 1:
+            raise PersistenceError(PersistenceErrorCode.ENTITY_NOT_FOUND)
         self._children(application)
 
     def _children(self, a: Application) -> None:
@@ -558,17 +569,15 @@ class SnapshotRepo(_Repo):
         super().__init__(uow, "application_snapshots", ser.snapshot_to_json, ser.snapshot_from_json)
 
     def add(self, snapshot: ApplicationSnapshot) -> None:
-        self._add(
-            str(snapshot.id),
-            self._to_json(snapshot),
-            (
-                str(snapshot.application_id),
-                snapshot.terminal_code.value,
-                ser.utc_iso(snapshot.created_at),
-                snapshot.payload.canonical_json,
-                snapshot.sha256,
-            ),
-        )
+        try:
+            self.c.execute(
+                "INSERT INTO application_snapshots(id, application_id, terminal_code, template_version, rules_version, created_by_actor_id, created_by_actor_kind, created_at_utc, payload_json, sha256) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                ser.snapshot_columns(snapshot),
+            )
+        except PersistenceError:
+            raise
+        except Exception:
+            raise PersistenceError(PersistenceErrorCode.ENTITY_ALREADY_EXISTS) from None
         for i, x in enumerate(snapshot.document_artifact_refs):
             self.c.execute(
                 "INSERT INTO application_snapshot_artifact_refs(snapshot_id, order_index, artifact_ref) VALUES (?,?,?)",
@@ -576,15 +585,36 @@ class SnapshotRepo(_Repo):
             )
 
     def get(self, entity_id: EntityId) -> ApplicationSnapshot | None:
-        return self._get(str(entity_id))
+        return self._get_snapshot(str(entity_id))
+
+    def _get_snapshot(self, snapshot_id: str) -> ApplicationSnapshot | None:
+        row = self.c.execute(
+            "SELECT id, application_id, terminal_code, template_version, rules_version, created_by_actor_id, created_by_actor_kind, created_at_utc, payload_json, sha256 FROM application_snapshots WHERE id=?",
+            (snapshot_id,),
+        ).fetchone()
+        if row is None:
+            return None
+        refs = tuple(
+            ser.req_id(child[0])
+            for child in self.c.execute(
+                "SELECT artifact_ref FROM application_snapshot_artifact_refs WHERE snapshot_id=? ORDER BY order_index",
+                (snapshot_id,),
+            )
+        )
+        return ser.snapshot_from_row(row, refs)
 
     def list_by_application(self, application_id: EntityId) -> tuple[ApplicationSnapshot, ...]:
-        return tuple(
-            self._from_json(r[0])
+        ids = tuple(
+            r[0]
             for r in self.c.execute(
-                "SELECT payload FROM application_snapshots WHERE application_id=? ORDER BY created_at_utc, id",
+                "SELECT id FROM application_snapshots WHERE application_id=? ORDER BY created_at_utc, id",
                 (str(application_id),),
             )
+        )
+        return tuple(
+            snapshot
+            for snapshot_id in ids
+            if (snapshot := self._get_snapshot(snapshot_id)) is not None
         )
 
 

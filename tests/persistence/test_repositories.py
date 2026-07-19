@@ -324,7 +324,12 @@ def test_application_repository_uses_structured_children_and_round_trips() -> No
     assert conn.execute("SELECT count(*) FROM application_assignments").fetchone()[0] == 1
     assert conn.execute("SELECT count(*) FROM application_verified_fields").fetchone()[0] == 1
     assert conn.execute("SELECT count(*) FROM application_validation_issues").fetchone()[0] == 1
-    assert "assignments" not in conn.execute("SELECT payload FROM applications").fetchone()[0]
+    assert "payload" not in [row[1] for row in conn.execute("PRAGMA table_info(applications)")]
+    conn.execute("UPDATE applications SET status=? WHERE id=?", ("UNKNOWN_STATUS", str(eid(70))))
+    with pytest.raises(PersistenceError) as invalid:
+        repo.get(eid(70))
+    assert invalid.value.code == PersistenceErrorCode.PERSISTED_DATA_INVALID
+    assert "UNKNOWN_STATUS" not in str(invalid.value)
 
 
 def test_application_update_replaces_children_inside_transaction() -> None:

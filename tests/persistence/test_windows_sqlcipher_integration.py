@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import importlib.metadata
 import platform
 import sqlite3
 from pathlib import Path
@@ -9,7 +10,7 @@ from tests.persistence.test_repositories import eid
 
 from document_intake.domain import NonEmptyText, Person
 from document_intake.persistence import APPLICATION_ID, CURRENT_SCHEMA_VERSION, EncryptedDatabase
-from document_intake.persistence.errors import PersistenceError
+from document_intake.persistence.errors import PersistenceError, PersistenceErrorCode
 
 pytestmark = pytest.mark.skipif(
     not (platform.system() == "Windows" and platform.machine() == "AMD64"),
@@ -28,7 +29,7 @@ class Provider:
 def test_actual_windows_sqlcipher_encryption_uow_and_privacy(
     tmp_path: Path, caplog: pytest.LogCaptureFixture, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    import sqlcipher3
+    assert importlib.metadata.version("sqlcipher3") == "0.6.2"
 
     key = b"w" * 32
     wrong = b"x" * 32
@@ -59,10 +60,11 @@ def test_actual_windows_sqlcipher_encryption_uow_and_privacy(
         )
         assert uow._connection().execute("PRAGMA application_id").fetchone()[0] == APPLICATION_ID
     with (
-        pytest.raises(PersistenceError),
+        pytest.raises(PersistenceError) as wrong_key,
         EncryptedDatabase(db_path, Provider(wrong)).unit_of_work(),
     ):
         pass
+    assert wrong_key.value.code == PersistenceErrorCode.DB_KEY_REJECTED
     with db.unit_of_work() as uow:
         uow.persons.add(Person(eid(2), full_name_latin=NonEmptyText("Rollback Synthetic")))
     with db.unit_of_work() as uow:
@@ -71,4 +73,3 @@ def test_actual_windows_sqlcipher_encryption_uow_and_privacy(
     output = capsys.readouterr().out + capsys.readouterr().err + caplog.text
     assert key.hex() not in output
     assert "PX000012345" not in output
-    assert sqlcipher3.version == "0.6.2"

@@ -141,3 +141,83 @@ def test_failed_migration_rolls_back_schema_history_user_version_and_application
         ).fetchone()
         is None
     )
+
+
+def table_columns(connection: sqlite3.Connection, table: str) -> tuple[str, ...]:
+    return tuple(row[1] for row in connection.execute(f"PRAGMA table_info({table})"))
+
+
+def foreign_keys(connection: sqlite3.Connection, table: str) -> set[tuple[str, str, str, str]]:
+    return {
+        (row[3], row[2], row[4], row[6])
+        for row in connection.execute(f"PRAGMA foreign_key_list({table})")
+    }
+
+
+def test_application_and_snapshot_tables_use_explicit_columns_not_opaque_payload() -> None:
+    connection = apply()
+    assert table_columns(connection, "applications") == (
+        "id",
+        "batch_id",
+        "terminal_code",
+        "status",
+        "created_by_actor_id",
+        "created_by_actor_kind",
+        "created_at_utc",
+        "updated_at_utc",
+    )
+    assert "payload" not in table_columns(connection, "applications")
+    snapshot_columns = table_columns(connection, "application_snapshots")
+    assert "payload_json" in snapshot_columns
+    assert "payload" not in snapshot_columns
+
+
+def test_required_foreign_keys_are_restrict_and_no_false_foreign_keys_exist() -> None:
+    connection = apply()
+    assert ("person_id", "persons", "id", "RESTRICT") in foreign_keys(
+        connection, "identity_documents"
+    )
+    assert ("person_id", "persons", "id", "RESTRICT") in foreign_keys(
+        connection, "migration_documents"
+    )
+    assert ("related_passport_id", "identity_documents", "id", "RESTRICT") in foreign_keys(
+        connection, "migration_documents"
+    )
+    assert ("terminal_code", "terminals", "code", "RESTRICT") in foreign_keys(
+        connection, "applications"
+    )
+    assert ("application_id", "applications", "id", "RESTRICT") in foreign_keys(
+        connection, "application_assignments"
+    )
+    assert ("person_id", "persons", "id", "RESTRICT") in foreign_keys(
+        connection, "application_assignments"
+    )
+    assert ("tractor_id", "vehicles", "id", "RESTRICT") in foreign_keys(
+        connection, "application_assignments"
+    )
+    assert ("trailer_id", "vehicles", "id", "RESTRICT") in foreign_keys(
+        connection, "application_assignments"
+    )
+    assert ("source_candidate_id", "field_candidates", "id", "RESTRICT") in foreign_keys(
+        connection, "application_verified_fields"
+    )
+    assert ("application_id", "applications", "id", "RESTRICT") in foreign_keys(
+        connection, "application_verified_fields"
+    )
+    assert ("application_id", "applications", "id", "RESTRICT") in foreign_keys(
+        connection, "application_validation_issues"
+    )
+    assert ("application_id", "applications", "id", "RESTRICT") in foreign_keys(
+        connection, "application_snapshots"
+    )
+    assert ("terminal_code", "terminals", "code", "RESTRICT") in foreign_keys(
+        connection, "application_snapshots"
+    )
+    assert ("snapshot_id", "application_snapshots", "id", "RESTRICT") in foreign_keys(
+        connection, "application_snapshot_artifact_refs"
+    )
+    assert not foreign_keys(connection, "documents")
+    assert not foreign_keys(connection, "document_sides") - {
+        ("document_id", "documents", "id", "RESTRICT")
+    }
+    assert all(fk[0] != "batch_id" for fk in foreign_keys(connection, "applications"))

@@ -568,3 +568,84 @@ def verified_field_from_json(payload: str) -> VerifiedField:
 
 def validation_issue_from_json(payload: str) -> ValidationIssue:
     return _issue_from_dict(loads(payload))
+
+
+def application_columns(o: Application) -> tuple[str, str, str | None, str, str, str, str, str]:
+    return (
+        str(o.id),
+        str(o.batch_id),
+        _enum(o.terminal_code),
+        o.status.value,
+        str(o.created_by.actor_id),
+        o.created_by.kind.value,
+        utc_iso(o.created_at),
+        utc_iso(o.updated_at),
+    )
+
+
+def application_from_row(
+    row: tuple[str, str, str | None, str, str, str, str, str],
+    assignments: tuple[ParticipantAssignment, ...],
+    verified_fields: tuple[VerifiedField, ...],
+    issues: tuple[ValidationIssue, ...],
+) -> Application:
+    try:
+        created_by = ActorRef(req_id(row[4]), parse_enum(ActorKind, row[5]))
+        return Application(
+            req_id(row[0]),
+            req_id(row[1]),
+            parse_enum(TerminalCode, row[2]),
+            assignments,
+            verified_fields,
+            ValidationReport(issues),
+            parse_enum(ApplicationStatus, row[3]),
+            created_by,
+            parse_datetime(row[6]),
+            parse_datetime(row[7]),
+        )
+    except (IndexError, TypeError, ValueError, DomainError):
+        raise PersistenceError(PersistenceErrorCode.PERSISTED_DATA_INVALID) from None
+
+
+def snapshot_columns(
+    o: ApplicationSnapshot,
+) -> tuple[str, str, str, str, str, str, str, str, str, str]:
+    return (
+        str(o.id),
+        str(o.application_id),
+        o.terminal_code.value,
+        o.template_version.value,
+        o.rules_version.value,
+        str(o.created_by.actor_id),
+        o.created_by.kind.value,
+        utc_iso(o.created_at),
+        o.payload.canonical_json,
+        o.sha256,
+    )
+
+
+def snapshot_from_row(
+    row: tuple[str, str, str, str, str, str, str, str, str, str],
+    artifact_refs: tuple[EntityId, ...],
+) -> ApplicationSnapshot:
+    try:
+        payload_data = json.loads(row[8])
+        if not isinstance(payload_data, dict):
+            raise PersistenceError(PersistenceErrorCode.PERSISTED_DATA_INVALID)
+        payload = SnapshotPayload(payload_data)
+        if payload.canonical_json != row[8]:
+            raise PersistenceError(PersistenceErrorCode.PERSISTED_DATA_INVALID)
+        return rehydrate_application_snapshot(
+            snapshot_id=req_id(row[0]),
+            application_id=req_id(row[1]),
+            terminal_code=parse_enum(TerminalCode, row[2]),
+            template_version=NonEmptyText(row[3]),
+            rules_version=NonEmptyText(row[4]),
+            created_by=ActorRef(req_id(row[5]), parse_enum(ActorKind, row[6])),
+            created_at=parse_datetime(row[7]),
+            payload=payload,
+            document_artifact_refs=artifact_refs,
+            sha256=row[9],
+        )
+    except (json.JSONDecodeError, IndexError, TypeError, ValueError, DomainError):
+        raise PersistenceError(PersistenceErrorCode.PERSISTED_DATA_INVALID) from None
