@@ -265,10 +265,10 @@ def test_lifecycle_state_records_pr005_accepted_state() -> None:
         "PR-S001-F4: COMPLETED AND MERGED THROUGH PR #13",
         "985fae37c7645e8f65edbe4d1609100ee24a2097",
         "PR-005: COMPLETED AND HUMAN ACCEPTED",
-        "PR-006: UNAUTHORIZED",
-        "PR-007 AND LATER: UNAUTHORIZED",
-        "Gate 1: NOT ACCEPTED",
-        "M2: NOT COMPLETED",
+        "PR-006: `AUTHORIZED AND IN REVIEW, NOT ACCEPTED`",
+        "PR-007 and later: `UNAUTHORIZED`",
+        "Gate 1: `NOT ACCEPTED`",
+        "M2: `NOT COMPLETED`",
         "2161fbbf7fb4065a5913fb6e62c207546caf5dd9",
         "e1e1f5f6d8d675a146f3d0c538a0d544b6f8a984c301d177ee1ad86e42f2d500",
     )
@@ -319,23 +319,23 @@ def test_lifecycle_state_records_pr005_accepted_state() -> None:
         "Gate 1: ACCEPTED",
         "M2: COMPLETED",
         "review and product-owner decision on GATE-S1 / ADR-018",
+        "PR-006: UNAUTHORIZED",
+        "PR-006 remains UNAUTHORIZED",
+        "implementation remains prohibited",
+        "filesystem-storage implementation cannot start",
+        "Prepare and review the exact PR-006 task",
     )
 
     for filename in lifecycle_files:
         text = (REPO_ROOT / filename).read_text(encoding="utf-8")
         for required in required_by_file:
             assert required in text, filename
-        assert (
-            "preparing and reviewing the exact PR-006 task" in text
-            or "Prepare and review the exact PR-006 task" in text
-        ), filename
-        assert (
-            "implementation remains prohibited" in text
-            or "implementation prohibited" in text
-            or "implementation cannot start" in text
-            or "Filesystem-storage implementation cannot start" in text
-            or "No filesystem-storage implementation may begin" in text
-        ), filename
+        assert "PR-006: `AUTHORIZED AND IN REVIEW, NOT ACCEPTED`" in text, filename
+        assert "PR-006: COMPLETED" not in text, filename
+        assert "PR-006: ACCEPTED" not in text, filename
+        assert "PR-006: HUMAN ACCEPTED" not in text, filename
+        assert "Q-009: `DEFERRED`" in text, filename
+        assert "Q-017: `DEFERRED`" in text, filename
         _assert_pr_s001_followups_completed(text, filename)
         assert (
             "PR-S001/PR-S001-F1/PR-S001-F2/PR-S001-F3/PR-S001-F4 use fictional synthetic data only"
@@ -370,7 +370,7 @@ def test_lifecycle_state_records_pr005_accepted_state() -> None:
     assert "- [ ] PR-S001: ACCEPTED WITH DOCUMENTED RESIDUAL RISK" not in progress
     assert "- [x] PR-005: COMPLETED AND HUMAN ACCEPTED;" in progress
     assert "- [ ] PR-005: IN REVIEW, NOT ACCEPTED;" not in progress
-    assert "- [ ] PR-006: UNAUTHORIZED;" in progress
+    assert "PR-006: `AUTHORIZED AND IN REVIEW, NOT ACCEPTED`" in progress
     assert "- [ ] GATE-S1: COMPLETED AND HUMAN ACCEPTED;" not in progress
     assert "- [ ] ADR-018: ACCEPTED;" not in progress
     assert "- [ ] Q-010: ACCEPTED;" not in progress
@@ -552,7 +552,7 @@ def test_gate_s1_acceptance_security_and_lifecycle_boundaries() -> None:
     for filename in lifecycle_files:
         text = (REPO_ROOT / filename).read_text(encoding="utf-8")
         assert "PR-005: COMPLETED AND HUMAN ACCEPTED" in text, filename
-        assert "PR-006: UNAUTHORIZED" in text, filename
+        assert "PR-006: `AUTHORIZED AND IN REVIEW, NOT ACCEPTED`" in text, filename
         assert (
             "PR-S001/PR-S001-F1/PR-S001-F2/PR-S001-F3/PR-S001-F4 use fictional synthetic data only"
             in text
@@ -584,10 +584,7 @@ def test_pr005_pr006_sequences_remain_blocked_after_gate_s1_acceptance() -> None
         not in implementation_plan
     )
     assert "PR-006 remains blocked" not in implementation_plan
-    assert "PR-006 and later tasks remain UNAUTHORIZED" in implementation_plan
-    assert "PR-006 remains subject to a separate exact task review" in implementation_plan
-    assert "filesystem-storage implementation remains prohibited" in implementation_plan
-    assert "PR-S001 does not create production filesystem storage" in implementation_plan
+    assert "PR-007 and later: `UNAUTHORIZED`" in implementation_plan
 
 
 def test_q001_through_q020_statuses_other_than_q010_are_unchanged() -> None:
@@ -1023,8 +1020,8 @@ def test_pr_s001_d1_acceptance_decision_document() -> None:
         "backup/recovery design",
         "installer design",
         "licensing/redistribution disposition",
-        "PR-006: UNAUTHORIZED",
-        "PR-007 AND LATER: UNAUTHORIZED",
+        "PR-006: `AUTHORIZED AND IN REVIEW, NOT ACCEPTED`",
+        "PR-007 and later: `UNAUTHORIZED`",
     ):
         assert required in text
     for forbidden in (
@@ -1067,7 +1064,7 @@ def test_pr_s001_spike_documentation_and_scope() -> None:
         "CONDITIONALLY FEASIBLE",
         "Windows 11 x64: NOT_DEMONSTRATED",
         "RISK-PR005-RAWKEY-PRAGMA",
-        "PR-006: UNAUTHORIZED",
+        "PR-006: `AUTHORIZED AND IN REVIEW, NOT ACCEPTED`",
     ):
         assert required_phrase in report
     pyproject = (REPO_ROOT / "pyproject.toml").read_text(encoding="utf-8")
@@ -1076,7 +1073,7 @@ def test_pr_s001_spike_documentation_and_scope() -> None:
         "sqlcipher3==0.6.2; sys_platform == 'win32' and platform_machine == 'AMD64'"
         in project_block
     )
-    assert "cryptography" not in project_block
+    assert "cryptography==49.0.0" in project_block
     assert "encryption-spike" in pyproject
     progress = (REPO_ROOT / "docs/progress.md").read_text(encoding="utf-8")
     assert "PR-S001: ACCEPTED WITH DOCUMENTED RESIDUAL RISK RISK-S001-W11" in progress
@@ -1093,7 +1090,7 @@ def test_pr_s001_spike_documentation_and_scope() -> None:
     for lifecycle in lifecycle_files:
         text = (REPO_ROOT / lifecycle).read_text(encoding="utf-8")
         assert "PR-005: COMPLETED AND HUMAN ACCEPTED" in text
-        assert "PR-006: UNAUTHORIZED" in text
+        assert "PR-006: `AUTHORIZED AND IN REVIEW, NOT ACCEPTED`" in text
         assert (
             "PR-S001/PR-S001-F1/PR-S001-F2/PR-S001-F3/PR-S001-F4 use fictional synthetic data only"
             in text

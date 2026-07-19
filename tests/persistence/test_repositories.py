@@ -56,8 +56,7 @@ from document_intake.persistence.database import (
     VehicleRepo,
 )
 from document_intake.persistence.errors import PersistenceError, PersistenceErrorCode
-from document_intake.persistence.migrations import APPLICATION_ID
-from document_intake.persistence.migrations.v0001_initial import MIGRATION
+from document_intake.persistence.migrations import APPLICATION_ID, MIGRATIONS
 
 NOW = datetime(2026, 7, 19, 12, 0, tzinfo=UTC)
 
@@ -90,14 +89,15 @@ def migrated_connection() -> sqlite3.Connection:
     conn.execute("PRAGMA foreign_keys = ON")
     conn.execute("BEGIN IMMEDIATE")
     conn.execute(f"PRAGMA application_id = {APPLICATION_ID}")
-    for statement in MIGRATION.statements:
-        conn.execute(statement)
-    conn.execute(
-        "INSERT INTO schema_migrations(version, name, checksum, applied_at_utc) "
-        "VALUES (?, ?, ?, ?)",
-        (MIGRATION.version, MIGRATION.name, MIGRATION.checksum, "2026-07-19T00:00:00Z"),
-    )
-    conn.execute(f"PRAGMA user_version = {MIGRATION.version}")
+    for migration in MIGRATIONS:
+        for statement in migration.statements:
+            conn.execute(statement)
+        conn.execute(
+            "INSERT INTO schema_migrations(version, name, checksum, applied_at_utc) "
+            "VALUES (?, ?, ?, ?)",
+            (migration.version, migration.name, migration.checksum, "2026-07-19T00:00:00Z"),
+        )
+        conn.execute(f"PRAGMA user_version = {migration.version}")
     conn.execute("COMMIT")
     return conn
 

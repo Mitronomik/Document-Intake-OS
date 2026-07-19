@@ -10,7 +10,7 @@ Envelope v1: `DIOSOBJ1` magic, 4-byte big-endian canonical-header length, canoni
 
 Filesystem layout: `objects/<uuid_hex[0:2]>/<uuid_hex[2:4]>/<canonical_uuid>.diosobj`; temporary encrypted files are `.tmp-<uuid>.diosobj` in the final directory. Paths contain only UUID-derived components and never source names or PII.
 
-Migration v0002 schema: `stored_artifacts` with immutable artifact metadata projections and `canonical_payload`; constraints enforce generation 1, non-negative plaintext length, 64-character digests, positive key version, storage format 1 and the three accepted artifact kinds. UPDATE and DELETE triggers reject mutation. Final v0002 checksum: `fa3a3c9e9395f330d866be8d9d43489b5d399d20c03d7a821d474324b0ef947c`.
+Migration v0002 schema: `stored_artifacts` with immutable artifact metadata projections and `canonical_payload`; constraints enforce generation 1, non-negative plaintext length, 64-character digests, positive key version, storage format 1 and the three accepted artifact kinds. UPDATE and DELETE triggers reject mutation. Final v0002 checksum: `fb953af64efd3e860960eae8ef1f4078afd0a6ec078a33594e271a9285d7db3d`.
 
 Transaction boundary: object first, database second. Failures before publication leave no final object; failures after final publication and before commit create read-only reconciliation orphans. No PENDING state and no SQLite/filesystem distributed transaction are claimed.
 

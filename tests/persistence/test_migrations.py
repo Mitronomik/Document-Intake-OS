@@ -9,6 +9,9 @@ from document_intake.persistence.errors import PersistenceError, PersistenceErro
 from document_intake.persistence.migrations import APPLICATION_ID, CURRENT_SCHEMA_VERSION
 from document_intake.persistence.migrations.model import Migration, migration_checksum
 from document_intake.persistence.migrations.v0001_initial import MIGRATION
+from document_intake.persistence.migrations.v0002_stored_artifacts import (
+    MIGRATION as V0002_MIGRATION,
+)
 
 REQUIRED_TABLES = {
     "schema_migrations",
@@ -27,6 +30,7 @@ REQUIRED_TABLES = {
     "application_validation_issues",
     "application_snapshots",
     "application_snapshot_artifact_refs",
+    "stored_artifacts",
 }
 
 
@@ -49,18 +53,17 @@ def test_migration_1_creates_tables_metadata_user_version_and_application_id() -
     assert connection.execute("PRAGMA user_version").fetchone()[0] == CURRENT_SCHEMA_VERSION
     assert connection.execute("PRAGMA application_id").fetchone()[0] == APPLICATION_ID
     assert connection.execute(
-        "SELECT version, name, checksum FROM schema_migrations"
-    ).fetchone() == (
-        MIGRATION.version,
-        MIGRATION.name,
-        MIGRATION.checksum,
-    )
+        "SELECT version, name, checksum FROM schema_migrations ORDER BY version"
+    ).fetchall() == [
+        (MIGRATION.version, MIGRATION.name, MIGRATION.checksum),
+        (V0002_MIGRATION.version, V0002_MIGRATION.name, V0002_MIGRATION.checksum),
+    ]
 
 
 def test_initialize_migrations_are_idempotent() -> None:
     connection = apply()
     database._apply_migrations(connection)
-    assert connection.execute("SELECT count(*) FROM schema_migrations").fetchone()[0] == 1
+    assert connection.execute("SELECT count(*) FROM schema_migrations").fetchone()[0] == 2
 
 
 def test_applied_prefix_validates_and_future_migration_applies(
@@ -69,22 +72,23 @@ def test_applied_prefix_validates_and_future_migration_applies(
     connection = apply()
     future_statements = ("CREATE TABLE future_projection(id INTEGER PRIMARY KEY)",)
     future = Migration(
-        2,
+        3,
         "future_projection",
         future_statements,
         migration_checksum(future_statements),
     )
-    monkeypatch.setattr(database, "MIGRATIONS", (MIGRATION, future))
-    monkeypatch.setattr(database, "CURRENT_SCHEMA_VERSION", 2)
+    monkeypatch.setattr(database, "MIGRATIONS", (MIGRATION, V0002_MIGRATION, future))
+    monkeypatch.setattr(database, "CURRENT_SCHEMA_VERSION", 3)
 
     database._validate_schema(connection)
     database._apply_migrations(connection)
 
-    assert connection.execute("PRAGMA user_version").fetchone()[0] == 2
+    assert connection.execute("PRAGMA user_version").fetchone()[0] == 3
     assert connection.execute(
         "SELECT version, name, checksum FROM schema_migrations ORDER BY version"
     ).fetchall() == [
         (MIGRATION.version, MIGRATION.name, MIGRATION.checksum),
+        (V0002_MIGRATION.version, V0002_MIGRATION.name, V0002_MIGRATION.checksum),
         (future.version, future.name, future.checksum),
     ]
     assert connection.execute(
@@ -97,7 +101,7 @@ def test_applied_prefix_validates_and_future_migration_applies(
     [
         lambda c: c.execute(
             "INSERT INTO schema_migrations(version, name, checksum, applied_at_utc) "
-            "VALUES (2, 'extra', 'extra', '2026-07-19T00:00:00Z')"
+            "VALUES (3, 'extra', 'extra', '2026-07-19T00:00:00Z')"
         ),
         lambda c: c.execute("UPDATE schema_migrations SET name='reordered' WHERE version=1"),
         lambda c: (
@@ -134,7 +138,7 @@ def test_extra_reordered_or_malformed_history_is_rejected(tamper) -> None:  # ty
                 ),
                 c.execute("PRAGMA user_version = 2"),
             ),
-            PersistenceErrorCode.SCHEMA_VERSION_UNSUPPORTED,
+            PersistenceErrorCode.SCHEMA_HISTORY_INVALID,
         ),
         (
             lambda c: c.execute("PRAGMA user_version = 99"),
