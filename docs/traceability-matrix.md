@@ -77,3 +77,8 @@ PR-S001-F1, PR-S001-F2, PR-S001-F3 and PR-S001-F4 are completed. PR-S001/PR-S001
 
 
 PR-S001 lifecycle boundary: PR-S001/PR-S001-F1/PR-S001-F2/PR-S001-F3/PR-S001-F4 use fictional synthetic data only; PR-S001 contains no production persistence/storage API; a negative feasibility result is valid; PR #14 records the explicit product-owner authorization for PR-005. No additional authorization PR is required for PR-005 within the accepted scope. PR-005 has not started.
+
+
+## PR-005 traceability update
+
+FR-13: PR-005 IN REVIEW. Verification references migration tests, SQLCipher Windows integration, repository round trips, Unit of Work transaction tests, immutable snapshot persistence and privacy tests. FR-13 is not accepted.

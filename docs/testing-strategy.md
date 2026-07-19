@@ -113,3 +113,8 @@ No secrets/PII in logs, formula injection, template checksum, timeout, permissio
 ## 13. Acceptance protocol
 
 Фиксировать build, OS, Excel version, models, template hashes, sample count, results, defects and release decision without PII.
+
+
+## PR-005 persistence testing
+
+PR-005 testing covers Windows SQLCipher integration, migration checksum/history validation, repository round trips, Unit of Work commit/rollback behavior, ordinary SQLite rejection, wrong-key and tamper behavior, key/PII leak checks and database-trigger snapshot immutability.

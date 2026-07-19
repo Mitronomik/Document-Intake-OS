@@ -1,0 +1,31 @@
+# ruff: noqa: E501
+"""Initial encrypted persistence schema."""
+
+from document_intake.persistence.migrations.model import Migration, migration_checksum
+
+VERSION = 1
+NAME = "initial_pr004_domain_persistence"
+STATEMENTS = (
+    "CREATE TABLE schema_migrations (version INTEGER PRIMARY KEY, name TEXT NOT NULL, checksum TEXT NOT NULL, applied_at_utc TEXT NOT NULL)",
+    "CREATE TABLE persons (id TEXT PRIMARY KEY, payload TEXT NOT NULL)",
+    "CREATE TABLE identity_documents (id TEXT PRIMARY KEY, person_id TEXT NOT NULL REFERENCES persons(id) ON DELETE RESTRICT, payload TEXT NOT NULL)",
+    "CREATE TABLE migration_documents (id TEXT PRIMARY KEY, person_id TEXT NOT NULL REFERENCES persons(id) ON DELETE RESTRICT, related_passport_id TEXT REFERENCES identity_documents(id) ON DELETE RESTRICT, payload TEXT NOT NULL)",
+    "CREATE TABLE documents (id TEXT PRIMARY KEY, owner_kind TEXT, owner_id TEXT, payload TEXT NOT NULL, CHECK ((owner_kind IS NULL AND owner_id IS NULL) OR (owner_kind IS NOT NULL AND owner_id IS NOT NULL)))",
+    "CREATE TABLE document_sides (document_id TEXT NOT NULL REFERENCES documents(id) ON DELETE RESTRICT, order_index INTEGER NOT NULL, side_id TEXT NOT NULL, PRIMARY KEY(document_id, order_index))",
+    "CREATE TABLE vehicles (id TEXT PRIMARY KEY, payload TEXT NOT NULL)",
+    "CREATE TABLE terminals (code TEXT PRIMARY KEY, is_active INTEGER NOT NULL CHECK (is_active IN (0,1)), payload TEXT NOT NULL)",
+    "CREATE TABLE field_candidates (id TEXT PRIMARY KEY, field_entity_id TEXT NOT NULL, field_key TEXT NOT NULL, confidence TEXT NOT NULL, payload TEXT NOT NULL)",
+    "CREATE TABLE field_candidate_validation_results (candidate_id TEXT NOT NULL REFERENCES field_candidates(id) ON DELETE RESTRICT, order_index INTEGER NOT NULL, result TEXT NOT NULL, PRIMARY KEY(candidate_id, order_index))",
+    "CREATE TABLE applications (id TEXT PRIMARY KEY, terminal_code TEXT REFERENCES terminals(code) ON DELETE RESTRICT, payload TEXT NOT NULL)",
+    "CREATE TABLE application_assignments (application_id TEXT NOT NULL REFERENCES applications(id) ON DELETE RESTRICT, order_index INTEGER NOT NULL, person_id TEXT NOT NULL REFERENCES persons(id) ON DELETE RESTRICT, tractor_id TEXT NOT NULL REFERENCES vehicles(id) ON DELETE RESTRICT, trailer_id TEXT REFERENCES vehicles(id) ON DELETE RESTRICT, payload TEXT NOT NULL, PRIMARY KEY(application_id, order_index))",
+    "CREATE TABLE application_verified_fields (application_id TEXT NOT NULL REFERENCES applications(id) ON DELETE RESTRICT, field_entity_id TEXT NOT NULL, field_key TEXT NOT NULL, source_candidate_id TEXT REFERENCES field_candidates(id) ON DELETE RESTRICT, payload TEXT NOT NULL, PRIMARY KEY(application_id, field_entity_id, field_key))",
+    "CREATE TABLE application_validation_issues (application_id TEXT NOT NULL REFERENCES applications(id) ON DELETE RESTRICT, order_index INTEGER NOT NULL, payload TEXT NOT NULL, PRIMARY KEY(application_id, order_index))",
+    "CREATE TABLE application_snapshots (id TEXT PRIMARY KEY, application_id TEXT NOT NULL REFERENCES applications(id) ON DELETE RESTRICT, terminal_code TEXT NOT NULL REFERENCES terminals(code) ON DELETE RESTRICT, created_at_utc TEXT NOT NULL, canonical_json TEXT NOT NULL, sha256 TEXT NOT NULL, payload TEXT NOT NULL)",
+    "CREATE TABLE application_snapshot_artifact_refs (snapshot_id TEXT NOT NULL REFERENCES application_snapshots(id) ON DELETE RESTRICT, order_index INTEGER NOT NULL, artifact_ref TEXT NOT NULL, PRIMARY KEY(snapshot_id, order_index))",
+    "CREATE TRIGGER application_snapshots_no_update BEFORE UPDATE ON application_snapshots BEGIN SELECT RAISE(ABORT, 'ERR_SNAPSHOT_IMMUTABLE'); END",
+    "CREATE TRIGGER application_snapshots_no_delete BEFORE DELETE ON application_snapshots BEGIN SELECT RAISE(ABORT, 'ERR_SNAPSHOT_IMMUTABLE'); END",
+    "CREATE TRIGGER application_snapshot_artifact_refs_no_update BEFORE UPDATE ON application_snapshot_artifact_refs BEGIN SELECT RAISE(ABORT, 'ERR_SNAPSHOT_ARTIFACT_IMMUTABLE'); END",
+    "CREATE TRIGGER application_snapshot_artifact_refs_no_delete BEFORE DELETE ON application_snapshot_artifact_refs BEGIN SELECT RAISE(ABORT, 'ERR_SNAPSHOT_ARTIFACT_IMMUTABLE'); END",
+)
+CHECKSUM = migration_checksum(STATEMENTS)
+MIGRATION = Migration(VERSION, NAME, STATEMENTS, CHECKSUM)

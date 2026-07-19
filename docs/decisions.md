@@ -517,3 +517,32 @@ Required sequence after acceptance: PR-S001 preparation, implementation, review 
 ### Non-decisions
 
 ADR-018 does not decide the final SQLCipher edition or distribution, final Python database binding, exact package version, exact cryptography package, exact KDF or wrapping construction, exact per-object key strategy, exact encrypted-envelope byte format, exact chunking format, exact crash-consistency transaction design, FIPS requirement, backup recovery password policy, backup destination, retention and deletion periods, external or monotonic full-system rollback anchor, local user authentication, idle timeout, administrator recovery ceremony, secure deletion guarantees, key rotation UI, multi-workstation key sharing or macOS keychain implementation.
+
+
+## ADR-019 — PR-005 SQLCipher binding and raw-key staging
+
+Status: ACCEPTED
+
+Date: 2026-07-19
+
+Decision owner: Product owner
+
+Decision:
+
+- use sqlcipher3==0.6.2 for PR-005 development;
+- accept RISK-PR005-RAWKEY-PRAGMA for PR-005 development;
+- require a 32-byte database key through DatabaseKeyProvider;
+- prohibit plaintext fallback;
+- do not implement DPAPI or key hierarchy in PR-005;
+- keep legal/redistribution approval unresolved;
+- require binding-safe API resolution or separate product-owner risk acceptance before installer, pilot or production release.
+
+Non-decisions:
+
+- no final release-package approval;
+- no final license disposition;
+- no final master-key implementation;
+- no filesystem encryption;
+- no backup recovery;
+- no authentication;
+- no installer design.

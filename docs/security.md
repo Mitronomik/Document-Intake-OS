@@ -152,3 +152,8 @@ The scanner detects a narrow set of high-confidence secret signatures: private-k
 Diagnostics include stable rule IDs, repository-relative paths and line numbers when applicable. Diagnostics must not print matched secrets, binary content or full source lines.
 
 Passing the scanner reduces risk but cannot prove absence of every possible PII item or secret. Real-data acceptance remains local and outside Git and CI. A detected real secret requires separate credential revocation and incident handling. Passing the scanner does not authorize a file that violates higher-level policy or an accepted ADR.
+
+
+## PR-005 SQLCipher development boundary
+
+PR-005 selects `sqlcipher3==0.6.2` for Windows AMD64 Python 3.12 development. Database keys cross the application boundary only through `DatabaseKeyProvider` and must be exactly 32 bytes. There is no plaintext fallback. `RISK-PR005-RAWKEY-PRAGMA` is accepted for PR-005 development because the raw-key PRAGMA is isolated in one private helper; it remains open for release. PR-005 does not implement DPAPI, key storage or key hierarchy and must not log keys or enable SQL tracing. Legal, redistribution and binding-safe API resolution remain release-boundary decisions.

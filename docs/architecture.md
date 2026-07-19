@@ -214,3 +214,8 @@ OCR, quality analysis и export выполняются вне UI thread. Отм�
 - `.xlsx` library;
 - `.xls` strategy;
 - local authentication.
+
+
+## PR-005 encrypted persistence candidate
+
+Persistence now includes an encrypted SQLCipher adapter candidate for PR-005. Application ports remain independent of SQLCipher; repositories and Unit of Work are implemented by the persistence adapter. Filesystem storage remains separate. PR-005 selects an internal forward-only migration runner. DPAPI, key hierarchy and filesystem encryption remain outside PR-005. No plaintext adapter exists and final release binding/licensing approval is not claimed.
