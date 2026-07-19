@@ -82,7 +82,7 @@ def _open_connection(path: Path, provider: DatabaseKeyProvider) -> Connection:
 def _harden_connection(conn: Connection) -> None:
     try:
         status = _fetch_one(conn, "PRAGMA cipher_status")
-        if status != "active":
+        if status != 1:
             raise PersistenceError(PersistenceErrorCode.DB_ENCRYPTION_INACTIVE)
         conn.execute("PRAGMA foreign_keys = ON")
         conn.execute("PRAGMA temp_store = MEMORY")
@@ -100,7 +100,7 @@ def _harden_connection(conn: Connection) -> None:
         if int(_fetch_one(conn, "PRAGMA trusted_schema")) != 0:
             raise PersistenceError(PersistenceErrorCode.DB_PRAGMA_CONFIGURATION)
         rows = conn.execute("PRAGMA cipher_integrity_check").fetchall()
-        if rows and any(str(row[0]).lower() != "ok" for row in rows):
+        if rows:
             raise PersistenceError(PersistenceErrorCode.DB_INTEGRITY_FAILED)
     except PersistenceError:
         raise

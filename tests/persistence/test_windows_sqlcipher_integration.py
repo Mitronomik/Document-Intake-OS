@@ -45,11 +45,8 @@ def test_actual_windows_sqlcipher_encryption_uow_and_privacy(
         uow.commit()
     with db.unit_of_work() as uow:
         assert uow.persons.get(eid(1)) is not None
-        assert uow._connection().execute("PRAGMA cipher_status").fetchone()[0] == "active"
-        assert (
-            uow._connection().execute("PRAGMA cipher_integrity_check").fetchall()[0][0].lower()
-            == "ok"
-        )
+        assert uow._connection().execute("PRAGMA cipher_status").fetchone()[0] == 1
+        assert uow._connection().execute("PRAGMA cipher_integrity_check").fetchall() == []
         assert uow._connection().execute("PRAGMA foreign_keys").fetchone()[0] == 1
         assert uow._connection().execute("PRAGMA temp_store").fetchone()[0] == 2
         assert uow._connection().execute("PRAGMA journal_mode").fetchone()[0].lower() == "wal"
