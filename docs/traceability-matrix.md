@@ -47,7 +47,7 @@
 | M1 Safe Repository | ADR-016 | ACCEPTED | documentation baseline test |
 | M0 Requirements Locked | ADR-016 | DECISION APPROVED during GATE-M0 PR; recorded in `main` only after merge and human acceptance | documentation baseline test |
 | PR-004 authorization boundary | ADR-016 | Limited to PR-004 Core Domain after gate merge and acceptance | documentation baseline test |
-| PR-005/PR-006 encryption staging | ADR-016 / Q-010 / ADR-018 / PR #14 / PR #15 | PR-005 COMPLETED AND HUMAN ACCEPTED through PR #15; PR-006 UNAUTHORIZED | documentation baseline test |
+| PR-005/PR-006 encryption staging | ADR-016 / Q-010 / ADR-018 / PR #14 / PR #15 | PR-005 COMPLETED AND HUMAN ACCEPTED through PR #15; PR-006 AUTHORIZED AND IN REVIEW, NOT ACCEPTED | documentation baseline test |
 | MVP workstation topology | ADR-017 / Q-008 | One Windows 11 x64 workstation with one active operator session at a time | documentation baseline test |
 | Terminal-specific staged questions | Q-001–Q-005 | External confirmation required before target adapter/export PRs | documentation baseline test |
 | Local evidence staged questions | Q-012–Q-015 | Real-document and environment evidence remains outside Git, Codex and CI | documentation baseline test |
@@ -66,7 +66,7 @@
 | ADR-018 | Q-010 | ACCEPTED | documentation baseline test |
 | PR-S001 | ADR-018 acceptance / PR #14 | ACCEPTED WITH DOCUMENTED RESIDUAL RISK RISK-S001-W11 | documentation baseline test |
 | PR-005 | Q-010 / PR #14 authorization boundary / PR #15 | COMPLETED AND HUMAN ACCEPTED at reviewed head `325b49555dee49fa22b008d9522bbbc6eb873ca2` and merge commit `2161fbbf7fb4065a5913fb6e62c207546caf5dd9`; verified by documentation baseline checks and persistence tests | documentation and persistence test verification |
-| PR-006 | Q-010 / authorization boundary | UNAUTHORIZED | documentation baseline test |
+| PR-006 | Q-010 / authorization boundary / PR #17 | AUTHORIZED AND IN REVIEW, NOT ACCEPTED | documentation baseline test |
 | PR-007 AND LATER | authorization boundary | UNAUTHORIZED | documentation baseline test |
 
 ## Current lifecycle state
@@ -75,7 +75,7 @@ GATE-M0: COMPLETED. M0: ACCEPTED. M1: ACCEPTED. PR-004: COMPLETED AND HUMAN ACCE
 
 PR-005: COMPLETED AND HUMAN ACCEPTED through GitHub PR #15 (`PR-005: Add encrypted SQLite persistence and migrations`) at merge commit `2161fbbf7fb4065a5913fb6e62c207546caf5dd9` from final reviewed head `325b49555dee49fa22b008d9522bbbc6eb873ca2`; final migration v0001 checksum is `e1e1f5f6d8d675a146f3d0c538a0d544b6f8a984c301d177ee1ad86e42f2d500`. Exact-head CI run #73 succeeded on Ubuntu and Windows, including Windows SQLCipher evidence for the PR-005 acceptance boundary. Migration v0001 is frozen after merge and every future schema change must use migration v0002 or later.
 
-PR-006: UNAUTHORIZED. PR-007 AND LATER: UNAUTHORIZED. Gate 1: NOT ACCEPTED. M2: NOT COMPLETED. Q-017 remains deferred unless an accepted decision says otherwise. The sensitive-data/private-contour gate remains open, and real documents and personal data remain prohibited in Git, Codex and CI. The next safe step is preparing and reviewing the exact PR-006 task; PR-006 implementation remains prohibited without separate explicit product-owner authorization.
+PR-006: AUTHORIZED AND IN REVIEW, NOT ACCEPTED. PR-007 AND LATER: UNAUTHORIZED. Gate 1: NOT ACCEPTED. M2: NOT COMPLETED. Q-017 remains DEFERRED. The sensitive-data/private-contour gate remains open, and real documents and personal data remain prohibited in Git, Codex and CI. The next safe step is completing and reviewing PR #17 corrections. PR-006 remains not completed or accepted.
 
 RISK-PR005-RAWKEY-PRAGMA remains accepted only for the PR-005 development boundary and remains open for installer, pilot and production release.
 
@@ -85,4 +85,17 @@ PR-S001/PR-S001-F1/PR-S001-F2/PR-S001-F3/PR-S001-F4 use fictional synthetic data
 
 The PR-005 persistence slice for FR-13 is COMPLETED AND HUMAN ACCEPTED. The accepted slice covers persistence of the existing PR-004 domain scope: Person, IdentityDocument, MigrationDocument, Vehicle, Terminal, Document, FieldCandidate, Application with ParticipantAssignment, VerifiedField and ValidationReport issues, and immutable ApplicationSnapshot artifact references. FR-13 remains not fully complete beyond this accepted slice because later storage and application concepts remain deferred.
 
-Verification includes migrations, SQLCipher Windows integration, repository round trips, Unit of Work transaction tests, immutable snapshots and privacy tests. PR-005 final-audit correction verification covers UoW terminal-state enforcement and cleanup, canonical payload/projection consistency, projection tamper detection, complete immutable snapshot ordinals, applied migration-prefix validation, independent literal v0001 checksum verification, stable persistence/deserialization errors, the intentionally opaque vehicle registration-document reference and real Windows production-adapter ciphertext tamper/truncation tests. Gate 1 and M2 remain incomplete, PR-006 remains unauthorized, and RISK-PR005-RAWKEY-PRAGMA remains open for installer, pilot and production release.
+Verification includes migrations, SQLCipher Windows integration, repository round trips, Unit of Work transaction tests, immutable snapshots and privacy tests. PR-005 final-audit correction verification covers UoW terminal-state enforcement and cleanup, canonical payload/projection consistency, projection tamper detection, complete immutable snapshot ordinals, applied migration-prefix validation, independent literal v0001 checksum verification, stable persistence/deserialization errors, the intentionally opaque vehicle registration-document reference and real Windows production-adapter ciphertext tamper/truncation tests. Gate 1 and M2 remain incomplete, PR-006 is authorized and in review but not accepted, and RISK-PR005-RAWKEY-PRAGMA remains open for installer, pilot and production release.
+
+Q-009: DEFERRED. PR-006 implements no retention, deletion or secure-deletion policy.
+
+
+## PR-006 current lifecycle
+
+PR-006: `AUTHORIZED AND IN REVIEW, NOT ACCEPTED`.
+PR-007 and later: `UNAUTHORIZED`.
+Gate 1: `NOT ACCEPTED`.
+M2: `NOT COMPLETED`.
+Q-009: `DEFERRED`.
+Q-017: `DEFERRED`.
+Q-017 remains deferred.

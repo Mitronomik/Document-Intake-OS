@@ -1,7 +1,7 @@
 # Progress
 
 **Обновлено:** 2026-07-19
-**Статус:** PR-005: COMPLETED AND HUMAN ACCEPTED; PR-006: UNAUTHORIZED
+**Статус:** PR-005: COMPLETED AND HUMAN ACCEPTED; PR-006: AUTHORIZED AND IN REVIEW, NOT ACCEPTED; PR-007 AND LATER: UNAUTHORIZED
 
 ## Завершено
 
@@ -46,12 +46,12 @@
 - [x] PR-005 was merged through GitHub PR #15 at merge commit `2161fbbf7fb4065a5913fb6e62c207546caf5dd9` from final reviewed head `325b49555dee49fa22b008d9522bbbc6eb873ca2`;
 - [x] PR-005 v0001 migration checksum is final at `e1e1f5f6d8d675a146f3d0c538a0d544b6f8a984c301d177ee1ad86e42f2d500`; migration v0001 is frozen after merge and every future schema change must use migration v0002 or later;
 - [x] Windows SQLCipher evidence is complete for the PR-005 acceptance boundary through exact-head CI run #73;
-- [ ] PR-006: UNAUTHORIZED;
+- [ ] PR-006: AUTHORIZED AND IN REVIEW, NOT ACCEPTED;
 - [ ] PR-007 AND LATER: UNAUTHORIZED;
 - [ ] Gate 1: NOT ACCEPTED;
 - [ ] M2: NOT COMPLETED;
 - [x] Q-010: ACCEPTED;
-- [ ] Q-017 remains deferred unless an accepted decision says otherwise;
+- [ ] Q-017 remains DEFERRED;
 - [x] REPOSITORY PRIVACY BOUNDARY — ACCEPTED FOR NON-SENSITIVE CODE;
 - [ ] The sensitive-data/private-contour gate remains open for real data;
 - [ ] Real documents and personal data remain prohibited in Git, Codex and CI;
@@ -59,10 +59,10 @@
 
 ## Not started / unauthorized
 
-- [ ] PR-006 remains UNAUTHORIZED pending a separate exact task review and explicit product-owner authorization;
+- [ ] PR-006 is AUTHORIZED AND IN REVIEW, NOT ACCEPTED through PR #17; it is not completed, merged, accepted or human accepted;
 - [ ] PR-007 and later implementation tasks remain UNAUTHORIZED;
 - [ ] The template enforcement PR remains future work and does not block PR-004 or PR-005 closure;
-- [ ] storage implementation;
+- [ ] integration of immutable storage into the future file-import workflow;
 - [ ] image pipeline;
 - [ ] terminal adapters;
 - [ ] OCR benchmark;
@@ -74,11 +74,24 @@
 - Q-008 is accepted by ADR-017: one Windows 11 x64 workstation with one active operator session at a time.
 - Q-010: ACCEPTED; ADR-018 is ACCEPTED and resolves Q-010 at the architecture and sequencing level.
 - Q-012 through Q-015 require local evidence outside Git, Codex and CI.
-- Q-017 remains deferred unless an accepted decision says otherwise.
+- Q-017 remains DEFERRED.
 - Approved PII-free template artifacts are permitted by product policy after technical privacy inspection and repository-policy enforcement updates; real documents, PII-bearing artifacts and private acceptance materials remain outside Git, Codex and CI.
 
 ## Следующий безопасный шаг
 
 PR-S001/PR-S001-F1/PR-S001-F2/PR-S001-F3/PR-S001-F4 use fictional synthetic data only, may evaluate candidate packages and prototypes, must not create production database/storage APIs, and must not use real documents or personal data. PR-S001 contains no production persistence/storage API; a negative feasibility result is valid.
 
-Prepare and review the exact PR-006 task. This planning step does not authorize PR-006 implementation. Filesystem-storage implementation cannot start until a separate explicit product-owner authorization is given for the reviewed PR-006 contract.
+Complete PR #17 review corrections for PR-006. Do not merge or accept PR-006 before product-owner acceptance. Do not start PR-007.
+
+Q-009: DEFERRED. PR-006 implements no retention, deletion or secure-deletion policy.
+
+
+## PR-006 current lifecycle
+
+PR-006: `AUTHORIZED AND IN REVIEW, NOT ACCEPTED`.
+PR-007 and later: `UNAUTHORIZED`.
+Gate 1: `NOT ACCEPTED`.
+M2: `NOT COMPLETED`.
+Q-009: `DEFERRED`.
+Q-017: `DEFERRED`.
+Q-017 remains deferred.

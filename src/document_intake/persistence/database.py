@@ -11,6 +11,7 @@ from pathlib import Path
 from types import TracebackType
 from typing import Any, Literal, Self, TypeVar
 
+from document_intake.application.dto.storage import StoredArtifactRecord
 from document_intake.application.ports.persistence import DatabaseKeyProvider
 from document_intake.domain import *
 from document_intake.persistence import serialization as ser
@@ -983,6 +984,56 @@ class SnapshotRepo(_Repo):
         return tuple(snapshots)
 
 
+class StoredArtifactRepo(_Repo):
+    def __init__(self, uow: SqlCipherUnitOfWork) -> None:
+        super().__init__(
+            uow,
+            "stored_artifacts",
+            ser.stored_artifact_to_json,
+            ser.stored_artifact_from_json,
+            lambda x: str(x.artifact_id),
+        )
+
+    def add(self, record: StoredArtifactRecord) -> None:
+        payload = self._to_json(record)
+        self._execute(
+            "INSERT INTO stored_artifacts("
+            "artifact_id, artifact_kind, object_generation, plaintext_length, "
+            "plaintext_sha256, ciphertext_sha256, key_version, storage_format_version, "
+            "created_at, canonical_payload) "
+            "VALUES (?,?,?,?,?,?,?,?,?,?)",
+            (*ser.stored_artifact_columns(record), payload),
+            duplicate_is_already_exists=True,
+        )
+
+    def get(self, artifact_id: EntityId) -> StoredArtifactRecord | None:
+        rows = self._fetchall(
+            "SELECT artifact_id, artifact_kind, object_generation, plaintext_length, "
+            "plaintext_sha256, ciphertext_sha256, key_version, storage_format_version, "
+            "created_at, canonical_payload FROM stored_artifacts WHERE artifact_id=?",
+            (str(artifact_id),),
+        )
+        return None if not rows else self._from_projection(rows[0])
+
+    def list_all(self) -> tuple[StoredArtifactRecord, ...]:
+        return tuple(
+            self._from_projection(row)
+            for row in self._fetchall(
+                "SELECT artifact_id, artifact_kind, object_generation, plaintext_length, "
+                "plaintext_sha256, ciphertext_sha256, key_version, storage_format_version, "
+                "created_at, canonical_payload FROM stored_artifacts ORDER BY artifact_id"
+            )
+        )
+
+    def _from_projection(self, row: tuple[Any, ...]) -> StoredArtifactRecord:
+        entity = self._entity_from_payload_row(row[0], row[9])
+        if not isinstance(entity, StoredArtifactRecord):
+            raise PersistenceError(PersistenceErrorCode.PERSISTED_DATA_INVALID)
+        if tuple(row[:9]) != ser.stored_artifact_columns(entity):
+            raise PersistenceError(PersistenceErrorCode.PERSISTED_DATA_INVALID)
+        return entity
+
+
 class _UowState(Enum):
     NEW = auto()
     ACTIVE = auto()
@@ -1006,6 +1057,7 @@ class SqlCipherUnitOfWork:
         self._field_candidates: CandidateRepo | None = None
         self._applications: ApplicationRepo | None = None
         self._application_snapshots: SnapshotRepo | None = None
+        self._stored_artifacts: StoredArtifactRepo | None = None
 
     def __repr__(self) -> str:
         return "SqlCipherUnitOfWork(<redacted>)"
@@ -1060,6 +1112,10 @@ class SqlCipherUnitOfWork:
     def application_snapshots(self) -> SnapshotRepo:
         return self._repository(self._application_snapshots)
 
+    @property
+    def stored_artifacts(self) -> StoredArtifactRepo:
+        return self._repository(self._stored_artifacts)
+
     def _construct_repositories(self) -> None:
         self._persons = PersonRepo(self)
         self._identity_documents = IdentityRepo(self)
@@ -1070,6 +1126,7 @@ class SqlCipherUnitOfWork:
         self._field_candidates = CandidateRepo(self)
         self._applications = ApplicationRepo(self)
         self._application_snapshots = SnapshotRepo(self)
+        self._stored_artifacts = StoredArtifactRepo(self)
 
     def _invalidate(self) -> None:
         connection = self._conn

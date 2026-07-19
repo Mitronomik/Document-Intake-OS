@@ -16,6 +16,7 @@ from document_intake.domain.entities import (
 from document_intake.domain.enums import (
     ActorKind,
     ApplicationStatus,
+    ArtifactKind,
     CandidateSourceType,
     DocumentType,
     DocumentWorkflowStatus,
@@ -66,6 +67,7 @@ __all__ = [
     "Application",
     "ApplicationSnapshot",
     "ApplicationStatus",
+    "ArtifactKind",
     "CandidateSourceType",
     "Confidence",
     "CountryCode",

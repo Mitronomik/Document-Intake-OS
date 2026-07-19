@@ -8,7 +8,7 @@
 - ADR-015 created a narrow exception for PR-001 through PR-003 repository-safety work while M0 remained open;
 - PR-003 is completed and merged through GitHub PR #4 at `ad5782045473d3ef5eb0a097cc8f6982bab821c7`;
 - M1 Safe Repository is accepted;
-- GATE-M0 and M0 are accepted; PR-004 is completed and human accepted; GATE-S1 is completed and human accepted; ADR-018 is accepted; PR #9 merged PR-S001 as a research harness; PR-S001 is ACCEPTED WITH DOCUMENTED RESIDUAL RISK RISK-S001-W11; PR-005 is COMPLETED AND HUMAN ACCEPTED through GitHub PR #15 at merge commit `2161fbbf7fb4065a5913fb6e62c207546caf5dd9`; PR-006 and later tasks remain UNAUTHORIZED;
+- GATE-M0 and M0 are accepted; PR-004 is completed and human accepted; GATE-S1 is completed and human accepted; ADR-018 is accepted; PR #9 merged PR-S001 as a research harness; PR-S001 is ACCEPTED WITH DOCUMENTED RESIDUAL RISK RISK-S001-W11; PR-005 is COMPLETED AND HUMAN ACCEPTED through GitHub PR #15 at merge commit `2161fbbf7fb4065a5913fb6e62c207546caf5dd9`; PR-006 is AUTHORIZED AND IN REVIEW, NOT ACCEPTED; PR-007 and later tasks remain UNAUTHORIZED;
 - реальные документы не используются в Codex Web;
 - OCR начинается только после готовности ручного контура.
 
@@ -74,7 +74,7 @@ COMPLETED AND HUMAN ACCEPTED through GitHub PR #15 (`PR-005: Add encrypted SQLit
 
 ### PR-006 — Immutable filesystem storage
 
-UNAUTHORIZED. PR-006 remains subject to a separate exact task review and explicit product-owner authorization. Preparing and reviewing the exact PR-006 task is allowed as the next safe planning step, but filesystem-storage implementation remains prohibited as part of this lifecycle PR. PR-S001 does not create production filesystem storage.
+AUTHORIZED AND IN REVIEW, NOT ACCEPTED. PR-006 implementation is limited to immutable encrypted filesystem storage in PR #17. PR-S001 does not create production filesystem storage. PR-006 is not completed, accepted or human accepted.
 
 ### PR-007 — Audit events
 
@@ -220,7 +220,7 @@ Network block, PII logs, template tampering, formula injection and fault injecti
 
 GATE-M0: COMPLETED. GATE-M0 merge commit: `3dada63ea82163c7c4497e290b303d2cc781b085`. Human acceptance of GATE-M0 occurred after PR #5 merge. M0: ACCEPTED. M1: ACCEPTED. PR-004: COMPLETED AND HUMAN ACCEPTED. GATE-S1: COMPLETED AND HUMAN ACCEPTED. ADR-018: ACCEPTED. PR-S001: ACCEPTED WITH DOCUMENTED RESIDUAL RISK RISK-S001-W11. PR-005: COMPLETED AND HUMAN ACCEPTED through GitHub PR #15 at merge commit `2161fbbf7fb4065a5913fb6e62c207546caf5dd9` from reviewed head `325b49555dee49fa22b008d9522bbbc6eb873ca2`. PR-005 final migration v0001 checksum is `e1e1f5f6d8d675a146f3d0c538a0d544b6f8a984c301d177ee1ad86e42f2d500`; v0001 is frozen and every future schema change must use migration v0002 or later. Exact-head CI run #73 succeeded on Ubuntu and Windows, including `Python checks (ubuntu-latest)`, `Python checks (windows-latest)`, `PR-S001 Windows encryption spike` and `PR-S001 DPAPI cross-runner negative`; Windows SQLCipher evidence is complete for the PR-005 acceptance boundary.
 
-PR-006: UNAUTHORIZED. PR-007 AND LATER: UNAUTHORIZED. Gate 1: NOT ACCEPTED. M2: NOT COMPLETED. Q-010: ACCEPTED. Q-017 remains deferred unless an accepted decision says otherwise. The template enforcement PR remains future work. The sensitive-data/private-contour gate remains open, and real documents and personal data remain prohibited in Git, Codex and CI. The next safe step is preparing and reviewing the exact PR-006 task; implementation remains prohibited until separate explicit product-owner approval.
+PR-006: AUTHORIZED AND IN REVIEW, NOT ACCEPTED. PR-007 AND LATER: UNAUTHORIZED. Gate 1: NOT ACCEPTED. M2: NOT COMPLETED. Q-010: ACCEPTED. Q-017 remains DEFERRED. The template enforcement PR remains future work. The sensitive-data/private-contour gate remains open, and real documents and personal data remain prohibited in Git, Codex and CI. The next safe step is completing and reviewing PR #17 corrections. PR-006 remains not completed or accepted.
 
 ## PR-005 lifecycle update
 
@@ -232,4 +232,17 @@ PR-005 is COMPLETED AND HUMAN ACCEPTED after merge through GitHub PR #15 on `202
 
 RISK-PR005-RAWKEY-PRAGMA remains accepted only for the PR-005 development boundary and remains open for installer, pilot and production release.
 
-PR-006 remains UNAUTHORIZED, PR-007 and later remain UNAUTHORIZED, Gate 1 remains NOT ACCEPTED, and M2 remains NOT COMPLETED.
+PR-006 remains AUTHORIZED AND IN REVIEW, NOT ACCEPTED; PR-007 and later remain UNAUTHORIZED, Gate 1 remains NOT ACCEPTED, and M2 remains NOT COMPLETED.
+
+Q-009: DEFERRED. PR-006 implements no retention, deletion or secure-deletion policy.
+
+
+## PR-006 current lifecycle
+
+PR-006: `AUTHORIZED AND IN REVIEW, NOT ACCEPTED`.
+PR-007 and later: `UNAUTHORIZED`.
+Gate 1: `NOT ACCEPTED`.
+M2: `NOT COMPLETED`.
+Q-009: `DEFERRED`.
+Q-017: `DEFERRED`.
+Q-017 remains deferred.

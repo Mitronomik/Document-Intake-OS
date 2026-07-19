@@ -1,0 +1,34 @@
+"""Stable storage errors."""
+
+from __future__ import annotations
+
+from enum import StrEnum
+
+
+class StorageErrorCode(StrEnum):
+    CRYPTOGRAPHY_UNAVAILABLE = "ERR_STORAGE_CRYPTOGRAPHY_UNAVAILABLE"
+    KEY_UNAVAILABLE = "ERR_STORAGE_KEY_UNAVAILABLE"
+    KEY_INVALID = "ERR_STORAGE_KEY_INVALID"
+    KEY_VERSION_INVALID = "ERR_STORAGE_KEY_VERSION_INVALID"
+    ROOT_INVALID = "ERR_STORAGE_ROOT_INVALID"
+    ARTIFACT_EXISTS = "ERR_STORAGE_ARTIFACT_EXISTS"
+    TEMP_WRITE_FAILED = "ERR_STORAGE_TEMP_WRITE_FAILED"
+    ATOMIC_PUBLISH_FAILED = "ERR_STORAGE_ATOMIC_PUBLISH_FAILED"
+    OBJECT_MISSING = "ERR_STORAGE_OBJECT_MISSING"
+    ENVELOPE_FORMAT = "ERR_STORAGE_ENVELOPE_FORMAT"
+    AUTH_FAILED = "ERR_STORAGE_AUTH_FAILED"
+    CONTEXT_MISMATCH = "ERR_STORAGE_CONTEXT_MISMATCH"
+    EXPECTED_STATE_MISMATCH = "ERR_STORAGE_EXPECTED_STATE_MISMATCH"
+    TEMP_CLEANUP_FAILED = "ERR_STORAGE_TEMP_CLEANUP_FAILED"
+    IO_FAILED = "ERR_STORAGE_IO_FAILED"
+
+
+class StorageError(Exception):
+    """Public storage exception containing only a stable code."""
+
+    def __init__(self, code: StorageErrorCode) -> None:
+        self.code = code
+        super().__init__(code.value)
+
+    def __repr__(self) -> str:
+        return self.code.value

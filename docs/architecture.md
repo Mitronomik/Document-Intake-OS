@@ -219,3 +219,7 @@ OCR, quality analysis и export выполняются вне UI thread. Отм�
 ## PR-005 encrypted persistence candidate
 
 Persistence now includes an encrypted SQLCipher adapter candidate for PR-005. Application ports remain independent of SQLCipher; repositories and Unit of Work are implemented by the persistence adapter. Filesystem storage remains separate. PR-005 selects an internal forward-only migration runner. DPAPI, key hierarchy and filesystem encryption remain outside PR-005. No plaintext adapter exists and final release binding/licensing approval is not claimed.
+
+## PR-006 lifecycle note
+
+PR-005: `COMPLETED AND HUMAN ACCEPTED`. PR-006: `AUTHORIZED AND IN REVIEW, NOT ACCEPTED`. PR-007 and later: `UNAUTHORIZED`. Gate 1: `NOT ACCEPTED`. M2: `NOT COMPLETED`. Q-009: `DEFERRED`; PR-006 implements immutable stored final artifacts and no retention, deletion or secure-deletion policy. Q-017: `DEFERRED`; PR-006 storage layout is backup-neutral and PR-032 remains responsible for encrypted backup/restore. Real documents and personal data remain prohibited in Git, Codex and CI.

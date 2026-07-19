@@ -159,3 +159,7 @@ Passing the scanner reduces risk but cannot prove absence of every possible PII 
 PR-005 selects `sqlcipher3==0.6.2` for Windows AMD64 Python 3.12 development. Database keys cross the application boundary only through `DatabaseKeyProvider` and must be exactly 32 bytes. There is no plaintext fallback. `RISK-PR005-RAWKEY-PRAGMA` is accepted for PR-005 development because the raw-key PRAGMA is isolated in one private helper; it remains open for release. PR-005 does not implement DPAPI, key storage or key hierarchy and must not log keys or enable SQL tracing. Legal, redistribution and binding-safe API resolution remain release-boundary decisions.
 
 PR-005 diagnostic boundary: a failure before successful keyed schema access maps to `ERR_DB_KEY_REJECTED` because a wrong key and early ciphertext corruption cannot be cryptographically distinguished at that point. Once keyed schema access succeeds, a failed or non-empty `cipher_integrity_check` maps to `ERR_DB_INTEGRITY_FAILED`. This distinction does not claim impossible root-cause diagnosis.
+
+## PR-006 lifecycle note
+
+PR-005: `COMPLETED AND HUMAN ACCEPTED`. PR-006: `AUTHORIZED AND IN REVIEW, NOT ACCEPTED`. PR-007 and later: `UNAUTHORIZED`. Gate 1: `NOT ACCEPTED`. M2: `NOT COMPLETED`. Q-009: `DEFERRED`; PR-006 implements immutable stored final artifacts and no retention, deletion or secure-deletion policy. Q-017: `DEFERRED`; PR-006 storage layout is backup-neutral and PR-032 remains responsible for encrypted backup/restore. Real documents and personal data remain prohibited in Git, Codex and CI.
