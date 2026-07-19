@@ -4,8 +4,10 @@
 from __future__ import annotations
 
 import json
+from collections.abc import Callable
 from datetime import UTC, date, datetime
 from decimal import Decimal
+from functools import wraps
 from typing import Any
 from uuid import UUID
 
@@ -15,6 +17,21 @@ from document_intake.domain.errors import DomainError
 from document_intake.domain.policies import rehydrate_application_snapshot
 from document_intake.domain.value_objects import *
 from document_intake.persistence.errors import PersistenceError, PersistenceErrorCode
+
+
+def persisted_data_boundary[**P, T](function: Callable[P, T]) -> Callable[P, T]:
+    """Normalize every malformed persisted representation to one safe error."""
+
+    @wraps(function)
+    def wrapped(*args: P.args, **kwargs: P.kwargs) -> T:
+        try:
+            return function(*args, **kwargs)
+        except PersistenceError:
+            raise
+        except Exception:
+            raise PersistenceError(PersistenceErrorCode.PERSISTED_DATA_INVALID) from None
+
+    return wrapped
 
 
 def utc_iso(value: datetime) -> str:
@@ -72,7 +89,7 @@ def dumps(data: dict[str, Any]) -> str:
 def loads(payload: str) -> dict[str, Any]:
     try:
         data = json.loads(payload)
-    except json.JSONDecodeError:
+    except (json.JSONDecodeError, TypeError):
         raise PersistenceError(PersistenceErrorCode.PERSISTED_DATA_INVALID) from None
     if not isinstance(data, dict):
         raise PersistenceError(PersistenceErrorCode.PERSISTED_DATA_INVALID)
@@ -154,6 +171,7 @@ def person_to_json(o: Person) -> str:
     )
 
 
+@persisted_data_boundary
 def person_from_json(payload: str) -> Person:
     d = loads(payload)
     return Person(
@@ -189,6 +207,7 @@ def identity_to_json(o: IdentityDocument) -> str:
     )
 
 
+@persisted_data_boundary
 def identity_from_json(payload: str) -> IdentityDocument:
     d = loads(payload)
     return IdentityDocument(
@@ -225,6 +244,7 @@ def migration_to_json(o: MigrationDocument) -> str:
     )
 
 
+@persisted_data_boundary
 def migration_from_json(payload: str) -> MigrationDocument:
     d = loads(payload)
     return MigrationDocument(
@@ -263,6 +283,7 @@ def vehicle_to_json(o: Vehicle) -> str:
     )
 
 
+@persisted_data_boundary
 def vehicle_from_json(payload: str) -> Vehicle:
     d = loads(payload)
     return Vehicle(
@@ -298,6 +319,7 @@ def terminal_to_json(o: Terminal) -> str:
     )
 
 
+@persisted_data_boundary
 def terminal_from_json(payload: str) -> Terminal:
     d = loads(payload)
     return Terminal(
@@ -326,6 +348,7 @@ def document_to_json(o: Document) -> str:
     )
 
 
+@persisted_data_boundary
 def document_from_json(payload: str) -> Document:
     d = loads(payload)
     return Document(
@@ -357,6 +380,7 @@ def candidate_to_json(o: FieldCandidate) -> str:
     )
 
 
+@persisted_data_boundary
 def candidate_from_json(payload: str) -> FieldCandidate:
     d = loads(payload)
     try:
@@ -461,6 +485,7 @@ def application_to_json(o: Application) -> str:
     )
 
 
+@persisted_data_boundary
 def application_from_json(payload: str) -> Application:
     d = loads(payload)
     created_by = parse_actor(d["created_by"])
@@ -498,6 +523,7 @@ def snapshot_to_json(o: ApplicationSnapshot) -> str:
     )
 
 
+@persisted_data_boundary
 def snapshot_from_json(payload: str) -> ApplicationSnapshot:
     d = loads(payload)
     sp = SnapshotPayload(d["payload"])
@@ -534,6 +560,7 @@ def application_scalar_to_json(o: Application) -> str:
     )
 
 
+@persisted_data_boundary
 def application_from_components(
     payload: str,
     assignments: tuple[ParticipantAssignment, ...],
@@ -558,14 +585,17 @@ def application_from_components(
     )
 
 
+@persisted_data_boundary
 def assignment_from_json(payload: str) -> ParticipantAssignment:
     return _assignment_from_dict(loads(payload))
 
 
+@persisted_data_boundary
 def verified_field_from_json(payload: str) -> VerifiedField:
     return _verified_from_dict(loads(payload))
 
 
+@persisted_data_boundary
 def validation_issue_from_json(payload: str) -> ValidationIssue:
     return _issue_from_dict(loads(payload))
 
@@ -583,6 +613,7 @@ def application_columns(o: Application) -> tuple[str, str, str | None, str, str,
     )
 
 
+@persisted_data_boundary
 def application_from_row(
     row: tuple[str, str, str | None, str, str, str, str, str],
     assignments: tuple[ParticipantAssignment, ...],
@@ -624,6 +655,7 @@ def snapshot_columns(
     )
 
 
+@persisted_data_boundary
 def snapshot_from_row(
     row: tuple[str, str, str, str, str, str, str, str, str, str],
     artifact_refs: tuple[EntityId, ...],

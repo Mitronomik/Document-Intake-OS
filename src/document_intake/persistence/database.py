@@ -105,10 +105,18 @@ def _harden_connection(conn: Connection) -> None:
         status = _fetch_one(conn, "PRAGMA cipher_status")
         if not _cipher_status_is_active(status):
             raise PersistenceError(PersistenceErrorCode.DB_ENCRYPTION_INACTIVE)
+    except PersistenceError:
+        raise
+    except Exception:
+        raise PersistenceError(PersistenceErrorCode.DB_KEY_REJECTED) from None
 
-        # Force key derivation and validate access to the encrypted schema.
+    try:
+        # Wrong keys and corruption of the first/schema page are indistinguishable here.
         conn.execute("SELECT count(*) FROM sqlite_master").fetchone()
+    except Exception:
+        raise PersistenceError(PersistenceErrorCode.DB_KEY_REJECTED) from None
 
+    try:
         conn.execute("PRAGMA foreign_keys = ON")
         conn.execute("PRAGMA temp_store = MEMORY")
         journal = _fetch_one(conn, "PRAGMA journal_mode = WAL")
@@ -124,13 +132,19 @@ def _harden_connection(conn: Connection) -> None:
             raise PersistenceError(PersistenceErrorCode.DB_PRAGMA_CONFIGURATION)
         if int(_fetch_one(conn, "PRAGMA trusted_schema")) != 0:
             raise PersistenceError(PersistenceErrorCode.DB_PRAGMA_CONFIGURATION)
+    except PersistenceError:
+        raise
+    except Exception:
+        raise PersistenceError(PersistenceErrorCode.DB_PRAGMA_CONFIGURATION) from None
+
+    try:
         rows = conn.execute("PRAGMA cipher_integrity_check").fetchall()
         if rows:
             raise PersistenceError(PersistenceErrorCode.DB_INTEGRITY_FAILED)
     except PersistenceError:
         raise
     except Exception:
-        raise PersistenceError(PersistenceErrorCode.DB_KEY_REJECTED) from None
+        raise PersistenceError(PersistenceErrorCode.DB_INTEGRITY_FAILED) from None
 
 
 def _table_count(conn: Connection) -> int:
@@ -206,14 +220,20 @@ class EncryptedDatabase:
             _apply_migrations(conn)
         except PersistenceError:
             if conn is not None:
-                conn.close()
+                try:
+                    conn.close()
+                except Exception:
+                    pass
                 conn = None
             if not existed:
                 self._cleanup_new_database()
             raise
         finally:
             if conn is not None:
-                conn.close()
+                try:
+                    conn.close()
+                except Exception:
+                    raise PersistenceError(PersistenceErrorCode.PERSISTENCE_UNEXPECTED) from None
 
     def _cleanup_new_database(self) -> None:
         for suffix in ("", "-wal", "-shm", "-journal"):
