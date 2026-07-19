@@ -6,6 +6,8 @@ import re
 import subprocess
 from pathlib import Path
 
+import pytest
+
 REPO_ROOT = Path(__file__).resolve().parents[1]
 
 REQUIRED_DOCUMENTS = (
@@ -59,6 +61,21 @@ CANONICAL_SOURCE_ORDER = (
 
 INLINE_LINK_RE = re.compile(r"(?<!!)\[[^\]]+\]\(([^)\s]+)(?:\s+\"[^\"]*\")?\)")
 FENCE_RE = re.compile(r"^\s*(```|~~~)")
+
+
+def _assert_pr_s001_followups_completed(text: str, filename: str) -> None:
+    forbidden_statuses = ("IN REVIEW", "FAILED", "NOT COMPLETED", "UNAUTHORIZED")
+    for followup in ("PR-S001-F1", "PR-S001-F2", "PR-S001-F3"):
+        for status in forbidden_statuses:
+            assert f"{followup}: {status}" not in text, filename
+
+    individual_completed = all(
+        f"{followup}: COMPLETED" in text for followup in ("PR-S001-F1", "PR-S001-F2", "PR-S001-F3")
+    )
+    grouped_completed = "PR-S001-F1, PR-S001-F2 and PR-S001-F3: COMPLETED" in text
+    prose_completed = "PR-S001-F1, PR-S001-F2, PR-S001-F3 and PR-S001-F4 are completed" in text
+
+    assert individual_completed or grouped_completed or prose_completed, filename
 
 
 def _repo_relative(path: Path) -> str:
@@ -213,6 +230,20 @@ def test_readme_and_agents_use_canonical_source_order() -> None:
         )
 
 
+def test_pr_s001_followup_completion_helper_rejects_stale_or_ambiguous_statuses() -> None:
+    valid = "PR-S001-F1: COMPLETED. PR-S001-F2: COMPLETED. PR-S001-F3: COMPLETED."
+    _assert_pr_s001_followups_completed(valid, "synthetic")
+
+    for invalid in (
+        "PR-S001-F1: IN REVIEW. PR-S001-F2: COMPLETED. PR-S001-F3: COMPLETED.",
+        "PR-S001-F1: COMPLETED. PR-S001-F2: FAILED. PR-S001-F3: COMPLETED.",
+        "PR-S001-F1: COMPLETED. PR-S001-F2: COMPLETED. PR-S001-F3: NOT COMPLETED.",
+        "PR-S001-F1. PR-S001-F2. PR-S001-F3.",
+    ):
+        with pytest.raises(AssertionError):
+            _assert_pr_s001_followups_completed(invalid, "synthetic")
+
+
 def test_lifecycle_state_records_pr005_accepted_state() -> None:
     lifecycle_files = (
         "docs/progress.md",
@@ -231,9 +262,6 @@ def test_lifecycle_state_records_pr005_accepted_state() -> None:
         "Q-010: ACCEPTED",
         "PR-S001: ACCEPTED WITH DOCUMENTED RESIDUAL RISK",
         "RISK-S001-W11",
-        "PR-S001-F1",
-        "PR-S001-F2",
-        "PR-S001-F3",
         "PR-S001-F4: COMPLETED AND MERGED THROUGH PR #13",
         "985fae37c7645e8f65edbe4d1609100ee24a2097",
         "PR-005: COMPLETED AND HUMAN ACCEPTED",
@@ -308,6 +336,7 @@ def test_lifecycle_state_records_pr005_accepted_state() -> None:
             or "Filesystem-storage implementation cannot start" in text
             or "No filesystem-storage implementation may begin" in text
         ), filename
+        _assert_pr_s001_followups_completed(text, filename)
         assert (
             "PR-S001/PR-S001-F1/PR-S001-F2/PR-S001-F3/PR-S001-F4 use fictional synthetic data only"
             in text
