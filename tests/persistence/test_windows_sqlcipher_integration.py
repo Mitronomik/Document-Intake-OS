@@ -45,8 +45,22 @@ def test_actual_windows_sqlcipher_encryption_uow_and_privacy(
         uow.commit()
     with db.unit_of_work() as uow:
         assert uow.persons.get(eid(1)) is not None
-        assert uow._connection().execute("PRAGMA cipher_status").fetchone()[0] == 1
-        assert uow._connection().execute("PRAGMA cipher_integrity_check").fetchall() == []
+        connection = uow._connection()
+
+        cipher_version_row = connection.execute("PRAGMA cipher_version").fetchone()
+        assert cipher_version_row is not None
+        assert isinstance(cipher_version_row[0], str)
+        assert cipher_version_row[0].strip()
+
+        # SQLCipher 4.12+ returns a status row. Earlier SQLCipher 4.x
+        # versions do not implement this PRAGMA and return no row.
+        cipher_status_row = connection.execute("PRAGMA cipher_status").fetchone()
+        if cipher_status_row is not None:
+            assert cipher_status_row[0] == 1
+
+        assert connection.execute("SELECT count(*) FROM sqlite_master").fetchone() is not None
+
+        assert connection.execute("PRAGMA cipher_integrity_check").fetchall() == []
         assert uow._connection().execute("PRAGMA foreign_keys").fetchone()[0] == 1
         assert uow._connection().execute("PRAGMA temp_store").fetchone()[0] == 2
         assert uow._connection().execute("PRAGMA journal_mode").fetchone()[0].lower() == "wal"
