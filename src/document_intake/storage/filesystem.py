@@ -74,7 +74,7 @@ class _FilesystemOperations:
         path.mkdir(parents=True, exist_ok=True)
 
     def open_exclusive_no_follow(self, path: Path) -> int:
-        flags = os.O_CREAT | os.O_EXCL | os.O_WRONLY
+        flags = os.O_CREAT | os.O_EXCL | os.O_WRONLY | getattr(os, "O_BINARY", 0)
         if hasattr(os, "O_NOFOLLOW"):
             flags |= os.O_NOFOLLOW
         return os.open(path, flags, 0o600)
@@ -113,7 +113,7 @@ class _FilesystemOperations:
             os.close(fd)
 
     def read_bytes_no_follow(self, path: Path) -> bytes:
-        flags = os.O_RDONLY
+        flags = os.O_RDONLY | getattr(os, "O_BINARY", 0)
         if hasattr(os, "O_NOFOLLOW"):
             flags |= os.O_NOFOLLOW
         fd = os.open(path, flags)
@@ -614,9 +614,7 @@ class ImmutableFilesystemStorage:
                     )
                 )
                 continue
-            filename_artifact_id = EntityId(
-                uuid.UUID(path.name.removesuffix(".diosobj"))
-            )
+            filename_artifact_id = EntityId(uuid.UUID(path.name.removesuffix(".diosobj")))
             filename_uuid_hex = filename_artifact_id.value.hex
             is_canonical_path = (
                 path.parent.parent.name == filename_uuid_hex[:2]
@@ -644,8 +642,7 @@ class ImmutableFilesystemStorage:
                     artifact_id=artifact_id,
                     is_temporary=False,
                     is_canonical=(
-                        is_canonical_path
-                        and artifact_id.value == filename_artifact_id.value
+                        is_canonical_path and artifact_id.value == filename_artifact_id.value
                     ),
                 )
             )
