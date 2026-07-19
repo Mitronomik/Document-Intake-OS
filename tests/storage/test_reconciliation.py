@@ -47,8 +47,19 @@ def test_reconciliation_healthy_missing_invalid_orphan_and_temporary(tmp_path) -
     assert report.counts == {"healthy": 1, "missing": 1, "invalid": 1, "orphan": 1, "temporary": 1}
     assert report.orphan[0].artifact_id == orphan.artifact_id
     rendered = repr(report)
-    assert str(tmp_path) not in rendered
-    assert "healthy" not in rendered.lower()
+    forbidden = (
+        str(tmp_path),
+        "objects/",
+        ".diosobj",
+        "healthy",
+        "invalid",
+        "orphan",
+        "synthetic",
+        healthy.plaintext_sha256,
+        healthy.ciphertext_sha256,
+        "Traceback",
+    )
+    assert all(value not in rendered for value in forbidden)
     assert invalid_path.exists()
 
 
@@ -77,4 +88,40 @@ def test_malformed_orphan_is_invalid(tmp_path) -> None:
     path.parent.mkdir(parents=True)
     path.write_bytes(b"not an envelope")
     report = ImmutableFilesystemStorage(tmp_path, StaticKeyProvider()).reconcile(expected=())
+    assert report.counts["invalid"] == 1
+
+
+def test_duplicate_envelope_artifact_ids_are_invalid(tmp_path) -> None:
+    storage = ImmutableFilesystemStorage(tmp_path, StaticKeyProvider())
+    record = storage.publish_bytes(
+        artifact_id=entity_id(),
+        artifact_kind=ArtifactKind.ORIGINAL,
+        plaintext=b"payload",
+        created_at=aware_now(),
+    )
+    source = object_path(tmp_path, record.artifact_id)
+    duplicate_id = entity_id()
+    duplicate = object_path(tmp_path, duplicate_id)
+    duplicate.parent.mkdir(parents=True)
+    shutil.copyfile(source, duplicate)
+    report = storage.reconcile(expected=(record,))
+    assert report.counts["healthy"] == 1
+    assert report.counts["invalid"] == 1
+
+
+def test_duplicate_orphan_artifact_id_is_invalid(tmp_path) -> None:
+    storage = ImmutableFilesystemStorage(tmp_path, StaticKeyProvider())
+    record = storage.publish_bytes(
+        artifact_id=entity_id(),
+        artifact_kind=ArtifactKind.ORIGINAL,
+        plaintext=b"payload",
+        created_at=aware_now(),
+    )
+    source = object_path(tmp_path, record.artifact_id)
+    duplicate_id = entity_id()
+    duplicate = object_path(tmp_path, duplicate_id)
+    duplicate.parent.mkdir(parents=True)
+    shutil.copyfile(source, duplicate)
+    report = storage.reconcile(expected=())
+    assert report.counts["orphan"] == 1
     assert report.counts["invalid"] == 1

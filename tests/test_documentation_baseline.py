@@ -1020,8 +1020,8 @@ def test_pr_s001_d1_acceptance_decision_document() -> None:
         "backup/recovery design",
         "installer design",
         "licensing/redistribution disposition",
-        "PR-006: `AUTHORIZED AND IN REVIEW, NOT ACCEPTED`",
-        "PR-007 and later: `UNAUTHORIZED`",
+        "PR-006: UNAUTHORIZED",
+        "PR-007 AND LATER: UNAUTHORIZED",
     ):
         assert required in text
     for forbidden in (
@@ -1064,7 +1064,7 @@ def test_pr_s001_spike_documentation_and_scope() -> None:
         "CONDITIONALLY FEASIBLE",
         "Windows 11 x64: NOT_DEMONSTRATED",
         "RISK-PR005-RAWKEY-PRAGMA",
-        "PR-006: `AUTHORIZED AND IN REVIEW, NOT ACCEPTED`",
+        "PR-006: UNAUTHORIZED",
     ):
         assert required_phrase in report
     pyproject = (REPO_ROOT / "pyproject.toml").read_text(encoding="utf-8")

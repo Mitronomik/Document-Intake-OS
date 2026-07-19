@@ -115,7 +115,6 @@ def test_expected_state_mismatches_fail(tmp_path) -> None:
         replace(record, ciphertext_sha256="0" * 64),
         replace(record, plaintext_sha256="0" * 64),
         replace(record, key_version=2),
-        replace(record, storage_format_version=1),
     ):
         with pytest.raises(StorageError):
             storage.read_bytes(expected=invalid)

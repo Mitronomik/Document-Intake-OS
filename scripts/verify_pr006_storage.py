@@ -15,7 +15,8 @@ from document_intake.application.ports.storage import StorageKey
 from document_intake.domain.enums import ArtifactKind
 from document_intake.domain.value_objects import EntityId
 from document_intake.persistence.migrations import CURRENT_SCHEMA_VERSION
-from document_intake.persistence.migrations.v0002_stored_artifacts import CHECKSUM
+from document_intake.persistence.migrations.model import migration_checksum
+from document_intake.persistence.migrations.v0002_stored_artifacts import CHECKSUM, STATEMENTS
 from document_intake.storage.envelope import ALGORITHM, FORMAT_VERSION
 from document_intake.storage.errors import StorageError, StorageErrorCode
 from document_intake.storage.filesystem import ImmutableFilesystemStorage
@@ -153,7 +154,9 @@ def run_checks() -> dict[str, str]:
             else "FAIL"
         )
         statuses["schema_version"] = "PASS" if CURRENT_SCHEMA_VERSION == 2 else "FAIL"
-        statuses["migration_v0002_checksum"] = "PASS" if CHECKSUM else "FAIL"
+        statuses["migration_v0002_checksum"] = (
+            "PASS" if migration_checksum(STATEMENTS) == CHECKSUM else "FAIL"
+        )
     return statuses
 
 
@@ -169,9 +172,14 @@ def format_report(statuses: dict[str, str]) -> str:
     return "\n".join(lines)
 
 
+def report_is_sanitized(report: str, forbidden_values: tuple[str, ...]) -> bool:
+    return all(value not in report for value in forbidden_values if value)
+
+
 def main() -> int:
     statuses = run_checks()
-    print(format_report(statuses))
+    report = format_report(statuses)
+    print(report)
     return 0 if all(value == "PASS" for value in statuses.values()) else 1
 
 

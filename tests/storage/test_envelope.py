@@ -132,26 +132,32 @@ def test_truncation_fails(cut: int) -> None:
 
 
 @pytest.mark.parametrize(
-    ("field", "value"),
+    ("field", "value", "expected_code"),
     [
-        ("algorithm", "AES-128-GCM"),
-        ("format_version", 2),
-        ("format_version", True),
-        ("object_generation", 2),
-        ("object_generation", True),
-        ("key_version", 0),
-        ("key_version", True),
-        ("plaintext_length", -1),
-        ("plaintext_length", True),
-        ("plaintext_sha256", "g" * 64),
-        ("plaintext_sha256", "a" * 63),
-        ("artifact_id", str(uuid4()).upper()),
-        ("artifact_kind", "OTHER"),
-        ("nonce", "AAAA"),
-        ("nonce", base64.b64encode(b"1" * NONCE_LENGTH).decode("ascii").rstrip("=")),
+        ("algorithm", "AES-128-GCM", StorageErrorCode.ENVELOPE_FORMAT),
+        ("format_version", 2, StorageErrorCode.ENVELOPE_FORMAT),
+        ("format_version", True, StorageErrorCode.ENVELOPE_FORMAT),
+        ("object_generation", 2, StorageErrorCode.ENVELOPE_FORMAT),
+        ("object_generation", True, StorageErrorCode.ENVELOPE_FORMAT),
+        ("key_version", 0, StorageErrorCode.KEY_VERSION_INVALID),
+        ("key_version", True, StorageErrorCode.ENVELOPE_FORMAT),
+        ("plaintext_length", -1, StorageErrorCode.ENVELOPE_FORMAT),
+        ("plaintext_length", True, StorageErrorCode.ENVELOPE_FORMAT),
+        ("plaintext_sha256", "g" * 64, StorageErrorCode.ENVELOPE_FORMAT),
+        ("plaintext_sha256", "a" * 63, StorageErrorCode.ENVELOPE_FORMAT),
+        ("artifact_id", str(uuid4()).upper(), StorageErrorCode.ENVELOPE_FORMAT),
+        ("artifact_kind", "OTHER", StorageErrorCode.ENVELOPE_FORMAT),
+        ("nonce", "AAAA", StorageErrorCode.ENVELOPE_FORMAT),
+        (
+            "nonce",
+            base64.b64encode(b"1" * NONCE_LENGTH).decode("ascii").rstrip("="),
+            StorageErrorCode.ENVELOPE_FORMAT,
+        ),
     ],
 )
-def test_invalid_header_values_fail(field: str, value: object) -> None:
+def test_invalid_header_values_fail(
+    field: str, value: object, expected_code: StorageErrorCode
+) -> None:
     envelope = build_envelope(
         key=StorageKey(1, KEY_BYTES),
         artifact_id=entity_id(),
@@ -160,7 +166,7 @@ def test_invalid_header_values_fail(field: str, value: object) -> None:
     )
     header, _ = _header(envelope)
     header[field] = value
-    assert_storage_error(_replace_header(envelope, header))
+    assert_storage_error(_replace_header(envelope, header), expected_code)
 
 
 def test_missing_extra_and_noncanonical_header_fail() -> None:

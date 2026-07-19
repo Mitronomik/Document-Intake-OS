@@ -11,6 +11,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from enum import StrEnum
 from pathlib import Path
+from typing import Any
 
 from document_intake.application.dto.storage import (
     StorageReconciliationItem,
@@ -134,7 +135,9 @@ class _FailingFilesystemOperations(_FilesystemOperations):
         self._fail(FilesystemFailurePoint.BEFORE_TEMPORARY_CREATION)
         fd = super().open_exclusive_no_follow(path)
         self.created_temporary = path
-        self._fail(FilesystemFailurePoint.AFTER_TEMPORARY_CREATION)
+        if self.failure_point == FilesystemFailurePoint.AFTER_TEMPORARY_CREATION:
+            os.close(fd)
+            raise OSError
         return fd
 
     def write_all(self, fd: int, data: bytes) -> None:
@@ -160,7 +163,9 @@ class _FailingFilesystemOperations(_FilesystemOperations):
 
 def is_windows_reparse_point(path: Path) -> bool:
     try:
-        attributes = getattr(path.stat(follow_symlinks=False), "st_file_attributes")
+        stat_result: Any = path.stat(follow_symlinks=False)
+        attribute_name = "st_file_attributes"
+        attributes = getattr(stat_result, attribute_name)
     except AttributeError:
         return False
     except OSError:
@@ -422,8 +427,10 @@ class ImmutableFilesystemStorage:
                     )
                 )
 
-        seen_paths: set[Path] = set()
+        seen_artifact_ids: set[EntityId] = set()
         objects = self._root / "objects"
+        if objects.exists() and not _is_safe_existing_directory(objects):
+            raise StorageError(StorageErrorCode.ROOT_INVALID)
         if _is_safe_existing_directory(objects):
             for path in self._iter_managed_entries(objects):
                 if path.name.startswith(".tmp-"):
@@ -458,7 +465,7 @@ class ImmutableFilesystemStorage:
                         )
                     )
                     continue
-                if path != canonical or path in seen_paths:
+                if path != canonical or artifact_id in seen_artifact_ids:
                     invalid.append(
                         StorageReconciliationItem(
                             status=StorageReconciliationStatus.INVALID,
@@ -467,7 +474,7 @@ class ImmutableFilesystemStorage:
                         )
                     )
                     continue
-                seen_paths.add(path)
+                seen_artifact_ids.add(artifact_id)
                 if str(artifact_id) not in expected_by_id:
                     orphan.append(
                         StorageReconciliationItem(
@@ -518,6 +525,8 @@ class ImmutableFilesystemStorage:
     def cleanup_temporary_files(self) -> int:
         count = 0
         objects = self._root / "objects"
+        if objects.exists() and not _is_safe_existing_directory(objects):
+            raise StorageError(StorageErrorCode.TEMP_CLEANUP_FAILED)
         if not _is_safe_existing_directory(objects):
             return 0
         try:
