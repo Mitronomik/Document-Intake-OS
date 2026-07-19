@@ -78,3 +78,9 @@ class ApplicationStatus(StrEnum):
 class OwnerKind(StrEnum):
     PERSON = "PERSON"
     VEHICLE = "VEHICLE"
+
+
+class ArtifactKind(StrEnum):
+    ORIGINAL = "ORIGINAL"
+    PREPARED_DOCUMENT = "PREPARED_DOCUMENT"
+    EXPORT_ARTIFACT = "EXPORT_ARTIFACT"

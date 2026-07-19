@@ -5,6 +5,7 @@ from __future__ import annotations
 from types import TracebackType
 from typing import Protocol, Self
 
+from document_intake.application.dto.storage import StoredArtifactRecord
 from document_intake.domain import (
     Application,
     ApplicationSnapshot,
@@ -87,6 +88,12 @@ class ApplicationSnapshotRepository(Protocol):
     def list_by_application(self, application_id: EntityId) -> tuple[ApplicationSnapshot, ...]: ...
 
 
+class StoredArtifactRepository(Protocol):
+    def add(self, record: StoredArtifactRecord) -> None: ...
+    def get(self, artifact_id: EntityId) -> StoredArtifactRecord | None: ...
+    def list_all(self) -> tuple[StoredArtifactRecord, ...]: ...
+
+
 class UnitOfWork(Protocol):
     persons: PersonRepository
     identity_documents: IdentityDocumentRepository
@@ -97,6 +104,7 @@ class UnitOfWork(Protocol):
     field_candidates: FieldCandidateRepository
     applications: ApplicationRepository
     application_snapshots: ApplicationSnapshotRepository
+    stored_artifacts: StoredArtifactRepository
 
     def __enter__(self) -> Self: ...
     def __exit__(

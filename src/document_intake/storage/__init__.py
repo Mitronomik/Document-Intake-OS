@@ -1,1 +1,3 @@
-"""Storage package boundary for immutable originals and generated artifacts."""
+"""Storage implementations."""
+from document_intake.storage.filesystem import ImmutableFilesystemStorage
+__all__=["ImmutableFilesystemStorage"]

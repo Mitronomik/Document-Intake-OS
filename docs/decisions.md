@@ -546,3 +546,9 @@ Non-decisions:
 - no backup recovery;
 - no authentication;
 - no installer design.
+
+## ADR-019 — Immutable encrypted filesystem storage v1
+
+Status: `ACCEPTED`.
+
+Decision: PR-006 uses `cryptography==49.0.0`, AES-256-GCM, a storage-specific `StorageKeyProvider`, envelope format v1 with `DIOSOBJ1` magic, immutable UUID-derived object paths, no update/delete API, object-first/database-second publication, migration v0002 `stored_artifacts`, read-time expected-state verification and read-only reconciliation. Coordinated rollback of the full encrypted database plus full encrypted filesystem is not claimed as detected.

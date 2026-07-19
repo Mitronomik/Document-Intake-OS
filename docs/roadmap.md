@@ -89,3 +89,7 @@ RISK-PR005-RAWKEY-PRAGMA remains accepted only for the PR-005 development bounda
 PR-S001/PR-S001-F1/PR-S001-F2/PR-S001-F3/PR-S001-F4 use fictional synthetic data only, may evaluate candidate packages and prototypes, must not create production database/storage APIs, and must not use real documents or personal data. PR-S001 contains no production persistence/storage API; a negative feasibility result is valid.
 
 The next safe planning step is preparing and reviewing the exact PR-006 task. That planning step leaves PR-006 implementation prohibited until separate explicit product-owner approval; filesystem-storage implementation requires a separate explicit product-owner authorization. The template enforcement PR remains future work and does not close the sensitive-data/private-contour gate.
+
+## PR-006 lifecycle note
+
+PR-005: `COMPLETED AND HUMAN ACCEPTED`. PR-006: `AUTHORIZED AND IN REVIEW, NOT ACCEPTED`. PR-007 and later: `UNAUTHORIZED`. Gate 1: `NOT ACCEPTED`. M2: `NOT COMPLETED`. Q-009: `DEFERRED`; PR-006 implements immutable stored final artifacts and no retention, deletion or secure-deletion policy. Q-017: `DEFERRED`; PR-006 storage layout is backup-neutral and PR-032 remains responsible for encrypted backup/restore. Real documents and personal data remain prohibited in Git, Codex and CI.

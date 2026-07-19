@@ -68,6 +68,7 @@ name = "document-intake-os"
 version = "0.1.0"
 source = { editable = "." }
 dependencies = [
+    { name = "cryptography" },
     { name = "pyside6" },
     { name = "sqlcipher3", marker = "platform_machine == 'AMD64' and sys_platform == 'win32'" },
 ]
@@ -84,6 +85,7 @@ encryption-spike = [
 
 [package.metadata]
 requires-dist = [
+    { name = "cryptography", specifier = "==49.0.0" },
     { name = "pyside6", specifier = ">=6.7,<7" },
     { name = "sqlcipher3", marker = "platform_machine == 'AMD64' and sys_platform == 'win32'", specifier = "==0.6.2" },
 ]

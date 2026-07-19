@@ -684,3 +684,48 @@ def snapshot_from_row(
         )
     except (json.JSONDecodeError, IndexError, TypeError, ValueError, DomainError):
         raise PersistenceError(PersistenceErrorCode.PERSISTED_DATA_INVALID) from None
+
+
+def stored_artifact_to_json(o: Any) -> str:
+    return dumps({
+        "artifact_id": str(o.artifact_id),
+        "artifact_kind": o.artifact_kind.value,
+        "object_generation": o.object_generation,
+        "plaintext_length": o.plaintext_length,
+        "plaintext_sha256": o.plaintext_sha256,
+        "ciphertext_sha256": o.ciphertext_sha256,
+        "key_version": o.key_version,
+        "storage_format_version": o.storage_format_version,
+        "created_at": o.created_at.isoformat(),
+    })
+
+
+@persisted_data_boundary
+def stored_artifact_from_json(payload: str) -> Any:
+    from datetime import datetime
+    from document_intake.application.dto.storage import StoredArtifactRecord
+    from document_intake.domain.enums import ArtifactKind
+    d = loads(payload)
+    try:
+        created_at = datetime.fromisoformat(d["created_at"])
+        return StoredArtifactRecord(
+            req_id(d["artifact_id"]),
+            parse_enum(ArtifactKind, d["artifact_kind"]),
+            d["object_generation"],
+            d["plaintext_length"],
+            d["plaintext_sha256"],
+            d["ciphertext_sha256"],
+            d["key_version"],
+            d["storage_format_version"],
+            created_at,
+        )
+    except (KeyError, ValueError, TypeError):
+        raise PersistenceError(PersistenceErrorCode.PERSISTED_DATA_INVALID) from None
+
+
+def stored_artifact_columns(o: Any) -> tuple[str, str, int, int, str, str, int, int, str]:
+    return (
+        str(o.artifact_id), o.artifact_kind.value, o.object_generation, o.plaintext_length,
+        o.plaintext_sha256, o.ciphertext_sha256, o.key_version, o.storage_format_version,
+        o.created_at.isoformat(),
+    )

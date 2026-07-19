@@ -233,3 +233,7 @@ PR-005 is COMPLETED AND HUMAN ACCEPTED after merge through GitHub PR #15 on `202
 RISK-PR005-RAWKEY-PRAGMA remains accepted only for the PR-005 development boundary and remains open for installer, pilot and production release.
 
 PR-006 remains UNAUTHORIZED, PR-007 and later remain UNAUTHORIZED, Gate 1 remains NOT ACCEPTED, and M2 remains NOT COMPLETED.
+
+## PR-006 lifecycle note
+
+PR-005: `COMPLETED AND HUMAN ACCEPTED`. PR-006: `AUTHORIZED AND IN REVIEW, NOT ACCEPTED`. PR-007 and later: `UNAUTHORIZED`. Gate 1: `NOT ACCEPTED`. M2: `NOT COMPLETED`. Q-009: `DEFERRED`; PR-006 implements immutable stored final artifacts and no retention, deletion or secure-deletion policy. Q-017: `DEFERRED`; PR-006 storage layout is backup-neutral and PR-032 remains responsible for encrypted backup/restore. Real documents and personal data remain prohibited in Git, Codex and CI.
