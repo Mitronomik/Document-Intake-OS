@@ -150,7 +150,7 @@ def test_truncation_fails(cut: int) -> None:
         ("nonce", "AAAA", StorageErrorCode.ENVELOPE_FORMAT),
         (
             "nonce",
-            base64.b64encode(b"1" * NONCE_LENGTH).decode("ascii").rstrip("="),
+            base64.b64encode(b"1" * NONCE_LENGTH).decode("ascii") + "=",
             StorageErrorCode.ENVELOPE_FORMAT,
         ),
     ],
