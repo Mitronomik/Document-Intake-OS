@@ -79,3 +79,5 @@ PR-S001 lifecycle boundary: PR-S001/PR-S001-F1/PR-S001-F2/PR-S001-F3/PR-S001-F4 
 PR-005 encrypted SQLite persistence is IN REVIEW, NOT ACCEPTED. PR-S001 remains ACCEPTED WITH DOCUMENTED RESIDUAL RISK RISK-S001-W11. PR-006 and later remain UNAUTHORIZED. Gate 1 is NOT ACCEPTED and M2 is NOT COMPLETED.
 
 PR-005 raw-key staging risk: RISK-PR005-RAWKEY-PRAGMA remains accepted for PR-005 development and open for release.
+
+The blocking final-audit corrections are implemented locally for UoW lifecycle cleanup, canonical payload/projection consistency, immutable complete snapshot references, migration-prefix history and literal v0001 checksum, stable persistence errors, opaque `Vehicle.registration_document_id`, and production-adapter tamper regressions. Local macOS validation does not execute the Windows AMD64 SQLCipher integration; Windows CI evidence remains required. PR-005 remains IN REVIEW, NOT ACCEPTED. Gate 1 remains NOT ACCEPTED, M2 remains NOT COMPLETED, and PR-006 remains UNAUTHORIZED.

@@ -84,3 +84,5 @@ PR-S001 lifecycle boundary: PR-S001/PR-S001-F1/PR-S001-F2/PR-S001-F3/PR-S001-F4 
 FR-13: PR-005 IN REVIEW. Verification references migration tests, SQLCipher Windows integration, repository round trips, Unit of Work transaction tests, immutable snapshot persistence and privacy tests. FR-13 is not accepted.
 
 PR-005 raw-key staging risk: RISK-PR005-RAWKEY-PRAGMA remains accepted for PR-005 development and open for release.
+
+PR-005 final-audit correction verification covers UoW terminal-state enforcement and cleanup, canonical payload/projection consistency, projection tamper detection, complete immutable snapshot ordinals, applied migration-prefix validation, independent literal v0001 checksum verification, stable persistence/deserialization errors, the intentionally opaque vehicle registration-document reference and real Windows production-adapter ciphertext tamper/truncation tests. PR-005 remains IN REVIEW, NOT ACCEPTED pending review and Windows evidence; Gate 1 and M2 remain incomplete and PR-006 remains unauthorized.

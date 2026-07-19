@@ -26,7 +26,7 @@ Only PR-004 domain persistence is in scope. UploadBatch, SourceFile, DocumentReg
 
 ## Security invariants
 
-No plaintext production database mode exists. Production persistence imports SQLCipher lazily and does not import `sqlite3`. Every connection must key before schema queries, verify `cipher_status`, foreign keys, memory temp store, WAL, FULL synchronous mode, trusted schema OFF and cipher integrity. Failures map to stable persistence error codes without path, SQL, key, raw driver exception or entity payload disclosure.
+No plaintext production database mode exists. Production persistence imports SQLCipher lazily and does not import `sqlite3`. Every connection must key before schema queries, verify `cipher_status`, foreign keys, memory temp store, WAL, FULL synchronous mode, trusted schema OFF and cipher integrity. Failures map to stable persistence error codes without path, SQL, key, raw driver exception or entity payload disclosure. Wrong keys and early ciphertext corruption both map to `ERR_DB_KEY_REJECTED` when keyed schema access has not succeeded and the causes are not cryptographically distinguishable. Integrity failures detected after successful keyed schema access map to `ERR_DB_INTEGRITY_FAILED`.
 
 ## Schema/table list
 

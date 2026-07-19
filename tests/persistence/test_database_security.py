@@ -7,6 +7,7 @@ import pytest
 from document_intake.persistence.database import (
     EncryptedDatabase,
     _apply_raw_hex_key,
+    _harden_connection,
     _validate_key,
 )
 from document_intake.persistence.errors import PersistenceError, PersistenceErrorCode
@@ -139,3 +140,56 @@ def test_existing_database_is_never_deleted_after_initialize_failure(
     assert db_path.read_text() == "existing"
     assert Path(str(db_path) + "-wal").exists()
     assert tmp_path.exists()
+
+
+class HardenCursor:
+    def __init__(self, value: object = None, rows: list[tuple[object, ...]] | None = None) -> None:
+        self.value = value
+        self.rows = [] if rows is None else rows
+
+    def fetchone(self) -> tuple[object, ...]:
+        return (self.value,)
+
+    def fetchall(self) -> list[tuple[object, ...]]:
+        return self.rows
+
+
+class HardenConnection:
+    def __init__(self, *, fail_schema: bool = False, fail_integrity: bool = False) -> None:
+        self.fail_schema = fail_schema
+        self.fail_integrity = fail_integrity
+
+    def execute(self, sql: str) -> HardenCursor:
+        if sql == "PRAGMA cipher_version":
+            return HardenCursor("4.6.1")
+        if sql == "PRAGMA cipher_status":
+            return HardenCursor(1)
+        if sql == "SELECT count(*) FROM sqlite_master":
+            if self.fail_schema:
+                raise RuntimeError("synthetic early failure")
+            return HardenCursor(1)
+        if sql == "PRAGMA journal_mode = WAL":
+            return HardenCursor("wal")
+        if sql == "PRAGMA foreign_keys":
+            return HardenCursor(1)
+        if sql == "PRAGMA temp_store":
+            return HardenCursor(2)
+        if sql == "PRAGMA synchronous":
+            return HardenCursor(2)
+        if sql == "PRAGMA trusted_schema":
+            return HardenCursor(0)
+        if sql == "PRAGMA cipher_integrity_check":
+            if self.fail_integrity:
+                raise RuntimeError("synthetic integrity failure")
+            return HardenCursor(rows=[])
+        return HardenCursor()
+
+
+def test_hardening_distinguishes_early_key_failure_from_integrity_failure() -> None:
+    with pytest.raises(PersistenceError) as early:
+        _harden_connection(HardenConnection(fail_schema=True))
+    assert early.value.code == PersistenceErrorCode.DB_KEY_REJECTED
+
+    with pytest.raises(PersistenceError) as integrity:
+        _harden_connection(HardenConnection(fail_integrity=True))
+    assert integrity.value.code == PersistenceErrorCode.DB_INTEGRITY_FAILED

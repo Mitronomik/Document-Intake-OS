@@ -26,6 +26,26 @@ class Provider:
         return self.key
 
 
+def create_multi_page_database(path: Path, key: bytes) -> EncryptedDatabase:
+    database = EncryptedDatabase(path, Provider(key))
+    database.initialize()
+    with database.unit_of_work() as uow:
+        for index in range(600):
+            uow.persons.add(
+                Person(
+                    eid(1000 + index),
+                    full_name_latin=NonEmptyText(
+                        f"Tamper Synthetic Identity {index:04d} " + "X" * 192
+                    ),
+                )
+            )
+        connection = uow._connection()
+        uow.commit()
+        connection.execute("PRAGMA wal_checkpoint(TRUNCATE)").fetchone()
+    assert path.stat().st_size > 4 * 4096
+    return database
+
+
 def test_actual_windows_sqlcipher_encryption_uow_and_privacy(
     tmp_path: Path, caplog: pytest.LogCaptureFixture, capsys: pytest.CaptureFixture[str]
 ) -> None:
@@ -94,6 +114,55 @@ def test_actual_windows_sqlcipher_encryption_uow_and_privacy(
     with db.unit_of_work() as uow:
         assert uow.persons.get(eid(2)) is None
 
-    output = capsys.readouterr().out + capsys.readouterr().err + caplog.text
+    captured = capsys.readouterr()
+    output = captured.out + captured.err + caplog.text
     assert key.hex() not in output
     assert "PX000012345" not in output
+
+
+def test_actual_windows_sqlcipher_ciphertext_tamper_and_truncation(
+    tmp_path: Path, caplog: pytest.LogCaptureFixture, capsys: pytest.CaptureFixture[str]
+) -> None:
+    key = b"t" * 32
+    forbidden_value = "Tamper Synthetic Identity 0000"
+    tampered_path = tmp_path / "tampered-synthetic.db"
+    database = create_multi_page_database(tampered_path, key)
+
+    with database.unit_of_work() as uow:
+        assert uow.persons.get(eid(1000)) is not None
+
+    ciphertext = bytearray(tampered_path.read_bytes())
+    ciphertext[-128] ^= 0x01
+    tampered_path.write_bytes(ciphertext)
+    with pytest.raises(PersistenceError) as tampered, database.unit_of_work():
+        pass
+    assert tampered.value.code == PersistenceErrorCode.DB_INTEGRITY_FAILED
+
+    truncated_path = tmp_path / "truncated-synthetic.db"
+    truncated_database = create_multi_page_database(truncated_path, key)
+    truncated_ciphertext = truncated_path.read_bytes()
+    truncated_path.write_bytes(truncated_ciphertext[:-4096])
+    with pytest.raises(PersistenceError) as truncated, truncated_database.unit_of_work():
+        pass
+    assert truncated.value.code in {
+        PersistenceErrorCode.DB_KEY_REJECTED,
+        PersistenceErrorCode.DB_INTEGRITY_FAILED,
+    }
+
+    captured = capsys.readouterr()
+    combined = "\n".join(
+        (
+            captured.out,
+            captured.err,
+            caplog.text,
+            str(tampered.value),
+            str(truncated.value),
+        )
+    )
+    for forbidden in (
+        key.hex(),
+        str(tampered_path),
+        str(truncated_path),
+        forbidden_value,
+    ):
+        assert forbidden not in combined
