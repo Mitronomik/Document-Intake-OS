@@ -1,7 +1,7 @@
 # Progress
 
-**Обновлено:** 2026-07-18
-**Статус:** GATE-S1: COMPLETED AND HUMAN ACCEPTED
+**Обновлено:** 2026-07-19
+**Статус:** PR-005: COMPLETED AND HUMAN ACCEPTED; PR-006: UNAUTHORIZED
 
 ## Завершено
 
@@ -26,30 +26,42 @@
 - [x] GATE-M0 merge commit: `3dada63ea82163c7c4497e290b303d2cc781b085`;
 - [x] Human acceptance of GATE-M0 occurred after PR #5 merge;
 - [x] M0: ACCEPTED;
+- [x] PR-004: COMPLETED AND HUMAN ACCEPTED;
+- [x] GATE-S1: COMPLETED AND HUMAN ACCEPTED;
+- [x] ADR-018: ACCEPTED;
+- [x] PR-S001: ACCEPTED WITH DOCUMENTED RESIDUAL RISK RISK-S001-W11;
+- [x] PR-S001-F1, PR-S001-F2 and PR-S001-F3: COMPLETED;
+- [x] PR-S001-F4: COMPLETED AND MERGED THROUGH PR #13 at merge commit `985fae37c7645e8f65edbe4d1609100ee24a2097`;
+- [x] PR-005: COMPLETED AND HUMAN ACCEPTED through GitHub PR #15 (`PR-005: Add encrypted SQLite persistence and migrations`), reviewed head `325b49555dee49fa22b008d9522bbbc6eb873ca2`, merge commit `2161fbbf7fb4065a5913fb6e62c207546caf5dd9`, merge date `2026-07-19`;
+- [x] PR-005 final migration v0001 checksum: `e1e1f5f6d8d675a146f3d0c538a0d544b6f8a984c301d177ee1ad86e42f2d500`;
+- [x] PR-005 exact-head GitHub Actions CI run #73: success, including `Python checks (ubuntu-latest)`, `Python checks (windows-latest)`, `PR-S001 Windows encryption spike` and `PR-S001 DPAPI cross-runner negative`;
+- [x] PR-005 local validation: `191 passed, 2 skipped on macOS`; the two skipped local tests were Windows AMD64 SQLCipher integration tests and were skipped locally as designed, while the full Windows CI pytest step passed on the reviewed PR head;
+- [x] PR-005 final persistence audit blockers closed before merge: SQLite replacement forms cannot replace immutable snapshot rows; loss of the outer transaction invalidates and closes the UoW; list reads detect payload/projection corruption before filtering; canonical boolean and collection deserialization is strict;
 - [x] no terminal templates are committed;
 - [x] no personal data are committed.
 
 ## Current lifecycle state
 
-- [x] PR-004: COMPLETED AND HUMAN ACCEPTED;
-- [x] GATE-S1: COMPLETED AND HUMAN ACCEPTED;
-- [x] ADR-018: ACCEPTED;
-- [x] PR-S001: ACCEPTED WITH DOCUMENTED RESIDUAL RISK RISK-S001-W11; PR-S001-F1: COMPLETED; PR-S001-F2: COMPLETED; PR-S001-F3: COMPLETED; PR-S001-F4: COMPLETED AND MERGED THROUGH PR #13; PR-S001-F4 merge commit: `985fae37c7645e8f65edbe4d1609100ee24a2097`;
-- [ ] PR-005: IN REVIEW, NOT ACCEPTED;
+- [x] PR-005: COMPLETED AND HUMAN ACCEPTED;
+- [x] PR-005 was merged through GitHub PR #15 at merge commit `2161fbbf7fb4065a5913fb6e62c207546caf5dd9` from final reviewed head `325b49555dee49fa22b008d9522bbbc6eb873ca2`;
+- [x] PR-005 v0001 migration checksum is final at `e1e1f5f6d8d675a146f3d0c538a0d544b6f8a984c301d177ee1ad86e42f2d500`; migration v0001 is frozen after merge and every future schema change must use migration v0002 or later;
+- [x] Windows SQLCipher evidence is complete for the PR-005 acceptance boundary through exact-head CI run #73;
 - [ ] PR-006: UNAUTHORIZED;
 - [ ] PR-007 AND LATER: UNAUTHORIZED;
 - [ ] Gate 1: NOT ACCEPTED;
 - [ ] M2: NOT COMPLETED;
 - [x] Q-010: ACCEPTED;
+- [ ] Q-017 remains deferred unless an accepted decision says otherwise;
 - [x] REPOSITORY PRIVACY BOUNDARY — ACCEPTED FOR NON-SENSITIVE CODE;
-- [ ] The sensitive-data/private-contour gate remains open for real data.
+- [ ] The sensitive-data/private-contour gate remains open for real data;
+- [ ] Real documents and personal data remain prohibited in Git, Codex and CI;
+- [ ] RISK-PR005-RAWKEY-PRAGMA remains accepted only for the PR-005 development boundary and remains open for installer, pilot and production release.
 
 ## Not started / unauthorized
 
-- [ ] PR-005 is IN REVIEW, NOT ACCEPTED;
-- [ ] PR-006 remains unauthorized pending its own task review after accepted encryption staging;
+- [ ] PR-006 remains UNAUTHORIZED pending a separate exact task review and explicit product-owner authorization;
 - [ ] PR-007 and later implementation tasks remain UNAUTHORIZED;
-- [ ] The template enforcement PR remains future work and does not block PR-004;
+- [ ] The template enforcement PR remains future work and does not block PR-004 or PR-005 closure;
 - [ ] storage implementation;
 - [ ] image pipeline;
 - [ ] terminal adapters;
@@ -60,26 +72,11 @@
 
 - Q-001 through Q-005 are staged as external terminal confirmations and do not block domain-only PR-004 under ADR-016.
 - Q-008 is accepted by ADR-017: one Windows 11 x64 workstation with one active operator session at a time.
-- Q-010: ACCEPTED; ADR-018 is ACCEPTED and resolves Q-010 at the architecture and sequencing level. PR-005 is authorized, not started; PR-006 remains unauthorized.
+- Q-010: ACCEPTED; ADR-018 is ACCEPTED and resolves Q-010 at the architecture and sequencing level.
 - Q-012 through Q-015 require local evidence outside Git, Codex and CI.
+- Q-017 remains deferred unless an accepted decision says otherwise.
 - Approved PII-free template artifacts are permitted by product policy after technical privacy inspection and repository-policy enforcement updates; real documents, PII-bearing artifacts and private acceptance materials remain outside Git, Codex and CI.
 
 ## Следующий безопасный шаг
 
-review PR-005 code, Windows SQLCipher CI evidence, migrations, repository round trips, transaction tests and privacy checks. PR #9 merged PR-S001 as a research harness; PR-S001 is accepted with documented residual risk RISK-S001-W11; PR-S001-F4 is completed and merged through PR #13 at merge commit `985fae37c7645e8f65edbe4d1609100ee24a2097`.
-
-PR-S001-F1, PR-S001-F2, PR-S001-F3 and PR-S001-F4 are completed. PR-S001/PR-S001-F1/PR-S001-F2/PR-S001-F3/PR-S001-F4 use fictional synthetic data only, may evaluate candidate packages and prototypes, must not create production database/storage APIs, and must not use real documents or personal data. PR-005 is IN REVIEW, NOT ACCEPTED after PR #14 is merged. PR-005 implementation must be reviewed with Windows SQLCipher evidence, migration history checks, repository round trips, transaction tests and privacy checks before merge and acceptance. PR-006 remains UNAUTHORIZED pending its own task review and explicit authorization. Q-017 remains deferred. The sensitive-data/private-contour gate remains open, and real documents and personal data remain prohibited in Git, Codex and CI.
-
-
-PR-S001 lifecycle boundary: PR-S001/PR-S001-F1/PR-S001-F2/PR-S001-F3/PR-S001-F4 use fictional synthetic data only; PR-S001 contains no production persistence/storage API; a negative feasibility result is valid; PR #14 records the explicit product-owner authorization for PR-005. PR-005 is already authorized for this scope but remains in review and not accepted. PR-005 implementation is in review and not accepted.
-
-
-## 2026-07-19 — PR-005 in review
-
-PR-005 encrypted SQLite persistence is IN REVIEW, NOT ACCEPTED. PR-S001 remains ACCEPTED WITH DOCUMENTED RESIDUAL RISK RISK-S001-W11. PR-006 and later remain UNAUTHORIZED. Gate 1 is NOT ACCEPTED and M2 is NOT COMPLETED.
-
-PR-005 raw-key staging risk: RISK-PR005-RAWKEY-PRAGMA remains accepted for PR-005 development and open for release.
-
-The blocking final-audit corrections are implemented locally for UoW lifecycle cleanup, canonical payload/projection consistency, immutable complete snapshot references, migration-prefix history and literal v0001 checksum, stable persistence errors, opaque `Vehicle.registration_document_id`, and production-adapter tamper regressions. Local macOS validation does not execute the Windows AMD64 SQLCipher integration; Windows CI evidence remains required. PR-005 remains IN REVIEW, NOT ACCEPTED. Gate 1 remains NOT ACCEPTED, M2 remains NOT COMPLETED, and PR-006 remains UNAUTHORIZED.
-
-The remaining persistence audit gaps are closed locally: immutable snapshot rows reject both SQLite replacement forms, lost outer transactions invalidate and close the UoW, list queries validate canonical payloads against all relevant projections before filtering, and canonical collection/boolean deserialization is strict. The v0001 checksum is re-frozen after these schema changes. This does not change PR-005, Gate 1, M2 or PR-006 lifecycle status.
+Prepare and review the exact PR-006 task. This planning step does not authorize PR-006 implementation. Filesystem-storage implementation cannot start until a separate explicit product-owner authorization is given for the reviewed PR-006 contract.
