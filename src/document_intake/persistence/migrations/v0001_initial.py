@@ -22,11 +22,13 @@ STATEMENTS = (
     "CREATE TABLE application_validation_issues (application_id TEXT NOT NULL REFERENCES applications(id) ON DELETE RESTRICT, order_index INTEGER NOT NULL CHECK (order_index >= 0), payload TEXT NOT NULL, PRIMARY KEY(application_id, order_index))",
     "CREATE TABLE application_snapshots (id TEXT PRIMARY KEY, application_id TEXT NOT NULL REFERENCES applications(id) ON DELETE RESTRICT, terminal_code TEXT NOT NULL REFERENCES terminals(code) ON DELETE RESTRICT, template_version TEXT NOT NULL, rules_version TEXT NOT NULL, created_by_actor_id TEXT NOT NULL, created_by_actor_kind TEXT NOT NULL, created_at_utc TEXT NOT NULL, payload_json TEXT NOT NULL, sha256 TEXT NOT NULL, expected_artifact_ref_count INTEGER NOT NULL CHECK (expected_artifact_ref_count >= 0), payload TEXT NOT NULL)",
     "CREATE TABLE application_snapshot_artifact_refs (snapshot_id TEXT NOT NULL REFERENCES application_snapshots(id) ON DELETE RESTRICT, order_index INTEGER NOT NULL CHECK (order_index >= 0), artifact_ref TEXT NOT NULL, PRIMARY KEY(snapshot_id, order_index))",
+    "CREATE TRIGGER application_snapshots_no_replace BEFORE INSERT ON application_snapshots WHEN EXISTS (SELECT 1 FROM application_snapshots WHERE id = NEW.id) BEGIN SELECT RAISE(ABORT, 'UNIQUE constraint failed: application_snapshots.id'); END",
     "CREATE TRIGGER application_snapshots_no_update BEFORE UPDATE ON application_snapshots BEGIN SELECT RAISE(ABORT, 'ERR_SNAPSHOT_IMMUTABLE'); END",
     "CREATE TRIGGER application_snapshots_no_delete BEFORE DELETE ON application_snapshots BEGIN SELECT RAISE(ABORT, 'ERR_SNAPSHOT_IMMUTABLE'); END",
+    "CREATE TRIGGER application_snapshot_artifact_refs_no_replace BEFORE INSERT ON application_snapshot_artifact_refs WHEN EXISTS (SELECT 1 FROM application_snapshot_artifact_refs WHERE snapshot_id = NEW.snapshot_id AND order_index = NEW.order_index) BEGIN SELECT RAISE(ABORT, 'UNIQUE constraint failed: application_snapshot_artifact_refs.snapshot_id, application_snapshot_artifact_refs.order_index'); END",
     "CREATE TRIGGER application_snapshot_artifact_refs_no_update BEFORE UPDATE ON application_snapshot_artifact_refs BEGIN SELECT RAISE(ABORT, 'ERR_SNAPSHOT_ARTIFACT_IMMUTABLE'); END",
     "CREATE TRIGGER application_snapshot_artifact_refs_no_delete BEFORE DELETE ON application_snapshot_artifact_refs BEGIN SELECT RAISE(ABORT, 'ERR_SNAPSHOT_ARTIFACT_IMMUTABLE'); END",
     "CREATE TRIGGER application_snapshot_artifact_refs_bounded BEFORE INSERT ON application_snapshot_artifact_refs WHEN NEW.order_index >= COALESCE((SELECT expected_artifact_ref_count FROM application_snapshots WHERE id = NEW.snapshot_id), 0) BEGIN SELECT RAISE(ABORT, 'ERR_SNAPSHOT_ARTIFACT_ORDINAL'); END",
 )
-CHECKSUM = "0233708b33dc5c949a17ccf5bba9c798a6ea06fb15e7c9e3fbf65ecea6769e39"
+CHECKSUM = "e1e1f5f6d8d675a146f3d0c538a0d544b6f8a984c301d177ee1ad86e42f2d500"
 MIGRATION = Migration(VERSION, NAME, STATEMENTS, CHECKSUM)

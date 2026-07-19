@@ -8,7 +8,7 @@ import pytest
 from document_intake.persistence import database
 from document_intake.persistence.database import SqlCipherUnitOfWork
 from document_intake.persistence.errors import PersistenceError, PersistenceErrorCode
-from tests.persistence.test_repositories import eid, migrated_connection, person
+from tests.persistence.test_repositories import document, eid, migrated_connection, person
 
 
 class Provider:
@@ -88,15 +88,32 @@ def test_uow_commit_rollback_exception_and_closed_repository(
 
 
 class TrackingConnection:
-    def __init__(self, connection: sqlite3.Connection, *, fail_begin: bool = False) -> None:
+    def __init__(
+        self,
+        connection: sqlite3.Connection,
+        *,
+        fail_begin: bool = False,
+        fail_commit: bool = False,
+        fail_rollback: bool = False,
+    ) -> None:
         self.connection = connection
         self.fail_begin = fail_begin
+        self.fail_commit = fail_commit
+        self.fail_rollback = fail_rollback
         self.closed = False
         self.rolled_back = False
+
+    @property
+    def in_transaction(self) -> bool:
+        return self.connection.in_transaction
 
     def execute(self, sql: str, parameters: tuple[object, ...] = ()) -> sqlite3.Cursor:
         if self.fail_begin and sql == "BEGIN IMMEDIATE":
             raise sqlite3.OperationalError("synthetic begin failure")
+        if self.fail_commit and sql == "COMMIT":
+            raise sqlite3.OperationalError("synthetic commit failure")
+        if self.fail_rollback and sql == "ROLLBACK":
+            raise sqlite3.OperationalError("synthetic rollback failure")
         if sql == "ROLLBACK":
             self.rolled_back = True
         return self.connection.execute(sql, parameters)
@@ -156,6 +173,79 @@ def test_uow_failed_repository_construction_rolls_back_and_closes(
     assert excinfo.value.code == PersistenceErrorCode.PERSISTENCE_UNEXPECTED
     assert tracked.rolled_back
     assert tracked.closed
+
+
+@pytest.mark.parametrize("operation", ["commit", "rollback"])
+def test_uow_terminal_driver_failure_invalidates_and_closes(
+    operation: str, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    tracked = TrackingConnection(
+        migrated_connection(),
+        fail_commit=operation == "commit",
+        fail_rollback=operation == "rollback",
+    )
+    monkeypatch.setattr(database, "_open_connection", lambda path, provider: tracked)
+    uow = SqlCipherUnitOfWork(tmp_path / "synthetic.db", Provider())
+    uow.__enter__()
+    uow.persons.add(person())
+
+    with pytest.raises(PersistenceError) as failure:
+        getattr(uow, operation)()
+    assert failure.value.code == PersistenceErrorCode.PERSISTENCE_UNEXPECTED
+    assert "synthetic" not in str(failure.value)
+    assert tracked.closed
+    for later in (lambda: uow.persons.list_all(), uow.commit, uow.rollback):
+        with pytest.raises(PersistenceError) as closed:
+            later()
+        assert closed.value.code == PersistenceErrorCode.UOW_CLOSED
+
+
+def test_raise_rollback_invalidates_uow_and_prevents_later_autocommit(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    db = tmp_path / "raise-rollback.db"
+    migrated_file(db)
+    monkeypatch.setattr(database, "_open_connection", open_sqlite)
+    with SqlCipherUnitOfWork(db, Provider()) as seed:
+        seed.persons.add(person())
+        seed.commit()
+
+    failing = SqlCipherUnitOfWork(db, Provider())
+    with failing:
+        failing.persons.add(person().__class__(eid(2), full_name_latin=person().full_name_latin))
+        stale_persons = failing.persons
+        failing._connection().execute(
+            "CREATE TRIGGER synthetic_outer_rollback BEFORE INSERT ON document_sides "
+            "BEGIN SELECT RAISE(ROLLBACK, 'synthetic outer rollback'); END"
+        )
+        with pytest.raises(PersistenceError) as failure:
+            failing.documents.add(document())
+        assert failure.value.code == PersistenceErrorCode.PERSISTENCE_UNEXPECTED
+        assert "synthetic outer rollback" not in str(failure.value)
+        for later in (
+            lambda: stale_persons.add(
+                person().__class__(eid(3), full_name_latin=person().full_name_latin)
+            ),
+            failing.commit,
+            failing.rollback,
+        ):
+            with pytest.raises(PersistenceError) as closed:
+                later()
+            assert closed.value.code == PersistenceErrorCode.UOW_CLOSED
+
+    with SqlCipherUnitOfWork(db, Provider()) as verify:
+        assert verify.persons.get(eid(2)) is None
+        assert verify.persons.get(eid(3)) is None
+        assert verify.documents.get(eid(40)) is None
+        assert (
+            verify._connection()
+            .execute(
+                "SELECT count(*) FROM sqlite_master "
+                "WHERE type='trigger' AND name='synthetic_outer_rollback'"
+            )
+            .fetchone()[0]
+            == 0
+        )
 
 
 def test_uow_does_not_apply_pending_migrations(

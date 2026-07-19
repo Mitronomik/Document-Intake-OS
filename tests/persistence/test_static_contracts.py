@@ -65,7 +65,7 @@ def test_migration_metadata_contract() -> None:
     assert MIGRATION.version == 1
     assert MIGRATION.checksum == CHECKSUM
     assert migration_checksum(STATEMENTS) == CHECKSUM
-    assert len(STATEMENTS) == 21
+    assert len(STATEMENTS) == 23
     for table in (
         "schema_migrations",
         "persons",

@@ -12,6 +12,7 @@ from document_intake.domain import (
     ActorKind,
     ActorRef,
     Application,
+    ApplicationSnapshot,
     ApplicationStatus,
     CandidateSourceType,
     Confidence,
@@ -259,6 +260,22 @@ def application(status: ApplicationStatus = ApplicationStatus.READY_FOR_SNAPSHOT
     )
 
 
+def second_application() -> Application:
+    source = application()
+    return Application(
+        id=eid(73),
+        batch_id=eid(74),
+        terminal_code=source.terminal_code,
+        assignments=source.assignments,
+        verified_fields=source.verified_fields,
+        validation_report=source.validation_report,
+        status=source.status,
+        created_by=source.created_by,
+        created_at=source.created_at,
+        updated_at=source.updated_at,
+    )
+
+
 def snapshot_with_refs(app: Application, snapshot_id: EntityId, refs: tuple[EntityId, ...]):
     return create_application_snapshot(
         app,
@@ -275,6 +292,21 @@ def snapshot_with_refs(app: Application, snapshot_id: EntityId, refs: tuple[Enti
 
 def snapshot(app: Application):
     return snapshot_with_refs(app, eid(80), (eid(81), eid(82)))
+
+
+def stored_snapshot(
+    refs: tuple[EntityId, ...] = (eid(81), eid(82)),
+) -> tuple[sqlite3.Connection, SnapshotRepo, ApplicationSnapshot]:
+    conn = migrated_connection()
+    uow = FakeUow(conn)
+    seed_person_vehicle_terminal(uow)
+    CandidateRepo(uow).add(candidate())
+    app = application()
+    ApplicationRepo(uow).add(app)
+    snap = snapshot_with_refs(app, eid(80), refs)
+    repo = SnapshotRepo(uow)
+    repo.add(snap)
+    return conn, repo, snap
 
 
 def test_every_repository_round_trip_and_ordered_children() -> None:
@@ -443,6 +475,120 @@ def test_projection_tampering_is_rejected(tamper, read) -> None:  # type: ignore
     assert excinfo.value.code == PersistenceErrorCode.PERSISTED_DATA_INVALID
 
 
+def test_relation_list_queries_reject_projection_tampering_for_old_and_new_keys() -> None:
+    conn = migrated_connection()
+    uow = FakeUow(conn)
+    seed_person_vehicle_terminal(uow)
+    PersonRepo(uow).add(second_person())
+
+    identities = IdentityRepo(uow)
+    identities.add(identity_document())
+    identities.add(second_identity_document())
+    conn.execute(
+        "UPDATE identity_documents SET person_id=? WHERE id=?",
+        (str(eid(2)), str(eid(10))),
+    )
+    for person_id in (eid(1), eid(2)):
+        with pytest.raises(PersistenceError) as invalid:
+            identities.list_by_person(person_id)
+        assert invalid.value.code == PersistenceErrorCode.PERSISTED_DATA_INVALID
+
+    migrations = MigrationRepo(uow)
+    migrations.add(migration_document())
+    conn.execute(
+        "UPDATE migration_documents SET person_id=? WHERE id=?",
+        (str(eid(2)), str(eid(11))),
+    )
+    for person_id in (eid(1), eid(2)):
+        with pytest.raises(PersistenceError) as invalid:
+            migrations.list_by_person(person_id)
+        assert invalid.value.code == PersistenceErrorCode.PERSISTED_DATA_INVALID
+
+    documents = DocumentRepo(uow)
+    documents.add(document())
+    original_owner = OwnerRef(OwnerKind.PERSON, eid(1))
+    tampered_owner = OwnerRef(OwnerKind.VEHICLE, eid(20))
+    conn.execute(
+        "UPDATE documents SET owner_kind=?, owner_id=? WHERE id=?",
+        (tampered_owner.owner_kind.value, str(tampered_owner.owner_id), str(eid(40))),
+    )
+    for owner in (original_owner, tampered_owner):
+        with pytest.raises(PersistenceError) as invalid:
+            documents.list_by_owner(owner)
+        assert invalid.value.code == PersistenceErrorCode.PERSISTED_DATA_INVALID
+
+    candidates = CandidateRepo(uow)
+    candidates.add(candidate())
+    original_field = field_ref()
+    tampered_field = field_ref(2, "identity_document.full_number")
+    conn.execute(
+        "UPDATE field_candidates SET field_entity_id=?, field_key=? WHERE id=?",
+        (
+            str(tampered_field.entity_id),
+            tampered_field.field_key.value,
+            str(eid(50)),
+        ),
+    )
+    for field in (original_field, tampered_field):
+        with pytest.raises(PersistenceError) as invalid:
+            candidates.list_for_field(field)
+        assert invalid.value.code == PersistenceErrorCode.PERSISTED_DATA_INVALID
+
+
+def test_terminal_list_rejects_projection_tampering_in_both_directions() -> None:
+    conn = migrated_connection()
+    uow = FakeUow(conn)
+    terminals = TerminalRepo(uow)
+    terminals.add(terminal())
+    inactive = replace(terminal(), code=TerminalCode.VISITORS, is_active=False)
+    terminals.add(inactive)
+
+    conn.execute("UPDATE terminals SET is_active=0 WHERE code=?", (TerminalCode.TSP.value,))
+    with pytest.raises(PersistenceError) as hidden_active:
+        terminals.list_active()
+    assert hidden_active.value.code == PersistenceErrorCode.PERSISTED_DATA_INVALID
+
+    conn.execute("UPDATE terminals SET is_active=1 WHERE code=?", (TerminalCode.TSP.value,))
+    conn.execute("UPDATE terminals SET is_active=1 WHERE code=?", (TerminalCode.VISITORS.value,))
+    with pytest.raises(PersistenceError) as false_active:
+        terminals.list_active()
+    assert false_active.value.code == PersistenceErrorCode.PERSISTED_DATA_INVALID
+
+
+def test_snapshot_list_rejects_application_projection_tampering_for_both_keys() -> None:
+    conn = migrated_connection()
+    uow = FakeUow(conn)
+    seed_person_vehicle_terminal(uow)
+    CandidateRepo(uow).add(candidate())
+    app = application()
+    other_app = second_application()
+    ApplicationRepo(uow).add(app)
+    ApplicationRepo(uow).add(other_app)
+    snap = snapshot(app)
+    columns = list(ser.snapshot_columns(snap))
+    columns[1] = str(other_app.id)
+    conn.execute(
+        "INSERT INTO application_snapshots"
+        "(id, application_id, terminal_code, template_version, rules_version, "
+        "created_by_actor_id, created_by_actor_kind, created_at_utc, payload_json, "
+        "sha256, expected_artifact_ref_count, payload) "
+        "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        (*columns, len(snap.document_artifact_refs), ser.snapshot_to_json(snap)),
+    )
+    for index, artifact_ref in enumerate(snap.document_artifact_refs):
+        conn.execute(
+            "INSERT INTO application_snapshot_artifact_refs"
+            "(snapshot_id, order_index, artifact_ref) VALUES (?, ?, ?)",
+            (str(snap.id), index, str(artifact_ref)),
+        )
+
+    repo = SnapshotRepo(uow)
+    for application_id in (app.id, other_app.id):
+        with pytest.raises(PersistenceError) as invalid:
+            repo.list_by_application(application_id)
+        assert invalid.value.code == PersistenceErrorCode.PERSISTED_DATA_INVALID
+
+
 def test_child_projection_failure_rolls_back_complete_repository_update() -> None:
     conn = migrated_connection()
     uow = FakeUow(conn)
@@ -591,6 +737,72 @@ def test_snapshot_repository_round_trip_and_triggers() -> None:
             "INSERT INTO application_snapshot_artifact_refs"
             "(snapshot_id, order_index, artifact_ref) VALUES (?,?,?)",
             (str(eid(90)), 0, str(eid(91))),
+        )
+
+
+def test_duplicate_snapshot_repository_add_keeps_stable_error() -> None:
+    _, repo, snap = stored_snapshot()
+    with pytest.raises(PersistenceError) as duplicate:
+        repo.add(snap)
+    assert duplicate.value.code == PersistenceErrorCode.ENTITY_ALREADY_EXISTS
+
+
+@pytest.mark.parametrize("verb", ["INSERT OR REPLACE", "REPLACE"])
+def test_snapshot_parent_replace_forms_are_blocked(verb: str) -> None:
+    conn, _, _ = stored_snapshot()
+    row = conn.execute(
+        "SELECT id, application_id, terminal_code, template_version, rules_version, "
+        "created_by_actor_id, created_by_actor_kind, created_at_utc, payload_json, sha256, "
+        "expected_artifact_ref_count, payload FROM application_snapshots WHERE id=?",
+        (str(eid(80)),),
+    ).fetchone()
+    assert row is not None
+    with pytest.raises(sqlite3.DatabaseError):
+        conn.execute(
+            f"{verb} INTO application_snapshots"
+            "(id, application_id, terminal_code, template_version, rules_version, "
+            "created_by_actor_id, created_by_actor_kind, created_at_utc, payload_json, "
+            "sha256, expected_artifact_ref_count, payload) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            row,
+        )
+
+
+@pytest.mark.parametrize("verb", ["INSERT OR REPLACE", "REPLACE"])
+def test_zero_artifact_snapshot_parent_replace_forms_are_blocked(verb: str) -> None:
+    conn, _, _ = stored_snapshot(())
+    row = conn.execute(
+        "SELECT id, application_id, terminal_code, template_version, rules_version, "
+        "created_by_actor_id, created_by_actor_kind, created_at_utc, payload_json, sha256, "
+        "expected_artifact_ref_count, payload FROM application_snapshots WHERE id=?",
+        (str(eid(80)),),
+    ).fetchone()
+    assert row is not None
+    with pytest.raises(sqlite3.DatabaseError):
+        conn.execute(
+            f"{verb} INTO application_snapshots"
+            "(id, application_id, terminal_code, template_version, rules_version, "
+            "created_by_actor_id, created_by_actor_kind, created_at_utc, payload_json, "
+            "sha256, expected_artifact_ref_count, payload) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            row,
+        )
+
+
+@pytest.mark.parametrize("verb", ["INSERT OR REPLACE", "REPLACE"])
+def test_snapshot_artifact_replace_forms_are_blocked(verb: str) -> None:
+    conn, _, _ = stored_snapshot()
+    row = conn.execute(
+        "SELECT snapshot_id, order_index, artifact_ref "
+        "FROM application_snapshot_artifact_refs WHERE snapshot_id=? AND order_index=0",
+        (str(eid(80)),),
+    ).fetchone()
+    assert row is not None
+    with pytest.raises(sqlite3.DatabaseError):
+        conn.execute(
+            f"{verb} INTO application_snapshot_artifact_refs"
+            "(snapshot_id, order_index, artifact_ref) VALUES (?, ?, ?)",
+            row,
         )
 
 

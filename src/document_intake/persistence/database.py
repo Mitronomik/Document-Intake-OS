@@ -295,6 +295,9 @@ class _Repo:
         except PersistenceError:
             raise
         except Exception as error:
+            transaction_check = getattr(self._uow, "_invalidate_if_transaction_lost", None)
+            if callable(transaction_check):
+                transaction_check()
             raise translate_driver_error(
                 error, duplicate_is_already_exists=duplicate_is_already_exists
             ) from None
@@ -323,7 +326,15 @@ class _Repo:
 
     @contextmanager
     def _atomic_write(self) -> Iterator[None]:
-        self._execute("SAVEPOINT repository_write")
+        try:
+            self._execute("SAVEPOINT repository_write")
+        except PersistenceError as error:
+            if error.code not in {
+                PersistenceErrorCode.UOW_CLOSED,
+                PersistenceErrorCode.UOW_STATE,
+            }:
+                self._uow._invalidate()
+            raise
         try:
             yield
             self._execute("RELEASE SAVEPOINT repository_write")
@@ -332,7 +343,8 @@ class _Repo:
                 self._execute("ROLLBACK TO SAVEPOINT repository_write")
                 self._execute("RELEASE SAVEPOINT repository_write")
             except PersistenceError:
-                pass
+                self._uow._invalidate()
+                raise PersistenceError(PersistenceErrorCode.PERSISTENCE_UNEXPECTED) from None
             raise
 
     def _add(self, key: str, payload: str, extra: tuple[Any, ...] = ()) -> None:
@@ -429,13 +441,13 @@ class IdentityRepo(_Repo):
         )
 
     def list_by_person(self, person_id: EntityId) -> tuple[IdentityDocument, ...]:
-        return tuple(
+        entities = tuple(
             self._from_projection(r)
             for r in self._fetchall(
-                "SELECT id, person_id, payload FROM identity_documents WHERE person_id=? ORDER BY id",
-                (str(person_id),),
+                "SELECT id, person_id, payload FROM identity_documents ORDER BY id"
             )
         )
+        return tuple(entity for entity in entities if entity.person_id == person_id)
 
     def _from_projection(self, row: tuple[str, str, str]) -> IdentityDocument:
         entity = self._entity_from_payload_row(row[0], row[2])
@@ -483,13 +495,14 @@ class MigrationRepo(_Repo):
         )
 
     def list_by_person(self, person_id: EntityId) -> tuple[MigrationDocument, ...]:
-        return tuple(
+        entities = tuple(
             self._from_projection(r)
             for r in self._fetchall(
-                "SELECT id, person_id, related_passport_id, payload FROM migration_documents WHERE person_id=? ORDER BY id",
-                (str(person_id),),
+                "SELECT id, person_id, related_passport_id, payload "
+                "FROM migration_documents ORDER BY id"
             )
         )
+        return tuple(entity for entity in entities if entity.person_id == person_id)
 
     def _from_projection(self, row: tuple[str, str, str | None, str]) -> MigrationDocument:
         entity = self._entity_from_payload_row(row[0], row[3])
@@ -552,12 +565,11 @@ class TerminalRepo(_Repo):
         )
 
     def list_active(self) -> tuple[Terminal, ...]:
-        return tuple(
+        entities = tuple(
             self._from_projection(r)
-            for r in self._fetchall(
-                "SELECT code, is_active, payload FROM terminals WHERE is_active=1 ORDER BY code"
-            )
+            for r in self._fetchall("SELECT code, is_active, payload FROM terminals ORDER BY code")
         )
+        return tuple(entity for entity in entities if entity.is_active)
 
     def _from_projection(self, row: tuple[str, int, str]) -> Terminal:
         entity = self._entity_from_payload_row(row[0], row[2])
@@ -640,19 +652,14 @@ class DocumentRepo(_Repo):
         return entity
 
     def list_by_owner(self, owner_ref: OwnerRef) -> tuple[Document, ...]:
-        ids = tuple(
-            row[0]
-            for row in self._fetchall(
-                "SELECT id FROM documents WHERE owner_kind=? AND owner_id=? ORDER BY id",
-                (owner_ref.owner_kind.value, str(owner_ref.owner_id)),
-            )
-        )
+        ids = tuple(row[0] for row in self._fetchall("SELECT id FROM documents ORDER BY id"))
         result: list[Document] = []
         for document_id in ids:
             entity = self._get_document(document_id)
             if entity is None:
                 raise PersistenceError(PersistenceErrorCode.PERSISTED_DATA_INVALID)
-            result.append(entity)
+            if entity.owner_ref == owner_ref:
+                result.append(entity)
         return tuple(result)
 
 
@@ -737,19 +744,14 @@ class CandidateRepo(_Repo):
         return entity
 
     def list_for_field(self, field_ref: FieldRef) -> tuple[FieldCandidate, ...]:
-        ids = tuple(
-            row[0]
-            for row in self._fetchall(
-                "SELECT id FROM field_candidates WHERE field_entity_id=? AND field_key=? ORDER BY id",
-                (str(field_ref.entity_id), field_ref.field_key.value),
-            )
-        )
+        ids = tuple(row[0] for row in self._fetchall("SELECT id FROM field_candidates ORDER BY id"))
         result: list[FieldCandidate] = []
         for candidate_id in ids:
             entity = self._get_candidate(candidate_id)
             if entity is None:
                 raise PersistenceError(PersistenceErrorCode.PERSISTED_DATA_INVALID)
-            result.append(entity)
+            if entity.field_ref == field_ref:
+                result.append(entity)
         return tuple(result)
 
 
@@ -968,8 +970,7 @@ class SnapshotRepo(_Repo):
         ids = tuple(
             r[0]
             for r in self._fetchall(
-                "SELECT id FROM application_snapshots WHERE application_id=? ORDER BY created_at_utc, id",
-                (str(application_id),),
+                "SELECT id FROM application_snapshots ORDER BY created_at_utc, id"
             )
         )
         snapshots: list[ApplicationSnapshot] = []
@@ -977,7 +978,8 @@ class SnapshotRepo(_Repo):
             stored = self._get_snapshot(stored_snapshot_id)
             if stored is None:
                 raise PersistenceError(PersistenceErrorCode.PERSISTED_DATA_INVALID)
-            snapshots.append(stored)
+            if stored.application_id == application_id:
+                snapshots.append(stored)
         return tuple(snapshots)
 
 
@@ -1069,6 +1071,27 @@ class SqlCipherUnitOfWork:
         self._applications = ApplicationRepo(self)
         self._application_snapshots = SnapshotRepo(self)
 
+    def _invalidate(self) -> None:
+        connection = self._conn
+        self._conn = None
+        self._state = _UowState.CLOSED
+        if connection is not None:
+            try:
+                connection.close()
+            except Exception:
+                pass
+
+    def _invalidate_if_transaction_lost(self) -> None:
+        if self._state is not _UowState.ACTIVE or self._conn is None:
+            return
+        try:
+            transaction_active = bool(self._conn.in_transaction)
+        except Exception:
+            self._invalidate()
+            return
+        if not transaction_active:
+            self._invalidate()
+
     def _close_after_failed_entry(self, *, transaction_started: bool) -> None:
         if self._conn is not None:
             if transaction_started:
@@ -1114,6 +1137,7 @@ class SqlCipherUnitOfWork:
         try:
             self._conn.execute("COMMIT")
         except Exception:
+            self._invalidate()
             raise PersistenceError(PersistenceErrorCode.PERSISTENCE_UNEXPECTED) from None
         self._state = _UowState.COMMITTED
 
@@ -1125,6 +1149,7 @@ class SqlCipherUnitOfWork:
         try:
             self._conn.execute("ROLLBACK")
         except Exception:
+            self._invalidate()
             raise PersistenceError(PersistenceErrorCode.PERSISTENCE_UNEXPECTED) from None
         self._state = _UowState.ROLLED_BACK
 

@@ -322,6 +322,9 @@ def terminal_to_json(o: Terminal) -> str:
 @persisted_data_boundary
 def terminal_from_json(payload: str) -> Terminal:
     d = loads(payload)
+    is_active = d["is_active"]
+    if type(is_active) is not bool:
+        raise PersistenceError(PersistenceErrorCode.PERSISTED_DATA_INVALID)
     return Terminal(
         parse_enum(TerminalCode, d["code"]),
         parse_text(NonEmptyText, d["display_name"]),
@@ -329,7 +332,7 @@ def terminal_from_json(payload: str) -> Terminal:
         parse_text(NonEmptyText, d.get("template_version")),
         parse_text(NonEmptyText, d.get("template_checksum")),
         parse_text(NonEmptyText, d.get("rules_version")),
-        bool(d["is_active"]),
+        is_active,
     )
 
 
@@ -358,7 +361,7 @@ def document_from_json(payload: str) -> Document:
         parse_text(CountryCode, d.get("country_code")),
         parse_text(NonEmptyText, d.get("template_version")),
         parse_owner(d.get("owner_ref")),
-        tuple(req_id(x) for x in d.get("side_ids", ())),
+        tuple(req_id(x) for x in d["side_ids"]),
         parse_id(d.get("prepared_artifact_id")),
     )
 
@@ -395,7 +398,7 @@ def candidate_from_json(payload: str) -> FieldCandidate:
         parse_enum(CandidateSourceType, d["source_type"]),
         conf,
         parse_text(NonEmptyText, d.get("source_region")),
-        tuple(NonEmptyText(x) for x in d.get("validation_results", ())),
+        tuple(NonEmptyText(x) for x in d["validation_results"]),
         parse_text(NonEmptyText, d.get("conflict_group")),
         parse_id(d.get("recognition_run_id")),
     )
@@ -495,9 +498,9 @@ def application_from_json(payload: str) -> Application:
         req_id(d["id"]),
         req_id(d["batch_id"]),
         parse_enum(TerminalCode, d.get("terminal_code")),
-        tuple(_assignment_from_dict(x) for x in d.get("assignments", ())),
-        tuple(_verified_from_dict(x) for x in d.get("verified_fields", ())),
-        ValidationReport(tuple(_issue_from_dict(x) for x in d.get("validation_issues", ()))),
+        tuple(_assignment_from_dict(x) for x in d["assignments"]),
+        tuple(_verified_from_dict(x) for x in d["verified_fields"]),
+        ValidationReport(tuple(_issue_from_dict(x) for x in d["validation_issues"])),
         parse_enum(ApplicationStatus, d["status"]),
         created_by,
         parse_datetime(d["created_at"]),
@@ -541,7 +544,7 @@ def snapshot_from_json(payload: str) -> ApplicationSnapshot:
         created_by=created_by,
         created_at=parse_datetime(d["created_at"]),
         payload=sp,
-        document_artifact_refs=tuple(req_id(x) for x in d.get("document_artifact_refs", ())),
+        document_artifact_refs=tuple(req_id(x) for x in d["document_artifact_refs"]),
         sha256=d["sha256"],
     )
 

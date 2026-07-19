@@ -9,10 +9,15 @@ from document_intake.persistence.database import IdentityRepo, PersonRepo
 from document_intake.persistence.errors import PersistenceError, PersistenceErrorCode
 from tests.persistence.test_repositories import (
     FakeUow,
+    application,
+    candidate,
+    document,
     eid,
     identity_document,
     migrated_connection,
     person,
+    snapshot,
+    terminal,
 )
 
 
@@ -87,3 +92,44 @@ def test_missing_entity_update_remains_distinct() -> None:
     with pytest.raises(PersistenceError) as excinfo:
         repo.update(person())
     assert excinfo.value.code == PersistenceErrorCode.ENTITY_NOT_FOUND
+
+
+@pytest.mark.parametrize("invalid", ["true", 1, 0, [], {}, None])
+def test_terminal_is_active_requires_exact_boolean(invalid: object) -> None:
+    payload = json.loads(ser.terminal_to_json(terminal()))
+    payload["is_active"] = invalid
+    with pytest.raises(PersistenceError) as excinfo:
+        ser.terminal_from_json(json.dumps(payload))
+    assert excinfo.value.code == PersistenceErrorCode.PERSISTED_DATA_INVALID
+
+
+def test_canonical_collection_keys_are_required() -> None:
+    app = application()
+    snap = snapshot(application())
+    cases = (
+        (ser.document_to_json(document()), ser.document_from_json, "side_ids"),
+        (
+            ser.candidate_to_json(candidate()),
+            ser.candidate_from_json,
+            "validation_results",
+        ),
+        (ser.application_to_json(app), ser.application_from_json, "assignments"),
+        (ser.application_to_json(app), ser.application_from_json, "verified_fields"),
+        (ser.application_to_json(app), ser.application_from_json, "validation_issues"),
+        (
+            ser.snapshot_to_json(snap),
+            ser.snapshot_from_json,
+            "document_artifact_refs",
+        ),
+    )
+    for encoded, deserializer, missing_key in cases:
+        payload = json.loads(encoded)
+        del payload[missing_key]
+        with pytest.raises(PersistenceError) as excinfo:
+            deserializer(json.dumps(payload))
+        assert excinfo.value.code == PersistenceErrorCode.PERSISTED_DATA_INVALID
+
+
+def test_assignment_projection_serializes_person_id_once() -> None:
+    encoded = ser.dumps(ser._assignment_to_dict(application().assignments[0]))
+    assert encoded.count('"person_id"') == 1
