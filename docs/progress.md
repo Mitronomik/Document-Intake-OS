@@ -1,6 +1,6 @@
 # Progress
 
-**Обновлено:** 2026-07-17
+**Обновлено:** 2026-07-18
 **Статус:** GATE-S1: COMPLETED AND HUMAN ACCEPTED
 
 ## Завершено
@@ -34,7 +34,7 @@
 - [x] PR-004: COMPLETED AND HUMAN ACCEPTED;
 - [x] GATE-S1: COMPLETED AND HUMAN ACCEPTED;
 - [x] ADR-018: ACCEPTED;
-- [ ] PR-S001: ACCEPTED WITH DOCUMENTED RESIDUAL RISK RISK-S001-W11; PR-S001-F1: COMPLETED; PR-S001-F2: COMPLETED; PR-S001-F3: COMPLETED; PR-S001-F4: COMPLETED AND MERGED THROUGH PR #13; PR-S001-F4 merge commit: `985fae37c7645e8f65edbe4d1609100ee24a2097`;
+- [x] PR-S001: ACCEPTED WITH DOCUMENTED RESIDUAL RISK RISK-S001-W11; PR-S001-F1: COMPLETED; PR-S001-F2: COMPLETED; PR-S001-F3: COMPLETED; PR-S001-F4: COMPLETED AND MERGED THROUGH PR #13; PR-S001-F4 merge commit: `985fae37c7645e8f65edbe4d1609100ee24a2097`;
 - [ ] PR-005: AUTHORIZED, NOT STARTED;
 - [ ] PR-006: UNAUTHORIZED;
 - [ ] PR-007 AND LATER: UNAUTHORIZED;
@@ -46,9 +46,9 @@
 
 ## Not started / unauthorized
 
-- [ ] PR-005 is authorized, not started after accepted PR-S001 feasibility evidence and this product-owner decision;
+- [ ] PR-005 is AUTHORIZED, NOT STARTED;
 - [ ] PR-006 remains unauthorized pending its own task review after accepted encryption staging;
-- [ ] PR-007 and later implementation tasks remain unauthorized;
+- [ ] PR-007 and later implementation tasks remain UNAUTHORIZED;
 - [ ] The template enforcement PR remains future work and does not block PR-004;
 - [ ] storage implementation;
 - [ ] image pipeline;
@@ -66,9 +66,9 @@
 
 ## Следующий безопасный шаг
 
-prepare and separately review the PR-005 implementation contract. Do not start PR-005, PR-006, PR-007 or later tasks until separately authorized. PR #9 merged PR-S001 as a research harness; PR-S001 is accepted with documented residual risk RISK-S001-W11; PR-S001-F4 is completed and merged through PR #13 at merge commit `985fae37c7645e8f65edbe4d1609100ee24a2097`; the next safe step is prepare and separately review the PR-005 implementation contract.
+prepare and review the exact PR-005 implementation contract, then implement PR-005 under the authorization recorded by PR #14 after PR #14 is merged. PR #9 merged PR-S001 as a research harness; PR-S001 is accepted with documented residual risk RISK-S001-W11; PR-S001-F4 is completed and merged through PR #13 at merge commit `985fae37c7645e8f65edbe4d1609100ee24a2097`.
 
-PR-S001-F1, PR-S001-F2, PR-S001-F3 and PR-S001-F4 are completed. PR-S001/PR-S001-F1/PR-S001-F2/PR-S001-F3/PR-S001-F4 use fictional synthetic data only, may evaluate candidate packages and prototypes, must not create production database/storage APIs, and must not use real documents or personal data. PR-005 is authorized, not started after accepted PR-S001 feasibility evidence and this decision. PR-005 must be prepared and separately reviewed before implementation. PR-006 remains blocked until PR-S001 acceptance and a separate PR-006 task review. Q-017 remains deferred. The sensitive-data/private-contour gate remains open, and real documents and personal data remain prohibited in Git, Codex and CI.
+PR-S001-F1, PR-S001-F2, PR-S001-F3 and PR-S001-F4 are completed. PR-S001/PR-S001-F1/PR-S001-F2/PR-S001-F3/PR-S001-F4 use fictional synthetic data only, may evaluate candidate packages and prototypes, must not create production database/storage APIs, and must not use real documents or personal data. PR-005 is AUTHORIZED, NOT STARTED after PR #14 is merged. The exact PR-005 implementation contract must be prepared and reviewed before implementation; the contract review is not a second authorization gate. No additional authorization PR is required for PR-005 within the accepted scope. PR-006 remains UNAUTHORIZED pending its own task review and explicit authorization. Q-017 remains deferred. The sensitive-data/private-contour gate remains open, and real documents and personal data remain prohibited in Git, Codex and CI.
 
 
-PR-S001 lifecycle boundary: PR-S001/PR-S001-F1/PR-S001-F2/PR-S001-F3/PR-S001-F4 use fictional synthetic data only; PR-S001 contains no production persistence/storage API; a negative feasibility result is valid; PR-S001 acceptance and this decision authorize PR-005 entry, not implementation start; human acceptance and separate authorization were required and are now recorded for PR-005 only.
+PR-S001 lifecycle boundary: PR-S001/PR-S001-F1/PR-S001-F2/PR-S001-F3/PR-S001-F4 use fictional synthetic data only; PR-S001 contains no production persistence/storage API; a negative feasibility result is valid; PR #14 records the explicit product-owner authorization for PR-005. No additional authorization PR is required for PR-005 within the accepted scope. PR-005 has not started.

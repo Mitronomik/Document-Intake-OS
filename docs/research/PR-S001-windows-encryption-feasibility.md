@@ -106,9 +106,9 @@ CONDITIONALLY FEASIBLE. The recommendation is conditional because GitHub Windows
 
 Status: NOT_DEMONSTRATED for production acceptance. Blockers remain: final SQLCipher edition/binding/version, legal redistribution approval, final key hierarchy, production envelope format, production storage/database transaction boundary, backup/recovery design, installer ACL design, Windows 11 target run not performed, legal/redistribution unresolved, production design unresolved, no-final-package-selection and full-system rollback strategy.
 
-## 21. Explicit non-authorization of PR-005 and PR-006
+## 21. Authorization status of PR-005 and PR-006
 
-Status: DEMONSTRATED. PR-S001 is accepted with documented residual risk RISK-S001-W11. PR-005 is AUTHORIZED, NOT STARTED after this decision PR is merged. PR-006 remains UNAUTHORIZED. This acceptance does not create production persistence or storage work.
+Status: DEMONSTRATED. PR-S001 is accepted with documented residual risk RISK-S001-W11. PR-005 is AUTHORIZED, NOT STARTED after PR #14 merge. PR-006 remains UNAUTHORIZED. This acceptance does not create production persistence or storage work.
 
 ## 22. Gate and milestone status
 
