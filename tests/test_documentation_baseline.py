@@ -1112,7 +1112,9 @@ def test_pr_s001_spike_documentation_and_scope() -> None:
 
 
 def test_pr006_acceptance_and_pr007_authorization_contract() -> None:
-    pr006 = (REPO_ROOT / "docs/tasks/PR-006-immutable-filesystem-storage.md").read_text(encoding="utf-8")
+    pr006 = (REPO_ROOT / "docs/tasks/PR-006-immutable-filesystem-storage.md").read_text(
+        encoding="utf-8"
+    )
     pr007 = (REPO_ROOT / "docs/tasks/PR-007-audit-events.md").read_text(encoding="utf-8")
     decisions = (REPO_ROOT / "docs/decisions.md").read_text(encoding="utf-8")
     open_questions = (REPO_ROOT / "docs/open-questions.md").read_text(encoding="utf-8")
@@ -1125,7 +1127,10 @@ def test_pr006_acceptance_and_pr007_authorization_contract() -> None:
     assert "fb953af64efd3e860960eae8ef1f4078afd0a6ec078a33594e271a9285d7db3d" in pr006
     assert "Storage decision: ADR-020" in pr006
     assert "Status: `AUTHORIZED, NOT STARTED`" in pr007
-    assert "only after the lifecycle pull request that created this task is merged into `main`" in pr007
+    assert (
+        "only after the lifecycle pull request that created this task is merged into `main`"
+        in pr007
+    )
     assert "ActorRef" in pr007 and "FieldKey" in pr007
     assert "Do not use a raw unrestricted string for `reason_code`" in pr007
     assert "No arbitrary metadata dictionary" in pr007
