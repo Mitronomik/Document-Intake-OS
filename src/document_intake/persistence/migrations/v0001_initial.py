@@ -1,7 +1,7 @@
 # ruff: noqa: E501
 """Initial encrypted persistence schema."""
 
-from document_intake.persistence.migrations.model import Migration, migration_checksum
+from document_intake.persistence.migrations.model import Migration
 
 VERSION = 1
 NAME = "initial_pr004_domain_persistence"
@@ -28,5 +28,5 @@ STATEMENTS = (
     "CREATE TRIGGER application_snapshot_artifact_refs_no_delete BEFORE DELETE ON application_snapshot_artifact_refs BEGIN SELECT RAISE(ABORT, 'ERR_SNAPSHOT_ARTIFACT_IMMUTABLE'); END",
     "CREATE TRIGGER application_snapshot_artifact_refs_bounded BEFORE INSERT ON application_snapshot_artifact_refs WHEN NEW.order_index >= COALESCE((SELECT expected_artifact_ref_count FROM application_snapshots WHERE id = NEW.snapshot_id), 0) BEGIN SELECT RAISE(ABORT, 'ERR_SNAPSHOT_ARTIFACT_ORDINAL'); END",
 )
-CHECKSUM = migration_checksum(STATEMENTS)
+CHECKSUM = "0233708b33dc5c949a17ccf5bba9c798a6ea06fb15e7c9e3fbf65ecea6769e39"
 MIGRATION = Migration(VERSION, NAME, STATEMENTS, CHECKSUM)

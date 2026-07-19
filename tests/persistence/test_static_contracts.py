@@ -12,6 +12,7 @@ from document_intake.persistence import (
     PersistenceErrorCode,
 )
 from document_intake.persistence.database import _apply_raw_hex_key, _validate_key
+from document_intake.persistence.migrations.model import migration_checksum
 from document_intake.persistence.migrations.v0001_initial import CHECKSUM, MIGRATION, STATEMENTS
 
 
@@ -63,7 +64,8 @@ def test_migration_metadata_contract() -> None:
     assert APPLICATION_ID == 0x44494F53
     assert MIGRATION.version == 1
     assert MIGRATION.checksum == CHECKSUM
-    assert len(STATEMENTS) == 20
+    assert migration_checksum(STATEMENTS) == CHECKSUM
+    assert len(STATEMENTS) == 21
     for table in (
         "schema_migrations",
         "persons",

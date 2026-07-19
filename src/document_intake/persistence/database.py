@@ -152,35 +152,47 @@ def _table_count(conn: Connection) -> int:
 
 
 def _validate_schema(conn: Connection) -> None:
-    user_version = int(_fetch_one(conn, "PRAGMA user_version"))
-    if user_version > CURRENT_SCHEMA_VERSION:
-        raise PersistenceError(PersistenceErrorCode.SCHEMA_VERSION_UNSUPPORTED)
-    app_id = int(_fetch_one(conn, "PRAGMA application_id"))
-    if user_version and app_id != APPLICATION_ID:
-        raise PersistenceError(PersistenceErrorCode.SCHEMA_HISTORY_INVALID)
-    if user_version == 0:
-        if _table_count(conn) != 0:
+    try:
+        user_version = int(_fetch_one(conn, "PRAGMA user_version"))
+        if user_version > CURRENT_SCHEMA_VERSION:
+            raise PersistenceError(PersistenceErrorCode.SCHEMA_VERSION_UNSUPPORTED)
+        app_id = int(_fetch_one(conn, "PRAGMA application_id"))
+        if user_version and app_id != APPLICATION_ID:
             raise PersistenceError(PersistenceErrorCode.SCHEMA_HISTORY_INVALID)
-        return
-    rows = conn.execute(
-        "SELECT version, name, checksum FROM schema_migrations ORDER BY version"
-    ).fetchall()
-    if len(rows) != user_version:
-        raise PersistenceError(PersistenceErrorCode.SCHEMA_HISTORY_INVALID)
-    expected_versions = tuple(range(1, user_version + 1))
-    if tuple(int(r[0]) for r in rows) != expected_versions:
-        raise PersistenceError(PersistenceErrorCode.SCHEMA_HISTORY_INVALID)
-    for row, migration in zip(rows, MIGRATIONS, strict=True):
-        if row[1] != migration.name:
+        if user_version == 0:
+            if _table_count(conn) != 0:
+                raise PersistenceError(PersistenceErrorCode.SCHEMA_HISTORY_INVALID)
+            return
+        rows = tuple(
+            conn.execute(
+                "SELECT version, name, checksum FROM schema_migrations ORDER BY version"
+            ).fetchall()
+        )
+        if len(rows) != user_version:
             raise PersistenceError(PersistenceErrorCode.SCHEMA_HISTORY_INVALID)
-        if row[2] != migration.checksum:
-            raise PersistenceError(PersistenceErrorCode.SCHEMA_CHECKSUM_MISMATCH)
+        expected_versions = tuple(range(1, user_version + 1))
+        if tuple(int(row[0]) for row in rows) != expected_versions:
+            raise PersistenceError(PersistenceErrorCode.SCHEMA_HISTORY_INVALID)
+        applied_migrations = MIGRATIONS[:user_version]
+        if len(applied_migrations) != user_version:
+            raise PersistenceError(PersistenceErrorCode.SCHEMA_HISTORY_INVALID)
+        for row, migration in zip(rows, applied_migrations, strict=True):
+            if row[1] != migration.name:
+                raise PersistenceError(PersistenceErrorCode.SCHEMA_HISTORY_INVALID)
+            if row[2] != migration.checksum:
+                raise PersistenceError(PersistenceErrorCode.SCHEMA_CHECKSUM_MISMATCH)
+    except PersistenceError:
+        raise
+    except Exception:
+        raise PersistenceError(PersistenceErrorCode.SCHEMA_HISTORY_INVALID) from None
 
 
 def _apply_migrations(conn: Connection) -> None:
     _validate_schema(conn)
     current = int(_fetch_one(conn, "PRAGMA user_version"))
     for migration in MIGRATIONS[current:]:
+        if migration.version != current + 1:
+            raise PersistenceError(PersistenceErrorCode.SCHEMA_HISTORY_INVALID)
         try:
             conn.execute("BEGIN IMMEDIATE")
             if migration.version == 1:
@@ -193,6 +205,7 @@ def _apply_migrations(conn: Connection) -> None:
             )
             conn.execute(f"PRAGMA user_version = {migration.version}")
             conn.execute("COMMIT")
+            current = migration.version
         except Exception:
             try:
                 conn.execute("ROLLBACK")

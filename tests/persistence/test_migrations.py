@@ -63,6 +63,57 @@ def test_initialize_migrations_are_idempotent() -> None:
     assert connection.execute("SELECT count(*) FROM schema_migrations").fetchone()[0] == 1
 
 
+def test_applied_prefix_validates_and_future_migration_applies(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    connection = apply()
+    future_statements = ("CREATE TABLE future_projection(id INTEGER PRIMARY KEY)",)
+    future = Migration(
+        2,
+        "future_projection",
+        future_statements,
+        migration_checksum(future_statements),
+    )
+    monkeypatch.setattr(database, "MIGRATIONS", (MIGRATION, future))
+    monkeypatch.setattr(database, "CURRENT_SCHEMA_VERSION", 2)
+
+    database._validate_schema(connection)
+    database._apply_migrations(connection)
+
+    assert connection.execute("PRAGMA user_version").fetchone()[0] == 2
+    assert connection.execute(
+        "SELECT version, name, checksum FROM schema_migrations ORDER BY version"
+    ).fetchall() == [
+        (MIGRATION.version, MIGRATION.name, MIGRATION.checksum),
+        (future.version, future.name, future.checksum),
+    ]
+    assert connection.execute(
+        "SELECT name FROM sqlite_master WHERE name='future_projection'"
+    ).fetchone() == ("future_projection",)
+
+
+@pytest.mark.parametrize(
+    "tamper",
+    [
+        lambda c: c.execute(
+            "INSERT INTO schema_migrations(version, name, checksum, applied_at_utc) "
+            "VALUES (2, 'extra', 'extra', '2026-07-19T00:00:00Z')"
+        ),
+        lambda c: c.execute("UPDATE schema_migrations SET name='reordered' WHERE version=1"),
+        lambda c: (
+            c.execute("ALTER TABLE schema_migrations RENAME TO malformed_history"),
+            c.execute("CREATE TABLE schema_migrations(version INTEGER PRIMARY KEY)"),
+        ),
+    ],
+)
+def test_extra_reordered_or_malformed_history_is_rejected(tamper) -> None:  # type: ignore[no-untyped-def]
+    connection = apply()
+    tamper(connection)
+    with pytest.raises(PersistenceError) as excinfo:
+        database._validate_schema(connection)
+    assert excinfo.value.code == PersistenceErrorCode.SCHEMA_HISTORY_INVALID
+
+
 @pytest.mark.parametrize(
     ("setup", "code"),
     [
