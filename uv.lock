@@ -69,6 +69,7 @@ version = "0.1.0"
 source = { editable = "." }
 dependencies = [
     { name = "pyside6" },
+    { name = "sqlcipher3", marker = "platform_machine == 'AMD64' and sys_platform == 'win32'" },
 ]
 
 [package.dev-dependencies]
@@ -79,11 +80,13 @@ dev = [
 ]
 encryption-spike = [
     { name = "cryptography", marker = "sys_platform == 'win32'" },
-    { name = "sqlcipher3", marker = "platform_machine == 'AMD64' and sys_platform == 'win32'" },
 ]
 
 [package.metadata]
-requires-dist = [{ name = "pyside6", specifier = ">=6.7,<7" }]
+requires-dist = [
+    { name = "pyside6", specifier = ">=6.7,<7" },
+    { name = "sqlcipher3", marker = "platform_machine == 'AMD64' and sys_platform == 'win32'", specifier = "==0.6.2" },
+]
 
 [package.metadata.requires-dev]
 dev = [
@@ -91,10 +94,7 @@ dev = [
     { name = "pytest", specifier = ">=8.2" },
     { name = "ruff", specifier = ">=0.5" },
 ]
-encryption-spike = [
-    { name = "cryptography", marker = "sys_platform == 'win32'", specifier = "==49.0.0" },
-    { name = "sqlcipher3", marker = "platform_machine == 'AMD64' and sys_platform == 'win32'", specifier = "==0.6.2" },
-]
+encryption-spike = [{ name = "cryptography", marker = "sys_platform == 'win32'", specifier = "==49.0.0" }]
 
 [[package]]
 name = "iniconfig"
