@@ -81,9 +81,19 @@ def _open_connection(path: Path, provider: DatabaseKeyProvider) -> Connection:
 
 def _harden_connection(conn: Connection) -> None:
     try:
-        status = _fetch_one(conn, "PRAGMA cipher_status")
-        if status != 1:
+        cipher_version = _fetch_one(conn, "PRAGMA cipher_version")
+        if not isinstance(cipher_version, str) or not cipher_version.strip():
             raise PersistenceError(PersistenceErrorCode.DB_ENCRYPTION_INACTIVE)
+
+        # cipher_status was added in SQLCipher 4.12. Older SQLCipher 4.x
+        # builds return no row because unknown PRAGMAs are ignored.
+        status = _fetch_one(conn, "PRAGMA cipher_status")
+        if status is not None and status != 1:
+            raise PersistenceError(PersistenceErrorCode.DB_ENCRYPTION_INACTIVE)
+
+        # Force key derivation and validate access to the encrypted schema.
+        conn.execute("SELECT count(*) FROM sqlite_master").fetchone()
+
         conn.execute("PRAGMA foreign_keys = ON")
         conn.execute("PRAGMA temp_store = MEMORY")
         journal = _fetch_one(conn, "PRAGMA journal_mode = WAL")
