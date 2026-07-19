@@ -1,8 +1,8 @@
 # PR-005 — Encrypted SQLite persistence and migrations
 
-Status: IN REVIEW, NOT ACCEPTED.
+Status: COMPLETED AND HUMAN ACCEPTED.
 
-Exact base SHA: `f7ad2613dfa79f6220422d386621146ba9c2eafb` from the local checkout. Live `origin/main` verification was attempted on 2026-07-19 but GitHub fetch was blocked by the execution environment (`CONNECT tunnel failed, response 403`); reviewers must confirm the live base before merge.
+Lifecycle closure: PR-005 was merged through GitHub PR #15 (`PR-005: Add encrypted SQLite persistence and migrations`) on `2026-07-19` from final reviewed head `325b49555dee49fa22b008d9522bbbc6eb873ca2` at merge commit `2161fbbf7fb4065a5913fb6e62c207546caf5dd9`. The final migration v0001 checksum is `e1e1f5f6d8d675a146f3d0c538a0d544b6f8a984c301d177ee1ad86e42f2d500`. Exact-head GitHub Actions CI run #73 succeeded, including Windows SQLCipher integration evidence for the PR-005 acceptance boundary.
 
 ## Goal
 
@@ -54,4 +54,4 @@ Synthetic-only manual verification must report exact commit, OS/architecture, Py
 
 ## Non-goals and lifecycle boundary
 
-PR-006 filesystem storage, originals, prepared JPEGs, encrypted file envelopes, DPAPI, key hierarchy, backup/restore, users, authentication, audit, retention, OCR/MRZ, image processing, Excel, UI, installer, telemetry, network/cloud services, downgrade and plaintext migration are not implemented. PR-005 remains IN REVIEW, NOT ACCEPTED; PR-006 is UNAUTHORIZED; PR-007 and later are UNAUTHORIZED; Gate 1 is NOT ACCEPTED; M2 is NOT COMPLETED.
+PR-006 filesystem storage, originals, prepared JPEGs, encrypted file envelopes, DPAPI, key hierarchy, backup/restore, users, authentication, audit, retention, OCR/MRZ, image processing, Excel, UI, installer, telemetry, network/cloud services, downgrade and plaintext migration are not implemented. PR-005 is COMPLETED AND HUMAN ACCEPTED; PR-006 is UNAUTHORIZED; PR-007 and later are UNAUTHORIZED; Gate 1 is NOT ACCEPTED; M2 is NOT COMPLETED. RISK-PR005-RAWKEY-PRAGMA remains accepted only for the PR-005 development boundary and remains open for installer, pilot and production release.
