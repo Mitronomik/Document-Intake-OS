@@ -46,6 +46,16 @@ def _fetch_one(connection: Connection, sql: str) -> Any:
     return None if row is None else row[0]
 
 
+def _cipher_status_is_active(value: Any) -> bool:
+    if isinstance(value, int) and not isinstance(value, bool):
+        return value == 1
+    if isinstance(value, str):
+        return value == "1"
+    if isinstance(value, bytes):
+        return value == b"1"
+    return False
+
+
 def _validate_key(provider: DatabaseKeyProvider) -> bytes:
     try:
         key = provider.get_database_key()
@@ -85,10 +95,8 @@ def _harden_connection(conn: Connection) -> None:
         if not isinstance(cipher_version, str) or not cipher_version.strip():
             raise PersistenceError(PersistenceErrorCode.DB_ENCRYPTION_INACTIVE)
 
-        # cipher_status was added in SQLCipher 4.12. Older SQLCipher 4.x
-        # builds return no row because unknown PRAGMAs are ignored.
         status = _fetch_one(conn, "PRAGMA cipher_status")
-        if status is not None and status != 1:
+        if not _cipher_status_is_active(status):
             raise PersistenceError(PersistenceErrorCode.DB_ENCRYPTION_INACTIVE)
 
         # Force key derivation and validate access to the encrypted schema.

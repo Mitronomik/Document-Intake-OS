@@ -52,11 +52,24 @@ def test_actual_windows_sqlcipher_encryption_uow_and_privacy(
         assert isinstance(cipher_version_row[0], str)
         assert cipher_version_row[0].strip()
 
-        # SQLCipher 4.12+ returns a status row. Earlier SQLCipher 4.x
-        # versions do not implement this PRAGMA and return no row.
         cipher_status_row = connection.execute("PRAGMA cipher_status").fetchone()
-        if cipher_status_row is not None:
-            assert cipher_status_row[0] == 1
+        assert cipher_status_row is not None
+
+        cipher_status = cipher_status_row[0]
+        status_is_active = (
+            (
+                isinstance(cipher_status, int)
+                and not isinstance(cipher_status, bool)
+                and cipher_status == 1
+            )
+            or (isinstance(cipher_status, str) and cipher_status == "1")
+            or (isinstance(cipher_status, bytes) and cipher_status == b"1")
+        )
+
+        assert status_is_active, (
+            "Unexpected cipher_status representation: "
+            f"type={type(cipher_status).__name__}, value={cipher_status!r}"
+        )
 
         assert connection.execute("SELECT count(*) FROM sqlite_master").fetchone() is not None
 
