@@ -231,6 +231,11 @@ def test_lifecycle_state_records_pr005_accepted_state() -> None:
         "Q-010: ACCEPTED",
         "PR-S001: ACCEPTED WITH DOCUMENTED RESIDUAL RISK",
         "RISK-S001-W11",
+        "PR-S001-F1",
+        "PR-S001-F2",
+        "PR-S001-F3",
+        "PR-S001-F4: COMPLETED AND MERGED THROUGH PR #13",
+        "985fae37c7645e8f65edbe4d1609100ee24a2097",
         "PR-005: COMPLETED AND HUMAN ACCEPTED",
         "PR-006: UNAUTHORIZED",
         "PR-007 AND LATER: UNAUTHORIZED",
@@ -303,6 +308,14 @@ def test_lifecycle_state_records_pr005_accepted_state() -> None:
             or "Filesystem-storage implementation cannot start" in text
             or "No filesystem-storage implementation may begin" in text
         ), filename
+        assert (
+            "PR-S001/PR-S001-F1/PR-S001-F2/PR-S001-F3/PR-S001-F4 use fictional synthetic data only"
+            in text
+        ), filename
+        assert "must not create production database/storage APIs" in text, filename
+        assert "must not use real documents or personal data" in text, filename
+        assert "PR-S001 contains no production persistence/storage API" in text, filename
+        assert "a negative feasibility result is valid" in text, filename
         old_next_step = (
             "review PR-005 code, Windows SQLCipher CI evidence, migrations, "
             "repository round trips, transaction tests and privacy checks"
@@ -322,6 +335,7 @@ def test_lifecycle_state_records_pr005_accepted_state() -> None:
     assert "- [x] ADR-018: ACCEPTED;" in progress
     assert "- [x] Q-010: ACCEPTED;" in progress
     assert "- [x] PR-S001: ACCEPTED WITH DOCUMENTED RESIDUAL RISK RISK-S001-W11;" in progress
+    assert "PR-S001-F1, PR-S001-F2 and PR-S001-F3: COMPLETED" in progress
     assert "PR-S001-F4: COMPLETED AND MERGED THROUGH PR #13" in progress
     assert "985fae37c7645e8f65edbe4d1609100ee24a2097" in progress
     assert "- [ ] PR-S001: ACCEPTED WITH DOCUMENTED RESIDUAL RISK" not in progress
@@ -510,6 +524,13 @@ def test_gate_s1_acceptance_security_and_lifecycle_boundaries() -> None:
         text = (REPO_ROOT / filename).read_text(encoding="utf-8")
         assert "PR-005: COMPLETED AND HUMAN ACCEPTED" in text, filename
         assert "PR-006: UNAUTHORIZED" in text, filename
+        assert (
+            "PR-S001/PR-S001-F1/PR-S001-F2/PR-S001-F3/PR-S001-F4 use fictional synthetic data only"
+            in text
+        ), filename
+        assert "must not create production database/storage APIs" in text, filename
+        assert "PR-S001 contains no production persistence/storage API" in text, filename
+        assert "a negative feasibility result is valid" in text, filename
         assert "Q-017 remains deferred" in text, filename
         assert (
             "real documents and personal data remain prohibited in Git, Codex and CI" in text
@@ -1044,5 +1065,12 @@ def test_pr_s001_spike_documentation_and_scope() -> None:
         text = (REPO_ROOT / lifecycle).read_text(encoding="utf-8")
         assert "PR-005: COMPLETED AND HUMAN ACCEPTED" in text
         assert "PR-006: UNAUTHORIZED" in text
+        assert (
+            "PR-S001/PR-S001-F1/PR-S001-F2/PR-S001-F3/PR-S001-F4 use fictional synthetic data only"
+            in text
+        )
+        assert "must not create production database/storage APIs" in text
+        assert "PR-S001 contains no production persistence/storage API" in text
+        assert "a negative feasibility result is valid" in text
         assert "PR-005 has not started" not in text
         assert "PR-005: IN REVIEW, NOT ACCEPTED" not in text

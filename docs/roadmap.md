@@ -86,4 +86,6 @@ PR-006: UNAUTHORIZED. PR-007 AND LATER: UNAUTHORIZED. Gate 1: NOT ACCEPTED. M2: 
 
 RISK-PR005-RAWKEY-PRAGMA remains accepted only for the PR-005 development boundary and remains open for installer, pilot and production release.
 
+PR-S001/PR-S001-F1/PR-S001-F2/PR-S001-F3/PR-S001-F4 use fictional synthetic data only, may evaluate candidate packages and prototypes, must not create production database/storage APIs, and must not use real documents or personal data. PR-S001 contains no production persistence/storage API; a negative feasibility result is valid.
+
 The next safe planning step is preparing and reviewing the exact PR-006 task. That planning step leaves PR-006 implementation prohibited until separate explicit product-owner approval; filesystem-storage implementation requires a separate explicit product-owner authorization. The template enforcement PR remains future work and does not close the sensitive-data/private-contour gate.

@@ -79,4 +79,6 @@
 
 ## Следующий безопасный шаг
 
+PR-S001/PR-S001-F1/PR-S001-F2/PR-S001-F3/PR-S001-F4 use fictional synthetic data only, may evaluate candidate packages and prototypes, must not create production database/storage APIs, and must not use real documents or personal data. PR-S001 contains no production persistence/storage API; a negative feasibility result is valid.
+
 Prepare and review the exact PR-006 task. This planning step does not authorize PR-006 implementation. Filesystem-storage implementation cannot start until a separate explicit product-owner authorization is given for the reviewed PR-006 contract.
