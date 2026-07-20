@@ -270,8 +270,12 @@ def test_lifecycle_state_records_pr005_accepted_state() -> None:
         "PR-005: COMPLETED AND HUMAN ACCEPTED",
         "PR-006: `COMPLETED AND HUMAN ACCEPTED`",
         "PR-007: `COMPLETED AND HUMAN ACCEPTED`",
-        "PR-008: `IMPLEMENTED AND IN REVIEW, NOT ACCEPTED`",
-        "PR-009 and later: `UNAUTHORIZED`",
+        "PR-008: `COMPLETED AND HUMAN ACCEPTED WITH DOCUMENTED RESIDUAL RISK`",
+        "RISK-PR008-W11-SMOKE",
+        "PR-009: `AUTHORIZED, NOT STARTED`",
+        "PR-010 AND LATER: `UNAUTHORIZED`",
+        "Gate 2: `NOT ACCEPTED`",
+        "M3: `IN PROGRESS`",
         "Gate 1: `COMPLETED AND HUMAN ACCEPTED`",
         "M2: `COMPLETED AND HUMAN ACCEPTED`",
         "c6d6852ba3cf28060d8fbb76e27201cbbcaade54",
@@ -342,10 +346,13 @@ def test_lifecycle_state_records_pr005_accepted_state() -> None:
             assert required in text, filename
         assert "PR-006: `COMPLETED AND HUMAN ACCEPTED`" in text, filename
         assert "PR-007: `COMPLETED AND HUMAN ACCEPTED`" in text, filename
-        assert "PR-008: `IMPLEMENTED AND IN REVIEW, NOT ACCEPTED`" in text, filename
-        assert "PR-009 and later: `UNAUTHORIZED`" in text, filename
-        assert "PR-008: `COMPLETED`" not in text, filename
-        assert "PR-008: `COMPLETED AND HUMAN ACCEPTED`" not in text, filename
+        assert "PR-008: `COMPLETED AND HUMAN ACCEPTED WITH DOCUMENTED RESIDUAL RISK`" in text, (
+            filename
+        )
+        assert "RISK-PR008-W11-SMOKE" in text, filename
+        assert "PR-009: `AUTHORIZED, NOT STARTED`" in text, filename
+        assert "PR-010 AND LATER: `UNAUTHORIZED`" in text, filename
+        assert "Gate 2: `NOT ACCEPTED`" in text, filename
         assert "Q-009: `DEFERRED`" in text, filename
         assert "Q-017: `DEFERRED`" in text, filename
         _assert_pr_s001_followups_completed(text, filename)
@@ -371,7 +378,7 @@ def test_lifecycle_state_records_pr005_accepted_state() -> None:
     assert "PR-S001-F3 is the current correction" not in progress
     assert "**Обновлено:** 2026-07-17" not in progress
     assert "**Обновлено:** 2026-07-18" not in progress
-    assert "**Обновлено:** 2026-07-19" in progress
+    assert "**Обновлено:** 2026-07-21" in progress
     assert "- [x] GATE-S1: COMPLETED AND HUMAN ACCEPTED;" in progress
     assert "- [x] ADR-018: ACCEPTED;" in progress
     assert "- [x] Q-010: ACCEPTED;" in progress
@@ -597,8 +604,12 @@ def test_pr005_pr006_sequences_remain_blocked_after_gate_s1_acceptance() -> None
     )
     assert "PR-006 remains blocked" not in implementation_plan
     assert "PR-007: `COMPLETED AND HUMAN ACCEPTED`" in implementation_plan
-    assert "PR-008: `IMPLEMENTED AND IN REVIEW, NOT ACCEPTED`" in implementation_plan
-    assert "PR-009 and later: `UNAUTHORIZED`" in implementation_plan
+    assert (
+        "PR-008: `COMPLETED AND HUMAN ACCEPTED WITH DOCUMENTED RESIDUAL RISK`"
+        in implementation_plan
+    )
+    assert "PR-009: `AUTHORIZED, NOT STARTED`" in implementation_plan
+    assert "PR-010 AND LATER: `UNAUTHORIZED`" in implementation_plan
 
 
 def test_q001_through_q020_statuses_other_than_q010_are_unchanged() -> None:
@@ -1179,8 +1190,9 @@ def test_pr007_current_lifecycle_status_has_no_stale_blockers() -> None:
         )
     )
     assert "PR-007: `COMPLETED AND HUMAN ACCEPTED`" in current
-    assert "PR-008: `IMPLEMENTED AND IN REVIEW, NOT ACCEPTED`" in current
-    assert "PR-009 and later: `UNAUTHORIZED`" in current
+    assert "PR-008: `COMPLETED AND HUMAN ACCEPTED WITH DOCUMENTED RESIDUAL RISK`" in current
+    assert "PR-009: `AUTHORIZED, NOT STARTED`" in current
+    assert "PR-010 AND LATER: `UNAUTHORIZED`" in current
     assert "Gate 1: `COMPLETED AND HUMAN ACCEPTED`" in current
     assert "M2: `COMPLETED AND HUMAN ACCEPTED`" in current
     assert "PR-007 and later tasks remain UNAUTHORIZED" not in current
@@ -1424,7 +1436,7 @@ def test_pr008_authorization_task_contract_and_no_pr009_authorization() -> None:
         "If the evidence is not available, PR-008 must stop as blocked",
         "Runtime codec downloads are not authorized",
         "tests/fixtures/synthetic/",
-        "PR-009 and later remain `UNAUTHORIZED`",
+        "PR-009 is `AUTHORIZED, NOT STARTED`; PR-010 and later remain `UNAUTHORIZED`",
         "must not implement PySide upload UI",
         "quality_assessment",
         "PR-009-or-later behavior",
@@ -1727,13 +1739,20 @@ def test_pr007_acceptance_closes_m2_gate1_and_preserves_open_risks() -> None:
         "Gate 1: `NOT ACCEPTED`",
         "PR-008 and later: `UNAUTHORIZED`",
         "PR-008 AND LATER: UNAUTHORIZED",
+        "PR-008: `IMPLEMENTED AND IN REVIEW, NOT ACCEPTED`",
+        "PR-009 AND LATER: UNAUTHORIZED",
+        "Do not begin PR-009",
+        "PR #21 remains open and unmerged",
         "audit work is incomplete",
     )
     for filename in files:
         text = (REPO_ROOT / filename).read_text(encoding="utf-8")
         assert "PR-007: `COMPLETED AND HUMAN ACCEPTED`" in text, filename
-        assert "PR-008: `IMPLEMENTED AND IN REVIEW, NOT ACCEPTED`" in text, filename
-        assert "PR-009 and later: `UNAUTHORIZED`" in text, filename
+        assert "PR-008: `COMPLETED AND HUMAN ACCEPTED WITH DOCUMENTED RESIDUAL RISK`" in text, (
+            filename
+        )
+        assert "PR-009: `AUTHORIZED, NOT STARTED`" in text, filename
+        assert "PR-010 AND LATER: `UNAUTHORIZED`" in text, filename
         assert "Gate 1: `COMPLETED AND HUMAN ACCEPTED`" in text, filename
         assert "M2: `COMPLETED AND HUMAN ACCEPTED`" in text, filename
         assert "RISK-PR005-RAWKEY-PRAGMA` remains open" in text, filename
@@ -1745,12 +1764,65 @@ def test_pr007_acceptance_closes_m2_gate1_and_preserves_open_risks() -> None:
 def test_pr008_current_state_uses_actual_branch_and_forbids_stale_branch() -> None:
     progress = (REPO_ROOT / "docs/progress.md").read_text(encoding="utf-8")
     assert (
-        "PR-008 — File import and duplicate detection is IMPLEMENTED AND IN REVIEW, NOT ACCEPTED"
-        in progress
+        "PR-008 — File import and duplicate detection is COMPLETED AND HUMAN ACCEPTED "
+        "WITH DOCUMENTED RESIDUAL RISK" in progress
     )
     assert "Gate 2 remains not accepted" in progress
     assert "Gate 2: `COMPLETED AND HUMAN ACCEPTED`" not in progress
     assert "Gate 2: `ACCEPTED`" not in progress
-    assert "PR-009 and later remain UNAUTHORIZED" in progress
-    assert "codex-uj32ni" in progress
+    assert "PR-009 is AUTHORIZED, NOT STARTED" in progress
+    assert "PR-010 and later remain UNAUTHORIZED" in progress
+    assert "codex-uj32ni" not in progress
     assert "codex/pr-008-file-import-duplicate-detection" not in progress
+
+
+def test_pr008_acceptance_and_pr009_authorization_lifecycle_contract() -> None:
+    lifecycle_files = (
+        "docs/progress.md",
+        "docs/roadmap.md",
+        "docs/implementation-plan.md",
+        "docs/traceability-matrix.md",
+        "docs/handoff.md",
+        "docs/decisions.md",
+        "docs/decisions/PR-008-D1-lifecycle-acceptance.md",
+    )
+    combined = "\n".join((REPO_ROOT / name).read_text(encoding="utf-8") for name in lifecycle_files)
+
+    for required in (
+        "PR-008: `COMPLETED AND HUMAN ACCEPTED",
+        "RISK-PR008-W11-SMOKE",
+        "PR-009: `AUTHORIZED, NOT STARTED`",
+        "Gate 2: `NOT ACCEPTED`",
+        "PR-010 AND LATER: `UNAUTHORIZED`",
+        "99dfefe467762e241f0584c2ca1a81bc662c1ab0",
+        "bf7af9617d33a205f27eb9a4734fea6ecee18b58",
+        "CI #106",
+        "29776664038",
+        "1810111f39f11131",
+    ):
+        assert required in combined, required
+
+    for stale in (
+        "PR-008: IMPLEMENTED AND IN REVIEW, NOT ACCEPTED",
+        "PR-008: `IMPLEMENTED AND IN REVIEW, NOT ACCEPTED`",
+        "PR-009 AND LATER: UNAUTHORIZED",
+        "Do not begin PR-009",
+        "do not start PR-009",
+        "PR #21 remains open and unmerged",
+        "Gate 2: COMPLETED",
+        "Gate 2: ACCEPTED",
+        "Gate 2: `COMPLETED",
+        "Gate 2: `ACCEPTED",
+        "PR-010: AUTHORIZED",
+        "PR-011: AUTHORIZED",
+        "PR-012: AUTHORIZED",
+        "PR-013: AUTHORIZED",
+    ):
+        assert stale not in combined, stale
+
+    decision = (REPO_ROOT / "docs/decisions/PR-008-D1-lifecycle-acceptance.md").read_text(
+        encoding="utf-8"
+    )
+    assert "Decision date\n\n2026-07-21" in decision
+    assert "No physical Windows 11 x64 acceptance workstation was available" in decision
+    assert "No physical Windows 11 result may be fabricated or inferred" in decision
