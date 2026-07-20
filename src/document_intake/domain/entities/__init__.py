@@ -1,5 +1,6 @@
 """Entity public API."""
 
+from document_intake.domain.entities.audit import AuditEvent
 from document_intake.domain.entities.core import (
     Application,
     ApplicationSnapshot,
@@ -17,6 +18,7 @@ from document_intake.domain.entities.core import (
 __all__ = [
     "Application",
     "ApplicationSnapshot",
+    "AuditEvent",
     "Document",
     "FieldCandidate",
     "IdentityDocument",

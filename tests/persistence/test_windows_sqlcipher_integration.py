@@ -166,3 +166,23 @@ def test_actual_windows_sqlcipher_ciphertext_tamper_and_truncation(
         forbidden_value,
     ):
         assert forbidden not in combined
+
+
+def test_actual_windows_pr007_audit_verifier_sanitized_output() -> None:
+    import subprocess
+    import sys
+
+    result = subprocess.run(
+        [sys.executable, "scripts/verify_pr007_audit.py"],
+        check=False,
+        capture_output=True,
+        text=True,
+        timeout=60,
+    )
+    assert result.returncode == 0
+    output = result.stdout.strip().splitlines()
+    assert output
+    assert all(line.startswith("PASS") for line in output)
+    assert not result.stderr
+    assert "SYNTH_FORBIDDEN_MARKER" not in result.stdout
+    assert "sqlite3.OperationalError" not in result.stdout

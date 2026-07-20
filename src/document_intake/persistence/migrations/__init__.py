@@ -9,9 +9,12 @@ from document_intake.persistence.migrations.v0001_initial import MIGRATION as V0
 from document_intake.persistence.migrations.v0002_stored_artifacts import (
     MIGRATION as V0002_STORED_ARTIFACTS,
 )
+from document_intake.persistence.migrations.v0003_audit_events import (
+    MIGRATION as V0003_AUDIT_EVENTS,
+)
 
-MIGRATIONS: tuple[Migration, ...] = (V0001_INITIAL, V0002_STORED_ARTIFACTS)
-CURRENT_SCHEMA_VERSION = 2
+MIGRATIONS: tuple[Migration, ...] = (V0001_INITIAL, V0002_STORED_ARTIFACTS, V0003_AUDIT_EVENTS)
+CURRENT_SCHEMA_VERSION = 3
 
 __all__ = [
     "APPLICATION_ID",

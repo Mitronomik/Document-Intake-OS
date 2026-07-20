@@ -1,8 +1,8 @@
 # PR-007 — Audit events
 
-Status: `AUTHORIZED, NOT STARTED`
+Status: `AUTHORIZED AND IN REVIEW, NOT ACCEPTED`
 
-Implementation may begin only after the lifecycle pull request that created this task is merged into `main`. Do not begin PR-007 while that lifecycle pull request remains open.
+Status: PR-007 is AUTHORIZED AND IN REVIEW, NOT ACCEPTED. The lifecycle pull request that created this task has been merged into `main`; do not mark PR-007 completed or human accepted until a later lifecycle decision.
 
 ## Objective
 

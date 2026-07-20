@@ -8,7 +8,7 @@ import pytest
 from document_intake.persistence import database
 from document_intake.persistence.database import SqlCipherUnitOfWork
 from document_intake.persistence.errors import PersistenceError, PersistenceErrorCode
-from tests.persistence.test_repositories import document, eid, migrated_connection, person
+from tests.persistence.test_repositories import actor, document, eid, migrated_connection, person
 
 
 class Provider:
@@ -257,3 +257,66 @@ def test_uow_does_not_apply_pending_migrations(
     with pytest.raises(PersistenceError) as excinfo, SqlCipherUnitOfWork(db, Provider()):
         pass
     assert excinfo.value.code == PersistenceErrorCode.SCHEMA_VERSION_UNSUPPORTED
+
+
+def audit_event_for_uow() -> object:
+    from datetime import UTC, datetime
+
+    from document_intake.domain import (
+        AuditAction,
+        AuditEvent,
+        AuditReasonCode,
+        AuditSubjectType,
+        AuditValueClassification,
+        AuditValueSummary,
+    )
+
+    return AuditEvent(
+        event_id=eid(700),
+        occurred_at=datetime(2026, 7, 19, 12, tzinfo=UTC),
+        actor=actor(),
+        action_code=AuditAction.ENTITY_CREATED,
+        subject_type=AuditSubjectType.PERSON,
+        subject_id=eid(701),
+        after=AuditValueSummary(AuditValueClassification.SENSITIVE_REDACTED, None, True),
+        reason_code=AuditReasonCode("SYSTEM_ACTION"),
+        correlation_id=eid(702),
+    )
+
+
+def test_uow_commits_and_rolls_back_business_write_with_audit_event(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    db = tmp_path / "synthetic-audit.db"
+    migrated_file(db)
+    monkeypatch.setattr(database, "_open_connection", open_sqlite)
+
+    with SqlCipherUnitOfWork(db, Provider()) as uow:
+        uow.persons.add(person().__class__(eid(701), full_name_latin=person().full_name_latin))
+        uow.audit_events.add(audit_event_for_uow())
+        uow.commit()
+    with SqlCipherUnitOfWork(db, Provider()) as uow:
+        assert uow.persons.get(eid(701)) is not None
+        assert uow.audit_events.get(eid(700)) is not None
+
+    with SqlCipherUnitOfWork(db, Provider()) as uow:
+        uow.persons.add(person().__class__(eid(702), full_name_latin=person().full_name_latin))
+        from dataclasses import replace
+
+        uow.audit_events.add(replace(audit_event_for_uow(), event_id=eid(703), subject_id=eid(702)))
+    with SqlCipherUnitOfWork(db, Provider()) as uow:
+        assert uow.persons.get(eid(702)) is None
+        assert uow.audit_events.get(eid(703)) is None
+
+
+def test_audit_repository_after_uow_close_fails(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    db = tmp_path / "synthetic-audit-closed.db"
+    migrated_file(db)
+    monkeypatch.setattr(database, "_open_connection", open_sqlite)
+    with SqlCipherUnitOfWork(db, Provider()) as uow:
+        audit_repo = uow.audit_events
+    with pytest.raises(PersistenceError) as excinfo:
+        audit_repo.get(eid(1))
+    assert excinfo.value.code == PersistenceErrorCode.UOW_CLOSED

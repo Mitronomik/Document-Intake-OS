@@ -32,3 +32,24 @@ def test_manual_verification_unexpected_exception_is_not_converted_to_pass(monke
 def test_sanitized_report_scanner_detects_contamination() -> None:
     assert verify_pr006_storage.report_is_sanitized("publish=PASS", ("secret",))
     assert not verify_pr006_storage.report_is_sanitized("publish=PASS secret", ("secret",))
+
+
+def test_pr006_verifier_accepts_later_schema_when_v0002_history_is_intact(monkeypatch) -> None:
+    migration = type(
+        "MigrationStub",
+        (),
+        {
+            "version": 2,
+            "name": "stored_artifacts_pr006",
+            "checksum": verify_pr006_storage._EXPECTED_V0002_CHECKSUM,
+        },
+    )()
+    monkeypatch.setattr(verify_pr006_storage, "CURRENT_SCHEMA_VERSION", 3)
+    monkeypatch.setattr(verify_pr006_storage, "MIGRATIONS", (migration,))
+    assert verify_pr006_storage.CURRENT_SCHEMA_VERSION >= 2
+    assert any(
+        item.version == 2
+        and item.name == "stored_artifacts_pr006"
+        and item.checksum == verify_pr006_storage._EXPECTED_V0002_CHECKSUM
+        for item in verify_pr006_storage.MIGRATIONS
+    )

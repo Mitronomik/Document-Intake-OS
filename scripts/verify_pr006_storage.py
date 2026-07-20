@@ -16,7 +16,7 @@ from document_intake.application.dto.storage import StoredArtifactRecord
 from document_intake.application.ports.storage import StorageKey
 from document_intake.domain.enums import ArtifactKind
 from document_intake.domain.value_objects import EntityId
-from document_intake.persistence.migrations import CURRENT_SCHEMA_VERSION
+from document_intake.persistence.migrations import CURRENT_SCHEMA_VERSION, MIGRATIONS
 from document_intake.persistence.migrations.model import migration_checksum
 from document_intake.persistence.migrations.v0002_stored_artifacts import CHECKSUM, STATEMENTS
 from document_intake.storage.envelope import ALGORITHM, FORMAT_VERSION, build_envelope, sha256_hex
@@ -165,7 +165,17 @@ def run_checks() -> dict[str, str]:
             )
             else "FAIL"
         )
-        statuses["schema_version"] = "PASS" if CURRENT_SCHEMA_VERSION == 2 else "FAIL"
+        statuses["schema_version"] = "PASS" if CURRENT_SCHEMA_VERSION >= 2 else "FAIL"
+        statuses["migration_v0002_present"] = (
+            "PASS"
+            if any(
+                m.version == 2
+                and m.name == "stored_artifacts_pr006"
+                and m.checksum == _EXPECTED_V0002_CHECKSUM
+                for m in MIGRATIONS
+            )
+            else "FAIL"
+        )
         statuses["migration_v0002_checksum"] = (
             "PASS"
             if migration_checksum(STATEMENTS) == CHECKSUM == _EXPECTED_V0002_CHECKSUM
