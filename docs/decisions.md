@@ -598,7 +598,7 @@ Date: 2026-07-20
 
 Decision owner: Product owner
 
-Decision: PR-008 is authorized, not started, as the next production-code pull request only after GitHub PR #20 is merged into `main`. PR-008 implements the non-UI application and persistence foundation for upload batches, encrypted original import and advisory duplicate detection. PR-008 does not implement the upload-batch UI; that remains PR-014. PR-009 is authorized, not started; PR-010 and later remain unauthorized.
+Decision: PR-008 is authorized, not started, as the next production-code pull request only after GitHub PR #20 is merged into `main`. PR-008 implements the non-UI application and persistence foundation for upload batches, encrypted original import and advisory duplicate detection. PR-008 does not implement the upload-batch UI; that remains PR-014. PR-009 and later remain unauthorized.
 
 ### Implementation-base decision
 

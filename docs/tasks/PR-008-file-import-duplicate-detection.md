@@ -6,7 +6,7 @@ Lifecycle preparation base: `71dfd7fa31bd67c9f9fa54cc9057684486e842ad`.
 
 PR-008 implementation base: the eventual exact merge commit of GitHub PR #20. Do not invent the future merge SHA. PR-008 must not branch from `71dfd7fa31bd67c9f9fa54cc9057684486e842ad` after PR #20 is merged. The PR-008 implementation prompt must use the actual PR #20 merge commit as its exact base, and PR-008 may not start from an earlier commit.
 
-Authorization source: PR-007 was completed and human accepted through GitHub PR `#19`; final reviewed head `c6d6852ba3cf28060d8fbb76e27201cbbcaade54`; merge commit `71dfd7fa31bd67c9f9fa54cc9057684486e842ad`; exact-head CI `CI #92` successful; migration v0003 checksum `e01d441c2572ca484cf5227d94f57a3cb62fa8e6e3e223eefc6852b81f6eb3c1`. This task may not be implemented until the lifecycle PR that creates this task and ADR-022 is merged into `main`. PR-009 is `AUTHORIZED, NOT STARTED`; PR-010 and later remain `UNAUTHORIZED`.
+Authorization source: PR-007 was completed and human accepted through GitHub PR `#19`; final reviewed head `c6d6852ba3cf28060d8fbb76e27201cbbcaade54`; merge commit `71dfd7fa31bd67c9f9fa54cc9057684486e842ad`; exact-head CI `CI #92` successful; migration v0003 checksum `e01d441c2572ca484cf5227d94f57a3cb62fa8e6e3e223eefc6852b81f6eb3c1`. This task may not be implemented until the lifecycle PR that creates this task and ADR-022 is merged into `main`. PR-009 and later remain `UNAUTHORIZED`.
 
 ## Goal
 
@@ -437,7 +437,7 @@ No external perceptual-hash library is required. The algorithm must be implement
 - No automatic merge, overwrite, delete, adoption, suppression or rejection occurs for duplicates.
 - v0004 migration is append-only and independently checksummed.
 - Per-file transaction failures do not report false success and leave only reconcilable encrypted orphans when object publication succeeded first.
-- PR-009 is authorized, not started; PR-010 and later remain unauthorized.
+- PR-009 and later remain unauthorized.
 
 ## Mandatory automated tests
 
@@ -488,4 +488,21 @@ Selected decoder dependencies are `Pillow==12.3.0` and `pi-heif==1.4.0`. Pillow 
 
 Licensing evidence recorded for review: Pillow uses the MIT-CMU license. pi-heif includes Python/package code and native binary wheel components; bundled libheif components are LGPL-covered and have redistribution obligations. PR-033 Windows packaging must ship required third-party license notices, keep LGPL components replaceable as separately distributed native components, avoid statically merging LGPL binary code into proprietary application code, and handle corresponding source/notice obligations for any LGPL component modifications. PR-008 does not modify third-party native libraries.
 
-Gate 2 remains not accepted. PR-009 is AUTHORIZED, NOT STARTED by PR-008-D1 after PR-008 acceptance; PR-010 and later remain UNAUTHORIZED. No OCR is authorized or implemented by PR-008.
+Gate 2 remains not accepted. PR-009 and later remain unauthorized. No OCR is authorized or implemented by PR-008.
+
+## Post-acceptance lifecycle update
+
+PR-008-D1, dated 2026-07-21, records PR-008 as COMPLETED AND HUMAN
+ACCEPTED WITH DOCUMENTED RESIDUAL RISK after PR #21 merge.
+
+RISK-PR008-W11-SMOKE is accepted for the PR-008 development acceptance
+boundary and remains deferred to installer, pilot or release acceptance.
+
+PR-009 is AUTHORIZED, NOT STARTED by the later PR-008-D1 decision.
+
+PR-010 and later remain UNAUTHORIZED.
+
+Gate 2 remains NOT ACCEPTED.
+
+This post-acceptance update does not modify the historical PR-008
+implementation and acceptance contract above.

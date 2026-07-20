@@ -1201,7 +1201,7 @@ def test_pr007_current_lifecycle_status_has_no_stale_blockers() -> None:
     assert "immutable filesystem storage, audit and later M2 work are not complete" not in current
 
 
-def test_pr008_authorization_task_contract_and_no_pr009_authorization() -> None:
+def test_pr008_historical_contract_and_post_acceptance_authorization() -> None:
     task = (REPO_ROOT / "docs/tasks/PR-008-file-import-duplicate-detection.md").read_text(
         encoding="utf-8"
     )
@@ -1436,7 +1436,7 @@ def test_pr008_authorization_task_contract_and_no_pr009_authorization() -> None:
         "If the evidence is not available, PR-008 must stop as blocked",
         "Runtime codec downloads are not authorized",
         "tests/fixtures/synthetic/",
-        "PR-009 is `AUTHORIZED, NOT STARTED`; PR-010 and later remain `UNAUTHORIZED`",
+        "PR-009 and later remain `UNAUTHORIZED`",
         "must not implement PySide upload UI",
         "quality_assessment",
         "PR-009-or-later behavior",
@@ -1776,6 +1776,36 @@ def test_pr008_current_state_uses_actual_branch_and_forbids_stale_branch() -> No
     assert "codex/pr-008-file-import-duplicate-detection" not in progress
 
 
+def test_historical_lifecycle_contracts_are_preserved_append_only() -> None:
+    decisions = (REPO_ROOT / "docs/decisions.md").read_text(encoding="utf-8")
+    adr_022 = _adr_section(
+        decisions, "## ADR-022 — Encrypted original import and advisory duplicate detection"
+    )
+    adr_022 = adr_022.split("## PR-008-D1 —", 1)[0]
+    assert "Date: 2026-07-20" in adr_022
+    assert "PR-008 is authorized, not started" in adr_022
+    assert "PR-009 and later remain unauthorized" in adr_022
+
+    pr007_task = (REPO_ROOT / "docs/tasks/PR-007-audit-events.md").read_text(encoding="utf-8")
+    assert "confirmation that PR-008 is authorized but not started" in pr007_task
+    assert "confirmation that PR-009 and later remain unauthorized" in pr007_task
+
+    pr008_task = (REPO_ROOT / "docs/tasks/PR-008-file-import-duplicate-detection.md").read_text(
+        encoding="utf-8"
+    )
+    assert "PR-009 and later remain `UNAUTHORIZED`" in pr008_task
+    assert "- PR-009 and later remain unauthorized." in pr008_task
+    assert "## Post-acceptance lifecycle update" in pr008_task
+    post_acceptance = pr008_task.split("## Post-acceptance lifecycle update", 1)[1]
+    assert "PR-009 is AUTHORIZED, NOT STARTED" in post_acceptance
+    assert "PR-010 and later remain UNAUTHORIZED" in post_acceptance
+    assert "Gate 2 remains NOT ACCEPTED" in post_acceptance
+    assert (
+        "does not modify the historical PR-008\nimplementation and acceptance contract above"
+        in post_acceptance
+    )
+
+
 def test_pr008_acceptance_and_pr009_authorization_lifecycle_contract() -> None:
     lifecycle_files = (
         "docs/progress.md",
@@ -1783,7 +1813,6 @@ def test_pr008_acceptance_and_pr009_authorization_lifecycle_contract() -> None:
         "docs/implementation-plan.md",
         "docs/traceability-matrix.md",
         "docs/handoff.md",
-        "docs/decisions.md",
         "docs/decisions/PR-008-D1-lifecycle-acceptance.md",
     )
     combined = "\n".join((REPO_ROOT / name).read_text(encoding="utf-8") for name in lifecycle_files)
