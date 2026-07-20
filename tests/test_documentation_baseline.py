@@ -1310,19 +1310,11 @@ def test_pr008_authorization_task_contract_and_no_pr009_authorization() -> None:
 
     for repo_contract in (
         "UploadBatchRepository",
-        "add(batch)",
-        "get(batch_id)",
-        "update(batch)",
         "SourceFileRepository",
-        "add(source_file)",
-        "get(source_file_id)",
-        "list_by_batch(batch_id)",
-        "list_by_sha256(sha256)",
-        "list_compatible_perceptual_hashes(algorithm_id, algorithm_version, bit_width)",
-        "Source files expose no update or delete method",
-        "deterministic ascending by `imported_at`, then ID",
+        "no update method; no delete method",
+        "Ordering is ascending by `imported_at`, then `id`",
         "canonical payload/projection validation occurs before returning rows",
-        "No arbitrary filter, caller-supplied sorting or pagination is authorized",
+        "no `list_all`; no arbitrary filters; no caller-defined sorting; no pagination",
     ):
         assert repo_contract in combined
 
@@ -1625,11 +1617,18 @@ def test_pr008_authorization_task_contract_and_no_pr009_authorization() -> None:
         "subject_type=AuditSubjectType.STORED_ARTIFACT",
         "subject_id=item.artifact_id",
         "field_key=None",
-        "before=AuditValueSummary.absent()",
-        'after=AuditValueSummary.non_sensitive("ORIGINAL")',
+        "before=AuditValueSummary(",
+        "classification=AuditValueClassification.ABSENT",
+        "display_value=None",
+        "was_present=False",
+        "after=AuditValueSummary(",
+        "classification=AuditValueClassification.NON_SENSITIVE",
+        'display_value="ORIGINAL"',
+        "was_present=True",
         'reason_code=AuditReasonCode("SOURCE_FILE_IMPORT")',
         "correlation_id=command.batch_id",
-        "actual existing constructors/factories",
+        "accepted existing types `AuditAction`, `AuditSubjectType`, `AuditValueClassification`,",
+        "actual existing constructors",
         "event_id` is exactly `item.audit_event_id`",
         "uow.audit_events.add(audit_event)",
         "audit add failure rolls back all database writes",
@@ -1682,6 +1681,28 @@ def test_pr008_authorization_task_contract_and_no_pr009_authorization() -> None:
         "must not treat HEIF as a future enhancement",
     ):
         assert migration_verifier_dependency in combined
+    assert "audit_event_id: EntityId" in adr_022
+    assert "get_by_number(self, number: BatchNumber) -> UploadBatch | None" in adr_022
+    assert "upload_batches: UploadBatchRepository" in adr_022
+    assert "source_files: SourceFileRepository" in adr_022
+    assert "same SQLCipher connection and transaction" in adr_022
+    assert "caller-supplied" in adr_022
+    stale_untyped_source_input = (
+        "SourceFileImportInput` with `source_file_id`, `artifact_id`, `source_path`, `imported_at`"
+    )
+    assert stale_untyped_source_input not in adr_022
+    assert "`UploadBatchRepository`: `add(batch)`, `get(batch_id)`, `update(batch)`." not in adr_022
+    assert "### PR-008 typed correction binding" not in adr_022
+    assert "AuditValueSummary.absent()" not in task
+    assert "AuditValueSummary.non_sensitive(" not in task
+    assert "AuditValueSummary.absent()" not in combined
+    assert "AuditValueSummary.non_sensitive(" not in combined
+    assert "add alternative audit value-object APIs" in task
+    assert "new audit factories" in task
+    assert "new class methods" in task
+    assert "new audit enum values" in task
+    assert "free-text audit fields" in task
+
     for forbidden in (
         "must specify exact fields",
         "must explicitly decide and document whether successful original registration emits",

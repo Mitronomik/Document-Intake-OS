@@ -598,92 +598,142 @@ Date: 2026-07-20
 
 Decision owner: Product owner
 
-Decision: PR-008 is authorized, not started, as the next production-code pull request only after the lifecycle pull request that creates ADR-022 and `docs/tasks/PR-008-file-import-duplicate-detection.md` is merged into `main`. PR-008 implements the exact non-UI application and persistence foundation for upload batches, encrypted original import and advisory duplicate detection. PR-008 does not implement the upload-batch UI; that remains PR-014. PR-009 and later remain unauthorized.
+Decision: PR-008 is authorized, not started, as the next production-code pull request only after GitHub PR #20 is merged into `main`. PR-008 implements the non-UI application and persistence foundation for upload batches, encrypted original import and advisory duplicate detection. PR-008 does not implement the upload-batch UI; that remains PR-014. PR-009 and later remain unauthorized.
 
 ### Implementation-base decision
 
 The lifecycle preparation base for this documentation-and-contract PR is `71dfd7fa31bd67c9f9fa54cc9057684486e842ad`. The PR-008 implementation base is not that SHA; it must be the eventual exact merge commit of GitHub PR #20. Do not invent that future merge SHA. PR-008 must not branch from `71dfd7fa31bd67c9f9fa54cc9057684486e842ad` after PR #20 is merged, the PR-008 implementation prompt must use the actual PR #20 merge commit as its exact base, and PR-008 may not start from an earlier commit.
 
-### Exact domain and application contracts
+### Exact enums, value objects and entities
 
-PR-008 must define exactly these enums:
+PR-008 defines exactly these enums:
 
 - `UploadBatchStatus`: `NEW`, `PROCESSING`, `NEEDS_REVIEW`, `READY`, `ARCHIVED`. PR-008 creates batches only in `NEW` and does not implement later workflow transitions.
 - `SourceMediaType`: `JPEG`, `PNG`, `HEIF`.
 - `ImportWarningCode`: `EXACT_DUPLICATE`, `PERCEPTUAL_SIMILARITY`, `EXTENSION_CONTENT_MISMATCH`.
 - `SourceImportErrorCode`: `BATCH_NOT_FOUND`, `SOURCE_READ_FAILED`, `SOURCE_BASENAME_INVALID`, `UNSUPPORTED_EXTENSION`, `UNSUPPORTED_FORMAT`, `DECODE_FAILED`, `STORAGE_PUBLICATION_FAILED`, `PERSISTENCE_FAILED`.
 
-Errors must remain sanitized and must not contain source names, paths, image bytes, hashes, SQL, database paths, storage paths, keys or raw exceptions.
+Errors remain sanitized and must not contain source names, paths, image bytes, hashes, SQL, database paths, storage paths, keys or raw exceptions.
 
-PR-008 must define immutable frozen/slotted value objects:
+PR-008 defines immutable frozen/slotted value objects: `BatchNumber` with canonical string length 1-64 and regex `^[A-Z0-9][A-Z0-9_-]{0,63}$`; `SourceBasename` as exact basename only, length 1-255 Unicode code points, rejecting `/`, `\`, NUL, U+0000-U+001F, U+007F, `.`, `..`, trimming, truncation and silent normalization, with `repr()` showing only `<redacted>`; `Sha256Digest` as exactly 64 lowercase hexadecimal characters computed over unchanged original bytes; and `PerceptualHash` with fields `algorithm_id`, `algorithm_version`, `bit_width`, `hex_value`, exact values `DHASH64`, `1`, `64`, and exactly 16 lowercase hexadecimal characters. Perceptual hash values must not appear in logs, errors, audit events, verifier output or duplicate warnings.
 
-- `BatchNumber`: canonical string, length 1-64, regex `^[A-Z0-9][A-Z0-9_-]{0,63}$`, no free text, safe `repr()`.
-- `SourceBasename`: exact basename only, length 1-255 Unicode code points, rejects `/` and `\`, rejects NUL, U+0000-U+001F and U+007F, rejects `.` and `..`, does not trim/truncate/silently normalize, never includes parent path, and `repr()` shows only `<redacted>`.
-- `Sha256Digest`: exactly 64 lowercase hexadecimal characters, computed over unchanged original bytes, no unsafe `repr()`.
-- `PerceptualHash`: exact fields `algorithm_id`, `algorithm_version`, `bit_width`, `hex_value`; exact PR-008 values `algorithm_id = "DHASH64"`, `algorithm_version = 1`, `bit_width = 64`, and `hex_value` exactly 16 lowercase hexadecimal characters. The hash value must not appear in logs, errors, audit events, verifier output or duplicate warnings.
+`UploadBatch` is immutable, frozen and slotted with exactly `id: EntityId`, `number: BatchNumber`, `created_at: datetime`, `created_by: ActorRef`, `status: UploadBatchStatus`, and `source_file_ids: tuple[EntityId, ...]`. `created_at` is timezone-aware and normalized to UTC, `created_by` is explicit, successful import order is preserved, duplicate source-file IDs are rejected, PR-008 appends IDs only by returning a new immutable instance, notes are not part of PR-008, and `repr()` exposes only ID, number, status and source count.
 
-`UploadBatch` must be immutable, frozen and slotted with exactly `id: EntityId`, `number: BatchNumber`, `created_at: datetime`, `created_by: ActorRef`, `status: UploadBatchStatus`, and `source_file_ids: tuple[EntityId, ...]`. Invariants: `created_at` is timezone-aware and normalized to UTC; `created_by` is explicit; `source_file_ids` preserves successful import order; duplicate source-file IDs are rejected; PR-008 adds IDs only by returning a new immutable batch instance; notes are not part of PR-008; `repr()` exposes only ID, number, status and source count.
+`SourceFile` is immutable, frozen and slotted with exactly `id: EntityId`, `batch_id: EntityId`, `original_artifact_id: EntityId`, `original_basename: SourceBasename`, `detected_media_type: SourceMediaType`, `byte_size: int`, `sha256: Sha256Digest`, `perceptual_hash: PerceptualHash`, `width: int`, `height: int`, `exif_orientation: int | None`, `imported_at: datetime`, and `imported_by: ActorRef`. It requires positive byte size and dimensions, dimensions before EXIF orientation, only EXIF orientation integer 1-8, no other EXIF/GPS/metadata persistence, UTC-normalized `imported_at`, and redacted basename, SHA-256 and perceptual hash in `repr()`. `quality_assessment` remains PR-009 and is not authorized in PR-008.
 
-`SourceFile` must be immutable, frozen and slotted with exactly `id: EntityId`, `batch_id: EntityId`, `original_artifact_id: EntityId`, `original_basename: SourceBasename`, `detected_media_type: SourceMediaType`, `byte_size: int`, `sha256: Sha256Digest`, `perceptual_hash: PerceptualHash`, `width: int`, `height: int`, `exif_orientation: int | None`, `imported_at: datetime`, and `imported_by: ActorRef`. Invariants: `byte_size > 0`; width and height are positive; width and height describe the primary decoded frame before EXIF orientation; only EXIF orientation integer 1-8 may be retained; no other EXIF field, GPS data or metadata is persisted; `imported_at` is timezone-aware and normalized to UTC; basename, SHA-256 and perceptual hash are redacted from `repr()`. Do not add `quality_assessment` in PR-008; quality assessment remains PR-009.
+`ImportWarning` is immutable, frozen and slotted with exactly `code: ImportWarningCode`, `source_file_id: EntityId`, `related_source_file_id: EntityId | None`, `perceptual_distance: int | None`, `algorithm_id: str | None`, and `algorithm_version: int | None`. `EXACT_DUPLICATE` requires a related source ID and forbids distance and algorithm fields; `PERCEPTUAL_SIMILARITY` requires related source ID, distance, algorithm ID and algorithm version; `EXTENSION_CONTENT_MISMATCH` forbids related source ID, distance and algorithm fields; no warning may contain filenames, paths, bytes, hashes or PII.
 
-`ImportWarning` must be immutable, frozen and slotted with exactly `code: ImportWarningCode`, `source_file_id: EntityId`, `related_source_file_id: EntityId | None`, `perceptual_distance: int | None`, `algorithm_id: str | None`, and `algorithm_version: int | None`. Invariants: `EXACT_DUPLICATE` requires a related source ID and forbids distance and algorithm fields; `PERCEPTUAL_SIMILARITY` requires related source ID, distance, algorithm ID and algorithm version; `EXTENSION_CONTENT_MISMATCH` forbids related source ID, distance and algorithm fields; no warning may contain filenames, paths, bytes, hashes or PII.
+### Exact DTO and service contracts
 
-PR-008 must define exact immutable application DTOs: `CreateUploadBatchCommand` with `batch_id`, `number`, `created_at`, `actor`; `SourceFileImportInput` with `source_file_id`, `artifact_id`, `source_path`, `imported_at`; `ImportSourceFilesCommand` with `batch_id`, `actor`, `items: tuple[SourceFileImportInput, ...]`; `ImportedSourceFileResult` with `source_file`, `warnings`; `FailedSourceFileResult` with `source_file_id`, `error_code`; and `ImportSourceFilesResult` with `batch_id`, `imported`, `failed`. The path is an ephemeral input only. Command and DTO `repr()` must redact it. No result contains a basename or path.
+PR-008 defines exactly these immutable, frozen and slotted DTOs:
 
-### Exact repository API
+```python
+@dataclass(frozen=True, slots=True)
+class CreateUploadBatchCommand:
+    batch_id: EntityId
+    number: BatchNumber
+    created_at: datetime
+    actor: ActorRef
+```
 
-PR-008 must add exact ports:
+`created_at` is timezone-aware and normalized to UTC, `actor` is explicit, status is forced to `UploadBatchStatus.NEW`, UUIDs and timestamps are caller-supplied, and `repr()` is safe.
 
-- `UploadBatchRepository`: `add(batch)`, `get(batch_id)`, `update(batch)`.
-- `SourceFileRepository`: `add(source_file)`, `get(source_file_id)`, `list_by_batch(batch_id)`, `list_by_sha256(sha256)`, `list_compatible_perceptual_hashes(algorithm_id, algorithm_version, bit_width)`.
+```python
+@dataclass(frozen=True, slots=True)
+class SourceFileImportInput:
+    source_file_id: EntityId
+    artifact_id: EntityId
+    audit_event_id: EntityId
+    source_path: Path
+    imported_at: datetime
+```
 
-Source files expose no update or delete method. List ordering is deterministic ascending by `imported_at`, then ID. Compatible perceptual lookup returns only equal algorithm ID, version and bit width. Canonical payload/projection validation occurs before returning rows. No arbitrary filter, caller-supplied sorting or pagination is authorized.
+`source_file_id`, `artifact_id` and `audit_event_id` are distinct and caller-supplied. `imported_at` is caller-supplied, timezone-aware and normalized to UTC. No service-generated UUID and no implicit current-time call is authorized. `source_path` is ephemeral, never persisted, never included in results, and redacted from `repr()`. `audit_event_id` is required by the accepted immutable `AuditEvent` contract.
 
-### Storage, media and duplicate contracts
+```python
+@dataclass(frozen=True, slots=True)
+class ImportSourceFilesCommand:
+    batch_id: EntityId
+    actor: ActorRef
+    items: tuple[SourceFileImportInput, ...]
+```
 
-PR-008 must reuse the accepted PR-006 managed object store: encrypted managed objects only, AES-256-GCM envelope v1, `DIOSOBJ1` magic, immutable UUID-derived managed paths, object-first/database-second publication, SQLCipher authoritative expected-state records, no plaintext managed originals, no update or delete operation, no automatic orphan adoption and no automatic orphan deletion. PR-008 must not create another original-file storage implementation, human-readable managed object paths or paths containing original filenames, names, passport numbers, vehicle identifiers or other PII.
+`items` is a non-empty tuple; duplicate `source_file_id`, `artifact_id` and `audit_event_id` values are rejected before any file is read; command `repr()` must not reveal any source path.
 
-The bytes registered as original must be byte-for-byte identical to the bytes read from the selected input file. Decoding is permitted only into a separate in-memory representation for media validation and perceptual hashing. Decoded or normalized bytes must never replace the stored original. PR-008 authorizes no EXIF rewrite, orientation rewrite, metadata stripping, image correction, crop, compression or format conversion.
+```python
+@dataclass(frozen=True, slots=True)
+class ImportedSourceFileResult:
+    source_file: SourceFile
+    warnings: tuple[ImportWarning, ...]
 
-The extension map is exact: `.jpg` and `.jpeg` -> `JPEG`; `.png` -> `PNG`; `.heic` and `.heif` -> `HEIF`. Unsupported extension produces `UNSUPPORTED_EXTENSION`. Supported extension plus corrupt or undecodable content produces `DECODE_FAILED`. Content that decodes to no supported media type produces `UNSUPPORTED_FORMAT`. Supported extension whose decoded supported type differs from the extension imports successfully with `EXTENSION_CONTENT_MISMATCH`. Detected content type is authoritative for `SourceFile.detected_media_type`. Validation occurs before encrypted object publication, and no failed validation publishes an object. Do not trust extension alone.
+@dataclass(frozen=True, slots=True)
+class FailedSourceFileResult:
+    source_file_id: EntityId
+    error_code: SourceImportErrorCode
 
-SHA-256 over unchanged original bytes is the exact-content identity signal. Exact duplicate evidence produces only a controlled warning using safe immutable entity identifiers; it must not overwrite, mutate, delete, merge, silently suppress or substitute for storage-integrity validation. Duplicate evidence is a warning and does not create a failure result.
+@dataclass(frozen=True, slots=True)
+class ImportSourceFilesResult:
+    batch_id: EntityId
+    imported: tuple[ImportedSourceFileResult, ...]
+    failed: tuple[FailedSourceFileResult, ...]
+```
 
-Perceptual hashing is advisory only. PR-008 uses deterministic `DHASH64` version 1, bit width 64: use the primary decoded image/frame only; apply EXIF orientation in memory for hashing only; composite alpha images onto an opaque white background; convert to 8-bit grayscale; resize to exactly 9x8 using a fixed LANCZOS resampler; compare each pixel with the pixel immediately to its right; bit is 1 when left luminance is greater than right luminance, otherwise 0; store bits row-major as a 64-bit value; persist exactly 16 lowercase hexadecimal characters; compute distance as Hamming distance using XOR and population count; warning threshold is distance <= 8. Final real-photo threshold validation remains local pilot evidence. A later threshold or preparation change requires a new algorithm version.
+`imported` preserves successful input order, `failed` preserves failed input order, a source ID must not appear in both collections, and no result contains basename, source path, hash value, storage path or raw exception.
 
-Comparison scope is all persisted compatible `SourceFile` rows, not only the current batch. Incompatible algorithm/version/bit-width records are excluded. An exact same SHA-256 pair produces `EXACT_DUPLICATE`; do not also produce a perceptual warning for the same exact pair. Deterministic warning order is: exact warnings by related source-file ID; perceptual warnings by distance, then related source-file ID; extension/content warning last.
+PR-008 defines exactly two public application-service operations: `create_upload_batch(command: CreateUploadBatchCommand, *, unit_of_work_factory: UnitOfWorkFactory) -> UploadBatch` and `import_source_files(command: ImportSourceFilesCommand, *, storage: StoragePort, media_decoder: MediaDecoderPort, unit_of_work_factory: UnitOfWorkFactory) -> ImportSourceFilesResult`. No additional public PR-008 application service operation is authorized. Batch creation constructs an immutable batch, forces status `NEW`, starts one SQLCipher Unit of Work, calls `upload_batches.add(batch)`, explicitly commits, returns the persisted batch, creates no audit event and exposes no source path or PII in failures. Duplicate batch IDs or numbers fail with sanitized persistence/application errors and never silently replace an existing batch.
 
-Warnings may contain only warning code, new source-file ID, prior source-file ID, exact/perceptual classification, perceptual distance where applicable, algorithm identifier and algorithm version. Warnings must not contain original filename, full path, document image bytes, OCR text, MRZ, passport/VIN/registration values, raw exception text, SQL, database path, storage path, key material or hash values.
+### Exact repository and Unit of Work contracts
 
-### Multi-file transaction and persistence contracts
+```python
+class UploadBatchRepository(Protocol):
+    def add(self, batch: UploadBatch) -> None: ...
+    def get(self, batch_id: EntityId) -> UploadBatch | None: ...
+    def update(self, batch: UploadBatch) -> None: ...
+    def get_by_number(self, number: BatchNumber) -> UploadBatch | None: ...
+```
 
-`CreateUploadBatch` is a separate committed operation. Before processing files, the import service verifies that the batch exists. A missing batch fails the whole command with `BATCH_NOT_FOUND` before reading or publishing files. Input files are processed sequentially in supplied order. Each source file has its own object-first/database-second transaction boundary. A successful prior source import is not rolled back because a later source fails. A failed source produces a sanitized `FailedSourceFileResult`, and processing continues after a per-file failure. No whole-batch filesystem transaction is claimed.
+`get_by_number` enforces unique batch numbers without arbitrary filters. There is no delete method, raw SQL, caller-defined sorting or pagination. `update` validates canonical payload and projections and may only replace the immutable batch row with a valid batch instance whose ID, number, created time and creator are unchanged. PR-008 may only append one successfully imported source ID; status transitions remain outside PR-008.
 
-For each successful file, one SQLCipher Unit of Work atomically inserts the `StoredArtifactRecord`, inserts the immutable `SourceFile`, updates the immutable `UploadBatch` with the appended source ID, inserts the required audit event, and commits. If the SQLCipher transaction fails, `SourceFile`, batch update and audit event roll back together, no success result is returned, and the encrypted object may remain a reconcilable orphan.
+```python
+class SourceFileRepository(Protocol):
+    def add(self, source_file: SourceFile) -> None: ...
+    def get(self, source_file_id: EntityId) -> SourceFile | None: ...
+    def list_by_batch(self, batch_id: EntityId) -> tuple[SourceFile, ...]: ...
+    def list_by_sha256(self, sha256: Sha256Digest) -> tuple[SourceFile, ...]: ...
+    def list_compatible_perceptual_hashes(
+        self,
+        algorithm_id: str,
+        algorithm_version: int,
+        bit_width: int,
+    ) -> tuple[SourceFile, ...]: ...
+```
 
-PR-008 must add forward-only migration `v0004_source_file_import.py`, version `4`, name `source_file_import_pr008`, in append-only order. v0001, v0002 and v0003 remain byte-for-byte unchanged. The new checksum is independently asserted in tests. Canonical payload and projection-integrity validation remain mandatory. All new tables remain in encrypted SQLCipher. No destructive migration, down migration or plaintext SQLite support is authorized.
+There is no update method, delete method, `list_all`, arbitrary filter, caller-defined sorting or pagination. Ordering is ascending by `imported_at`, then `id`; canonical payload/projection validation occurs before rows are returned.
 
-### Audit decision
+The existing `UnitOfWork` contract gains exactly `upload_batches: UploadBatchRepository` and `source_files: SourceFileRepository`. These repositories use the same SQLCipher connection and transaction as `stored_artifacts` and `audit_events`; no repository may open an independent connection or commit independently. If a factory port is needed, it is exactly `class UnitOfWorkFactory(Protocol): def unit_of_work(self) -> UnitOfWork: ...`, aligned with the existing database adapter entry point.
 
-Successful original registration must emit exactly one audit event using the same SQLCipher Unit of Work: action `ARTIFACT_REGISTERED`; subject type `STORED_ARTIFACT`; subject ID is the original artifact ID; actor is the import command actor; occurred time is the source imported time; field key is absent; before is `ABSENT`; after is `NON_SENSITIVE` with controlled display value `ORIGINAL`; reason code is `SOURCE_FILE_IMPORT`; correlation ID is the upload batch ID.
+### Storage, file reading, media and duplicates
 
-Do not emit audit events for failed imports, duplicate warnings, extension mismatch warnings or `UploadBatch` creation. `UploadBatch` is not added to `AuditSubjectType` in PR-008. Do not change existing audit enums or the PR-007 privacy model. Low-level repositories must not infer or automatically emit audit events.
+PR-008 reuses the PR-006 `StoragePort`. Every successfully validated original is published exactly as `storage.publish_bytes(artifact_id=item.artifact_id, artifact_kind=ArtifactKind.ORIGINAL, plaintext=original_bytes, created_at=item.imported_at)`. `ArtifactKind.ORIGINAL` is mandatory; `plaintext` is the exact byte sequence read from `source_path`; decoded, oriented, normalized, converted or recompressed bytes must not be passed; `created_at` is exactly `item.imported_at`; the returned `StoredArtifactRecord` is inserted through `uow.stored_artifacts.add(stored_artifact)`; the returned artifact ID must equal `item.artifact_id`; mismatch fails closed before inserting `SourceFile`; no second storage port or original-file storage implementation is authorized.
 
-### Dependency decision
+`source_path` is a `pathlib.Path`. The service derives the basename only as `source_path.name`; the complete path is never persisted and never appears in logs, errors, audit events, verifier output or test reports. File bytes are read once into memory. `SOURCE_READ_FAILED` covers file not found, permission denied, not a regular file, read failure and detectable file changes/disappearance during the read boundary. Raw OS exceptions are never exposed. Empty files fail before decoding. Basename validation occurs before reading image bytes where possible, and `SOURCE_BASENAME_INVALID` publishes no object.
 
-Domain and application contracts must depend on a local `MediaDecoderPort`, not directly on a third-party package. The port returns only detected media type, primary-frame dimensions, optional orientation integer and an in-memory pixel representation sufficient for deterministic dHash. No external perceptual-hash library is required; the algorithm must be implemented against the selected local decoder adapter.
+The suffix used for validation is `source_path.suffix.lower()` and only ASCII extension tokens are recognized. Stored `SourceBasename` preserves the original basename exactly; no filename case normalization is persisted. `.jpg`, `.JPG`, `.JpG` and `.jpeg` variants map to `JPEG`; `.png` variants map to `PNG`; `.heic` and `.heif` variants map to `HEIF`. No suffix or a basename ending only with `.` produces `UNSUPPORTED_EXTENSION`; multiple suffixes use only the final suffix; unsupported extension fails before decoding and before storage publication. Supported extension plus corrupt or undecodable content produces `DECODE_FAILED`; content that decodes to no supported media type produces `UNSUPPORTED_FORMAT`; supported extension whose decoded supported type differs from the extension imports successfully with `EXTENSION_CONTENT_MISMATCH`; detected content type is authoritative for `SourceFile.detected_media_type`; validation occurs before encrypted object publication and no failed validation publishes an object.
 
-The implementation PR may select decoder dependencies only after documenting exact pinned versions, Python 3.12 support, Windows AMD64 wheel availability or verified packaging, JPEG/PNG/HEIF decoding evidence, offline import and execution, license and redistribution obligations, and no runtime downloads or telemetry. If evidence is not available, PR-008 must stop as blocked rather than silently dropping HEIF support or selecting another architecture. Runtime codec downloads are not authorized.
+SHA-256 over unchanged original bytes is the exact-content identity signal. Perceptual hashing is advisory only. PR-008 uses deterministic `DHASH64` version 1, bit width 64, primary decoded frame only, EXIF orientation applied in memory for hashing only, alpha composited onto opaque white, 8-bit grayscale, fixed LANCZOS resize to 9x8, row-major 64-bit storage, Hamming distance by XOR/popcount and warning threshold distance <= 8. Golden vectors are: ascending gradient `0000000000000000`, descending gradient `ffffffffffffffff`, alternating rows `00ff00ff00ff00ff`; tests must prove Ubuntu/Windows stability, leading-zero preservation, A/B distance 64, A/C distance 32, threshold 8 non-match for those pairs, one-bit distance 1 warning, and algorithm version 2 for any behavior-changing decoder/grayscale/EXIF/alpha/resampler change.
 
+Duplicate lookup occurs before inserting the current `SourceFile`: validate basename/extension, read bytes, decode, compute SHA-256/DHASH64, open read-only or uncommitted lookup Unit of Work, query exact candidates by SHA-256, query perceptual candidates by compatible algorithm/version/bit width, exclude rows whose `id == item.source_file_id`, exclude rows whose `original_artifact_id == item.artifact_id`, close or roll back lookup Unit of Work, construct deterministic warnings, publish encrypted object, open write Unit of Work, re-check duplicate source/artifact IDs, insert storage record/source file/batch update/audit event and commit. The first MVP has no multi-writer conflict-resolution protocol, but write transactions reject duplicate IDs and never classify the new row as its own duplicate. Emit at most one exact and one perceptual warning per related source ID, suppress perceptual warning for an exact duplicate related source, do not collapse distinct related IDs, emit at most one extension mismatch warning, and order warnings by exact related ID, then perceptual distance and related ID, then extension mismatch.
 
-### PR-008 typed correction binding
+### Audit, migration, verifier and dependency contracts
 
-ADR-022 further binds PR-008 to the exact typed contracts in `docs/tasks/PR-008-file-import-duplicate-detection.md`: immutable frozen/slotted DTOs `CreateUploadBatchCommand`, `SourceFileImportInput` with mandatory `audit_event_id`, `ImportSourceFilesCommand`, `ImportedSourceFileResult`, `FailedSourceFileResult` and `ImportSourceFilesResult`; exactly two public application operations `create_upload_batch(...) -> UploadBatch` and `import_source_files(...) -> ImportSourceFilesResult`; complete `UploadBatchRepository`, `SourceFileRepository` and `UnitOfWorkFactory` Protocol signatures including `get_by_number`; `UnitOfWork.upload_batches` and `UnitOfWork.source_files` using the same SQLCipher transaction as `stored_artifacts` and `audit_events`; exact `storage.publish_bytes(artifact_id=item.artifact_id, artifact_kind=ArtifactKind.ORIGINAL, plaintext=original_bytes, created_at=item.imported_at)` publication; exact file-reading, basename and case-insensitive suffix behavior; duplicate lookup before insert with self-exclusion by source-file ID and artifact ID; warning deduplication; DHASH64 golden vectors `0000000000000000`, `ffffffffffffffff` and `00ff00ff00ff00ff`; exact `DecodedMedia` and `MediaDecoderPort.decode_for_import(content: bytes) -> DecodedMedia`; audit event construction using `event_id=item.audit_event_id`; v0004 upload-batch/source-file constraints and indexes; exact `scripts/verify_pr008_import.py` verifier command, exit codes and safe output records; and the dependency-evidence section required in the PR-008 implementation description.
+Successful original registration emits exactly one audit event using the same SQLCipher Unit of Work. The event uses `event_id=item.audit_event_id`, `occurred_at=item.imported_at`, `actor=command.actor`, `action_code=AuditAction.ARTIFACT_REGISTERED`, `subject_type=AuditSubjectType.STORED_ARTIFACT`, `subject_id=item.artifact_id`, `field_key=None`, `reason_code=AuditReasonCode("SOURCE_FILE_IMPORT")`, and `correlation_id=command.batch_id`. `before` is an `AuditValueSummary` constructed with `classification=AuditValueClassification.ABSENT`, `display_value=None`, `was_present=False`. `after` is an `AuditValueSummary` constructed with `classification=AuditValueClassification.NON_SENSITIVE`, `display_value="ORIGINAL"`, `was_present=True`. No factory methods are added to `AuditValueSummary`. The event is inserted through `uow.audit_events.add(audit_event)` and shares the write transaction with `StoredArtifactRecord`, `SourceFile` and immutable `UploadBatch` update. Audit insertion failure rolls back all database changes. Failed validation, failed storage publication and warnings create no audit event. PR-008 adds no audit enum values, no audit factories, no class methods, no free-text audit fields and no alternative audit value-object API.
 
-The explicit `audit_event_id` is mandatory because the accepted immutable `AuditEvent` contract requires caller-supplied `event_id`. UUIDs and timestamps are caller-supplied; no service-generated UUIDs or implicit current-time calls are authorized. If compliant HEIF decoding evidence is unavailable, PR-008 must report itself blocked rather than silently omitting HEIF or changing the accepted media scope.
+Migration v0004 creates persistence for upload batches, ordered upload-batch source-file membership, source files, and required unique/lookup indexes. Constraints include unique batch ID, unique canonical batch number, status projection, UTC timestamp projection, canonical payload, projection-integrity validation, unique source-file ID, unique `original_artifact_id`, foreign keys to upload batch and stored artifact, positive byte size/dimensions, allowed media type, allowed EXIF orientation, lowercase SHA-256 shape validation, perceptual algorithm/version/bit-width/hash projections and canonical payload/projection-integrity validation. Indexes include batch membership ordering lookup, SHA-256 lookup, compatible perceptual algorithm/version/bit-width lookup and imported-time deterministic ordering. Database-level fuzzy-distance computation is not authorized; Hamming distance is computed in application code. Migration v0004 remains forward-only and append-only.
+
+The exact verifier is `uv run python scripts/verify_pr008_import.py`, uses generated synthetic non-document images only, prints only controlled `PR008_VERIFY ...` records, exits `0` for pass, `1` for product failure and `2` only for unsupported/inconclusive environments, and allows inconclusive codes only `WINDOWS_SQLCIPHER_UNAVAILABLE`, `HEIF_DECODER_UNAVAILABLE`, `UNSUPPORTED_PLATFORM`. It must prove schema 4, v0004 checksum, unchanged v0001/v0002/v0003 checksums, ordinary SQLite rejection, byte identity, encrypted storage, JPEG/PNG/HEIF validation, extension case folding/mismatch/unsupported behavior, exact and perceptual duplicates, no self-match, warning order, per-file partial success, audit atomicity, orphan reconciliation, no orphan adoption/deletion and privacy. It must not claim acceptance of real documents or real-photo perceptual quality.
+
+Domain and application contracts depend on local `MediaDecoderPort`, not third-party packages. `DecodedMedia` is immutable/frozen/slotted with `media_type`, `width`, `height`, `exif_orientation`, `grayscale_pixels`, `grayscale_width`, `grayscale_height`; `decode_for_import(content: bytes) -> DecodedMedia` receives bytes, makes no network call or runtime download, returns the primary frame and detected media type, retains only EXIF orientation 1-8, returns no GPS/filename/source path/camera metadata/arbitrary metadata, returns deterministic pixels for DHASH64, maps failures to controlled import errors and lets no raw decoder exception escape. PR-008 must document package name, exact pinned version, direct/transitive role, Python 3.12 support, Windows AMD64 wheel or packaging evidence, JPEG/PNG/HEIF support, offline installation/runtime evidence, license, redistribution obligations, native binaries, security/update considerations, no telemetry and no runtime downloads. If no compliant HEIF solution is available, PR-008 is blocked and must not silently omit HEIF, treat HEIF as future work, add runtime downloads, call external services or change media scope.
 
 ### Synthetic tests and non-goals
 
-PR-008 tests may use only clearly synthetic non-document images, preferably generated at test runtime. Any committed image fixture must be small, unmistakably synthetic, contain no names, faces, signatures, document layouts, passport-like numbers, VIN-like values, registration-like values, addresses or personal data, live only under `tests/fixtures/synthetic/`, and pass repository-policy enforcement.
-
-Non-goals: PR-008 must not implement PySide upload UI, drag and drop, background job UI, quality scoring, blur/glare/contrast diagnostics, final EXIF orientation diagnostics, crop, perspective correction, segmentation, multiple-document regions, JPEG preparation or compression, OCR, MRZ, barcode, document classification, field candidates, operator verification, Excel, terminal adapters, export, backup/restore, retention/deletion, users/authentication, telemetry, cloud services, browser automation, `quality_assessment` or PR-009-or-later behavior.
+Tests use only generated or clearly synthetic non-document images under the permitted fixture boundary. PR-008 must not implement PySide upload UI, drag and drop, background job UI, quality scoring, blur/glare/contrast diagnostics, final EXIF orientation diagnostics, crop, perspective correction, segmentation, multiple-document regions, JPEG preparation or compression, OCR, MRZ, barcode, document classification, field candidates, operator verification, Excel, terminal adapters, export, backup/restore, retention/deletion, users/authentication, telemetry, cloud services, browser automation, `quality_assessment` or PR-009-or-later behavior.

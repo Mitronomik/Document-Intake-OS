@@ -173,7 +173,7 @@ class ImportSourceFilesResult:
     failed: tuple[FailedSourceFileResult, ...]
 ```
 
-Result invariants: `imported` preserves successful input order; `failed` preserves failed input order; a source ID must not appear in both collections; no result contains basename, source path, hash value, storage path or raw exception.
+Result invariants: `imported` preserves successful input order; `failed` preserves failed input order; a source ID must not appear in both collections; No result contains a basename or path. No result contains basename, source path, hash value, storage path or raw exception.
 
 ## Exact application-service API
 
@@ -375,14 +375,22 @@ audit_event = AuditEvent(
     subject_type=AuditSubjectType.STORED_ARTIFACT,
     subject_id=item.artifact_id,
     field_key=None,
-    before=AuditValueSummary.absent(),
-    after=AuditValueSummary.non_sensitive("ORIGINAL"),
+    before=AuditValueSummary(
+        classification=AuditValueClassification.ABSENT,
+        display_value=None,
+        was_present=False,
+    ),
+    after=AuditValueSummary(
+        classification=AuditValueClassification.NON_SENSITIVE,
+        display_value="ORIGINAL",
+        was_present=True,
+    ),
     reason_code=AuditReasonCode("SOURCE_FILE_IMPORT"),
     correlation_id=command.batch_id,
 )
 ```
 
-Use the actual existing constructors/factories of the accepted PR-007 domain implementation. The implementation must not add alternative audit value-object APIs merely to match this pseudocode. Binding rules: `event_id` is exactly `item.audit_event_id`; one successful source import creates exactly one event; the event is added through `uow.audit_events.add(audit_event)`; it shares the same write transaction as stored artifact, SourceFile and batch update; audit add failure rolls back all database writes; failed storage publication creates no audit event; failed media validation creates no audit event; duplicate warnings create no extra audit events; extension mismatch creates no extra audit event; event `repr()` and failures remain PII-safe.
+Use the accepted existing types `AuditAction`, `AuditSubjectType`, `AuditValueClassification`, `AuditEvent`, `AuditReasonCode` and `AuditValueSummary`. Use the actual existing constructors of the accepted PR-007 domain implementation. The implementation must not add alternative audit value-object APIs, new audit factories, new class methods, new audit enum values or free-text audit fields merely to match this pseudocode. Binding rules: `event_id` is exactly `item.audit_event_id`; one successful source import creates exactly one event; the event is added through `uow.audit_events.add(audit_event)`; it shares the same write transaction as stored artifact, SourceFile and batch update; audit add failure rolls back all database writes; failed storage publication creates no audit event; failed media validation creates no audit event; duplicate warnings create no extra audit events; extension mismatch creates no extra audit event; event `repr()` and failures remain PII-safe.
 
 Do not emit audit events for failed imports, duplicate warnings, extension mismatch warnings or `UploadBatch` creation. `UploadBatch` is not added to `AuditSubjectType` in PR-008. Do not change existing audit enums or the PR-007 privacy model. Low-level repositories must not infer or automatically emit audit events.
 
@@ -416,7 +424,7 @@ class MediaDecoderPort(Protocol):
 
 Rules: receives bytes, not a filesystem path; makes no network call; performs no runtime download; returns the primary frame only; returns the detected content media type; retains only EXIF orientation 1-8; returns no GPS, filename, source path, camera metadata or arbitrary metadata mapping; returns sufficient deterministic pixels for PR-008 dHash only; failures map to controlled import errors; no raw decoder exception escapes. If the final implementation uses a different internal pixel representation, the public port must remain semantically equivalent and this exact task must be updated before implementation. Do not leave an unrestricted `Any`, third-party image object or arbitrary metadata dictionary in the public application port.
 
-No external perceptual-hash library is required. The algorithm must be implemented against the selected local decoder adapter. The PR-008 description must include an explicit dependency decision section containing package name, exact pinned version, direct/transitive role, Python 3.12 support, Windows AMD64 wheel or packaging evidence, JPEG support, PNG support, HEIF/HEIC support, offline installation evidence, offline runtime evidence, license, redistribution obligations, native binary components, security/update considerations, confirmation of no telemetry and confirmation of no runtime downloads. If HEIF requires a second package or native codec, list and pin it explicitly. If the evidence is not available, PR-008 must stop as blocked. If no compliant HEIF solution is available, PR-008 must report itself blocked and must not silently omit HEIF, must not treat HEIF as a future enhancement, must not add runtime downloads, call an external service or change the accepted media scope.
+No external perceptual-hash library is required. The algorithm must be implemented against the selected local decoder adapter. The PR-008 description must include an explicit dependency decision section containing package name, exact pinned version, direct/transitive role, Python 3.12 support, Windows AMD64 wheel or packaging evidence, JPEG support, PNG support, HEIF/HEIC support, offline installation evidence, offline runtime evidence, license, redistribution obligations, native binary components, security/update considerations, confirmation of no telemetry and confirmation of no runtime downloads. If HEIF requires a second package or native codec, list and pin it explicitly. If the evidence is not available, PR-008 must stop as blocked. If no compliant HEIF solution is available, PR-008 must report itself blocked and must not silently omit HEIF, must not treat HEIF as a future enhancement, must not add runtime downloads, must not call an external service and must not change the accepted media scope. Runtime codec downloads are not authorized.
 
 ## Acceptance criteria
 
