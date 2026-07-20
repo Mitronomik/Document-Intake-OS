@@ -2,11 +2,10 @@
 
 from __future__ import annotations
 
+import importlib
 import io
 import warnings
-
-import pi_heif
-from PIL import Image, ImageOps
+from typing import Any
 
 from document_intake.application.ports.media import DecodedMedia
 from document_intake.domain.enums import SourceImportErrorCode, SourceMediaType
@@ -15,20 +14,39 @@ _HEIF_REGISTERED = False
 
 
 class MediaDecodeError(Exception):
+    """Controlled PII-safe media decode failure."""
+
     def __init__(self, code: SourceImportErrorCode) -> None:
-        super().__init__(code.value)
         self.code = code
+        super().__init__(code.value)
+
+    def __repr__(self) -> str:
+        return f"MediaDecodeError(code={self.code.value})"
 
 
-def _register_heif() -> None:
+def _import_pillow() -> tuple[Any, Any]:
+    try:
+        image_module = importlib.import_module("PIL.Image")
+        image_ops_module = importlib.import_module("PIL.ImageOps")
+    except Exception:
+        raise MediaDecodeError(SourceImportErrorCode.DECODE_FAILED) from None
+    return image_module, image_ops_module
+
+
+def _register_heif_opener() -> None:
     global _HEIF_REGISTERED
-    if not _HEIF_REGISTERED:
+    if _HEIF_REGISTERED:
+        return
+    try:
+        pi_heif = importlib.import_module("pi_heif")
         pi_heif.register_heif_opener()
-        _HEIF_REGISTERED = True
+    except Exception:
+        raise MediaDecodeError(SourceImportErrorCode.DECODE_FAILED) from None
+    _HEIF_REGISTERED = True
 
 
-def _media_type(fmt: str | None) -> SourceMediaType:
-    match (fmt or "").upper():
+def _media_type(format_name: str | None) -> SourceMediaType:
+    match (format_name or "").upper():
         case "JPEG":
             return SourceMediaType.JPEG
         case "PNG":
@@ -39,38 +57,54 @@ def _media_type(fmt: str | None) -> SourceMediaType:
             raise MediaDecodeError(SourceImportErrorCode.UNSUPPORTED_FORMAT)
 
 
-class PillowMediaDecoder:
-    def __init__(self) -> None:
-        _register_heif()
+def _orientation(value: object) -> int | None:
+    if type(value) is int and 1 <= value <= 8:
+        return value
+    return None
 
+
+class PillowMediaDecoder:
     def decode_for_import(self, *, content: bytes) -> DecodedMedia:
         try:
+            image_module, image_ops_module = _import_pillow()
+            _register_heif_opener()
             with warnings.catch_warnings():
-                warnings.simplefilter("error", Image.DecompressionBombWarning)
-                with Image.open(io.BytesIO(content)) as image:
+                warnings.simplefilter("error", image_module.DecompressionBombWarning)
+                with image_module.open(io.BytesIO(content)) as image:
                     image.seek(0)
                     media_type = _media_type(image.format)
                     width, height = image.size
-                    orientation_obj = image.getexif().get(274)
-                    orientation = orientation_obj if type(orientation_obj) is int and 1 <= orientation_obj <= 8 else None
-                    working = ImageOps.exif_transpose(image.copy())
-                    working.load()
+                    exif_orientation = _orientation(image.getexif().get(274))
+                    primary = image.copy()
+                    primary.load()
+                working = image_ops_module.exif_transpose(primary)
+                bands = working.getbands()
+                has_alpha = "A" in bands or working.mode in {"RGBA", "LA", "PA"}
+                has_transparency = "transparency" in working.info
+                if has_alpha or has_transparency:
+                    rgba = working.convert("RGBA")
+                    background = image_module.new("RGBA", rgba.size, (255, 255, 255, 255))
+                    background.alpha_composite(rgba)
+                    rgb = background.convert("RGB")
+                else:
+                    rgb = working.convert("RGB")
+                grayscale = rgb.convert("L").resize((9, 8), image_module.Resampling.LANCZOS)
+                grayscale_pixels = grayscale.tobytes()
+                if len(grayscale_pixels) != 72:
+                    raise MediaDecodeError(SourceImportErrorCode.DECODE_FAILED)
+                return DecodedMedia(
+                    media_type=media_type,
+                    width=width,
+                    height=height,
+                    exif_orientation=exif_orientation,
+                    grayscale_pixels=grayscale_pixels,
+                    grayscale_width=9,
+                    grayscale_height=8,
+                )
         except MediaDecodeError:
             raise
-        except Exception as exc:
-            raise MediaDecodeError(SourceImportErrorCode.DECODE_FAILED) from exc
-        if "A" in working.getbands() or working.mode in {"RGBA", "LA", "PA"} or "transparency" in working.info:
-            rgba = working.convert("RGBA")
-            bg = Image.new("RGBA", rgba.size, (255, 255, 255, 255))
-            bg.alpha_composite(rgba)
-            rgb = bg.convert("RGB")
-        else:
-            rgb = working.convert("RGB")
-        gray = rgb.convert("L").resize((9, 8), Image.Resampling.LANCZOS)
-        pixels = gray.tobytes()
-        if len(pixels) != 72:
-            raise MediaDecodeError(SourceImportErrorCode.DECODE_FAILED)
-        return DecodedMedia(media_type, width, height, orientation, pixels, 9, 8)
+        except Exception:
+            raise MediaDecodeError(SourceImportErrorCode.DECODE_FAILED) from None
 
 
 def dhash64(grayscale_pixels: bytes, grayscale_width: int = 9, grayscale_height: int = 8) -> str:
@@ -80,7 +114,8 @@ def dhash64(grayscale_pixels: bytes, grayscale_width: int = 9, grayscale_height:
     for row in range(8):
         offset = row * 9
         for col in range(8):
-            bits = (bits << 1) | (1 if grayscale_pixels[offset + col] > grayscale_pixels[offset + col + 1] else 0)
+            bit = 1 if grayscale_pixels[offset + col] > grayscale_pixels[offset + col + 1] else 0
+            bits = (bits << 1) | bit
     return f"{bits:016x}"
 
 

@@ -13,6 +13,7 @@ from document_intake.persistence.migrations.v0002_stored_artifacts import (
     MIGRATION as V0002_MIGRATION,
 )
 from document_intake.persistence.migrations.v0003_audit_events import MIGRATION as V0003_MIGRATION
+from document_intake.persistence.migrations.v0004_source_file_import import MIGRATION as V0004_MIGRATION
 
 REQUIRED_TABLES = {
     "schema_migrations",
@@ -33,6 +34,9 @@ REQUIRED_TABLES = {
     "application_snapshot_artifact_refs",
     "stored_artifacts",
     "audit_events",
+    "upload_batches",
+    "source_files",
+    "upload_batch_source_files",
 }
 
 
@@ -60,13 +64,14 @@ def test_migration_1_creates_tables_metadata_user_version_and_application_id() -
         (MIGRATION.version, MIGRATION.name, MIGRATION.checksum),
         (V0002_MIGRATION.version, V0002_MIGRATION.name, V0002_MIGRATION.checksum),
         (V0003_MIGRATION.version, V0003_MIGRATION.name, V0003_MIGRATION.checksum),
+        (V0004_MIGRATION.version, V0004_MIGRATION.name, V0004_MIGRATION.checksum),
     ]
 
 
 def test_initialize_migrations_are_idempotent() -> None:
     connection = apply()
     database._apply_migrations(connection)
-    assert connection.execute("SELECT count(*) FROM schema_migrations").fetchone()[0] == 3
+    assert connection.execute("SELECT count(*) FROM schema_migrations").fetchone()[0] == 4
 
 
 def test_applied_prefix_validates_and_future_migration_applies(
@@ -75,26 +80,27 @@ def test_applied_prefix_validates_and_future_migration_applies(
     connection = apply()
     future_statements = ("CREATE TABLE future_projection(id INTEGER PRIMARY KEY)",)
     future = Migration(
-        4,
+        5,
         "future_projection",
         future_statements,
         migration_checksum(future_statements),
     )
     monkeypatch.setattr(
-        database, "MIGRATIONS", (MIGRATION, V0002_MIGRATION, V0003_MIGRATION, future)
+        database, "MIGRATIONS", (MIGRATION, V0002_MIGRATION, V0003_MIGRATION, V0004_MIGRATION, future)
     )
-    monkeypatch.setattr(database, "CURRENT_SCHEMA_VERSION", 4)
+    monkeypatch.setattr(database, "CURRENT_SCHEMA_VERSION", 5)
 
     database._validate_schema(connection)
     database._apply_migrations(connection)
 
-    assert connection.execute("PRAGMA user_version").fetchone()[0] == 4
+    assert connection.execute("PRAGMA user_version").fetchone()[0] == 5
     assert connection.execute(
         "SELECT version, name, checksum FROM schema_migrations ORDER BY version"
     ).fetchall() == [
         (MIGRATION.version, MIGRATION.name, MIGRATION.checksum),
         (V0002_MIGRATION.version, V0002_MIGRATION.name, V0002_MIGRATION.checksum),
         (V0003_MIGRATION.version, V0003_MIGRATION.name, V0003_MIGRATION.checksum),
+        (V0004_MIGRATION.version, V0004_MIGRATION.name, V0004_MIGRATION.checksum),
         (future.version, future.name, future.checksum),
     ]
     assert connection.execute(
@@ -107,7 +113,7 @@ def test_applied_prefix_validates_and_future_migration_applies(
     [
         lambda c: c.execute(
             "INSERT INTO schema_migrations(version, name, checksum, applied_at_utc) "
-            "VALUES (4, 'extra', 'extra', '2026-07-19T00:00:00Z')"
+            "VALUES (5, 'extra', 'extra', '2026-07-19T00:00:00Z')"
         ),
         lambda c: c.execute("UPDATE schema_migrations SET name='reordered' WHERE version=1"),
         lambda c: (
@@ -298,3 +304,18 @@ def test_v0003_checksum_literal_and_prior_migrations_unchanged() -> None:
         V0003_MIGRATION.checksum
         == "e01d441c2572ca484cf5227d94f57a3cb62fa8e6e3e223eefc6852b81f6eb3c1"
     )
+
+
+def test_pr008_migration_metadata_and_checksums() -> None:
+    assert V0004_MIGRATION.version == 4
+    assert V0004_MIGRATION.name == "source_file_import_pr008"
+    assert V0004_MIGRATION.checksum == "a826d5bc07ba73e6d54fd25e9df8afb42028261040b7981bdd157caf26b1f7c6"
+    assert V0002_MIGRATION.checksum == "fb953af64efd3e860960eae8ef1f4078afd0a6ec078a33594e271a9285d7db3d"
+    assert V0003_MIGRATION.checksum == "e01d441c2572ca484cf5227d94f57a3cb62fa8e6e3e223eefc6852b81f6eb3c1"
+
+
+def test_pr008_tables_exist_after_migration() -> None:
+    connection = apply()
+    assert table_columns(connection, "upload_batches")[:2] == ("id", "number")
+    assert table_columns(connection, "source_files")[:3] == ("id", "batch_id", "original_artifact_id")
+    assert table_columns(connection, "upload_batch_source_files") == ("batch_id", "order_index", "source_file_id")

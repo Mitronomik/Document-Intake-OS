@@ -1,6 +1,6 @@
 # PR-008 — File import and duplicate detection
 
-Status: `AUTHORIZED, NOT STARTED`
+Status: `IMPLEMENTED AND IN REVIEW, NOT ACCEPTED`
 
 Lifecycle preparation base: `71dfd7fa31bd67c9f9fa54cc9057684486e842ad`.
 
@@ -482,7 +482,7 @@ PR-008 cannot be accepted until the exact GitHub head SHA has successful CI, v00
 Status: IMPLEMENTED AND IN REVIEW, NOT ACCEPTED.
 
 Implementation base: `67d2233d2f907bd65eeedcb287a50e00db3d2e6f`.
-Implementation branch: `codex/pr-008-file-import-duplicate-detection`.
+Implementation branch: `codex-uj32ni`.
 
 Selected decoder dependencies are `Pillow==12.3.0` and `pi-heif==1.4.0`. Pillow is used for JPEG/PNG decoding, in-memory EXIF orientation handling, alpha compositing, grayscale conversion and fixed LANCZOS resizing. pi-heif is used only for decode-side HEIF/HEIC opener registration at the adapter boundary. No OpenCV, NumPy, imagehash, cloud image libraries, runtime codec installers, telemetry or runtime downloads are introduced by PR-008 code.
 
