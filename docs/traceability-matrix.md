@@ -122,7 +122,7 @@ Q-009: `DEFERRED`. Q-017: `DEFERRED`. Q-010: `ACCEPTED`. `RISK-PR005-RAWKEY-PRAG
 
 Current lifecycle: PR-007: `COMPLETED AND HUMAN ACCEPTED`; PR-008: `IMPLEMENTED AND IN REVIEW, NOT ACCEPTED`; PR-009 and later: `UNAUTHORIZED`; Gate 1: `COMPLETED AND HUMAN ACCEPTED`; M2: `COMPLETED AND HUMAN ACCEPTED`.
 
-## Historical lifecycle record — PR-007 acceptance and PR-008 authorization
+## Lifecycle status — PR-007 accepted, PR-008 in review
 
 PR-007: `COMPLETED AND HUMAN ACCEPTED`. GitHub PR: `#19`. Final reviewed head: `c6d6852ba3cf28060d8fbb76e27201cbbcaade54`. Merge commit: `71dfd7fa31bd67c9f9fa54cc9057684486e842ad`. Merged date: `2026-07-20`. Exact-head CI: `CI #92`, successful. Migration v0003 final checksum: `e01d441c2572ca484cf5227d94f57a3cb62fa8e6e3e223eefc6852b81f6eb3c1`.
 
