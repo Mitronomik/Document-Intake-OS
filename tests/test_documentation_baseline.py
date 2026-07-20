@@ -1992,9 +1992,17 @@ def test_pr009_quality_contract_is_documentation_only_and_staged() -> None:
         "exposure_shadow_cutoff < exposure_bright_cutoff",
         "all maximum fractions finite Decimal values in `[0, 1]`",
         "exactly seven metrics",
-        "status derived exactly from issues",
+        "policy: ImageQualityPolicy",
+        "assessment.policy.version",
+        "rehydration reconstructs the complete `ImageQualityPolicy`",
     ):
         assert required in adr, required
+
+    assert "database: DatabasePort" not in adr + task
+    assert "DatabasePort" not in adr + task
+    assert "policy_version: QualityPolicyVersion" not in adr + task
+    assert "caller-provided assessment/audit IDs if consistent" not in adr + task
+    assert "repository's actual" not in adr + task
 
     for required in (
         "class AssessSourceFileQualityCommand",
@@ -2010,7 +2018,30 @@ def test_pr009_quality_contract_is_documentation_only_and_staged() -> None:
         "read the system clock",
         "infer actor",
         "infer correlation ID",
-        "load a process-global default policy",
+        "unit_of_work_factory: UnitOfWorkFactory",
+        "unit_of_work_factory.unit_of_work()",
+        "exactly one Unit of Work",
+        "commit()` exactly once",
+        "same Unit of Work transaction",
+    ):
+        assert required in adr + task, required
+
+    for required in (
+        "ImageQualityAssessmentRepository",
+        "add(self, assessment: ImageQualityAssessment)",
+        "def get(",
+        "def list_by_source(",
+        "image_quality_assessments: ImageQualityAssessmentRepository",
+        "assessed_at` ascending then assessment ID ascending",
+        "complete rehydrated aggregate",
+        "never silently returns a partial aggregate",
+        "Public repositories for metrics or issues are forbidden",
+        "add_metric",
+        "add_issue",
+        "update",
+        "delete",
+        "replace",
+        "upsert",
     ):
         assert required in adr + task, required
 
@@ -2075,6 +2106,28 @@ def test_pr009_quality_contract_is_documentation_only_and_staged() -> None:
             "Persisting only policy ID/version while allowing thresholds to change elsewhere "
             "is prohibited"
         ),
+        "complete aggregate fields",
+        "complete policy snapshot",
+        "canonical metric references/order",
+        "canonical issue references/order",
+        "severity_rules` serialize in exact canonical issue-code order",
+        "canonical fixed-point strings",
+        "scientific notation",
+    ):
+        assert required in adr + task, required
+
+    for required in (
+        "AssessSourceFileQualityResult",
+        "assessment: ImageQualityAssessment",
+        "no optional or partial success state",
+        "must not return database rows or repository DTOs",
+        "AssessSourceFileQualityResult(assessment=assessment)",
+        "No object-storage write occurs in PR-009",
+        "No audit event may be committed without the assessment",
+        "No assessment may be committed without its audit event",
+        "rolls back the complete Unit of Work",
+        "PERSISTENCE_FAILED",
+        "No orphan filesystem artifact is possible",
     ):
         assert required in adr + task, required
 

@@ -105,7 +105,7 @@ Metric-unit mapping is exact: `SHORT_SIDE_PIXELS -> PIXELS`, `LONG_SIDE_PIXELS -
 
 `ImageQualityPolicy` is `@dataclass(frozen=True, slots=True)` with `version: QualityPolicyVersion`, `minimum_short_side_pixels: int`, `minimum_long_side_pixels: int`, `blur_minimum_laplacian_variance: Decimal`, `contrast_minimum_luminance_stddev: Decimal`, `glare_highlight_cutoff: int`, `glare_maximum_fraction: Decimal`, `exposure_shadow_cutoff: int`, `exposure_maximum_shadow_fraction: Decimal`, `exposure_bright_cutoff: int`, `exposure_maximum_bright_fraction: Decimal`, and `severity_rules: tuple[ImageQualitySeverityRule, ...]`. Validation requires minimum dimensions integers `>= 1`, `minimum_short_side_pixels <= minimum_long_side_pixels`, finite blur/contrast thresholds `>= 0`, grayscale cutoffs in `0..255`, `exposure_shadow_cutoff < exposure_bright_cutoff`, all maximum fractions finite Decimal values in `[0, 1]`, severity rules containing all six issue codes exactly once and no additional codes, no dictionary-based mapping, safe deterministic `repr`, and no hidden default values.
 
-`ImageQualityAssessment` is `@dataclass(frozen=True, slots=True)` with `id: EntityId`, `source_file_id: EntityId`, `assessed_at: datetime`, `policy_version: QualityPolicyVersion`, `status: QualityAssessmentStatus`, `encoded_width: int`, `encoded_height: int`, `exif_orientation: int | None`, `effective_width: int`, `effective_height: int`, `metrics: tuple[ImageQualityMetric, ...]`, and `issues: tuple[ImageQualityIssue, ...]`. Invariants require valid IDs, timezone-aware UTC-normalized timestamp, positive dimensions, orientation `None` or 1–8, effective dimensions matching the orientation axis rule, exactly seven metrics with unique codes in canonical order, unique issues in canonical order, issue severity equal to the policy severity rule, status derived exactly from issues and unable to disagree with issues, no arbitrary metadata, and no actor, username, filename, path, hash, pixel data or exception text.
+`ImageQualityAssessment` is `@dataclass(frozen=True, slots=True)` with `id: EntityId`, `source_file_id: EntityId`, `assessed_at: datetime`, `policy: ImageQualityPolicy`, `status: QualityAssessmentStatus`, `encoded_width: int`, `encoded_height: int`, `exif_orientation: int | None`, `effective_width: int`, `effective_height: int`, `metrics: tuple[ImageQualityMetric, ...]`, and `issues: tuple[ImageQualityIssue, ...]`. Invariants require valid IDs, timezone-aware UTC-normalized timestamp, positive dimensions, orientation `None` or 1–8, effective dimensions matching the orientation axis rule, exactly seven metrics with unique codes in canonical order, unique issues in canonical order, issue severity equal to the exact severity rule in `assessment.policy.severity_rules`, no issue code absent from policy severity rules, no additional policy issue codes, policy thresholds are the thresholds used to produce metrics and issues, database policy ID/version projections equal `assessment.policy.version`, canonical payload contains the complete policy, and rehydration reconstructs the complete `ImageQualityPolicy`, status derived exactly from issues and unable to disagree with issues, no arbitrary metadata, and no actor, username, filename, path, hash, pixel data or exception text.
 
 ### 5. Algorithm contracts and comparison boundaries
 
@@ -141,6 +141,43 @@ PR-009 proposes immutable append-only persistence. The future implementation PR 
 
 PR-009 selects one exact policy-freezing approach: Persist the complete canonical policy snapshot inside the assessment canonical payload. No separate mutable policy table is part of PR-009. Persisting only policy ID/version while allowing thresholds to change elsewhere is prohibited. This guarantees historical reproducibility. Tamper/projection-integrity checks follow existing persistence conventions.
 
+
+
+### 8a. Repository and Unit of Work contract
+
+PR-009 adds exactly one future aggregate repository port:
+
+```python
+class ImageQualityAssessmentRepository(Protocol):
+    def add(self, assessment: ImageQualityAssessment) -> None: ...
+
+    def get(
+        self,
+        assessment_id: EntityId,
+    ) -> ImageQualityAssessment | None: ...
+
+    def list_by_source(
+        self,
+        source_file_id: EntityId,
+    ) -> tuple[ImageQualityAssessment, ...]: ...
+```
+
+`ImageQualityAssessmentRepository` represents the complete immutable assessment aggregate. `add()` persists one complete `ImageQualityAssessment` aggregate, the assessment row, exactly seven metric rows, zero through six issue rows and the complete canonical policy snapshot; does not commit; uses the active Unit of Work connection; rejects duplicate assessment ID even when payload is equal; rejects invalid metric count, order or duplicates; rejects invalid issue order or duplicates; rejects policy snapshot mismatch; rejects projection/canonical-payload mismatch; and exposes only sanitized persistence errors.
+
+`get()` returns the complete rehydrated aggregate; validates assessment projections, all seven metrics, issue ordinals and ordering, complete canonical policy snapshot and aggregate status against issues; fails closed on missing child rows, extra child rows, ordinal gaps, duplicates, controlled-value corruption or payload mismatch; and never silently returns a partial aggregate.
+
+`list_by_source()` returns only complete validated aggregates in deterministic order `assessed_at` ascending then assessment ID ascending, performs validated reads before domain-level result construction, does not silently hide corrupted rows and returns an empty tuple when no assessments exist.
+
+Public repositories for metrics or issues are forbidden. Public mutation methods `add_metric`, `add_issue`, `update`, `delete`, `replace`, `save` and `upsert` are forbidden. Metrics, issues and the policy snapshot are owned by the `ImageQualityAssessment` aggregate and persist only through `ImageQualityAssessmentRepository.add(assessment)`.
+
+The future implementation extends the existing `UnitOfWork` Protocol with exactly `image_quality_assessments: ImageQualityAssessmentRepository`. The accepted Unit of Work shape remains the existing pattern and conceptually includes `source_files: SourceFileRepository`, `stored_artifacts: StoredArtifactRepository`, `audit_events: AuditEventRepository`, `image_quality_assessments: ImageQualityAssessmentRepository`, `__enter__`, `__exit__`, `commit()` and `rollback()`. The concrete repository is added to the existing SQLCipher Unit of Work. PR-009 must not create an independent assessment database, independent transaction, independent audit connection, second commit boundary or automatic repository commits.
+
+### 8b. Canonical policy serialization
+
+The canonical assessment payload contains the complete aggregate fields, complete policy snapshot, canonical metric references/order and canonical issue references/order. The policy snapshot logical structure is exactly `policy.policy_id`, `policy.policy_version`, `policy.minimum_short_side_pixels`, `policy.minimum_long_side_pixels`, `policy.blur_minimum_laplacian_variance`, `policy.contrast_minimum_luminance_stddev`, `policy.glare_highlight_cutoff`, `policy.glare_maximum_fraction`, `policy.exposure_shadow_cutoff`, `policy.exposure_maximum_shadow_fraction`, `policy.exposure_bright_cutoff`, `policy.exposure_maximum_bright_fraction` and `policy.severity_rules`.
+
+`severity_rules` serialize in exact canonical issue-code order: `LOW_RESOLUTION`, `BLUR_DETECTED`, `LOW_CONTRAST`, `GLARE_DETECTED`, `UNDEREXPOSED`, `OVEREXPOSED`. Each rule contains exactly `issue_code` and `severity`. Decimal values use canonical fixed-point strings. Forbidden canonical Decimal forms are `NaN`, `Infinity`, `-Infinity`, scientific notation, locale-dependent decimal separators and binary-float-derived `repr`. Frozen canonical-payload tests are required.
+
 ### 9. Application-service contract and caller-supplied values
 
 The exact command is:
@@ -167,11 +204,29 @@ assess_source_file_quality(
     *,
     decoder: QualityAnalysisDecoderPort,
     storage: StoragePort,
-    database: DatabasePort,
+    unit_of_work_factory: UnitOfWorkFactory,
 ) -> AssessSourceFileQualityResult
 ```
 
-The implementation may use the repository's actual database/UoW dependency naming convention, but ID and timestamp generation are not open. The service loads the immutable source file and encrypted original artifact, verifies stored-artifact integrity through existing storage, decodes using `QualityAnalysisDecoderPort`, obtains full-resolution orientation-normalized analysis pixels, calculates deterministic metrics, evaluates the explicit policy, persists assessment/metrics/issues and one audit event atomically, and returns a PII-safe DTO. It must not reuse a caller-provided filesystem path, persist a source path, or modify the original artifact or source-file row.
+This `unit_of_work_factory: UnitOfWorkFactory` dependency is binding. The implementation must not rename or replace it with a nonexistent database port, a raw SQLCipher connection, a raw DB-API connection, a repository factory independent from the accepted Unit of Work, or separate connections for assessment and audit persistence. The service uses exactly one Unit of Work created by `unit_of_work_factory.unit_of_work()`. Assessment aggregate persistence and audit-event insertion use the same Unit of Work transaction. The service calls `commit()` exactly once after the source file is loaded, the stored artifact is verified, the source is decoded, metrics are computed, explicit policy is evaluated, the complete assessment aggregate is added and the exact audit event is added. Any failure before successful commit leaves no committed assessment, metric, issue or audit row. It must not reuse a caller-provided filesystem path, persist a source path, or modify the original artifact or source-file row.
+
+
+
+The exact result DTO is:
+
+```python
+@dataclass(frozen=True, slots=True)
+class AssessSourceFileQualityResult:
+    assessment: ImageQualityAssessment
+```
+
+`AssessSourceFileQualityResult` invariants: `assessment` is an `ImageQualityAssessment`; there is no optional or partial success state; no path, basename, image bytes, pixel raster, SHA-256, perceptual hash, raw exception or arbitrary metadata; and `repr` is safe and deterministic. The service returns one complete persisted assessment result or raises/returns the project's controlled PII-safe application error according to existing service conventions. It must not define a result containing a separate policy object inconsistent with `assessment.policy`, and it must not return database rows or repository DTOs.
+
+Exact service workflow: validate command and complete policy; open one Unit of Work; load `SourceFile` through `uow.source_files.get(source_file_id)`; fail with `SOURCE_FILE_NOT_FOUND` when absent; resolve original stored artifact ID from the `SourceFile`; load expected stored-artifact state through `uow.stored_artifacts`; fail with `ARTIFACT_NOT_FOUND` when absent; read and verify encrypted original through `StoragePort` using authoritative stored-artifact state; fail with `ARTIFACT_INTEGRITY_FAILED` on controlled integrity failure; decode bytes through `QualityAnalysisDecoderPort`; fail with `DECODE_FAILED` on controlled decode failure; calculate all seven deterministic metrics; evaluate the explicit command policy; construct one complete immutable `ImageQualityAssessment` containing the complete policy; add it through `uow.image_quality_assessments.add(assessment)`; construct the exact audit event; add it through `uow.audit_events.add(event)`; commit exactly once; return `AssessSourceFileQualityResult(assessment=assessment)`.
+
+No database row may be persisted before the complete aggregate is constructed. No audit event may be committed without the assessment. No assessment may be committed without its audit event. No object-storage write occurs in PR-009. The original artifact remains unchanged.
+
+Transaction and failure semantics are exact. Before Unit of Work creation, `QUALITY_POLICY_INVALID` and `QUALITY_ASSESSMENT_FAILED` for invalid command construction fail before database/storage access where applicable. Inside the Unit of Work before persistence, `SOURCE_FILE_NOT_FOUND`, `ARTIFACT_NOT_FOUND`, `ARTIFACT_INTEGRITY_FAILED`, `DECODE_FAILED` and `QUALITY_ASSESSMENT_FAILED` leave no new rows. Any failure while adding assessment, metrics, issues, policy snapshot, audit event or commit rolls back the complete Unit of Work, leaves no partial PR-009 rows, leaves no audit event, leaves original source and artifact unchanged, returns only a controlled `PERSISTENCE_FAILED` boundary and exposes no raw DB-API, SQLCipher or SQLite exception. No orphan filesystem artifact is possible because PR-009 performs no storage publication.
 
 ### 10. Audit contract
 
