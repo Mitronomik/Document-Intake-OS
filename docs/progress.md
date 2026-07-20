@@ -1,7 +1,7 @@
 # Progress
 
 **Обновлено:** 2026-07-19
-**Статус:** PR-005: COMPLETED AND HUMAN ACCEPTED; PR-006: COMPLETED AND HUMAN ACCEPTED; PR-007: AUTHORIZED AND IN REVIEW, NOT ACCEPTED; PR-008 AND LATER: UNAUTHORIZED
+**Статус:** PR-005: COMPLETED AND HUMAN ACCEPTED; PR-006: COMPLETED AND HUMAN ACCEPTED; PR-007: COMPLETED AND HUMAN ACCEPTED; PR-008: AUTHORIZED, NOT STARTED; PR-009 AND LATER: UNAUTHORIZED
 
 ## Завершено
 
@@ -47,9 +47,9 @@
 - [x] PR-005 v0001 migration checksum is final at `e1e1f5f6d8d675a146f3d0c538a0d544b6f8a984c301d177ee1ad86e42f2d500`; migration v0001 is frozen after merge and every future schema change must use migration v0002 or later;
 - [x] Windows SQLCipher evidence is complete for the PR-005 acceptance boundary through exact-head CI run #73;
 - [x] PR-006: COMPLETED AND HUMAN ACCEPTED;
-- [ ] PR-007: AUTHORIZED AND IN REVIEW, NOT ACCEPTED; PR-008 AND LATER: UNAUTHORIZED;
-- [ ] Gate 1: NOT ACCEPTED;
-- [ ] M2: NOT COMPLETED;
+- [x] PR-007: COMPLETED AND HUMAN ACCEPTED; PR-008: AUTHORIZED, NOT STARTED; PR-009 AND LATER: UNAUTHORIZED;
+- [x] Gate 1: COMPLETED AND HUMAN ACCEPTED;
+- [x] M2: COMPLETED AND HUMAN ACCEPTED;
 - [x] Q-010: ACCEPTED;
 - [ ] Q-017 remains DEFERRED;
 - [x] REPOSITORY PRIVACY BOUNDARY — ACCEPTED FOR NON-SENSITIVE CODE;
@@ -60,7 +60,7 @@
 ## Not started / unauthorized
 
 - [x] PR-006 is COMPLETED AND HUMAN ACCEPTED through PR #17;
-- [ ] PR-007 is AUTHORIZED AND IN REVIEW, NOT ACCEPTED; PR-008 and later implementation tasks remain UNAUTHORIZED;
+- [x] PR-007 is COMPLETED AND HUMAN ACCEPTED; PR-008 is AUTHORIZED, NOT STARTED; PR-009 and later implementation tasks remain UNAUTHORIZED;
 - [ ] The template enforcement PR remains future work and does not block PR-004 or PR-005 closure;
 - [ ] integration of immutable storage into the future file-import workflow;
 - [ ] image pipeline;
@@ -81,7 +81,7 @@
 
 PR-S001/PR-S001-F1/PR-S001-F2/PR-S001-F3/PR-S001-F4 use fictional synthetic data only, may evaluate candidate packages and prototypes, must not create production database/storage APIs, and must not use real documents or personal data. PR-S001 contains no production persistence/storage API; a negative feasibility result is valid.
 
-PR-007 implementation is in review. Do not start PR-008 or later work.
+PR-007 is completed and human accepted. PR-008 is authorized, not started; do not start PR-009 or later work.
 
 Q-009: DEFERRED. PR-006 implements no retention, deletion or secure-deletion policy.
 
@@ -89,10 +89,10 @@ Q-009: DEFERRED. PR-006 implements no retention, deletion or secure-deletion pol
 ## PR-006 current lifecycle
 
 PR-006: `COMPLETED AND HUMAN ACCEPTED`.
-PR-007: `AUTHORIZED AND IN REVIEW, NOT ACCEPTED`
-PR-008 and later: `UNAUTHORIZED`.
-Gate 1: `NOT ACCEPTED`.
-M2: `NOT COMPLETED`.
+PR-007: `COMPLETED AND HUMAN ACCEPTED`
+PR-008: `AUTHORIZED, NOT STARTED`; PR-009 and later: `UNAUTHORIZED`.
+Gate 1: `COMPLETED AND HUMAN ACCEPTED`.
+M2: `COMPLETED AND HUMAN ACCEPTED`.
 Q-009: `DEFERRED`.
 Q-017: `DEFERRED`.
 Q-017 remains deferred.
@@ -105,6 +105,14 @@ PR-006: `COMPLETED AND HUMAN ACCEPTED` through GitHub PR `#17`, final reviewed h
 
 ADR numbering after repair: ADR-019 is PR-005 SQLCipher binding and raw-key staging; ADR-020 is immutable encrypted filesystem storage v1; ADR-021 is immutable PII-safe audit events. The PR #17 description historically referred to the storage decision as ADR-019 before this documentation numbering correction.
 
-PR-007: `AUTHORIZED AND IN REVIEW, NOT ACCEPTED`. PR-007 implementation may begin only after this lifecycle pull request is merged into `main`. PR-008 and later: `UNAUTHORIZED`. Gate 1: `NOT ACCEPTED`. M2: `NOT COMPLETED`. Gate 1 and M2 remain incomplete until PR-007 is implemented, reviewed, merged and separately human accepted through a later lifecycle decision.
+PR-007: `COMPLETED AND HUMAN ACCEPTED`. PR-007 was merged and human accepted through GitHub PR #19. PR-008: `AUTHORIZED, NOT STARTED`; PR-009 and later: `UNAUTHORIZED`. Gate 1: `COMPLETED AND HUMAN ACCEPTED`. M2: `COMPLETED AND HUMAN ACCEPTED`. PR-008 may begin only after this lifecycle PR is merged; PR-009 and later remain unauthorized.
 
 Q-009: `DEFERRED`. Q-017: `DEFERRED`. Q-010: `ACCEPTED`. `RISK-PR005-RAWKEY-PRAGMA` remains open for installer, pilot and production release. Existing unresolved SQLCipher legal, redistribution and release-binding questions remain unresolved. Real documents and personal data remain prohibited in Git, Codex, CI, logs and test reports. The sensitive-data/private-contour gate remains open for real data.
+
+## Lifecycle update — PR-007 acceptance and PR-008 authorization
+
+PR-007: `COMPLETED AND HUMAN ACCEPTED`. GitHub PR: `#19`. Final reviewed head: `c6d6852ba3cf28060d8fbb76e27201cbbcaade54`. Merge commit: `71dfd7fa31bd67c9f9fa54cc9057684486e842ad`. Merged date: `2026-07-20`. Exact-head CI: `CI #92`, successful. Migration v0003 final checksum: `e01d441c2572ca484cf5227d94f57a3cb62fa8e6e3e223eefc6852b81f6eb3c1`.
+
+M2: `COMPLETED AND HUMAN ACCEPTED`. Gate 1: `COMPLETED AND HUMAN ACCEPTED`. PR-008: `AUTHORIZED, NOT STARTED` for the non-UI encrypted original import and advisory duplicate-detection foundation only, governed by ADR-022 and `docs/tasks/PR-008-file-import-duplicate-detection.md`. PR-009 and later: `UNAUTHORIZED`. Do not describe PR-008 as implemented, in review, completed or accepted. Do not begin PR-009 or later work.
+
+Q-006: `DEFERRED`. Q-007: `DEFERRED`. Q-009: `DEFERRED`. Q-010: `ACCEPTED`. Q-017: `DEFERRED`. `RISK-PR005-RAWKEY-PRAGMA` remains open for installer, pilot and production release. The sensitive-data/private-contour gate remains open for real documents and real personal data. Real documents and personal data remain prohibited in Git, Codex, CI, logs and test reports.

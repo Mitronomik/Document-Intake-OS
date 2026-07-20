@@ -49,6 +49,7 @@ REQUIRED_DOCUMENTS = (
     "docs/tasks/PR-005-encrypted-sqlite-persistence.md",
     "docs/tasks/PR-006-immutable-filesystem-storage.md",
     "docs/tasks/PR-007-audit-events.md",
+    "docs/tasks/PR-008-file-import-duplicate-detection.md",
 )
 
 CANONICAL_SOURCE_ORDER = (
@@ -268,10 +269,15 @@ def test_lifecycle_state_records_pr005_accepted_state() -> None:
         "985fae37c7645e8f65edbe4d1609100ee24a2097",
         "PR-005: COMPLETED AND HUMAN ACCEPTED",
         "PR-006: `COMPLETED AND HUMAN ACCEPTED`",
-        "PR-007: `AUTHORIZED AND IN REVIEW, NOT ACCEPTED`",
-        "PR-008 and later: `UNAUTHORIZED`",
-        "Gate 1: `NOT ACCEPTED`",
-        "M2: `NOT COMPLETED`",
+        "PR-007: `COMPLETED AND HUMAN ACCEPTED`",
+        "PR-008: `AUTHORIZED, NOT STARTED`",
+        "PR-009 and later: `UNAUTHORIZED`",
+        "Gate 1: `COMPLETED AND HUMAN ACCEPTED`",
+        "M2: `COMPLETED AND HUMAN ACCEPTED`",
+        "c6d6852ba3cf28060d8fbb76e27201cbbcaade54",
+        "71dfd7fa31bd67c9f9fa54cc9057684486e842ad",
+        "CI #92",
+        "e01d441c2572ca484cf5227d94f57a3cb62fa8e6e3e223eefc6852b81f6eb3c1",
         "2161fbbf7fb4065a5913fb6e62c207546caf5dd9",
         "e1e1f5f6d8d675a146f3d0c538a0d544b6f8a984c301d177ee1ad86e42f2d500",
     )
@@ -319,8 +325,6 @@ def test_lifecycle_state_records_pr005_accepted_state() -> None:
         "PR-005 implementation is in review",
         "PR-005 remains in review and not accepted",
         "Windows CI evidence remains required",
-        "Gate 1: ACCEPTED",
-        "M2: COMPLETED",
         "review and product-owner decision on GATE-S1 / ADR-018",
         "PR-006: UNAUTHORIZED",
         "PR-006 remains UNAUTHORIZED",
@@ -337,11 +341,11 @@ def test_lifecycle_state_records_pr005_accepted_state() -> None:
         for required in required_by_file:
             assert required in text, filename
         assert "PR-006: `COMPLETED AND HUMAN ACCEPTED`" in text, filename
-        assert "PR-007: `AUTHORIZED AND IN REVIEW, NOT ACCEPTED`" in text, filename
-        assert "PR-008 and later: `UNAUTHORIZED`" in text, filename
-        assert "PR-007: `IMPLEMENTED`" not in text, filename
-        assert "PR-007: `COMPLETED`" not in text, filename
-        assert "PR-007: `COMPLETED`" not in text, filename
+        assert "PR-007: `COMPLETED AND HUMAN ACCEPTED`" in text, filename
+        assert "PR-008: `AUTHORIZED, NOT STARTED`" in text, filename
+        assert "PR-009 and later: `UNAUTHORIZED`" in text, filename
+        assert "PR-008: `COMPLETED`" not in text, filename
+        assert "PR-008: `IMPLEMENTED`" not in text, filename
         assert "Q-009: `DEFERRED`" in text, filename
         assert "Q-017: `DEFERRED`" in text, filename
         _assert_pr_s001_followups_completed(text, filename)
@@ -592,8 +596,9 @@ def test_pr005_pr006_sequences_remain_blocked_after_gate_s1_acceptance() -> None
         not in implementation_plan
     )
     assert "PR-006 remains blocked" not in implementation_plan
-    assert "PR-007: `AUTHORIZED AND IN REVIEW, NOT ACCEPTED`" in implementation_plan
-    assert "PR-008 and later: `UNAUTHORIZED`" in implementation_plan
+    assert "PR-007: `COMPLETED AND HUMAN ACCEPTED`" in implementation_plan
+    assert "PR-008: `AUTHORIZED, NOT STARTED`" in implementation_plan
+    assert "PR-009 and later: `UNAUTHORIZED`" in implementation_plan
 
 
 def test_q001_through_q020_statuses_other_than_q010_are_unchanged() -> None:
@@ -1126,8 +1131,12 @@ def test_pr006_acceptance_and_pr007_authorization_contract() -> None:
     assert "e1e1f5f6d8d675a146f3d0c538a0d544b6f8a984c301d177ee1ad86e42f2d500" in pr006
     assert "fb953af64efd3e860960eae8ef1f4078afd0a6ec078a33594e271a9285d7db3d" in pr006
     assert "Storage decision: ADR-020" in pr006
-    assert "Status: `AUTHORIZED AND IN REVIEW, NOT ACCEPTED`" in pr007
-    assert "lifecycle pull request that created this task has been merged into `main`" in pr007
+    assert "Status: `COMPLETED AND HUMAN ACCEPTED`" in pr007
+    assert "GitHub PR: `#19`" in pr007
+    assert "c6d6852ba3cf28060d8fbb76e27201cbbcaade54" in pr007
+    assert "71dfd7fa31bd67c9f9fa54cc9057684486e842ad" in pr007
+    assert "CI #92" in pr007
+    assert "e01d441c2572ca484cf5227d94f57a3cb62fa8e6e3e223eefc6852b81f6eb3c1" in pr007
     assert "ActorRef" in pr007 and "FieldKey" in pr007
     assert "Do not use a raw unrestricted string for `reason_code`" in pr007
     assert "No arbitrary metadata dictionary" in pr007
@@ -1143,6 +1152,7 @@ def test_pr006_acceptance_and_pr007_authorization_contract() -> None:
     assert "## ADR-019 — PR-005 SQLCipher binding and raw-key staging" in decisions
     assert "## ADR-020 — Immutable encrypted filesystem storage v1" in decisions
     assert "## ADR-021 — Immutable PII-safe audit events" in decisions
+    assert "## ADR-022 — Encrypted original import and advisory duplicate detection" in decisions
     assert "Q-009: `DEFERRED`" in open_questions
     assert "Q-017: `DEFERRED`" in open_questions
 
@@ -1155,6 +1165,7 @@ def test_adr_numbers_are_unique_and_current() -> None:
     assert ("019", "PR-005 SQLCipher binding and raw-key staging") in headings
     assert ("020", "Immutable encrypted filesystem storage v1") in headings
     assert ("021", "Immutable PII-safe audit events") in headings
+    assert ("022", "Encrypted original import and advisory duplicate detection") in headings
 
 
 def test_pr007_current_lifecycle_status_has_no_stale_blockers() -> None:
@@ -1167,9 +1178,83 @@ def test_pr007_current_lifecycle_status_has_no_stale_blockers() -> None:
             "docs/implementation-plan.md",
         )
     )
-    assert "PR-007: `AUTHORIZED AND IN REVIEW, NOT ACCEPTED`" in current
-    assert "PR-008 AND LATER: UNAUTHORIZED" in current
+    assert "PR-007: `COMPLETED AND HUMAN ACCEPTED`" in current
+    assert "PR-008: `AUTHORIZED, NOT STARTED`" in current
+    assert "PR-009 and later: `UNAUTHORIZED`" in current
+    assert "Gate 1: `COMPLETED AND HUMAN ACCEPTED`" in current
+    assert "M2: `COMPLETED AND HUMAN ACCEPTED`" in current
     assert "PR-007 and later tasks remain UNAUTHORIZED" not in current
     assert "Unauthorized by GATE-M0" not in current
     assert "Merge this lifecycle PR before starting PR-007" not in current
     assert "immutable filesystem storage, audit and later M2 work are not complete" not in current
+
+
+def test_pr008_authorization_task_contract_and_no_pr009_authorization() -> None:
+    task = (REPO_ROOT / "docs/tasks/PR-008-file-import-duplicate-detection.md").read_text(
+        encoding="utf-8"
+    )
+    decisions = (REPO_ROOT / "docs/decisions.md").read_text(encoding="utf-8")
+    adr_022 = _adr_section(
+        decisions, "## ADR-022 — Encrypted original import and advisory duplicate detection"
+    )
+    combined = _compact(task + "\n" + adr_022)
+
+    for required in (
+        "Status: `AUTHORIZED, NOT STARTED`",
+        "71dfd7fa31bd67c9f9fa54cc9057684486e842ad",
+        "byte-for-byte identical",
+        "encrypted managed object",
+        "AES-256-GCM",
+        "DIOSOBJ1",
+        "SHA-256 over unchanged original bytes",
+        "algorithm identifier and algorithm version",
+        "advisory only",
+        "controlled duplicate warnings",
+        "does not overwrite",
+        "does not overwrite, mutate, delete, merge",
+        "does not automatically delete",
+        "does not automatically merge",
+        "must not contain original filename",
+        "v0004_source_file_import.py",
+        "source_file_import_pr008",
+        "tests/fixtures/synthetic/",
+        "No real document",
+        "must not implement PySide upload UI",
+        "must not implement PySide upload UI, drag and drop",
+    ):
+        assert required in combined
+
+    assert "PR-009 and later remain `UNAUTHORIZED`" in task
+    assert "Do not select a dependency silently" in task
+    assert "No cloud decoder, remote service, runtime download or network fallback" in task
+
+
+def test_pr007_acceptance_closes_m2_gate1_and_preserves_open_risks() -> None:
+    files = (
+        "docs/progress.md",
+        "docs/roadmap.md",
+        "docs/implementation-plan.md",
+        "docs/handoff.md",
+        "docs/traceability-matrix.md",
+    )
+    stale = (
+        "PR-007: `AUTHORIZED AND IN REVIEW, NOT ACCEPTED`",
+        "PR-007 is in review",
+        "PR-007 is not accepted",
+        "M2: `NOT COMPLETED`",
+        "Gate 1: `NOT ACCEPTED`",
+        "PR-008 and later: `UNAUTHORIZED`",
+        "PR-008 AND LATER: UNAUTHORIZED",
+        "audit work is incomplete",
+    )
+    for filename in files:
+        text = (REPO_ROOT / filename).read_text(encoding="utf-8")
+        assert "PR-007: `COMPLETED AND HUMAN ACCEPTED`" in text, filename
+        assert "PR-008: `AUTHORIZED, NOT STARTED`" in text, filename
+        assert "PR-009 and later: `UNAUTHORIZED`" in text, filename
+        assert "Gate 1: `COMPLETED AND HUMAN ACCEPTED`" in text, filename
+        assert "M2: `COMPLETED AND HUMAN ACCEPTED`" in text, filename
+        assert "RISK-PR005-RAWKEY-PRAGMA` remains open" in text, filename
+        assert "sensitive-data/private-contour gate remains open" in text, filename
+        for phrase in stale:
+            assert phrase not in text, filename
