@@ -737,3 +737,7 @@ Domain and application contracts depend on local `MediaDecoderPort`, not third-p
 ### Synthetic tests and non-goals
 
 Tests use only generated or clearly synthetic non-document images under the permitted fixture boundary. PR-008 must not implement PySide upload UI, drag and drop, background job UI, quality scoring, blur/glare/contrast diagnostics, final EXIF orientation diagnostics, crop, perspective correction, segmentation, multiple-document regions, JPEG preparation or compression, OCR, MRZ, barcode, document classification, field candidates, operator verification, Excel, terminal adapters, export, backup/restore, retention/deletion, users/authentication, telemetry, cloud services, browser automation, `quality_assessment` or PR-009-or-later behavior.
+
+## PR-008 implementation evidence note
+
+PR-008 implementation records encrypted source-file import and advisory duplicate detection only. Original bytes are stored through the accepted encrypted storage port, metadata remains in SQLCipher, source paths are not persisted, decoder dependencies are pinned to `Pillow==12.3.0` and `pi-heif==1.4.0`, and no OCR, telemetry, cloud service, export, or PR-009 behavior is authorized by this change.

@@ -984,6 +984,70 @@ class SnapshotRepo(_Repo):
         return tuple(snapshots)
 
 
+class UploadBatchRepo(_Repo):
+    def __init__(self, uow: SqlCipherUnitOfWork) -> None:
+        super().__init__(uow, "upload_batches", ser.upload_batch_to_json, ser.upload_batch_from_json, lambda x: str(x.batch_id))
+
+    def add(self, batch: UploadBatch) -> None:
+        self._execute("INSERT INTO upload_batches(id, number, created_at_utc, created_by_actor_id, created_by_actor_kind, status, expected_source_file_count, canonical_payload) VALUES (?, ?, ?, ?, ?, ?, ?, ?)", (*ser.upload_batch_columns(batch), self._to_json(batch)), duplicate_is_already_exists=True)
+
+    def get(self, batch_id: EntityId) -> UploadBatch | None:
+        rows = self._fetchall("SELECT id, number, created_at_utc, created_by_actor_id, created_by_actor_kind, status, expected_source_file_count, canonical_payload FROM upload_batches WHERE id=?", (str(batch_id),))
+        return None if not rows else self._from_projection(rows[0])
+
+    def get_by_number(self, number: BatchNumber) -> UploadBatch | None:
+        rows = self._fetchall("SELECT id, number, created_at_utc, created_by_actor_id, created_by_actor_kind, status, expected_source_file_count, canonical_payload FROM upload_batches WHERE number=?", (number.value,))
+        return None if not rows else self._from_projection(rows[0])
+
+    def update(self, batch: UploadBatch) -> None:
+        old = self.get(batch.batch_id)
+        if old is None or batch.source_file_ids[:-1] != old.source_file_ids or len(batch.source_file_ids) != len(old.source_file_ids) + 1:
+            raise PersistenceError(PersistenceErrorCode.PERSISTED_DATA_INVALID)
+        payload = self._to_json(batch)
+        with self._atomic_write():
+            self._execute("UPDATE upload_batches SET expected_source_file_count=?, canonical_payload=? WHERE id=?", (len(batch.source_file_ids), payload, str(batch.batch_id)))
+            self._execute("INSERT INTO upload_batch_source_files(batch_id, order_index, source_file_id) VALUES (?, ?, ?)", (str(batch.batch_id), len(old.source_file_ids), str(batch.source_file_ids[-1])), duplicate_is_already_exists=True)
+
+    def _from_projection(self, row: tuple[Any, ...]) -> UploadBatch:
+        entity = self._entity_from_payload_row(row[0], row[7])
+        if not isinstance(entity, UploadBatch) or tuple(row[:7]) != ser.upload_batch_columns(entity):
+            raise PersistenceError(PersistenceErrorCode.PERSISTED_DATA_INVALID)
+        members = tuple(EntityId.parse(r[0]) for r in self._fetchall("SELECT source_file_id FROM upload_batch_source_files WHERE batch_id=? ORDER BY order_index", (str(entity.batch_id),)))
+        if members != entity.source_file_ids or len(members) != row[6]:
+            raise PersistenceError(PersistenceErrorCode.PERSISTED_DATA_INVALID)
+        return entity
+
+
+class SourceFileRepo(_Repo):
+    def __init__(self, uow: SqlCipherUnitOfWork) -> None:
+        super().__init__(uow, "source_files", ser.source_file_to_json, ser.source_file_from_json, lambda x: str(x.source_file_id))
+
+    def add(self, source_file: SourceFile) -> None:
+        self._execute("INSERT INTO source_files(id, batch_id, original_artifact_id, original_basename, detected_media_type, byte_size, sha256, perceptual_algorithm_id, perceptual_algorithm_version, perceptual_bit_width, perceptual_hex_value, width, height, exif_orientation, imported_at_utc, imported_by_actor_id, imported_by_actor_kind, canonical_payload) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", (*ser.source_file_columns(source_file), self._to_json(source_file)), duplicate_is_already_exists=True)
+
+    def get(self, source_file_id: EntityId) -> SourceFile | None:
+        rows = self._fetchall(self._select() + " WHERE id=?", (str(source_file_id),))
+        return None if not rows else self._from_projection(rows[0])
+
+    def list_by_batch(self, batch_id: EntityId) -> tuple[SourceFile, ...]:
+        return tuple(self._from_projection(r) for r in self._fetchall(self._select() + " WHERE batch_id=? ORDER BY imported_at_utc, id", (str(batch_id),)))
+
+    def list_by_sha256(self, sha256: Sha256Digest) -> tuple[SourceFile, ...]:
+        return tuple(self._from_projection(r) for r in self._fetchall(self._select() + " WHERE sha256=? ORDER BY imported_at_utc, id", (sha256.value,)))
+
+    def list_compatible_perceptual_hashes(self, algorithm_id: str, algorithm_version: int, bit_width: int) -> tuple[SourceFile, ...]:
+        return tuple(self._from_projection(r) for r in self._fetchall(self._select() + " WHERE perceptual_algorithm_id=? AND perceptual_algorithm_version=? AND perceptual_bit_width=? ORDER BY imported_at_utc, id", (algorithm_id, algorithm_version, bit_width)))
+
+    def _select(self) -> str:
+        return "SELECT id, batch_id, original_artifact_id, original_basename, detected_media_type, byte_size, sha256, perceptual_algorithm_id, perceptual_algorithm_version, perceptual_bit_width, perceptual_hex_value, width, height, exif_orientation, imported_at_utc, imported_by_actor_id, imported_by_actor_kind, canonical_payload FROM source_files"
+
+    def _from_projection(self, row: tuple[Any, ...]) -> SourceFile:
+        entity = self._entity_from_payload_row(row[0], row[17])
+        if not isinstance(entity, SourceFile) or tuple(row[:17]) != ser.source_file_columns(entity):
+            raise PersistenceError(PersistenceErrorCode.PERSISTED_DATA_INVALID)
+        return entity
+
+
 class StoredArtifactRepo(_Repo):
     def __init__(self, uow: SqlCipherUnitOfWork) -> None:
         super().__init__(
@@ -1123,6 +1187,8 @@ class SqlCipherUnitOfWork:
         self._application_snapshots: SnapshotRepo | None = None
         self._stored_artifacts: StoredArtifactRepo | None = None
         self._audit_events: AuditEventRepo | None = None
+        self._upload_batches: UploadBatchRepo | None = None
+        self._source_files: SourceFileRepo | None = None
 
     def __repr__(self) -> str:
         return "SqlCipherUnitOfWork(<redacted>)"
@@ -1185,6 +1251,14 @@ class SqlCipherUnitOfWork:
     def audit_events(self) -> AuditEventRepo:
         return self._repository(self._audit_events)
 
+    @property
+    def upload_batches(self) -> UploadBatchRepo:
+        return self._repository(self._upload_batches)
+
+    @property
+    def source_files(self) -> SourceFileRepo:
+        return self._repository(self._source_files)
+
     def _construct_repositories(self) -> None:
         self._persons = PersonRepo(self)
         self._identity_documents = IdentityRepo(self)
@@ -1197,6 +1271,8 @@ class SqlCipherUnitOfWork:
         self._application_snapshots = SnapshotRepo(self)
         self._stored_artifacts = StoredArtifactRepo(self)
         self._audit_events = AuditEventRepo(self)
+        self._upload_batches = UploadBatchRepo(self)
+        self._source_files = SourceFileRepo(self)
 
     def _invalidate(self) -> None:
         connection = self._conn

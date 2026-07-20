@@ -867,3 +867,31 @@ def audit_event_columns(event: AuditEvent) -> tuple[object, ...]:
         None if event.reason_code is None else event.reason_code.value,
         None if event.correlation_id is None else str(event.correlation_id),
     )
+
+_UPLOAD_BATCH_FIELDS = frozenset({"batch_id", "number", "created_at", "created_by", "status", "source_file_ids"})
+_SOURCE_FILE_FIELDS = frozenset({"source_file_id", "batch_id", "original_artifact_id", "original_basename", "detected_media_type", "byte_size", "sha256", "perceptual_hash", "width", "height", "exif_orientation", "imported_at", "imported_by"})
+
+def upload_batch_to_json(o: UploadBatch) -> str:
+    return dumps({"batch_id": str(o.batch_id), "number": o.number.value, "created_at": utc_iso(o.created_at), "created_by": _actor(o.created_by), "status": o.status.value, "source_file_ids": [str(i) for i in o.source_file_ids]})
+
+@persisted_data_boundary
+def upload_batch_from_json(payload: str) -> UploadBatch:
+    d = loads(payload)
+    if set(d) != _UPLOAD_BATCH_FIELDS: raise PersistenceError(PersistenceErrorCode.PERSISTED_DATA_INVALID)
+    return UploadBatch(req_id(d["batch_id"]), BatchNumber(d["number"]), parse_datetime(d["created_at"]), parse_actor(d["created_by"]), parse_enum(UploadBatchStatus, d["status"]), tuple(req_id(i) for i in d["source_file_ids"]))
+
+def upload_batch_columns(o: UploadBatch) -> tuple[str, str, str, str, str, str, int]:
+    return (str(o.batch_id), o.number.value, utc_iso(o.created_at), str(o.created_by.actor_id), o.created_by.kind.value, o.status.value, len(o.source_file_ids))
+
+def source_file_to_json(o: SourceFile) -> str:
+    return dumps({"source_file_id": str(o.source_file_id), "batch_id": str(o.batch_id), "original_artifact_id": str(o.original_artifact_id), "original_basename": o.original_basename.value, "detected_media_type": o.detected_media_type.value, "byte_size": o.byte_size, "sha256": o.sha256.value, "perceptual_hash": {"algorithm_id": o.perceptual_hash.algorithm_id, "algorithm_version": o.perceptual_hash.algorithm_version, "bit_width": o.perceptual_hash.bit_width, "hex_value": o.perceptual_hash.hex_value}, "width": o.width, "height": o.height, "exif_orientation": o.exif_orientation, "imported_at": utc_iso(o.imported_at), "imported_by": _actor(o.imported_by)})
+
+@persisted_data_boundary
+def source_file_from_json(payload: str) -> SourceFile:
+    d = loads(payload)
+    if set(d) != _SOURCE_FILE_FIELDS: raise PersistenceError(PersistenceErrorCode.PERSISTED_DATA_INVALID)
+    p = d["perceptual_hash"]
+    return SourceFile(req_id(d["source_file_id"]), req_id(d["batch_id"]), req_id(d["original_artifact_id"]), SourceBasename(d["original_basename"]), parse_enum(SourceMediaType, d["detected_media_type"]), _require_json_int(d["byte_size"]), Sha256Digest(d["sha256"]), PerceptualHash(p["algorithm_id"], _require_json_int(p["algorithm_version"]), _require_json_int(p["bit_width"]), p["hex_value"]), _require_json_int(d["width"]), _require_json_int(d["height"]), d["exif_orientation"], parse_datetime(d["imported_at"]), parse_actor(d["imported_by"]))
+
+def source_file_columns(o: SourceFile) -> tuple[str, str, str, str, str, int, str, str, int, int, str, int, int, int | None, str, str, str]:
+    return (str(o.source_file_id), str(o.batch_id), str(o.original_artifact_id), o.original_basename.value, o.detected_media_type.value, o.byte_size, o.sha256.value, o.perceptual_hash.algorithm_id, o.perceptual_hash.algorithm_version, o.perceptual_hash.bit_width, o.perceptual_hash.hex_value, o.width, o.height, o.exif_orientation, utc_iso(o.imported_at), str(o.imported_by.actor_id), o.imported_by.kind.value)

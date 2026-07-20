@@ -267,3 +267,7 @@ PR-007: `COMPLETED AND HUMAN ACCEPTED`. GitHub PR: `#19`. Final reviewed head: `
 M2: `COMPLETED AND HUMAN ACCEPTED`. Gate 1: `COMPLETED AND HUMAN ACCEPTED`. PR-008: `AUTHORIZED, NOT STARTED` for the non-UI encrypted original import and advisory duplicate-detection foundation only, governed by ADR-022 and `docs/tasks/PR-008-file-import-duplicate-detection.md`. PR-009 and later: `UNAUTHORIZED`. Do not describe PR-008 as implemented, in review, completed or accepted. Do not begin PR-009 or later work.
 
 Q-006: `DEFERRED`. Q-007: `DEFERRED`. Q-009: `DEFERRED`. Q-010: `ACCEPTED`. Q-017: `DEFERRED`. `RISK-PR005-RAWKEY-PRAGMA` remains open for installer, pilot and production release. The sensitive-data/private-contour gate remains open for real documents and real personal data. Real documents and personal data remain prohibited in Git, Codex, CI, logs and test reports.
+
+## PR-008 implementation note
+
+PR-008 adds source import domain contracts, Pillow/pi-heif decoding, DHASH64 advisory duplicate checks, encrypted original publication through the PR-006 storage port, SQLCipher persistence migration v0004, and PR-007 audit event creation. No UI, OCR, export, quality assessment, or PR-009 behavior is in scope.

@@ -12,9 +12,10 @@ from document_intake.persistence.migrations.v0002_stored_artifacts import (
 from document_intake.persistence.migrations.v0003_audit_events import (
     MIGRATION as V0003_AUDIT_EVENTS,
 )
+from document_intake.persistence.migrations.v0004_source_file_import import MIGRATION as V0004_SOURCE_FILE_IMPORT
 
-MIGRATIONS: tuple[Migration, ...] = (V0001_INITIAL, V0002_STORED_ARTIFACTS, V0003_AUDIT_EVENTS)
-CURRENT_SCHEMA_VERSION = 3
+MIGRATIONS: tuple[Migration, ...] = (V0001_INITIAL, V0002_STORED_ARTIFACTS, V0003_AUDIT_EVENTS, V0004_SOURCE_FILE_IMPORT)
+CURRENT_SCHEMA_VERSION = 4
 
 __all__ = [
     "APPLICATION_ID",

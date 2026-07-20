@@ -1,5 +1,6 @@
 """Entity public API."""
 
+from document_intake.domain.entities.imports import ImportWarning, SourceFile, UploadBatch
 from document_intake.domain.entities.audit import AuditEvent
 from document_intake.domain.entities.core import (
     Application,
@@ -16,6 +17,9 @@ from document_intake.domain.entities.core import (
 )
 
 __all__ = [
+    "UploadBatch",
+    "SourceFile",
+    "ImportWarning",
     "Application",
     "ApplicationSnapshot",
     "AuditEvent",
