@@ -80,13 +80,13 @@ Statuses: `OPEN`, `ACCEPTED`, `DEFERRED`, `EXTERNAL_CONFIRMATION_REQUIRED`, `LOC
 
 ### Q-007
 
-**Question:** Минимальные readability/resolution thresholds после пилота.
+**Question:** Минимальные prepared-JPEG readability and post-compression resolution thresholds после пилота.
 
 **Status:** DEFERRED
 **Owner:** Product owner and pilot/test owner.
-**Reason for deferral:** Final thresholds require image-stage implementation and pilot evidence.
-**Target:** PR-009/PR-011 and pilot.
-**Current gate impact:** Does not block M0 or PR-004.
+**Reason for deferral:** Final prepared-artifact readability and post-compression resolution thresholds require image-stage implementation and pilot evidence. Scope clarification: Q-007 controls PR-011 prepared-JPEG readability and post-compression resolution thresholds. The PR-009 whole-frame source-quality threshold portion was separated into Q-021. Q-007 no longer blocks PR-009 algorithm or persistence implementation. This preserves historical continuity and does not mark Q-007 accepted.
+**Target:** PR-011 and pilot.
+**Current gate impact:** Does not block M0 or PR-004, and does not block PR-009 deterministic algorithm or persistence implementation.
 
 ## Эксплуатация и безопасность
 
@@ -249,11 +249,12 @@ Q-017: `DEFERRED`. PR-006 storage remains backup-neutral. Q-017 remains assigned
 
 ### Q-021
 
-**Question:** PR-009 image-quality policy thresholds.
+**Question:** PR-009 whole-frame diagnostic policy thresholds.
 
 **Status:** OPEN
 **Owner:** Product owner.
 **Acceptance requirement:** REQUIRES PRODUCT-OWNER ACCEPTANCE.
+**Scope controlled by Q-021:** minimum source-image dimensions for PR-009 diagnostics; blur threshold; contrast threshold; glare cutoff/fraction; exposure cutoffs/fractions; severity mapping; production `policy_id`; production policy version; activation of the default PR-009 policy; final PR-009 human acceptance.
 **Required evidence:** Local synthetic calibration; local anonymized/non-PII image set where legally and operationally allowed; no real documents in Git, Codex or CI; comparison of false warning and missed warning rates; explicit selected `policy_id` and `policy_version`.
 **Target:** Before production activation and final human acceptance of PR-009.
 **Current gate impact:** Does not block contract review. Proposed ADR-023 allows deterministic metrics, typed policy handling, persistence and tests to be implemented, but production activation of a default quality policy and final human acceptance remain blocked until Q-021 is accepted.
