@@ -142,3 +142,32 @@ def test_malformed_persisted_payload_fails_closed_without_payload_leak() -> None
         r.get(e.event_id)
     assert excinfo.value.code == PersistenceErrorCode.PERSISTED_DATA_INVALID
     assert FORBIDDEN not in str(excinfo.value)
+
+
+def test_list_for_subject_validates_tampered_rows_before_filtering() -> None:
+    r, uow = repo()
+    e = event(10, correlation=eid(701))
+    r.add(e)
+    uow.conn.execute("DROP TRIGGER audit_events_no_update")
+    uow.conn.execute(
+        "UPDATE audit_events SET subject_id=? WHERE event_id=?",
+        (str(eid(999)), str(e.event_id)),
+    )
+    with pytest.raises(PersistenceError) as excinfo:
+        r.list_for_subject(AuditSubjectType.PERSON, eid(100))
+    assert excinfo.value.code == PersistenceErrorCode.PERSISTED_DATA_INVALID
+
+
+def test_list_by_correlation_validates_tampered_rows_before_filtering() -> None:
+    r, uow = repo()
+    corr = eid(702)
+    e = event(11, correlation=corr)
+    r.add(e)
+    uow.conn.execute("DROP TRIGGER audit_events_no_update")
+    uow.conn.execute(
+        "UPDATE audit_events SET correlation_id=? WHERE event_id=?",
+        (str(eid(999)), str(e.event_id)),
+    )
+    with pytest.raises(PersistenceError) as excinfo:
+        r.list_by_correlation(corr)
+    assert excinfo.value.code == PersistenceErrorCode.PERSISTED_DATA_INVALID

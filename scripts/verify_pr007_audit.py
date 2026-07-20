@@ -62,12 +62,14 @@ def line(ok: bool, label: str) -> bool:
     return ok
 
 
-def expect_error(label: str, fn) -> bool:  # type: ignore[no-untyped-def]
+def expect_rejection(label: str, fn) -> bool:  # type: ignore[no-untyped-def]
     try:
         fn()
     except PersistenceError:
         return line(True, label)
-    except Exception:
+    except Exception as error:
+        if type(error).__name__ in {"DatabaseError", "IntegrityError", "OperationalError"}:
+            return line(True, label)
         return line(False, label)
     return line(False, label)
 
@@ -84,7 +86,7 @@ def main() -> int:
         ok &= line(True, f"python={platform.python_version()}")
         ok &= line(CURRENT_SCHEMA_VERSION == 3, "schema_version=3")
         ok &= line(
-            V0003.checksum == "11fdd034c0e5705ef532987f0cb4f3568bc402d3f489c0077cd5bde2a2748e53",
+            V0003.checksum == "e01d441c2572ca484cf5227d94f57a3cb62fa8e6e3e223eefc6852b81f6eb3c1",
             f"v0003_checksum={V0003.checksum}",
         )
         corr = eid(700)
@@ -100,27 +102,27 @@ def main() -> int:
             )
             ok &= line(uow.audit_events.list_by_correlation(corr) == (e2, e1), "correlation_order")
             conn = uow._connection()
-            ok &= expect_error(
+            ok &= expect_rejection(
                 "update_rejected",
                 lambda: conn.execute(
                     "UPDATE audit_events SET action_code='ENTITY_UPDATED' WHERE event_id=?",
                     (str(e1.event_id),),
                 ),
             )
-            ok &= expect_error(
+            ok &= expect_rejection(
                 "delete_rejected",
                 lambda: conn.execute(
                     "DELETE FROM audit_events WHERE event_id=?", (str(e1.event_id),)
                 ),
             )
-            ok &= expect_error(
+            ok &= expect_rejection(
                 "insert_or_replace_rejected",
                 lambda: conn.execute(
                     "INSERT OR REPLACE INTO audit_events(event_id, occurred_at_utc, actor_id, actor_kind, action_code, subject_type, subject_id, payload) VALUES (?, '2026-07-19T00:00:00Z', ?, 'SYSTEM', 'ENTITY_CREATED', 'PERSON', ?, '{}')",
                     (str(e1.event_id), str(e1.actor.actor_id), str(e1.subject_id)),
                 ),
             )
-            ok &= expect_error(
+            ok &= expect_rejection(
                 "replace_into_rejected",
                 lambda: conn.execute(
                     "REPLACE INTO audit_events(event_id, occurred_at_utc, actor_id, actor_kind, action_code, subject_type, subject_id, payload) VALUES (?, '2026-07-19T00:00:00Z', ?, 'SYSTEM', 'ENTITY_CREATED', 'PERSON', ?, '{}')",

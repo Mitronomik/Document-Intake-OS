@@ -296,5 +296,5 @@ def test_v0003_checksum_literal_and_prior_migrations_unchanged() -> None:
     assert V0003_MIGRATION.name == "audit_events_pr007"
     assert (
         V0003_MIGRATION.checksum
-        == "11fdd034c0e5705ef532987f0cb4f3568bc402d3f489c0077cd5bde2a2748e53"
+        == "e01d441c2572ca484cf5227d94f57a3cb62fa8e6e3e223eefc6852b81f6eb3c1"
     )

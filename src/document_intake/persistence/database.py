@@ -1067,21 +1067,25 @@ class AuditEventRepo(_Repo):
         if not isinstance(subject_type, AuditSubjectType) or not isinstance(subject_id, EntityId):
             raise PersistenceError(PersistenceErrorCode.PERSISTED_DATA_INVALID)
         return tuple(
-            self._from_projection(row)
-            for row in self._fetchall(
-                "SELECT event_id, occurred_at_utc, actor_id, actor_kind, action_code, subject_type, subject_id, field_key, before_classification, before_was_present, before_display_value, after_classification, after_was_present, after_display_value, reason_code, correlation_id, payload FROM audit_events WHERE subject_type=? AND subject_id=? ORDER BY occurred_at_utc, event_id",
-                (subject_type.value, str(subject_id)),
-            )
+            event
+            for event in self._list_validated_ordered()
+            if event.subject_type is subject_type and event.subject_id == subject_id
         )
 
     def list_by_correlation(self, correlation_id: EntityId) -> tuple[AuditEvent, ...]:
         if not isinstance(correlation_id, EntityId):
             raise PersistenceError(PersistenceErrorCode.PERSISTED_DATA_INVALID)
         return tuple(
+            event
+            for event in self._list_validated_ordered()
+            if event.correlation_id == correlation_id
+        )
+
+    def _list_validated_ordered(self) -> tuple[AuditEvent, ...]:
+        return tuple(
             self._from_projection(row)
             for row in self._fetchall(
-                "SELECT event_id, occurred_at_utc, actor_id, actor_kind, action_code, subject_type, subject_id, field_key, before_classification, before_was_present, before_display_value, after_classification, after_was_present, after_display_value, reason_code, correlation_id, payload FROM audit_events WHERE correlation_id=? ORDER BY occurred_at_utc, event_id",
-                (str(correlation_id),),
+                "SELECT event_id, occurred_at_utc, actor_id, actor_kind, action_code, subject_type, subject_id, field_key, before_classification, before_was_present, before_display_value, after_classification, after_was_present, after_display_value, reason_code, correlation_id, payload FROM audit_events ORDER BY occurred_at_utc, event_id"
             )
         )
 
