@@ -47,6 +47,47 @@ from document_intake.persistence.errors import PersistenceError, PersistenceErro
 
 NOW = datetime(2026, 7, 20, 12, 0, tzinfo=UTC)
 PIXELS = bytes(range(9)) * 8
+EXPECTED_PR008_SUCCESS_LINES = (
+    "PR008_VERIFY schema_version=4",
+    "PR008_VERIFY migration_v0004=PASS",
+    "PR008_VERIFY encrypted_storage=PASS",
+    "PR008_VERIFY byte_identity=PASS",
+    "PR008_VERIFY media_jpeg=PASS",
+    "PR008_VERIFY media_png=PASS",
+    "PR008_VERIFY media_heif=PASS",
+    "PR008_VERIFY extension_casefold=PASS",
+    "PR008_VERIFY extension_mismatch_warning=PASS",
+    "PR008_VERIFY unsupported_extension=PASS",
+    "PR008_VERIFY exact_duplicate=PASS",
+    "PR008_VERIFY perceptual_duplicate=PASS",
+    "PR008_VERIFY no_self_match=PASS",
+    "PR008_VERIFY warning_order=PASS",
+    "PR008_VERIFY partial_success=PASS",
+    "PR008_VERIFY audit_atomicity=PASS",
+    "PR008_VERIFY orphan_reconciliation=PASS",
+    "PR008_VERIFY privacy=PASS",
+    "PR008_VERIFY result=PASS",
+)
+FORBIDDEN_PR008_OUTPUT_MARKERS = (
+    "/private/",
+    "/tmp/",
+    "\\",
+    ".db",
+    ".jpg",
+    ".jpeg",
+    ".png",
+    ".heic",
+    ".heif",
+    "SELECT",
+    "INSERT",
+    "UPDATE",
+    "DELETE",
+    "Traceback",
+    "Exception",
+    "sha256=",
+    "dhash=",
+    "key=",
+)
 
 
 def eid(value: int) -> EntityId:
@@ -571,9 +612,12 @@ def test_success_uses_one_atomic_write_transaction_and_exact_audit(tmp_path: Pat
     assert event.field_key is None
     assert event.before is not None
     assert event.before.classification is AuditValueClassification.ABSENT
+    assert event.before.display_value is None
+    assert event.before.was_present is False
     assert event.after is not None
     assert event.after.classification is AuditValueClassification.NON_SENSITIVE
     assert event.after.display_value == "ORIGINAL"
+    assert event.after.was_present is True
     assert event.reason_code is not None and event.reason_code.value == "SOURCE_FILE_IMPORT"
     assert event.correlation_id == eid(100)
 
@@ -618,7 +662,7 @@ def test_earlier_success_survives_later_failure_and_processing_continues(tmp_pat
     assert set(factory.state.audits) == {eid(2001), eid(2003)}
 
 
-def test_pr008_verifier_subprocess_has_only_controlled_output() -> None:
+def test_pr008_verifier_subprocess_has_exact_platform_output() -> None:
     repository = Path(__file__).parents[2]
     completed = subprocess.run(
         [sys.executable, "scripts/verify_pr008_import.py"],
@@ -628,13 +672,160 @@ def test_pr008_verifier_subprocess_has_only_controlled_output() -> None:
         text=True,
     )
     assert completed.stderr == ""
-    assert completed.returncode in {0, 2}
-    lines = completed.stdout.splitlines()
-    assert lines
-    assert all(line.startswith("PR008_VERIFY ") for line in lines)
+    lines = tuple(completed.stdout.splitlines())
+    assert not any(marker in completed.stdout for marker in FORBIDDEN_PR008_OUTPUT_MARKERS)
     if platform.system() == "Windows":
         assert completed.returncode == 0
-        assert lines[-1] == "PR008_VERIFY result=PASS"
+        assert lines == EXPECTED_PR008_SUCCESS_LINES
     else:
         assert completed.returncode == 2
-        assert lines == ["PR008_VERIFY result=INCONCLUSIVE code=UNSUPPORTED_PLATFORM"]
+        assert lines == ("PR008_VERIFY result=INCONCLUSIVE code=UNSUPPORTED_PLATFORM",)
+
+
+def test_pr008_supported_success_renderer_is_exact(
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    from scripts import verify_pr008_import as verifier
+
+    statuses = {name: True for name in verifier._CHECKS}
+    statuses["privacy"] = False
+    run = verifier._VerificationRun(statuses, (), False)
+    monkeypatch.setattr(verifier, "_unsupported_code", lambda: None)
+    monkeypatch.setattr(verifier, "_run_supported", lambda: run)
+    assert verifier.main() == 0
+    captured = capsys.readouterr()
+    assert tuple(captured.out.splitlines()) == EXPECTED_PR008_SUCCESS_LINES
+    assert captured.err == ""
+
+
+@pytest.mark.parametrize(
+    "code",
+    [
+        "WINDOWS_SQLCIPHER_UNAVAILABLE",
+        "HEIF_DECODER_UNAVAILABLE",
+        "UNSUPPORTED_PLATFORM",
+    ],
+)
+def test_pr008_inconclusive_renderer_is_exact_and_allowlisted(code: str) -> None:
+    from scripts import verify_pr008_import as verifier
+
+    lines = verifier._render_inconclusive_lines(code)
+    assert lines == (f"PR008_VERIFY result=INCONCLUSIVE code={code}",)
+    assert verifier._has_allowlisted_shape(lines)
+    assert verifier._privacy_safe(lines, forbidden_values=())
+
+
+def test_pr008_unknown_inconclusive_code_is_controlled_failure(
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    from scripts import verify_pr008_import as verifier
+
+    monkeypatch.setattr(verifier, "_unsupported_code", lambda: "UNRECOGNIZED")
+    assert verifier.main() == 1
+    captured = capsys.readouterr()
+    assert captured.out == "PR008_VERIFY result=FAIL\n"
+    assert captured.err == ""
+
+
+def test_pr008_supported_real_flow_proves_distance_nine_exclusion(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from scripts import verify_pr008_import as verifier
+    from tests.persistence.test_unit_of_work import open_sqlite
+
+    from document_intake.persistence import database
+
+    monkeypatch.setattr(database, "_open_connection", open_sqlite)
+    monkeypatch.setattr(verifier, "_ordinary_sqlite_rejects", lambda _path: True)
+    run = verifier._run_supported()
+    assert run.unexpected_failure is False
+    assert run.statuses["perceptual_duplicate"] is True
+    assert run.statuses["audit_atomicity"] is True
+
+
+@pytest.mark.parametrize(
+    ("injected", "forbidden_values"),
+    [
+        ("/private/tmp/pr008-verify", ("/private/tmp/pr008-verify",)),
+        ("synthetic-secret.jpg", ("synthetic-secret.jpg",)),
+        ("a" * 64, ()),
+        ("0123456789abcdef", ("0123456789abcdef",)),
+        ("SELECT secret FROM synthetic", ()),
+        ("Traceback Exception", ()),
+    ],
+)
+def test_pr008_privacy_helper_rejects_injected_values_and_markers(
+    injected: str,
+    forbidden_values: tuple[str, ...],
+) -> None:
+    from scripts import verify_pr008_import as verifier
+
+    lines = list(EXPECTED_PR008_SUCCESS_LINES)
+    lines[0] = f"{lines[0]} {injected}"
+    assert not verifier._privacy_safe(tuple(lines), forbidden_values=forbidden_values)
+
+
+def test_pr008_deterministic_product_failure_is_exit_one_and_allowlisted(
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    from scripts import verify_pr008_import as verifier
+
+    statuses = {name: True for name in verifier._CHECKS}
+    statuses["media_jpeg"] = False
+    statuses["privacy"] = False
+    run = verifier._VerificationRun(statuses, (), False)
+    monkeypatch.setattr(verifier, "_unsupported_code", lambda: None)
+    monkeypatch.setattr(verifier, "_run_supported", lambda: run)
+    assert verifier.main() == 1
+    captured = capsys.readouterr()
+    lines = tuple(captured.out.splitlines())
+    assert len(lines) == len(EXPECTED_PR008_SUCCESS_LINES)
+    assert lines[0] == "PR008_VERIFY schema_version=4"
+    assert "PR008_VERIFY media_jpeg=FAIL" in lines
+    assert "PR008_VERIFY privacy=PASS" in lines
+    assert lines[-1] == "PR008_VERIFY result=FAIL"
+    assert verifier._has_allowlisted_shape(lines)
+    assert captured.err == ""
+
+
+def test_pr008_unexpected_failure_is_sanitized_and_privacy_fails(
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    from scripts import verify_pr008_import as verifier
+
+    statuses = {name: False for name in verifier._CHECKS}
+    run = verifier._VerificationRun(statuses, ("unsafe raw exception detail",), True)
+    monkeypatch.setattr(verifier, "_unsupported_code", lambda: None)
+    monkeypatch.setattr(verifier, "_run_supported", lambda: run)
+    assert verifier.main() == 1
+    captured = capsys.readouterr()
+    lines = tuple(captured.out.splitlines())
+    assert lines[-2:] == (
+        "PR008_VERIFY privacy=FAIL",
+        "PR008_VERIFY result=FAIL",
+    )
+    assert "unsafe raw exception detail" not in captured.out
+    assert verifier._has_allowlisted_shape(lines)
+    assert captured.err == ""
+
+
+def test_pr008_unhandled_supported_failure_is_one_line_sanitized_failure(
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    from scripts import verify_pr008_import as verifier
+
+    def fail_verification() -> verifier._VerificationRun:
+        raise RuntimeError("unsafe deterministic exception detail")
+
+    monkeypatch.setattr(verifier, "_unsupported_code", lambda: None)
+    monkeypatch.setattr(verifier, "_run_supported", fail_verification)
+    assert verifier.main() == 1
+    captured = capsys.readouterr()
+    assert captured.out == "PR008_VERIFY result=FAIL\n"
+    assert "unsafe deterministic exception detail" not in captured.out
+    assert captured.err == ""

@@ -152,6 +152,17 @@ def test_grayscale_source_is_converted_to_canonical_8_bit_l_mode() -> None:
 
 
 def test_larger_image_uses_exact_lanczos_resize(monkeypatch: pytest.MonkeyPatch) -> None:
+    source = Image.new("RGB", (31, 19))
+    for x in range(31):
+        for y in range(19):
+            source.putpixel(
+                (x, y),
+                (
+                    (x * 17 + y * 3) % 256,
+                    (x * 5 + y * 19) % 256,
+                    (x * 11 + y * 7) % 256,
+                ),
+            )
     seen: list[tuple[tuple[int, int], object]] = []
     original = Image.Image.resize
 
@@ -166,9 +177,22 @@ def test_larger_image_uses_exact_lanczos_resize(monkeypatch: pytest.MonkeyPatch)
         return original(self, size, resample, box, reducing_gap)
 
     monkeypatch.setattr(Image.Image, "resize", recording_resize)
-    result = decode(encoded(Image.new("RGB", (31, 19), (30, 60, 90)), "PNG"))
+    result = decode(encoded(source, "PNG"))
+    frozen_hash = "1810111f39f11131"
+    assert source.width > 9 and source.height > 8
+    assert (result.grayscale_width, result.grayscale_height) == (9, 8)
     assert len(result.grayscale_pixels) == 72
     assert seen[-1] == ((9, 8), Image.Resampling.LANCZOS)
+    assert (
+        dhash64(
+            result.grayscale_pixels,
+            result.grayscale_width,
+            result.grayscale_height,
+        )
+        == frozen_hash
+    )
+    assert frozen_hash == frozen_hash.lower()
+    assert len(frozen_hash) == 16
 
 
 @pytest.mark.parametrize("content", [b"", b"not an image", b"\xff\xd8truncated"])
