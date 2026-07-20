@@ -1,7 +1,7 @@
 # Progress
 
-**Обновлено:** 2026-07-19
-**Статус:** PR-005: COMPLETED AND HUMAN ACCEPTED; PR-006: COMPLETED AND HUMAN ACCEPTED; PR-007: COMPLETED AND HUMAN ACCEPTED; PR-008: IMPLEMENTED AND IN REVIEW, NOT ACCEPTED; PR-009 AND LATER: UNAUTHORIZED
+**Обновлено:** 2026-07-21
+**Статус:** PR-005: COMPLETED AND HUMAN ACCEPTED; PR-006: COMPLETED AND HUMAN ACCEPTED; PR-007: COMPLETED AND HUMAN ACCEPTED; PR-008: COMPLETED AND HUMAN ACCEPTED WITH DOCUMENTED RESIDUAL RISK; RISK-PR008-W11-SMOKE: ACCEPTED FOR PR-008; DEFERRED TO INSTALLER/PILOT/RELEASE; PR-009: AUTHORIZED, NOT STARTED; PR-010 AND LATER: UNAUTHORIZED; Gate 2: NOT ACCEPTED; M3: IN PROGRESS
 
 ## Завершено
 
@@ -47,7 +47,7 @@
 - [x] PR-005 v0001 migration checksum is final at `e1e1f5f6d8d675a146f3d0c538a0d544b6f8a984c301d177ee1ad86e42f2d500`; migration v0001 is frozen after merge and every future schema change must use migration v0002 or later;
 - [x] Windows SQLCipher evidence is complete for the PR-005 acceptance boundary through exact-head CI run #73;
 - [x] PR-006: COMPLETED AND HUMAN ACCEPTED;
-- [x] PR-007: COMPLETED AND HUMAN ACCEPTED; PR-008: IMPLEMENTED AND IN REVIEW, NOT ACCEPTED; PR-009 AND LATER: UNAUTHORIZED;
+- [x] PR-007: COMPLETED AND HUMAN ACCEPTED; PR-008: COMPLETED AND HUMAN ACCEPTED WITH DOCUMENTED RESIDUAL RISK; RISK-PR008-W11-SMOKE: ACCEPTED FOR PR-008; DEFERRED TO INSTALLER/PILOT/RELEASE; PR-009: AUTHORIZED, NOT STARTED; PR-010 AND LATER: UNAUTHORIZED; Gate 2: NOT ACCEPTED; M3: IN PROGRESS;
 - [x] Gate 1: COMPLETED AND HUMAN ACCEPTED;
 - [x] M2: COMPLETED AND HUMAN ACCEPTED;
 - [x] Q-010: ACCEPTED;
@@ -60,7 +60,7 @@
 ## Not started / unauthorized
 
 - [x] PR-006 is COMPLETED AND HUMAN ACCEPTED through PR #17;
-- [x] PR-007 is COMPLETED AND HUMAN ACCEPTED; PR-008 is IMPLEMENTED AND IN REVIEW, NOT ACCEPTED; PR-009 and later implementation tasks remain UNAUTHORIZED;
+- [x] PR-007 is COMPLETED AND HUMAN ACCEPTED; PR-008 is COMPLETED AND HUMAN ACCEPTED WITH DOCUMENTED RESIDUAL RISK; PR-009 is AUTHORIZED, NOT STARTED; PR-010 and later implementation tasks remain UNAUTHORIZED;
 - [ ] The template enforcement PR remains future work and does not block PR-004 or PR-005 closure;
 - [ ] integration of immutable storage into the future file-import workflow;
 - [ ] image pipeline;
@@ -81,7 +81,7 @@
 
 PR-S001/PR-S001-F1/PR-S001-F2/PR-S001-F3/PR-S001-F4 use fictional synthetic data only, may evaluate candidate packages and prototypes, must not create production database/storage APIs, and must not use real documents or personal data. PR-S001 contains no production persistence/storage API; a negative feasibility result is valid.
 
-PR-007 is completed and human accepted. PR-008 is authorized, not started; do not start PR-009 or later work.
+Implement PR-009 — Orientation and quality assessment only after this lifecycle PR is merged.
 
 Q-009: DEFERRED. PR-006 implements no retention, deletion or secure-deletion policy.
 
@@ -90,7 +90,7 @@ Q-009: DEFERRED. PR-006 implements no retention, deletion or secure-deletion pol
 
 PR-006: `COMPLETED AND HUMAN ACCEPTED`.
 PR-007: `COMPLETED AND HUMAN ACCEPTED`
-PR-008: `IMPLEMENTED AND IN REVIEW, NOT ACCEPTED`; PR-009 and later: `UNAUTHORIZED`.
+PR-008: `COMPLETED AND HUMAN ACCEPTED WITH DOCUMENTED RESIDUAL RISK`; RISK-PR008-W11-SMOKE: `ACCEPTED FOR PR-008; DEFERRED TO INSTALLER/PILOT/RELEASE`; PR-009: `AUTHORIZED, NOT STARTED`; PR-010 AND LATER: `UNAUTHORIZED`; Gate 2: `NOT ACCEPTED`; M3: `IN PROGRESS`.
 Gate 1: `COMPLETED AND HUMAN ACCEPTED`.
 M2: `COMPLETED AND HUMAN ACCEPTED`.
 Q-009: `DEFERRED`.
@@ -105,7 +105,7 @@ PR-006: `COMPLETED AND HUMAN ACCEPTED` through GitHub PR `#17`, final reviewed h
 
 ADR numbering after repair: ADR-019 is PR-005 SQLCipher binding and raw-key staging; ADR-020 is immutable encrypted filesystem storage v1; ADR-021 is immutable PII-safe audit events. The PR #17 description historically referred to the storage decision as ADR-019 before this documentation numbering correction.
 
-PR-007: `COMPLETED AND HUMAN ACCEPTED`. PR-007 was merged and human accepted through GitHub PR #19. PR-008: `IMPLEMENTED AND IN REVIEW, NOT ACCEPTED`; PR-009 and later: `UNAUTHORIZED`. Gate 1: `COMPLETED AND HUMAN ACCEPTED`. M2: `COMPLETED AND HUMAN ACCEPTED`. PR-009 and later remain unauthorized.
+PR-007: `COMPLETED AND HUMAN ACCEPTED`. PR-007 was merged and human accepted through GitHub PR #19. PR-008: `COMPLETED AND HUMAN ACCEPTED WITH DOCUMENTED RESIDUAL RISK`; RISK-PR008-W11-SMOKE: `ACCEPTED FOR PR-008; DEFERRED TO INSTALLER/PILOT/RELEASE`; PR-009: `AUTHORIZED, NOT STARTED`; PR-010 AND LATER: `UNAUTHORIZED`; Gate 2: `NOT ACCEPTED`; M3: `IN PROGRESS`. Gate 1: `COMPLETED AND HUMAN ACCEPTED`. M2: `COMPLETED AND HUMAN ACCEPTED`. PR-009 is authorized, not started; PR-010 and later remain unauthorized.
 
 Q-009: `DEFERRED`. Q-017: `DEFERRED`. Q-010: `ACCEPTED`. `RISK-PR005-RAWKEY-PRAGMA` remains open for installer, pilot and production release. Existing unresolved SQLCipher legal, redistribution and release-binding questions remain unresolved. Real documents and personal data remain prohibited in Git, Codex, CI, logs and test reports. The sensitive-data/private-contour gate remains open for real data.
 
@@ -113,10 +113,24 @@ Q-009: `DEFERRED`. Q-017: `DEFERRED`. Q-010: `ACCEPTED`. `RISK-PR005-RAWKEY-PRAG
 
 PR-007: `COMPLETED AND HUMAN ACCEPTED`. GitHub PR: `#19`. Final reviewed head: `c6d6852ba3cf28060d8fbb76e27201cbbcaade54`. Merge commit: `71dfd7fa31bd67c9f9fa54cc9057684486e842ad`. Merged date: `2026-07-20`. Exact-head CI: `CI #92`, successful. Migration v0003 final checksum: `e01d441c2572ca484cf5227d94f57a3cb62fa8e6e3e223eefc6852b81f6eb3c1`.
 
-M2: `COMPLETED AND HUMAN ACCEPTED`. Gate 1: `COMPLETED AND HUMAN ACCEPTED`. PR-008: `IMPLEMENTED AND IN REVIEW, NOT ACCEPTED` for the non-UI encrypted original import and advisory duplicate-detection foundation only, governed by ADR-022 and `docs/tasks/PR-008-file-import-duplicate-detection.md`. PR-009 and later: `UNAUTHORIZED`. Do not describe PR-008 as completed or accepted. Do not begin PR-009 or later work.
+M2: `COMPLETED AND HUMAN ACCEPTED`. Gate 1: `COMPLETED AND HUMAN ACCEPTED`. PR-008: `COMPLETED AND HUMAN ACCEPTED WITH DOCUMENTED RESIDUAL RISK` for the non-UI encrypted original import and advisory duplicate-detection foundation only, governed by ADR-022, PR #21 and PR-008-D1. PR-009: `AUTHORIZED, NOT STARTED`; PR-010 AND LATER: `UNAUTHORIZED`. Do not claim Gate 2 is accepted, do not claim a physical Windows 11 smoke occurred, and do not begin PR-010 or later work.
 
 Q-006: `DEFERRED`. Q-007: `DEFERRED`. Q-009: `DEFERRED`. Q-010: `ACCEPTED`. Q-017: `DEFERRED`. `RISK-PR005-RAWKEY-PRAGMA` remains open for installer, pilot and production release. The sensitive-data/private-contour gate remains open for real documents and real personal data. Real documents and personal data remain prohibited in Git, Codex, CI, logs and test reports.
 
 ## PR-008 implementation status
 
-PR-008 — File import and duplicate detection is IMPLEMENTED AND IN REVIEW, NOT ACCEPTED on branch `codex-uj32ni` from base `67d2233d2f907bd65eeedcb287a50e00db3d2e6f`. PR-007, M2 and Gate 1 remain COMPLETED AND HUMAN ACCEPTED. Gate 2 remains not accepted. PR-009 and later remain UNAUTHORIZED.
+PR-008 — File import and duplicate detection is COMPLETED AND HUMAN ACCEPTED WITH DOCUMENTED RESIDUAL RISK through GitHub PR #21, final reviewed head `99dfefe467762e241f0584c2ca1a81bc662c1ab0`, merge commit `bf7af9617d33a205f27eb9a4734fea6ecee18b58`, merge date `2026-07-20`, CI #106, workflow database ID `29776664038`, and frozen larger-image DHASH64 `1810111f39f11131`. PR-007, M2 and Gate 1 remain COMPLETED AND HUMAN ACCEPTED. Gate 2 remains not accepted. PR-009 is AUTHORIZED, NOT STARTED; PR-010 and later remain UNAUTHORIZED.
+
+## Lifecycle update — PR-008 acceptance and PR-009 authorization
+
+Decision date: `2026-07-21`. PR-008: `COMPLETED AND HUMAN ACCEPTED WITH DOCUMENTED RESIDUAL RISK`. Product-owner decision record: `docs/decisions/PR-008-D1-lifecycle-acceptance.md`.
+
+PR-008 GitHub PR: `#21` — `PR-008: Add encrypted source import and advisory duplicate detection`. Final reviewed head: `99dfefe467762e241f0584c2ca1a81bc662c1ab0`. Merge commit: `bf7af9617d33a205f27eb9a4734fea6ecee18b58`. Merge date: `2026-07-20`.
+
+Final exact-head CI evidence: `CI #106`, workflow database ID `29776664038`, conclusion `success`. Required jobs passed: `Python checks (ubuntu-latest)`, `Python checks (windows-latest)`, `PR-S001 Windows encryption spike`, and `PR-S001 DPAPI cross-runner negative`. Final recorded test evidence: macOS `465 passed, 3 skipped`; Ubuntu `465 passed, 3 skipped`; Windows `467 passed, 1 skipped`. Final supported Windows CI verifier: `PR008_VERIFY result=PASS`. Frozen larger-image DHASH64: `1810111f39f11131`.
+
+RISK-PR008-W11-SMOKE status: `ACCEPTED FOR THE PR-008 DEVELOPMENT ACCEPTANCE BOUNDARY; DEFERRED TO WINDOWS INSTALLER, PILOT, OR FINAL RELEASE ACCEPTANCE`. No physical Windows 11 x64 smoke was performed or claimed; hosted Windows Server AMD64 evidence is accepted only for the PR-008 development acceptance boundary. The physical Windows 11 smoke remains deferred to Windows packaging, installer, pilot or final release acceptance.
+
+PR-009: `AUTHORIZED, NOT STARTED`. PR-010 AND LATER: `UNAUTHORIZED`. Gate 2: `NOT ACCEPTED`. M3: `IN PROGRESS`.
+
+Next safe step: Implement PR-009 — Orientation and quality assessment only after this lifecycle PR is merged.

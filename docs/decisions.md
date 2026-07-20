@@ -741,3 +741,16 @@ Tests use only generated or clearly synthetic non-document images under the perm
 ## PR-008 implementation evidence note
 
 PR-008 implementation records encrypted source-file import and advisory duplicate detection only. Original bytes are stored through the accepted encrypted storage port, metadata remains in SQLCipher, source paths are not persisted, decoder dependencies are pinned to `Pillow==12.3.0` and `pi-heif==1.4.0`, and no OCR, telemetry, cloud service, export, or PR-009 behavior is authorized by this change.
+
+## PR-008-D1 — PR-008 lifecycle acceptance and Windows 11 smoke residual risk
+
+**Status:** ACCEPTED
+**Date:** 2026-07-21
+
+Decision record: `docs/decisions/PR-008-D1-lifecycle-acceptance.md`.
+
+PR-008: `COMPLETED AND HUMAN ACCEPTED WITH DOCUMENTED RESIDUAL RISK` after GitHub PR #21 merged at `bf7af9617d33a205f27eb9a4734fea6ecee18b58` from final reviewed head `99dfefe467762e241f0584c2ca1a81bc662c1ab0`. Final exact-head evidence is CI #106, workflow database ID `29776664038`, conclusion `success`, with `PR008_VERIFY result=PASS` and frozen larger-image DHASH64 `1810111f39f11131`.
+
+`RISK-PR008-W11-SMOKE`: `ACCEPTED FOR THE PR-008 DEVELOPMENT ACCEPTANCE BOUNDARY; DEFERRED TO WINDOWS INSTALLER, PILOT, OR FINAL RELEASE ACCEPTANCE`. No physical Windows 11 x64 smoke was performed or claimed.
+
+PR-009: `AUTHORIZED, NOT STARTED`. PR-010 AND LATER: `UNAUTHORIZED`. Gate 2: `NOT ACCEPTED`. M3: `IN PROGRESS`.
