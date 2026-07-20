@@ -18,11 +18,18 @@ from document_intake.domain.value_objects.core import (
     ValidationIssue,
     ValidationReport,
 )
+from document_intake.domain.value_objects.imports import (
+    BatchNumber,
+    PerceptualHash,
+    Sha256Digest,
+    SourceBasename,
+)
 
 __all__ = [
     "ActorRef",
     "AuditReasonCode",
     "AuditValueSummary",
+    "BatchNumber",
     "Confidence",
     "CountryCode",
     "EntityId",
@@ -31,7 +38,10 @@ __all__ = [
     "IdentifierText",
     "NonEmptyText",
     "OwnerRef",
+    "PerceptualHash",
+    "Sha256Digest",
     "SnapshotPayload",
+    "SourceBasename",
     "ValidationIssue",
     "ValidationReport",
 ]

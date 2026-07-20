@@ -48,11 +48,25 @@ jobs:
       - name: Ruff format
         run: uv run ruff format --check .
       - name: Mypy
-        run: uv run mypy src scripts/check_repository_policy.py
+        run: >-
+          uv run mypy
+          src
+          scripts/check_repository_policy.py
+          scripts/verify_pr006_storage.py
+          scripts/verify_pr007_audit.py
+          scripts/verify_pr008_import.py
       - name: Pytest
         run: uv run pytest -ra
       - name: Build package
         run: uv build
+      - name: Verify encrypted object storage
+        run: uv run python scripts/verify_pr006_storage.py
+      - name: Verify audit events on production SQLCipher
+        if: runner.os == 'Windows'
+        run: uv run python scripts/verify_pr007_audit.py
+      - name: Verify PR-008 import on production SQLCipher
+        if: runner.os == 'Windows'
+        run: uv run python scripts/verify_pr008_import.py
 
   windows-encryption-spike:
     name: PR-S001 Windows encryption spike

@@ -17,12 +17,14 @@ from document_intake.domain import (
     MigrationDocument,
     OwnerRef,
     Person,
+    SourceFile,
     Terminal,
     TerminalCode,
+    UploadBatch,
     Vehicle,
 )
 from document_intake.domain.enums import AuditSubjectType
-from document_intake.domain.value_objects import EntityId
+from document_intake.domain.value_objects import BatchNumber, EntityId, Sha256Digest
 
 
 class DatabaseKeyProvider(Protocol):
@@ -110,6 +112,23 @@ class AuditEventRepository(Protocol):
     ) -> tuple[AuditEvent, ...]: ...
 
 
+class UploadBatchRepository(Protocol):
+    def add(self, batch: UploadBatch) -> None: ...
+    def get(self, batch_id: EntityId) -> UploadBatch | None: ...
+    def update(self, batch: UploadBatch) -> None: ...
+    def get_by_number(self, number: BatchNumber) -> UploadBatch | None: ...
+
+
+class SourceFileRepository(Protocol):
+    def add(self, source_file: SourceFile) -> None: ...
+    def get(self, source_file_id: EntityId) -> SourceFile | None: ...
+    def list_by_batch(self, batch_id: EntityId) -> tuple[SourceFile, ...]: ...
+    def list_by_sha256(self, sha256: Sha256Digest) -> tuple[SourceFile, ...]: ...
+    def list_compatible_perceptual_hashes(
+        self, algorithm_id: str, algorithm_version: int, bit_width: int
+    ) -> tuple[SourceFile, ...]: ...
+
+
 class UnitOfWork(Protocol):
     persons: PersonRepository
     identity_documents: IdentityDocumentRepository
@@ -122,6 +141,8 @@ class UnitOfWork(Protocol):
     application_snapshots: ApplicationSnapshotRepository
     stored_artifacts: StoredArtifactRepository
     audit_events: AuditEventRepository
+    upload_batches: UploadBatchRepository
+    source_files: SourceFileRepository
 
     def __enter__(self) -> Self: ...
     def __exit__(
@@ -132,3 +153,7 @@ class UnitOfWork(Protocol):
     ) -> bool: ...
     def commit(self) -> None: ...
     def rollback(self) -> None: ...
+
+
+class UnitOfWorkFactory(Protocol):
+    def unit_of_work(self) -> UnitOfWork: ...

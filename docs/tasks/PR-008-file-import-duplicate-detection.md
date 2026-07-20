@@ -1,6 +1,6 @@
 # PR-008 — File import and duplicate detection
 
-Status: `AUTHORIZED, NOT STARTED`
+Status: `IMPLEMENTED AND IN REVIEW, NOT ACCEPTED`
 
 Lifecycle preparation base: `71dfd7fa31bd67c9f9fa54cc9057684486e842ad`.
 
@@ -476,3 +476,16 @@ Do not add real documents, transformed real documents, real personal data, origi
 ## Exact-head CI completion gate
 
 PR-008 cannot be accepted until the exact GitHub head SHA has successful CI, v0004 checksum evidence, Windows verification evidence, dependency/license evidence, repository-policy success and confirmation that no PR-009 or later behavior was implemented.
+
+## Implementation evidence (Codex PR-008 branch)
+
+Status: IMPLEMENTED AND IN REVIEW, NOT ACCEPTED.
+
+Implementation base: `67d2233d2f907bd65eeedcb287a50e00db3d2e6f`.
+Implementation branch: `codex-uj32ni`.
+
+Selected decoder dependencies are `Pillow==12.3.0` and `pi-heif==1.4.0`. Pillow is used for JPEG/PNG decoding, in-memory EXIF orientation handling, alpha compositing, grayscale conversion and fixed LANCZOS resizing. pi-heif is used only for decode-side HEIF/HEIC opener registration at the adapter boundary. No OpenCV, NumPy, imagehash, cloud image libraries, runtime codec installers, telemetry or runtime downloads are introduced by PR-008 code.
+
+Licensing evidence recorded for review: Pillow uses the MIT-CMU license. pi-heif includes Python/package code and native binary wheel components; bundled libheif components are LGPL-covered and have redistribution obligations. PR-033 Windows packaging must ship required third-party license notices, keep LGPL components replaceable as separately distributed native components, avoid statically merging LGPL binary code into proprietary application code, and handle corresponding source/notice obligations for any LGPL component modifications. PR-008 does not modify third-party native libraries.
+
+Gate 2 remains not accepted. PR-009 and later remain UNAUTHORIZED. No OCR is authorized or implemented by PR-008.

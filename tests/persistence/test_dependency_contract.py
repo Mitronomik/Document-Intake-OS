@@ -8,7 +8,7 @@ from pathlib import Path
 def test_package_imports_without_sqlcipher3_eager_import() -> None:
     import document_intake.persistence as persistence
 
-    assert persistence.CURRENT_SCHEMA_VERSION == 3
+    assert persistence.CURRENT_SCHEMA_VERSION == 4
 
 
 def test_dependency_marker_is_exact_and_spike_keeps_cryptography_only() -> None:

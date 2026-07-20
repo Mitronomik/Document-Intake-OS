@@ -270,7 +270,7 @@ def test_lifecycle_state_records_pr005_accepted_state() -> None:
         "PR-005: COMPLETED AND HUMAN ACCEPTED",
         "PR-006: `COMPLETED AND HUMAN ACCEPTED`",
         "PR-007: `COMPLETED AND HUMAN ACCEPTED`",
-        "PR-008: `AUTHORIZED, NOT STARTED`",
+        "PR-008: `IMPLEMENTED AND IN REVIEW, NOT ACCEPTED`",
         "PR-009 and later: `UNAUTHORIZED`",
         "Gate 1: `COMPLETED AND HUMAN ACCEPTED`",
         "M2: `COMPLETED AND HUMAN ACCEPTED`",
@@ -342,10 +342,10 @@ def test_lifecycle_state_records_pr005_accepted_state() -> None:
             assert required in text, filename
         assert "PR-006: `COMPLETED AND HUMAN ACCEPTED`" in text, filename
         assert "PR-007: `COMPLETED AND HUMAN ACCEPTED`" in text, filename
-        assert "PR-008: `AUTHORIZED, NOT STARTED`" in text, filename
+        assert "PR-008: `IMPLEMENTED AND IN REVIEW, NOT ACCEPTED`" in text, filename
         assert "PR-009 and later: `UNAUTHORIZED`" in text, filename
         assert "PR-008: `COMPLETED`" not in text, filename
-        assert "PR-008: `IMPLEMENTED`" not in text, filename
+        assert "PR-008: `COMPLETED AND HUMAN ACCEPTED`" not in text, filename
         assert "Q-009: `DEFERRED`" in text, filename
         assert "Q-017: `DEFERRED`" in text, filename
         _assert_pr_s001_followups_completed(text, filename)
@@ -597,7 +597,7 @@ def test_pr005_pr006_sequences_remain_blocked_after_gate_s1_acceptance() -> None
     )
     assert "PR-006 remains blocked" not in implementation_plan
     assert "PR-007: `COMPLETED AND HUMAN ACCEPTED`" in implementation_plan
-    assert "PR-008: `AUTHORIZED, NOT STARTED`" in implementation_plan
+    assert "PR-008: `IMPLEMENTED AND IN REVIEW, NOT ACCEPTED`" in implementation_plan
     assert "PR-009 and later: `UNAUTHORIZED`" in implementation_plan
 
 
@@ -1179,7 +1179,7 @@ def test_pr007_current_lifecycle_status_has_no_stale_blockers() -> None:
         )
     )
     assert "PR-007: `COMPLETED AND HUMAN ACCEPTED`" in current
-    assert "PR-008: `AUTHORIZED, NOT STARTED`" in current
+    assert "PR-008: `IMPLEMENTED AND IN REVIEW, NOT ACCEPTED`" in current
     assert "PR-009 and later: `UNAUTHORIZED`" in current
     assert "Gate 1: `COMPLETED AND HUMAN ACCEPTED`" in current
     assert "M2: `COMPLETED AND HUMAN ACCEPTED`" in current
@@ -1732,7 +1732,7 @@ def test_pr007_acceptance_closes_m2_gate1_and_preserves_open_risks() -> None:
     for filename in files:
         text = (REPO_ROOT / filename).read_text(encoding="utf-8")
         assert "PR-007: `COMPLETED AND HUMAN ACCEPTED`" in text, filename
-        assert "PR-008: `AUTHORIZED, NOT STARTED`" in text, filename
+        assert "PR-008: `IMPLEMENTED AND IN REVIEW, NOT ACCEPTED`" in text, filename
         assert "PR-009 and later: `UNAUTHORIZED`" in text, filename
         assert "Gate 1: `COMPLETED AND HUMAN ACCEPTED`" in text, filename
         assert "M2: `COMPLETED AND HUMAN ACCEPTED`" in text, filename
@@ -1740,3 +1740,17 @@ def test_pr007_acceptance_closes_m2_gate1_and_preserves_open_risks() -> None:
         assert "sensitive-data/private-contour gate remains open" in text, filename
         for phrase in stale:
             assert phrase not in text, filename
+
+
+def test_pr008_current_state_uses_actual_branch_and_forbids_stale_branch() -> None:
+    progress = (REPO_ROOT / "docs/progress.md").read_text(encoding="utf-8")
+    assert (
+        "PR-008 — File import and duplicate detection is IMPLEMENTED AND IN REVIEW, NOT ACCEPTED"
+        in progress
+    )
+    assert "Gate 2 remains not accepted" in progress
+    assert "Gate 2: `COMPLETED AND HUMAN ACCEPTED`" not in progress
+    assert "Gate 2: `ACCEPTED`" not in progress
+    assert "PR-009 and later remain UNAUTHORIZED" in progress
+    assert "codex-uj32ni" in progress
+    assert "codex/pr-008-file-import-duplicate-detection" not in progress
