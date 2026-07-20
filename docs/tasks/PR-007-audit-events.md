@@ -1,8 +1,18 @@
 # PR-007 — Audit events
 
-Status: `AUTHORIZED AND IN REVIEW, NOT ACCEPTED`
+Status: `COMPLETED AND HUMAN ACCEPTED`
 
-Status: PR-007 is AUTHORIZED AND IN REVIEW, NOT ACCEPTED. The lifecycle pull request that created this task has been merged into `main`; do not mark PR-007 completed or human accepted until a later lifecycle decision.
+GitHub PR: `#19`
+
+Final reviewed head: `c6d6852ba3cf28060d8fbb76e27201cbbcaade54`
+
+Merge commit: `71dfd7fa31bd67c9f9fa54cc9057684486e842ad`
+
+Merged date: `2026-07-20`
+
+Exact-head CI: `CI #92`, successful
+
+Migration v0003 final checksum: `e01d441c2572ca484cf5227d94f57a3cb62fa8e6e3e223eefc6852b81f6eb3c1`
 
 ## Objective
 
@@ -19,7 +29,7 @@ Implement the immutable, append-only, PII-safe audit-event foundation authorized
 - Storage decision: ADR-020.
 - Audit decision: ADR-021.
 - Q-009 and Q-017 remain `DEFERRED`; Q-010 remains `ACCEPTED`.
-- Gate 1 remains `NOT ACCEPTED`; M2 remains `NOT COMPLETED`.
+- Gate 1 is `COMPLETED AND HUMAN ACCEPTED`; M2 is `COMPLETED AND HUMAN ACCEPTED`.
 
 ## Accepted ADR references
 
@@ -214,4 +224,4 @@ PR-007 must not authorize UI, image import, image processing, OCR, MRZ, barcode 
 
 ## Final reporting requirements
 
-The PR-007 final report must state changed files, decisions, exact migration v0003 checksum, confirmation that v0001 and v0002 are byte-for-byte unchanged, tests and exact results, Windows verifier output summary, manual steps, limitations, confirmation that no real documents or personal data were added, confirmation that Q-009 and Q-017 remain deferred, confirmation that PR-008 and later remain unauthorized, and confirmation that Gate 1 and M2 remain incomplete until PR-007 is merged and separately human accepted.
+The PR-007 final report must state changed files, decisions, exact migration v0003 checksum, confirmation that v0001 and v0002 are byte-for-byte unchanged, tests and exact results, Windows verifier output summary, manual steps, limitations, confirmation that no real documents or personal data were added, confirmation that Q-009 and Q-017 remain deferred, confirmation that PR-008 is authorized but not started, confirmation that PR-009 and later remain unauthorized, and confirmation that Gate 1 and M2 are completed and human accepted.

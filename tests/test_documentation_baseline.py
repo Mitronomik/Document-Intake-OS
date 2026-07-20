@@ -49,6 +49,7 @@ REQUIRED_DOCUMENTS = (
     "docs/tasks/PR-005-encrypted-sqlite-persistence.md",
     "docs/tasks/PR-006-immutable-filesystem-storage.md",
     "docs/tasks/PR-007-audit-events.md",
+    "docs/tasks/PR-008-file-import-duplicate-detection.md",
 )
 
 CANONICAL_SOURCE_ORDER = (
@@ -268,10 +269,15 @@ def test_lifecycle_state_records_pr005_accepted_state() -> None:
         "985fae37c7645e8f65edbe4d1609100ee24a2097",
         "PR-005: COMPLETED AND HUMAN ACCEPTED",
         "PR-006: `COMPLETED AND HUMAN ACCEPTED`",
-        "PR-007: `AUTHORIZED AND IN REVIEW, NOT ACCEPTED`",
-        "PR-008 and later: `UNAUTHORIZED`",
-        "Gate 1: `NOT ACCEPTED`",
-        "M2: `NOT COMPLETED`",
+        "PR-007: `COMPLETED AND HUMAN ACCEPTED`",
+        "PR-008: `AUTHORIZED, NOT STARTED`",
+        "PR-009 and later: `UNAUTHORIZED`",
+        "Gate 1: `COMPLETED AND HUMAN ACCEPTED`",
+        "M2: `COMPLETED AND HUMAN ACCEPTED`",
+        "c6d6852ba3cf28060d8fbb76e27201cbbcaade54",
+        "71dfd7fa31bd67c9f9fa54cc9057684486e842ad",
+        "CI #92",
+        "e01d441c2572ca484cf5227d94f57a3cb62fa8e6e3e223eefc6852b81f6eb3c1",
         "2161fbbf7fb4065a5913fb6e62c207546caf5dd9",
         "e1e1f5f6d8d675a146f3d0c538a0d544b6f8a984c301d177ee1ad86e42f2d500",
     )
@@ -319,8 +325,6 @@ def test_lifecycle_state_records_pr005_accepted_state() -> None:
         "PR-005 implementation is in review",
         "PR-005 remains in review and not accepted",
         "Windows CI evidence remains required",
-        "Gate 1: ACCEPTED",
-        "M2: COMPLETED",
         "review and product-owner decision on GATE-S1 / ADR-018",
         "PR-006: UNAUTHORIZED",
         "PR-006 remains UNAUTHORIZED",
@@ -337,11 +341,11 @@ def test_lifecycle_state_records_pr005_accepted_state() -> None:
         for required in required_by_file:
             assert required in text, filename
         assert "PR-006: `COMPLETED AND HUMAN ACCEPTED`" in text, filename
-        assert "PR-007: `AUTHORIZED AND IN REVIEW, NOT ACCEPTED`" in text, filename
-        assert "PR-008 and later: `UNAUTHORIZED`" in text, filename
-        assert "PR-007: `IMPLEMENTED`" not in text, filename
-        assert "PR-007: `COMPLETED`" not in text, filename
-        assert "PR-007: `COMPLETED`" not in text, filename
+        assert "PR-007: `COMPLETED AND HUMAN ACCEPTED`" in text, filename
+        assert "PR-008: `AUTHORIZED, NOT STARTED`" in text, filename
+        assert "PR-009 and later: `UNAUTHORIZED`" in text, filename
+        assert "PR-008: `COMPLETED`" not in text, filename
+        assert "PR-008: `IMPLEMENTED`" not in text, filename
         assert "Q-009: `DEFERRED`" in text, filename
         assert "Q-017: `DEFERRED`" in text, filename
         _assert_pr_s001_followups_completed(text, filename)
@@ -592,8 +596,9 @@ def test_pr005_pr006_sequences_remain_blocked_after_gate_s1_acceptance() -> None
         not in implementation_plan
     )
     assert "PR-006 remains blocked" not in implementation_plan
-    assert "PR-007: `AUTHORIZED AND IN REVIEW, NOT ACCEPTED`" in implementation_plan
-    assert "PR-008 and later: `UNAUTHORIZED`" in implementation_plan
+    assert "PR-007: `COMPLETED AND HUMAN ACCEPTED`" in implementation_plan
+    assert "PR-008: `AUTHORIZED, NOT STARTED`" in implementation_plan
+    assert "PR-009 and later: `UNAUTHORIZED`" in implementation_plan
 
 
 def test_q001_through_q020_statuses_other_than_q010_are_unchanged() -> None:
@@ -1126,8 +1131,12 @@ def test_pr006_acceptance_and_pr007_authorization_contract() -> None:
     assert "e1e1f5f6d8d675a146f3d0c538a0d544b6f8a984c301d177ee1ad86e42f2d500" in pr006
     assert "fb953af64efd3e860960eae8ef1f4078afd0a6ec078a33594e271a9285d7db3d" in pr006
     assert "Storage decision: ADR-020" in pr006
-    assert "Status: `AUTHORIZED AND IN REVIEW, NOT ACCEPTED`" in pr007
-    assert "lifecycle pull request that created this task has been merged into `main`" in pr007
+    assert "Status: `COMPLETED AND HUMAN ACCEPTED`" in pr007
+    assert "GitHub PR: `#19`" in pr007
+    assert "c6d6852ba3cf28060d8fbb76e27201cbbcaade54" in pr007
+    assert "71dfd7fa31bd67c9f9fa54cc9057684486e842ad" in pr007
+    assert "CI #92" in pr007
+    assert "e01d441c2572ca484cf5227d94f57a3cb62fa8e6e3e223eefc6852b81f6eb3c1" in pr007
     assert "ActorRef" in pr007 and "FieldKey" in pr007
     assert "Do not use a raw unrestricted string for `reason_code`" in pr007
     assert "No arbitrary metadata dictionary" in pr007
@@ -1143,6 +1152,7 @@ def test_pr006_acceptance_and_pr007_authorization_contract() -> None:
     assert "## ADR-019 — PR-005 SQLCipher binding and raw-key staging" in decisions
     assert "## ADR-020 — Immutable encrypted filesystem storage v1" in decisions
     assert "## ADR-021 — Immutable PII-safe audit events" in decisions
+    assert "## ADR-022 — Encrypted original import and advisory duplicate detection" in decisions
     assert "Q-009: `DEFERRED`" in open_questions
     assert "Q-017: `DEFERRED`" in open_questions
 
@@ -1155,6 +1165,7 @@ def test_adr_numbers_are_unique_and_current() -> None:
     assert ("019", "PR-005 SQLCipher binding and raw-key staging") in headings
     assert ("020", "Immutable encrypted filesystem storage v1") in headings
     assert ("021", "Immutable PII-safe audit events") in headings
+    assert ("022", "Encrypted original import and advisory duplicate detection") in headings
 
 
 def test_pr007_current_lifecycle_status_has_no_stale_blockers() -> None:
@@ -1167,9 +1178,565 @@ def test_pr007_current_lifecycle_status_has_no_stale_blockers() -> None:
             "docs/implementation-plan.md",
         )
     )
-    assert "PR-007: `AUTHORIZED AND IN REVIEW, NOT ACCEPTED`" in current
-    assert "PR-008 AND LATER: UNAUTHORIZED" in current
+    assert "PR-007: `COMPLETED AND HUMAN ACCEPTED`" in current
+    assert "PR-008: `AUTHORIZED, NOT STARTED`" in current
+    assert "PR-009 and later: `UNAUTHORIZED`" in current
+    assert "Gate 1: `COMPLETED AND HUMAN ACCEPTED`" in current
+    assert "M2: `COMPLETED AND HUMAN ACCEPTED`" in current
     assert "PR-007 and later tasks remain UNAUTHORIZED" not in current
     assert "Unauthorized by GATE-M0" not in current
     assert "Merge this lifecycle PR before starting PR-007" not in current
     assert "immutable filesystem storage, audit and later M2 work are not complete" not in current
+
+
+def test_pr008_authorization_task_contract_and_no_pr009_authorization() -> None:
+    task = (REPO_ROOT / "docs/tasks/PR-008-file-import-duplicate-detection.md").read_text(
+        encoding="utf-8"
+    )
+    decisions = (REPO_ROOT / "docs/decisions.md").read_text(encoding="utf-8")
+    adr_022 = _adr_section(
+        decisions, "## ADR-022 — Encrypted original import and advisory duplicate detection"
+    )
+    combined = _compact(task + "\n" + adr_022)
+
+    assert "Lifecycle preparation base: `71dfd7fa31bd67c9f9fa54cc9057684486e842ad`" in task
+    assert "PR-008 implementation base: the eventual exact merge commit of GitHub PR #20" in task
+    assert "must not branch from `71dfd7fa31bd67c9f9fa54cc9057684486e842ad`" in task
+    assert "must use the actual PR #20 merge commit as its exact base" in task
+    assert "may not start from an earlier commit" in task
+
+    exact_enum_values = {
+        "UploadBatchStatus": ("NEW", "PROCESSING", "NEEDS_REVIEW", "READY", "ARCHIVED"),
+        "SourceMediaType": ("JPEG", "PNG", "HEIF"),
+        "ImportWarningCode": (
+            "EXACT_DUPLICATE",
+            "PERCEPTUAL_SIMILARITY",
+            "EXTENSION_CONTENT_MISMATCH",
+        ),
+        "SourceImportErrorCode": (
+            "BATCH_NOT_FOUND",
+            "SOURCE_READ_FAILED",
+            "SOURCE_BASENAME_INVALID",
+            "UNSUPPORTED_EXTENSION",
+            "UNSUPPORTED_FORMAT",
+            "DECODE_FAILED",
+            "STORAGE_PUBLICATION_FAILED",
+            "PERSISTENCE_FAILED",
+        ),
+    }
+    for enum_name, values in exact_enum_values.items():
+        assert enum_name in combined
+        for value in values:
+            assert value in combined
+    assert "creates batches only in `NEW`" in combined
+    assert "does not implement later workflow transitions" in combined
+
+    for required in (
+        "BatchNumber",
+        "length 1-64",
+        "^[A-Z0-9][A-Z0-9_-]{0,63}$",
+        "SourceBasename",
+        "length 1-255 Unicode code points",
+        "reject `/` and `\\`",
+        "reject NUL, U+0000-U+001F and U+007F",
+        "reject `.` and `..`",
+        "do not trim, truncate or silently normalize",
+        "`repr()` must show only `<redacted>`",
+        "Sha256Digest",
+        "exactly 64 lowercase hexadecimal characters",
+        "PerceptualHash",
+        'algorithm_id = "DHASH64"',
+        "algorithm_version = 1",
+        "bit_width = 64",
+        "exactly 16 lowercase hexadecimal characters",
+        "must not appear in logs, errors, audit events, verifier output or duplicate warnings",
+    ):
+        assert required in combined
+
+    for field in (
+        "id: EntityId",
+        "number: BatchNumber",
+        "created_at: datetime",
+        "created_by: ActorRef",
+        "status: UploadBatchStatus",
+        "source_file_ids: tuple[EntityId, ...]",
+        "batch_id: EntityId",
+        "original_artifact_id: EntityId",
+        "original_basename: SourceBasename",
+        "detected_media_type: SourceMediaType",
+        "byte_size: int",
+        "sha256: Sha256Digest",
+        "perceptual_hash: PerceptualHash",
+        "width: int",
+        "height: int",
+        "exif_orientation: int | None",
+        "imported_at: datetime",
+        "imported_by: ActorRef",
+        "code: ImportWarningCode",
+        "related_source_file_id: EntityId | None",
+        "perceptual_distance: int | None",
+        "algorithm_id: str | None",
+        "algorithm_version: int | None",
+    ):
+        assert field in combined
+    assert "notes are not part of PR-008" in combined
+    assert "Do not add `quality_assessment` in PR-008" in combined
+    assert "Quality assessment remains PR-009" in combined
+
+    for dto in (
+        "CreateUploadBatchCommand",
+        "batch_id",
+        "number",
+        "created_at",
+        "actor",
+        "SourceFileImportInput",
+        "source_file_id",
+        "artifact_id",
+        "source_path",
+        "imported_at",
+        "ImportSourceFilesCommand",
+        "items: tuple[SourceFileImportInput, ...]",
+        "ImportedSourceFileResult",
+        "source_file",
+        "warnings",
+        "FailedSourceFileResult",
+        "error_code",
+        "ImportSourceFilesResult",
+        "imported",
+        "failed",
+        "No result contains a basename or path",
+    ):
+        assert dto in combined
+
+    for repo_contract in (
+        "UploadBatchRepository",
+        "SourceFileRepository",
+        "no update method; no delete method",
+        "Ordering is ascending by `imported_at`, then `id`",
+        "canonical payload/projection validation occurs before returning rows",
+        "no `list_all`; no arbitrary filters; no caller-defined sorting; no pagination",
+    ):
+        assert repo_contract in combined
+
+    for transaction_rule in (
+        "`CreateUploadBatch` is a separate committed operation",
+        "missing batch fails the whole command before reading or publishing files",
+        "processed sequentially in the supplied order",
+        "Each source file has its own object-first/database-second transaction boundary",
+        "successful prior source import is not rolled back because a later source fails",
+        "failed source produces a sanitized `FailedSourceFileResult`",
+        "Processing continues after a per-file failure",
+        "inserts the `StoredArtifactRecord`",
+        "updates the immutable `UploadBatch` with the appended source ID",
+        "inserts the required audit event",
+        "SourceFile`, batch update and audit event roll back together",
+        "No whole-batch filesystem transaction is claimed",
+        "Duplicate evidence is a warning and does not create a failure result",
+    ):
+        assert transaction_rule in combined
+
+    for media_rule in (
+        "`.jpg`, `.jpeg` -> `JPEG`",
+        "`.png` -> `PNG`",
+        "`.heic`, `.heif` -> `HEIF`",
+        "unsupported extension produces `UNSUPPORTED_EXTENSION`",
+        "corrupt or undecodable content produces `DECODE_FAILED`",
+        "no supported media type produces `UNSUPPORTED_FORMAT`",
+        "imports successfully with `EXTENSION_CONTENT_MISMATCH`",
+        "detected content type is authoritative",
+        "validation occurs before encrypted object publication",
+        "no failed validation publishes an object",
+    ):
+        assert media_rule in combined
+
+    for phash_rule in (
+        "algorithm ID `DHASH64`",
+        "version `1`",
+        "bit width `64`",
+        "primary decoded image/frame only",
+        "apply EXIF orientation in memory for hashing only",
+        "opaque white background",
+        "8-bit grayscale",
+        "exactly `9x8`",
+        "fixed `LANCZOS` resampler",
+        "left luminance is greater than right luminance",
+        "row-major as a 64-bit value",
+        "Hamming distance using XOR and population count",
+        "warning threshold is distance <= 8",
+        "later threshold or preparation change requires a new algorithm version",
+        "all persisted compatible `SourceFile` records",
+        "not only the current batch",
+        "do not also produce a perceptual warning for the same exact pair",
+        "exact warnings by related source-file ID",
+        "perceptual warnings by distance and related source-file ID",
+        "extension/content warning last",
+    ):
+        assert phash_rule in combined
+
+    for audit_rule in (
+        "action: `ARTIFACT_REGISTERED`",
+        "subject type: `STORED_ARTIFACT`",
+        "subject ID: the original artifact ID",
+        "actor: the import command actor",
+        "occurred time: the source imported time",
+        "field key: absent",
+        "before: `ABSENT`",
+        "after: `NON_SENSITIVE` with controlled display value `ORIGINAL`",
+        "reason code: `SOURCE_FILE_IMPORT`",
+        "correlation ID: upload batch ID",
+        "same SQLCipher Unit of Work",
+        "Do not emit audit events for failed imports",
+        "duplicate warnings",
+        "extension mismatch warnings",
+        "`UploadBatch` creation",
+        "`UploadBatch` is not added to `AuditSubjectType`",
+        "Do not change existing audit enums",
+    ):
+        assert audit_rule in combined
+
+    for exact_file in (
+        "src/document_intake/domain/enums.py",
+        "src/document_intake/domain/entities/imports.py",
+        "src/document_intake/domain/value_objects/imports.py",
+        "src/document_intake/application/dto/imports.py",
+        "src/document_intake/application/ports/media.py",
+        "src/document_intake/application/ports/persistence.py",
+        "src/document_intake/application/services/imports.py",
+        "src/document_intake/persistence/migrations/v0004_source_file_import.py",
+        "src/document_intake/image_pipeline/media_decoder.py",
+        "scripts/verify_pr008_import.py",
+        "pyproject.toml",
+        "uv.lock",
+        "tests/domain/test_import_contracts.py",
+        "tests/application/test_import_service.py",
+        "tests/persistence/test_source_file_import_repository.py",
+        "tests/image_pipeline/test_media_decoder.py",
+    ):
+        assert exact_file in task
+
+    for required in (
+        "v0004_source_file_import.py",
+        "version `4`",
+        "name `source_file_import_pr008`",
+        "MediaDecoderPort",
+        "not directly on a third-party package",
+        "No external perceptual-hash library is required",
+        "If the evidence is not available, PR-008 must stop as blocked",
+        "Runtime codec downloads are not authorized",
+        "tests/fixtures/synthetic/",
+        "PR-009 and later remain `UNAUTHORIZED`",
+        "must not implement PySide upload UI",
+        "quality_assessment",
+        "PR-009-or-later behavior",
+    ):
+        assert required in combined
+
+    for exact_typed_contract in (
+        "@dataclass(frozen=True, slots=True)",
+        "class CreateUploadBatchCommand:",
+        "batch_id: EntityId",
+        "number: BatchNumber",
+        "created_at: datetime",
+        "actor: ActorRef",
+        "created_at` must be timezone-aware",
+        "construction normalizes it to UTC",
+        "UUIDs and timestamps are caller-supplied",
+        "class SourceFileImportInput:",
+        "audit_event_id: EntityId",
+        "source_path: Path",
+        "source_file_id`, `artifact_id` and `audit_event_id` must be distinct",
+        "no service-generated UUIDs or implicit current-time calls are authorized",
+        "existing immutable `AuditEvent` contract requires an `event_id`",
+        "class ImportSourceFilesCommand:",
+        "items: tuple[SourceFileImportInput, ...]",
+        "items` must be a non-empty tuple",
+        "duplicate `source_file_id` values are rejected before any file is read",
+        "duplicate `artifact_id` values are rejected before any file is read",
+        "duplicate `audit_event_id` values are rejected before any file is read",
+        "class ImportedSourceFileResult:",
+        "warnings: tuple[ImportWarning, ...]",
+        "class FailedSourceFileResult:",
+        "error_code: SourceImportErrorCode",
+        "class ImportSourceFilesResult:",
+        "imported: tuple[ImportedSourceFileResult, ...]",
+        "failed: tuple[FailedSourceFileResult, ...]",
+        "imported` preserves successful input order",
+        "failed` preserves failed input order",
+        "a source ID must not appear in both collections",
+        "no result contains basename, source path, hash value, storage path or raw exception",
+    ):
+        assert exact_typed_contract in combined
+
+    for service_contract in (
+        "def create_upload_batch(",
+        "unit_of_work_factory: UnitOfWorkFactory",
+        ") -> UploadBatch",
+        "force status to `UploadBatchStatus.NEW`",
+        "call `upload_batches.add(batch)`",
+        "return the persisted batch",
+        "create no audit event",
+        "Duplicate batch IDs or numbers must fail",
+        "Do not silently replace an existing batch",
+        "def import_source_files(",
+        "storage: StoragePort",
+        "media_decoder: MediaDecoderPort",
+        ") -> ImportSourceFilesResult",
+        "No additional public PR-008 application service operations are authorized",
+    ):
+        assert service_contract in combined
+
+    for signature in (
+        "class UploadBatchRepository(Protocol):",
+        "def add(self, batch: UploadBatch) -> None",
+        "def get(self, batch_id: EntityId) -> UploadBatch | None",
+        "def update(self, batch: UploadBatch) -> None",
+        "def get_by_number(self, number: BatchNumber) -> UploadBatch | None",
+        "get_by_number` is required",
+        "an update may only replace the immutable batch row",
+        "PR-008 may only append one successfully imported source ID",
+        "class SourceFileRepository(Protocol):",
+        "def get(self, source_file_id: EntityId) -> SourceFile | None",
+        "def list_by_batch(",
+        ") -> tuple[SourceFile, ...]",
+        "def list_by_sha256(",
+        "sha256: Sha256Digest",
+        "def list_compatible_perceptual_hashes(",
+        "algorithm_version: int",
+        "bit_width: int",
+        "upload_batches: UploadBatchRepository",
+        "source_files: SourceFileRepository",
+        "class UnitOfWorkFactory(Protocol):",
+        "def unit_of_work(self) -> UnitOfWork",
+        "existing database adapter entry point",
+    ):
+        assert signature in combined
+
+    for storage_binding in (
+        "stored_artifact = storage.publish_bytes(",
+        "artifact_id=item.artifact_id",
+        "artifact_kind=ArtifactKind.ORIGINAL",
+        "plaintext=original_bytes",
+        "created_at=item.imported_at",
+        "ArtifactKind.ORIGINAL` is mandatory",
+        "exact byte sequence read from `source_path`",
+        "no decoded, oriented, normalized, converted or recompressed bytes",
+        "uow.stored_artifacts.add(stored_artifact)",
+        "returned artifact ID must equal `item.artifact_id`",
+        "mismatch fails closed before inserting `SourceFile`",
+    ):
+        assert storage_binding in combined
+
+    for file_extension_rule in (
+        "source_path` is accepted as `pathlib.Path`",
+        "source_path.name",
+        "File bytes are read once into memory",
+        "SOURCE_READ_FAILED` covers file not found",
+        "permission denied",
+        "path is not a regular file",
+        "file changes or disappears",
+        "Raw operating-system exceptions are never exposed",
+        "Empty files fail before decoding",
+        "SOURCE_BASENAME_INVALID` and publishes no object",
+        "source_path.suffix.lower()",
+        "only ASCII extension tokens are recognized",
+        "preserves the original basename exactly",
+        "no filename case normalization is persisted",
+        "`.jpg`, `.JPG`, `.JpG` map to `JPEG`",
+        "a file with no suffix produces `UNSUPPORTED_EXTENSION`",
+        "basename ending only with `.` produces `UNSUPPORTED_EXTENSION`",
+        "multiple suffixes use only the final suffix",
+        "unsupported extension fails before decoding and before storage publication",
+    ):
+        assert file_extension_rule in combined
+
+    for lookup_dedup_rule in (
+        "validate basename and extension",
+        "open a read-only or uncommitted SQLCipher Unit of Work",
+        "query exact candidates by SHA-256",
+        "query perceptual candidates only by compatible algorithm/version/bit width",
+        "exclude every row whose `id == item.source_file_id`",
+        "exclude every row whose `original_artifact_id == item.artifact_id`",
+        "close or roll back the lookup Unit of Work without writing",
+        "re-check that no `SourceFile` with the same source ID or artifact ID now exists",
+        "must never classify the new row as its own duplicate",
+        "only rows that existed before the current `SourceFile` insertion",
+        "Do not insert the current `SourceFile` before duplicate warnings are calculated",
+        "emit at most one `EXACT_DUPLICATE` warning per related source ID",
+        "emit at most one `PERCEPTUAL_SIMILARITY` warning per related source ID",
+        "do not collapse different related source IDs into one warning",
+        "extension mismatch produces at most one warning",
+    ):
+        assert lookup_dedup_rule in combined
+
+    for vector_rule in (
+        "Vector A horizontal ascending gradient",
+        "0, 16, 32, 48, 64, 80, 96, 112, 128",
+        "expected DHASH64 is `0000000000000000`",
+        "Vector B horizontal descending gradient",
+        "128, 112, 96, 80, 64, 48, 32, 16, 0",
+        "expected DHASH64 is `ffffffffffffffff`",
+        "Vector C alternating rows",
+        "expected DHASH64 is `00ff00ff00ff00ff`",
+        "Ubuntu and Windows produce identical values",
+        "serialization preserves leading zeroes",
+        "Hamming distance between A and B is `64`",
+        "Hamming distance between A and C is `32`",
+        "threshold `8` does not classify those pairs",
+        "one-bit-different hash has distance `1`",
+        "requires `algorithm_version = 2`",
+        "must not introduce platform-dependent resizing differences",
+        "larger synthetic image must exercise the fixed LANCZOS resize path",
+    ):
+        assert vector_rule in combined
+
+    for decoder_rule in (
+        "class DecodedMedia:",
+        "media_type: SourceMediaType",
+        "grayscale_pixels: bytes",
+        "grayscale_width: int",
+        "grayscale_height: int",
+        "class MediaDecoderPort(Protocol):",
+        "def decode_for_import(",
+        "content: bytes",
+        ") -> DecodedMedia",
+        "receives bytes, not a filesystem path",
+        "returns the primary frame only",
+        "returns no GPS, filename, source path, camera metadata or arbitrary metadata mapping",
+        (
+            "Do not leave an unrestricted `Any`, third-party image object or arbitrary "
+            "metadata dictionary"
+        ),
+    ):
+        assert decoder_rule in combined
+
+    for audit_construction in (
+        "event_id=item.audit_event_id",
+        "occurred_at=item.imported_at",
+        "actor=command.actor",
+        "action_code=AuditAction.ARTIFACT_REGISTERED",
+        "subject_type=AuditSubjectType.STORED_ARTIFACT",
+        "subject_id=item.artifact_id",
+        "field_key=None",
+        "before=AuditValueSummary(",
+        "classification=AuditValueClassification.ABSENT",
+        "display_value=None",
+        "was_present=False",
+        "after=AuditValueSummary(",
+        "classification=AuditValueClassification.NON_SENSITIVE",
+        'display_value="ORIGINAL"',
+        "was_present=True",
+        'reason_code=AuditReasonCode("SOURCE_FILE_IMPORT")',
+        "correlation_id=command.batch_id",
+        "accepted existing types `AuditAction`, `AuditSubjectType`, `AuditValueClassification`,",
+        "actual existing constructors",
+        "event_id` is exactly `item.audit_event_id`",
+        "uow.audit_events.add(audit_event)",
+        "audit add failure rolls back all database writes",
+    ):
+        assert audit_construction in combined
+
+    for migration_verifier_dependency in (
+        "upload batches, ordered upload-batch source-file membership, source files",
+        "unique batch ID",
+        "unique canonical batch number",
+        "status projection",
+        "UTC timestamp projection",
+        "unique source-file ID",
+        "unique `original_artifact_id`",
+        "foreign key to upload batch",
+        "foreign key to stored artifact",
+        "lowercase SHA-256 shape validation",
+        "perceptual algorithm/version/bit-width/hash projections",
+        "batch membership ordering lookup",
+        "SHA-256 lookup",
+        "compatible perceptual algorithm/version/bit-width lookup",
+        "imported-time deterministic ordering",
+        "Do not authorize database-level fuzzy-distance computation",
+        "uv run python scripts/verify_pr008_import.py",
+        "Exit codes: `0`",
+        "`1` means product verification failure",
+        "`2` means unsupported or inconclusive runner environment",
+        "PR008_VERIFY schema_version=4",
+        "PR008_VERIFY migration_v0004=PASS",
+        "PR008_VERIFY media_heif=PASS",
+        "PR008_VERIFY no_self_match=PASS",
+        "PR008_VERIFY result=PASS",
+        "WINDOWS_SQLCIPHER_UNAVAILABLE",
+        "HEIF_DECODER_UNAVAILABLE",
+        "UNSUPPORTED_PLATFORM",
+        "ordinary SQLite cannot read the production database",
+        "previous successful imports survive a later failed item",
+        "must not claim acceptance of real documents or real-photo perceptual quality",
+        "explicit dependency decision section",
+        "package name",
+        "exact pinned version",
+        "direct/transitive role",
+        "Windows AMD64 wheel or packaging evidence",
+        "HEIF/HEIC support",
+        "offline installation evidence",
+        "native binary components",
+        "security/update considerations",
+        "If HEIF requires a second package or native codec",
+        "must not silently omit HEIF",
+        "must not treat HEIF as a future enhancement",
+    ):
+        assert migration_verifier_dependency in combined
+    assert "audit_event_id: EntityId" in adr_022
+    assert "get_by_number(self, number: BatchNumber) -> UploadBatch | None" in adr_022
+    assert "upload_batches: UploadBatchRepository" in adr_022
+    assert "source_files: SourceFileRepository" in adr_022
+    assert "same SQLCipher connection and transaction" in adr_022
+    assert "caller-supplied" in adr_022
+    stale_untyped_source_input = (
+        "SourceFileImportInput` with `source_file_id`, `artifact_id`, `source_path`, `imported_at`"
+    )
+    assert stale_untyped_source_input not in adr_022
+    assert "`UploadBatchRepository`: `add(batch)`, `get(batch_id)`, `update(batch)`." not in adr_022
+    assert "### PR-008 typed correction binding" not in adr_022
+    assert "AuditValueSummary.absent()" not in task
+    assert "AuditValueSummary.non_sensitive(" not in task
+    assert "AuditValueSummary.absent()" not in combined
+    assert "AuditValueSummary.non_sensitive(" not in combined
+    assert "add alternative audit value-object APIs" in task
+    assert "new audit factories" in task
+    assert "new class methods" in task
+    assert "new audit enum values" in task
+    assert "free-text audit fields" in task
+
+    for forbidden in (
+        "must specify exact fields",
+        "must explicitly decide and document whether successful original registration emits",
+        "PR-008 must define deterministic canonical in-memory preparation",
+    ):
+        assert forbidden not in combined
+
+
+def test_pr007_acceptance_closes_m2_gate1_and_preserves_open_risks() -> None:
+    files = (
+        "docs/progress.md",
+        "docs/roadmap.md",
+        "docs/implementation-plan.md",
+        "docs/handoff.md",
+        "docs/traceability-matrix.md",
+    )
+    stale = (
+        "PR-007: `AUTHORIZED AND IN REVIEW, NOT ACCEPTED`",
+        "PR-007 is in review",
+        "PR-007 is not accepted",
+        "M2: `NOT COMPLETED`",
+        "Gate 1: `NOT ACCEPTED`",
+        "PR-008 and later: `UNAUTHORIZED`",
+        "PR-008 AND LATER: UNAUTHORIZED",
+        "audit work is incomplete",
+    )
+    for filename in files:
+        text = (REPO_ROOT / filename).read_text(encoding="utf-8")
+        assert "PR-007: `COMPLETED AND HUMAN ACCEPTED`" in text, filename
+        assert "PR-008: `AUTHORIZED, NOT STARTED`" in text, filename
+        assert "PR-009 and later: `UNAUTHORIZED`" in text, filename
+        assert "Gate 1: `COMPLETED AND HUMAN ACCEPTED`" in text, filename
+        assert "M2: `COMPLETED AND HUMAN ACCEPTED`" in text, filename
+        assert "RISK-PR005-RAWKEY-PRAGMA` remains open" in text, filename
+        assert "sensitive-data/private-contour gate remains open" in text, filename
+        for phrase in stale:
+            assert phrase not in text, filename
