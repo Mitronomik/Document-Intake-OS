@@ -6,8 +6,10 @@ from __future__ import annotations
 import platform
 import shutil
 import tempfile
+from collections.abc import Callable
 from datetime import UTC, datetime
 from pathlib import Path
+from typing import Any
 from uuid import UUID
 
 from document_intake.domain import (
@@ -24,7 +26,7 @@ from document_intake.domain import (
     Person,
 )
 from document_intake.persistence import CURRENT_SCHEMA_VERSION, EncryptedDatabase
-from document_intake.persistence.errors import PersistenceError
+from document_intake.persistence.errors import PersistenceError, PersistenceErrorCode
 from document_intake.persistence.migrations.v0003_audit_events import MIGRATION as V0003
 
 FORBIDDEN = ("SYNTH_FORBIDDEN_MARKER", "TEMP", "sqlite3.OperationalError", "audit_events immutable")
@@ -62,16 +64,37 @@ def line(ok: bool, label: str) -> bool:
     return ok
 
 
-def expect_rejection(label: str, fn) -> bool:  # type: ignore[no-untyped-def]
+def expect_rejection(
+    label: str,
+    fn: Callable[[], object],
+    expected_codes: frozenset[PersistenceErrorCode],
+) -> bool:
     try:
         fn()
-    except PersistenceError:
-        return line(True, label)
-    except Exception as error:
-        if type(error).__name__ in {"DatabaseError", "IntegrityError", "OperationalError"}:
-            return line(True, label)
+    except PersistenceError as error:
+        return line(error.code in expected_codes, label)
+    except Exception:
         return line(False, label)
     return line(False, label)
+
+
+def audit_row_count(uow: Any) -> int:
+    row = uow.audit_events._fetchall("SELECT count(*) FROM audit_events")
+    return int(row[0][0])
+
+
+def verify_rejection_preserves_event(
+    label: str,
+    uow: Any,
+    event: AuditEvent,
+    before_count: int,
+) -> bool:
+    return line(
+        uow.audit_events.get(event.event_id) == event
+        and audit_row_count(uow) == before_count
+        and len(uow.audit_events.list_by_correlation(event.correlation_id)) >= 1,
+        f"{label}_state_preserved",
+    )
 
 
 def main() -> int:
@@ -101,35 +124,56 @@ def main() -> int:
                 "subject_order",
             )
             ok &= line(uow.audit_events.list_by_correlation(corr) == (e2, e1), "correlation_order")
-            conn = uow._connection()
+            before_count = audit_row_count(uow)
+            constraint_codes = frozenset({PersistenceErrorCode.PERSISTENCE_CONSTRAINT})
+            duplicate_codes = frozenset(
+                {
+                    PersistenceErrorCode.PERSISTENCE_CONSTRAINT,
+                    PersistenceErrorCode.ENTITY_ALREADY_EXISTS,
+                }
+            )
             ok &= expect_rejection(
                 "update_rejected",
-                lambda: conn.execute(
+                lambda: uow.audit_events._execute(
                     "UPDATE audit_events SET action_code='ENTITY_UPDATED' WHERE event_id=?",
                     (str(e1.event_id),),
                 ),
+                constraint_codes,
             )
+            ok &= verify_rejection_preserves_event("update_rejected", uow, e1, before_count)
             ok &= expect_rejection(
                 "delete_rejected",
-                lambda: conn.execute(
+                lambda: uow.audit_events._execute(
                     "DELETE FROM audit_events WHERE event_id=?", (str(e1.event_id),)
                 ),
+                constraint_codes,
             )
+            ok &= verify_rejection_preserves_event("delete_rejected", uow, e1, before_count)
             ok &= expect_rejection(
                 "insert_or_replace_rejected",
-                lambda: conn.execute(
+                lambda: uow.audit_events._execute(
                     "INSERT OR REPLACE INTO audit_events(event_id, occurred_at_utc, actor_id, actor_kind, action_code, subject_type, subject_id, payload) VALUES (?, '2026-07-19T00:00:00Z', ?, 'SYSTEM', 'ENTITY_CREATED', 'PERSON', ?, '{}')",
                     (str(e1.event_id), str(e1.actor.actor_id), str(e1.subject_id)),
+                    duplicate_is_already_exists=True,
                 ),
+                duplicate_codes,
+            )
+            ok &= verify_rejection_preserves_event(
+                "insert_or_replace_rejected", uow, e1, before_count
             )
             ok &= expect_rejection(
                 "replace_into_rejected",
-                lambda: conn.execute(
+                lambda: uow.audit_events._execute(
                     "REPLACE INTO audit_events(event_id, occurred_at_utc, actor_id, actor_kind, action_code, subject_type, subject_id, payload) VALUES (?, '2026-07-19T00:00:00Z', ?, 'SYSTEM', 'ENTITY_CREATED', 'PERSON', ?, '{}')",
                     (str(e1.event_id), str(e1.actor.actor_id), str(e1.subject_id)),
+                    duplicate_is_already_exists=True,
                 ),
+                duplicate_codes,
             )
-            rows = conn.execute("SELECT payload, after_display_value FROM audit_events").fetchall()
+            ok &= verify_rejection_preserves_event("replace_into_rejected", uow, e1, before_count)
+            rows = uow.audit_events._fetchall(
+                "SELECT payload, after_display_value FROM audit_events"
+            )
             ok &= line(
                 all("SYNTH_FORBIDDEN_MARKER" not in str(row) and row[1] is None for row in rows),
                 "sensitive_redaction",

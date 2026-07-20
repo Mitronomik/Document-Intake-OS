@@ -159,3 +159,53 @@ def test_verifier_output_does_not_leak_forbidden_marker() -> None:
     assert FORBIDDEN_MARKER not in result.stderr
     assert "audit_events immutable" not in result.stdout
     assert "sqlite3.OperationalError" not in result.stdout
+
+
+def test_pr007_verifier_expected_constraint_passes_and_output_is_sanitized(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    from scripts import verify_pr007_audit
+
+    verify_pr007_audit.LINES.clear()
+    assert verify_pr007_audit.expect_rejection(
+        "expected_constraint",
+        lambda: (_ for _ in ()).throw(
+            PersistenceError(PersistenceErrorCode.PERSISTENCE_CONSTRAINT)
+        ),
+        frozenset({PersistenceErrorCode.PERSISTENCE_CONSTRAINT}),
+    )
+    output = capsys.readouterr().out
+    assert output == "PASS expected_constraint\n"
+    assert FORBIDDEN_MARKER not in output
+    assert "audit_events immutable" not in output
+
+
+@pytest.mark.parametrize("exception_type", ["OperationalError", "DatabaseError"])
+def test_pr007_verifier_unrelated_dbapi_errors_fail(
+    exception_type: str,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    from scripts import verify_pr007_audit
+
+    error_type = type(exception_type, (Exception,), {})
+    verify_pr007_audit.LINES.clear()
+    assert not verify_pr007_audit.expect_rejection(
+        f"unrelated_{exception_type}",
+        lambda: (_ for _ in ()).throw(error_type("SYNTHETIC RAW DBAPI DETAIL")),
+        frozenset({PersistenceErrorCode.PERSISTENCE_CONSTRAINT}),
+    )
+    output = capsys.readouterr().out
+    assert output == f"FAIL unrelated_{exception_type}\n"
+    assert "SYNTHETIC RAW DBAPI DETAIL" not in output
+
+
+def test_pr007_verifier_no_error_fails(capsys: pytest.CaptureFixture[str]) -> None:
+    from scripts import verify_pr007_audit
+
+    verify_pr007_audit.LINES.clear()
+    assert not verify_pr007_audit.expect_rejection(
+        "no_error",
+        lambda: None,
+        frozenset({PersistenceErrorCode.PERSISTENCE_CONSTRAINT}),
+    )
+    assert capsys.readouterr().out == "FAIL no_error\n"
