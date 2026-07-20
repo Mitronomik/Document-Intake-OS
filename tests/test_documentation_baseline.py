@@ -345,7 +345,7 @@ def test_lifecycle_state_records_pr005_accepted_state() -> None:
         assert "PR-008: `IMPLEMENTED AND IN REVIEW, NOT ACCEPTED`" in text, filename
         assert "PR-009 and later: `UNAUTHORIZED`" in text, filename
         assert "PR-008: `COMPLETED`" not in text, filename
-        assert "PR-008: `COMPLETED`" not in text, filename
+        assert "PR-008: `COMPLETED AND HUMAN ACCEPTED`" not in text, filename
         assert "Q-009: `DEFERRED`" in text, filename
         assert "Q-017: `DEFERRED`" in text, filename
         _assert_pr_s001_followups_completed(text, filename)
@@ -1746,6 +1746,8 @@ def test_pr008_current_state_uses_actual_branch_and_forbids_stale_branch() -> No
     progress = (REPO_ROOT / "docs/progress.md").read_text(encoding="utf-8")
     assert "PR-008 — File import and duplicate detection is IMPLEMENTED AND IN REVIEW, NOT ACCEPTED" in progress
     assert "Gate 2 remains not accepted" in progress
+    assert "Gate 2: `COMPLETED AND HUMAN ACCEPTED`" not in progress
+    assert "Gate 2: `ACCEPTED`" not in progress
     assert "PR-009 and later remain UNAUTHORIZED" in progress
     assert "codex-uj32ni" in progress
     assert "codex/pr-008-file-import-duplicate-detection" not in progress

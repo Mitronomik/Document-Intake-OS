@@ -67,7 +67,7 @@
 | PR-S001 | ADR-018 acceptance / PR #14 | ACCEPTED WITH DOCUMENTED RESIDUAL RISK RISK-S001-W11 | documentation baseline test |
 | PR-005 | Q-010 / PR #14 authorization boundary / PR #15 | COMPLETED AND HUMAN ACCEPTED at reviewed head `325b49555dee49fa22b008d9522bbbc6eb873ca2` and merge commit `2161fbbf7fb4065a5913fb6e62c207546caf5dd9`; verified by documentation baseline checks and persistence tests | documentation and persistence test verification |
 | PR-006 | Q-010 / authorization boundary / PR #17 | COMPLETED AND HUMAN ACCEPTED | documentation baseline test |
-| PR-007 AND LATER | authorization boundary | UNAUTHORIZED | documentation baseline test |
+| PR-009 AND LATER | authorization boundary | UNAUTHORIZED | documentation baseline test |
 
 ## Current lifecycle state
 
@@ -75,7 +75,7 @@ GATE-M0: COMPLETED. M0: ACCEPTED. M1: ACCEPTED. PR-004: COMPLETED AND HUMAN ACCE
 
 PR-005: COMPLETED AND HUMAN ACCEPTED through GitHub PR #15 (`PR-005: Add encrypted SQLite persistence and migrations`) at merge commit `2161fbbf7fb4065a5913fb6e62c207546caf5dd9` from final reviewed head `325b49555dee49fa22b008d9522bbbc6eb873ca2`; final migration v0001 checksum is `e1e1f5f6d8d675a146f3d0c538a0d544b6f8a984c301d177ee1ad86e42f2d500`. Exact-head CI run #73 succeeded on Ubuntu and Windows, including Windows SQLCipher evidence for the PR-005 acceptance boundary. Migration v0001 is frozen after merge and every future schema change must use migration v0002 or later.
 
-PR-006: COMPLETED AND HUMAN ACCEPTED. PR-007: COMPLETED AND HUMAN ACCEPTED. PR-008: IMPLEMENTED AND IN REVIEW, NOT ACCEPTED; PR-009 AND LATER: UNAUTHORIZED. Gate 1: COMPLETED AND HUMAN ACCEPTED. M2: COMPLETED AND HUMAN ACCEPTED. Q-017 remains DEFERRED. The sensitive-data/private-contour gate remains open, and real documents and personal data remain prohibited in Git, Codex and CI. The next safe step is merging this lifecycle PR before starting PR-008 implementation.
+PR-006: COMPLETED AND HUMAN ACCEPTED. PR-007: COMPLETED AND HUMAN ACCEPTED. PR-008: IMPLEMENTED AND IN REVIEW, NOT ACCEPTED; PR-009 AND LATER: UNAUTHORIZED. Gate 1: COMPLETED AND HUMAN ACCEPTED. M2: COMPLETED AND HUMAN ACCEPTED. Q-017 remains DEFERRED. The sensitive-data/private-contour gate remains open, and real documents and personal data remain prohibited in Git, Codex and CI. The next safe step is completing PR-008 tests, verification, dependency locking, Windows evidence and exact-head CI before product-owner acceptance.
 
 RISK-PR005-RAWKEY-PRAGMA remains accepted only for the PR-005 development boundary and remains open for installer, pilot and production release.
 
@@ -122,7 +122,7 @@ Q-009: `DEFERRED`. Q-017: `DEFERRED`. Q-010: `ACCEPTED`. `RISK-PR005-RAWKEY-PRAG
 
 Current lifecycle: PR-007: `COMPLETED AND HUMAN ACCEPTED`; PR-008: `IMPLEMENTED AND IN REVIEW, NOT ACCEPTED`; PR-009 and later: `UNAUTHORIZED`; Gate 1: `COMPLETED AND HUMAN ACCEPTED`; M2: `COMPLETED AND HUMAN ACCEPTED`.
 
-## Lifecycle update — PR-007 acceptance and PR-008 authorization
+## Historical lifecycle record — PR-007 acceptance and PR-008 authorization
 
 PR-007: `COMPLETED AND HUMAN ACCEPTED`. GitHub PR: `#19`. Final reviewed head: `c6d6852ba3cf28060d8fbb76e27201cbbcaade54`. Merge commit: `71dfd7fa31bd67c9f9fa54cc9057684486e842ad`. Merged date: `2026-07-20`. Exact-head CI: `CI #92`, successful. Migration v0003 final checksum: `e01d441c2572ca484cf5227d94f57a3cb62fa8e6e3e223eefc6852b81f6eb3c1`.
 
