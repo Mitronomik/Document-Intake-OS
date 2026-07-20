@@ -401,7 +401,7 @@ def test_unsupported_extension_fails_before_decode_and_storage(tmp_path: Path, n
 def test_basename_validation_and_file_read_failures(tmp_path: Path) -> None:
     factory = ready_factory()
     invalid = import_source_files(
-        import_command(write_source(tmp_path, "bad\n.jpg")),
+        import_command(tmp_path / "bad\n.jpg"),
         storage=Storage(),
         media_decoder=Decoder(),
         unit_of_work_factory=factory,
