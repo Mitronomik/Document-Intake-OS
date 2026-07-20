@@ -50,6 +50,8 @@ REQUIRED_DOCUMENTS = (
     "docs/tasks/PR-006-immutable-filesystem-storage.md",
     "docs/tasks/PR-007-audit-events.md",
     "docs/tasks/PR-008-file-import-duplicate-detection.md",
+    "docs/tasks/PR-009-orientation-quality-assessment.md",
+    "docs/decisions/ADR-023-image-quality-assessment-v1.md",
 )
 
 CANONICAL_SOURCE_ORDER = (
@@ -1855,3 +1857,156 @@ def test_pr008_acceptance_and_pr009_authorization_lifecycle_contract() -> None:
     assert "Decision date\n\n2026-07-21" in decision
     assert "No physical Windows 11 x64 acceptance workstation was available" in decision
     assert "No physical Windows 11 result may be fabricated or inferred" in decision
+
+
+def test_pr009_quality_contract_is_documentation_only_and_staged() -> None:
+    adr = (REPO_ROOT / "docs/decisions/ADR-023-image-quality-assessment-v1.md").read_text(
+        encoding="utf-8"
+    )
+    task = (REPO_ROOT / "docs/tasks/PR-009-orientation-quality-assessment.md").read_text(
+        encoding="utf-8"
+    )
+    questions = (REPO_ROOT / "docs/open-questions.md").read_text(encoding="utf-8")
+    q021 = _question_section(questions, "Q-021")
+    lifecycle_files = (
+        "docs/decisions.md",
+        "docs/progress.md",
+        "docs/roadmap.md",
+        "docs/implementation-plan.md",
+        "docs/traceability-matrix.md",
+        "docs/handoff.md",
+        "docs/image-pipeline.md",
+        "docs/domain-model.md",
+        "docs/testing-strategy.md",
+    )
+    combined = "\n".join((REPO_ROOT / name).read_text(encoding="utf-8") for name in lifecycle_files)
+
+    assert "Status: PROPOSED" in adr
+    assert "Decision owner: Product owner" in adr
+    assert "Date: 2026-07-21" in adr
+    assert "063e4b5a981f8ef6914c055e9f50666bbf1be734" in task
+    assert "exact merge commit of the PR that adds this contract" in task
+    assert "Status: AUTHORIZED FOR CONTRACT REVIEW; PRODUCTION IMPLEMENTATION NOT STARTED" in task
+    assert _question_status(q021) == "OPEN"
+    assert "REQUIRES PRODUCT-OWNER ACCEPTANCE" in q021
+
+    for required in (
+        "PR-008: `COMPLETED AND HUMAN ACCEPTED WITH DOCUMENTED RESIDUAL RISK`",
+        "PR-009: `AUTHORIZED, CONTRACT PROPOSED, PRODUCTION IMPLEMENTATION NOT STARTED`",
+        "Q-021: `OPEN — REQUIRES PRODUCT-OWNER ACCEPTANCE`",
+        "PR-010 AND LATER: `UNAUTHORIZED`",
+        "Gate 2: `NOT ACCEPTED`",
+        "M3: `IN PROGRESS`",
+    ):
+        assert required in combined, required
+
+    for required in (
+        "whole-frame diagnostics",
+        "original EXIF orientation value",
+        "orientation-normalized analysis view",
+        "minimum-resolution diagnostic",
+        "blur/sharpness metric",
+        "contrast metric",
+        "glare/highlight-clipping metric",
+        "exposure diagnostic",
+        "cut-edge detection",
+        "document presence detection",
+        "document count",
+        "PR-010 for perspective and geometry tools",
+        "PR-012 for document regions",
+        "PR-009 advances FR-04 but does not complete all of FR-04",
+    ):
+        assert required in adr, required
+
+    for required in (
+        "QualityAssessmentStatus",
+        "QualityIssueCode",
+        "QualityIssueSeverity",
+        "QualityMetricCode",
+        "ImageQualityPolicy",
+        "GOOD",
+        "REVIEW_REQUIRED",
+        "RETAKE_REQUIRED",
+        "LOW_RESOLUTION",
+        "BLUR_DETECTED",
+        "LOW_CONTRAST",
+        "GLARE_DETECTED",
+        "UNDEREXPOSED",
+        "OVEREXPOSED",
+        "SHORT_SIDE_PIXELS",
+        "LONG_SIDE_PIXELS",
+        "LAPLACIAN_VARIANCE",
+        "LUMINANCE_STANDARD_DEVIATION",
+        "HIGHLIGHT_CLIPPED_FRACTION",
+        "SHADOW_CLIPPED_FRACTION",
+        "BRIGHT_CLIPPED_FRACTION",
+    ):
+        assert required in adr, required
+
+    for required in (
+        "[0, 1, 0; 1, -4, 1; 0, 1, 0]",
+        "valid-interior only",
+        "round_half_up((299*R + 587*G + 114*B) / 1000)",
+        "rounded half up to six fractional places",
+        "rounded half up to eight fractional places",
+        "There are no hidden process-global thresholds",
+        "Existing assessments are not overwritten",
+        "IMAGE_QUALITY_ASSESSED",
+        "SOURCE_FILE_NOT_FOUND",
+        "ARTIFACT_INTEGRITY_FAILED",
+        "QUALITY_POLICY_INVALID",
+    ):
+        assert required in adr, required
+
+    for forbidden in (
+        "Status: ACCEPTED",
+        "Gate 2: `ACCEPTED`",
+        "PR-010: `AUTHORIZED`",
+        "physical Windows 11 validation complete",
+        "final production thresholds are accepted",
+    ):
+        assert forbidden not in adr + task, forbidden
+
+
+def test_pr009_contract_changes_are_docs_only() -> None:
+    changed = subprocess.run(
+        ["git", "diff", "--name-only", "HEAD"],
+        cwd=REPO_ROOT,
+        check=True,
+        text=True,
+        stdout=subprocess.PIPE,
+    ).stdout.splitlines()
+    allowed_exact = {
+        "docs/decisions/ADR-023-image-quality-assessment-v1.md",
+        "docs/tasks/PR-009-orientation-quality-assessment.md",
+        "tests/test_documentation_baseline.py",
+        "docs/decisions.md",
+        "docs/progress.md",
+        "docs/roadmap.md",
+        "docs/implementation-plan.md",
+        "docs/traceability-matrix.md",
+        "docs/handoff.md",
+        "docs/open-questions.md",
+        "docs/image-pipeline.md",
+        "docs/domain-model.md",
+        "docs/testing-strategy.md",
+    }
+    assert set(changed) <= allowed_exact
+    assert "uv.lock" not in changed
+    assert "pyproject.toml" not in changed
+    assert not any(path.startswith(".github/workflows/") for path in changed)
+    assert not any(path.startswith("src/") for path in changed)
+    assert not any(path.startswith("scripts/") for path in changed)
+
+    binary_or_private_suffixes = (
+        ".jpg",
+        ".jpeg",
+        ".png",
+        ".heic",
+        ".heif",
+        ".xls",
+        ".xlsx",
+        ".db",
+        ".sqlite",
+    )
+    assert not any(path.lower().endswith(binary_or_private_suffixes) for path in changed)

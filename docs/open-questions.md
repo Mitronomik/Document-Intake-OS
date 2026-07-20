@@ -246,3 +246,16 @@ PR-005: `COMPLETED AND HUMAN ACCEPTED`. PR-006: `COMPLETED AND HUMAN ACCEPTED`. 
 Q-009: `DEFERRED`. PR-007 may implement immutable append-only audit persistence without implementing retention, deletion or secure deletion. Q-009 still governs future retention and deletion policy. No audit-event deletion API or automatic purge is authorized.
 
 Q-017: `DEFERRED`. PR-006 storage remains backup-neutral. Q-017 remains assigned to the later backup/recovery boundary, no later than PR-032. No backup destination, recovery procedure or recovery ceremony is selected here.
+
+### Q-021
+
+**Question:** PR-009 image-quality policy thresholds.
+
+**Status:** OPEN
+**Owner:** Product owner.
+**Acceptance requirement:** REQUIRES PRODUCT-OWNER ACCEPTANCE.
+**Required evidence:** Local synthetic calibration; local anonymized/non-PII image set where legally and operationally allowed; no real documents in Git, Codex or CI; comparison of false warning and missed warning rates; explicit selected `policy_id` and `policy_version`.
+**Target:** Before production activation and final human acceptance of PR-009.
+**Current gate impact:** Does not block contract review. Proposed ADR-023 allows deterministic metrics, typed policy handling, persistence and tests to be implemented, but production activation of a default quality policy and final human acceptance remain blocked until Q-021 is accepted.
+**Implementation block:** Production baseline threshold values must not be claimed final; PR-009 must not be described as pilot-calibrated; application composition must fail closed if no accepted production policy is configured.
+**Placeholder rule:** Do not silently select final production thresholds or use real-document fixtures.

@@ -134,3 +134,16 @@ RISK-PR008-W11-SMOKE status: `ACCEPTED FOR THE PR-008 DEVELOPMENT ACCEPTANCE BOU
 PR-009: `AUTHORIZED, NOT STARTED`. PR-010 AND LATER: `UNAUTHORIZED`. Gate 2: `NOT ACCEPTED`. M3: `IN PROGRESS`.
 
 Next safe step: Implement PR-009 — Orientation and quality assessment only after this lifecycle PR is merged.
+
+## PR-009 contract proposal update
+
+- [x] PR #22 merge commit recorded for contract base: `063e4b5a981f8ef6914c055e9f50666bbf1be734`;
+- [x] PR-008: `COMPLETED AND HUMAN ACCEPTED WITH DOCUMENTED RESIDUAL RISK`;
+- [x] PR-009: `AUTHORIZED, CONTRACT PROPOSED, PRODUCTION IMPLEMENTATION NOT STARTED`;
+- [ ] ADR-023: `PROPOSED`;
+- [ ] Q-021: `OPEN — REQUIRES PRODUCT-OWNER ACCEPTANCE`;
+- [x] PR-010 AND LATER: `UNAUTHORIZED`;
+- [x] Gate 2: `NOT ACCEPTED`;
+- [x] M3: `IN PROGRESS`.
+
+PR-009 whole-frame contract scope is EXIF orientation, orientation-normalized analysis view, encoded/effective dimensions, minimum resolution, blur/sharpness, contrast, glare/highlight clipping and exposure. Deferred scope is cut edges, perspective/skew, document presence/count, segmentation, crop, perspective correction and geometric transformation. No production implementation, migration, dependency, workflow, real document or PII change is made by the contract proposal.

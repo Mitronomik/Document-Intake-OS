@@ -112,3 +112,7 @@ PR-008 is closed as `COMPLETED AND HUMAN ACCEPTED WITH DOCUMENTED RESIDUAL RISK`
 `RISK-PR008-W11-SMOKE` is `ACCEPTED FOR THE PR-008 DEVELOPMENT ACCEPTANCE BOUNDARY; DEFERRED TO WINDOWS INSTALLER, PILOT, OR FINAL RELEASE ACCEPTANCE`. No physical Windows 11 x64 smoke occurred and none may be fabricated or inferred. Hosted Windows Server AMD64 is not the same as a physical Windows 11 x64 workstation.
 
 The next authorized implementation task is PR-009 only: `AUTHORIZED, NOT STARTED`. PR-010 AND LATER: `UNAUTHORIZED`. Gate 2: `NOT ACCEPTED`. M3: `IN PROGRESS`.
+
+## PR-009 contract handoff
+
+PR #22 merge commit `063e4b5a981f8ef6914c055e9f50666bbf1be734` is recorded as the verified lifecycle base for this documentation-only contract. PR-008: `COMPLETED AND HUMAN ACCEPTED WITH DOCUMENTED RESIDUAL RISK`; PR-009: `AUTHORIZED, CONTRACT PROPOSED, PRODUCTION IMPLEMENTATION NOT STARTED`; ADR-023: `PROPOSED`; Q-021: `OPEN — REQUIRES PRODUCT-OWNER ACCEPTANCE`; PR-010 AND LATER: `UNAUTHORIZED`; Gate 2: `NOT ACCEPTED`; M3: `IN PROGRESS`. Do not implement PR-009 production code until the contract PR is merged and the future implementation branches from that exact merge commit. Do not claim final calibrated thresholds, physical Windows 11 validation, Gate 2 acceptance or PR-010+ authorization.

@@ -125,3 +125,7 @@ PR-007: `COMPLETED AND HUMAN ACCEPTED`. GitHub PR: `#19`. Final reviewed head: `
 M2: `COMPLETED AND HUMAN ACCEPTED`. Gate 1: `COMPLETED AND HUMAN ACCEPTED`. PR-008: `COMPLETED AND HUMAN ACCEPTED WITH DOCUMENTED RESIDUAL RISK` for the non-UI encrypted original import and advisory duplicate-detection foundation only, governed by ADR-022, PR #21 and PR-008-D1. PR-009: `AUTHORIZED, NOT STARTED`; PR-010 AND LATER: `UNAUTHORIZED`. Do not claim Gate 2 is accepted, do not claim a physical Windows 11 smoke occurred, and do not begin PR-010 or later work.
 
 Q-006: `DEFERRED`. Q-007: `DEFERRED`. Q-009: `DEFERRED`. Q-010: `ACCEPTED`. Q-017: `DEFERRED`. `RISK-PR005-RAWKEY-PRAGMA` remains open for installer, pilot and production release. The sensitive-data/private-contour gate remains open for real documents and real personal data. Real documents and personal data remain prohibited in Git, Codex, CI, logs and test reports.
+
+## PR-009 contract staging update
+
+PR-009 is now `AUTHORIZED, CONTRACT PROPOSED, PRODUCTION IMPLEMENTATION NOT STARTED`. It is documentation-only until the contract PR is reviewed. PR-009 whole-frame diagnostics advance FR-04 but do not complete cut edges, perspective, document presence or document count. Q-021 remains `OPEN — REQUIRES PRODUCT-OWNER ACCEPTANCE`; no final production thresholds are selected. PR-010 remains the staged perspective/geometry task, PR-012 remains the staged document-region/presence/count workflow task, PR-010 AND LATER remain `UNAUTHORIZED`, Gate 2 remains `NOT ACCEPTED`, and M3 remains `IN PROGRESS`.

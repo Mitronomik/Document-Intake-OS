@@ -102,3 +102,7 @@ flowchart TD
 - two regions → two documents;
 - failed write keeps prior valid artifact;
 - deterministic rerun.
+
+## 14. PR-009 whole-frame staging
+
+ADR-023 proposes that PR-009 covers only deterministic whole-frame diagnostics computed from the decoded source image without segmentation or geometry inference: original EXIF orientation value, orientation-normalized analysis view, original encoded dimensions, orientation-normalized effective dimensions, minimum-resolution diagnostic, blur/sharpness metric, contrast metric, glare/highlight-clipping metric and exposure diagnostic. The broader quality list above remains the product direction for FR-04, but PR-009 does not complete all of FR-04. Cut-edge detection, perspective/skew assessment from document boundaries, document presence detection, document count, segmentation, automatic crop, perspective correction and geometric transformation are deferred to PR-010/PR-012. Q-021 remains open for final thresholds.
