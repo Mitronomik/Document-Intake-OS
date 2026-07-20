@@ -1744,7 +1744,10 @@ def test_pr007_acceptance_closes_m2_gate1_and_preserves_open_risks() -> None:
 
 def test_pr008_current_state_uses_actual_branch_and_forbids_stale_branch() -> None:
     progress = (REPO_ROOT / "docs/progress.md").read_text(encoding="utf-8")
-    assert "PR-008 — File import and duplicate detection is IMPLEMENTED AND IN REVIEW, NOT ACCEPTED" in progress
+    assert (
+        "PR-008 — File import and duplicate detection is IMPLEMENTED AND IN REVIEW, NOT ACCEPTED"
+        in progress
+    )
     assert "Gate 2 remains not accepted" in progress
     assert "Gate 2: `COMPLETED AND HUMAN ACCEPTED`" not in progress
     assert "Gate 2: `ACCEPTED`" not in progress

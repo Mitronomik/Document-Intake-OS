@@ -90,7 +90,10 @@ class ImportSourceFilesCommand:
                 raise InvalidValueError(f"import_source_files.{attr}: duplicate")
 
     def __repr__(self) -> str:
-        return f"ImportSourceFilesCommand(batch_id={self.batch_id}, actor={self.actor}, items=<redacted>)"
+        return (
+            f"ImportSourceFilesCommand(batch_id={self.batch_id}, actor={self.actor}, "
+            "items=<redacted>)"
+        )
 
 
 @dataclass(frozen=True, slots=True)

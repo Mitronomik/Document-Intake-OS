@@ -141,7 +141,11 @@ class ImportWarning:
         if self.code is ImportWarningCode.EXACT_DUPLICATE:
             if self.related_source_file_id is None:
                 raise InvalidValueError("import_warning.exact_duplicate: related_required")
-            if self.perceptual_distance is not None or self.algorithm_id is not None or self.algorithm_version is not None:
+            if (
+                self.perceptual_distance is not None
+                or self.algorithm_id is not None
+                or self.algorithm_version is not None
+            ):
                 raise InvalidValueError("import_warning.exact_duplicate: invalid_fields")
         elif self.code is ImportWarningCode.PERCEPTUAL_SIMILARITY:
             if self.related_source_file_id is None:

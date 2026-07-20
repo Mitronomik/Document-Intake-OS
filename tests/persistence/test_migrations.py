@@ -13,7 +13,9 @@ from document_intake.persistence.migrations.v0002_stored_artifacts import (
     MIGRATION as V0002_MIGRATION,
 )
 from document_intake.persistence.migrations.v0003_audit_events import MIGRATION as V0003_MIGRATION
-from document_intake.persistence.migrations.v0004_source_file_import import MIGRATION as V0004_MIGRATION
+from document_intake.persistence.migrations.v0004_source_file_import import (
+    MIGRATION as V0004_MIGRATION,
+)
 
 REQUIRED_TABLES = {
     "schema_migrations",
@@ -86,7 +88,9 @@ def test_applied_prefix_validates_and_future_migration_applies(
         migration_checksum(future_statements),
     )
     monkeypatch.setattr(
-        database, "MIGRATIONS", (MIGRATION, V0002_MIGRATION, V0003_MIGRATION, V0004_MIGRATION, future)
+        database,
+        "MIGRATIONS",
+        (MIGRATION, V0002_MIGRATION, V0003_MIGRATION, V0004_MIGRATION, future),
     )
     monkeypatch.setattr(database, "CURRENT_SCHEMA_VERSION", 5)
 
@@ -309,13 +313,276 @@ def test_v0003_checksum_literal_and_prior_migrations_unchanged() -> None:
 def test_pr008_migration_metadata_and_checksums() -> None:
     assert V0004_MIGRATION.version == 4
     assert V0004_MIGRATION.name == "source_file_import_pr008"
-    assert V0004_MIGRATION.checksum == "a826d5bc07ba73e6d54fd25e9df8afb42028261040b7981bdd157caf26b1f7c6"
-    assert V0002_MIGRATION.checksum == "fb953af64efd3e860960eae8ef1f4078afd0a6ec078a33594e271a9285d7db3d"
-    assert V0003_MIGRATION.checksum == "e01d441c2572ca484cf5227d94f57a3cb62fa8e6e3e223eefc6852b81f6eb3c1"
+    assert (
+        V0004_MIGRATION.checksum
+        == "a826d5bc07ba73e6d54fd25e9df8afb42028261040b7981bdd157caf26b1f7c6"
+    )
+    assert (
+        V0002_MIGRATION.checksum
+        == "fb953af64efd3e860960eae8ef1f4078afd0a6ec078a33594e271a9285d7db3d"
+    )
+    assert (
+        V0003_MIGRATION.checksum
+        == "e01d441c2572ca484cf5227d94f57a3cb62fa8e6e3e223eefc6852b81f6eb3c1"
+    )
 
 
 def test_pr008_tables_exist_after_migration() -> None:
     connection = apply()
     assert table_columns(connection, "upload_batches")[:2] == ("id", "number")
-    assert table_columns(connection, "source_files")[:3] == ("id", "batch_id", "original_artifact_id")
-    assert table_columns(connection, "upload_batch_source_files") == ("batch_id", "order_index", "source_file_id")
+    assert table_columns(connection, "source_files")[:3] == (
+        "id",
+        "batch_id",
+        "original_artifact_id",
+    )
+    assert table_columns(connection, "upload_batch_source_files") == (
+        "batch_id",
+        "order_index",
+        "source_file_id",
+    )
+
+
+def apply_through_v0003() -> sqlite3.Connection:
+    connection = conn()
+    connection.execute(f"PRAGMA application_id = {APPLICATION_ID}")
+    for migration in (MIGRATION, V0002_MIGRATION, V0003_MIGRATION):
+        for statement in migration.statements:
+            connection.execute(statement)
+        connection.execute(
+            "INSERT INTO schema_migrations(version, name, checksum, applied_at_utc) "
+            "VALUES (?, ?, ?, '2026-07-20T00:00:00Z')",
+            (migration.version, migration.name, migration.checksum),
+        )
+        connection.execute(f"PRAGMA user_version = {migration.version}")
+    return connection
+
+
+def test_v0004_literal_metadata_and_all_prior_checksums_are_frozen() -> None:
+    assert V0004_MIGRATION.version == 4
+    assert V0004_MIGRATION.name == "source_file_import_pr008"
+    assert (
+        V0004_MIGRATION.checksum
+        == "a826d5bc07ba73e6d54fd25e9df8afb42028261040b7981bdd157caf26b1f7c6"
+    )
+    assert MIGRATION.checksum == "e1e1f5f6d8d675a146f3d0c538a0d544b6f8a984c301d177ee1ad86e42f2d500"
+    assert (
+        V0002_MIGRATION.checksum
+        == "fb953af64efd3e860960eae8ef1f4078afd0a6ec078a33594e271a9285d7db3d"
+    )
+    assert (
+        V0003_MIGRATION.checksum
+        == "e01d441c2572ca484cf5227d94f57a3cb62fa8e6e3e223eefc6852b81f6eb3c1"
+    )
+
+
+def test_empty_database_and_upgrade_from_version_3_reach_exact_schema_4() -> None:
+    empty = apply()
+    assert empty.execute("PRAGMA user_version").fetchone()[0] == 4
+    upgraded = apply_through_v0003()
+    database._apply_migrations(upgraded)
+    assert upgraded.execute("PRAGMA user_version").fetchone()[0] == 4
+    assert upgraded.execute(
+        "SELECT version, name, checksum FROM schema_migrations ORDER BY version DESC LIMIT 1"
+    ).fetchone() == (4, V0004_MIGRATION.name, V0004_MIGRATION.checksum)
+
+
+def test_v0004_column_constraints_foreign_keys_and_indexes() -> None:
+    connection = apply()
+    batch_info = {row[1]: row for row in connection.execute("PRAGMA table_info(upload_batches)")}
+    source_info = {row[1]: row for row in connection.execute("PRAGMA table_info(source_files)")}
+    membership_info = {
+        row[1]: row for row in connection.execute("PRAGMA table_info(upload_batch_source_files)")
+    }
+    assert set(batch_info) == {
+        "id",
+        "number",
+        "created_at_utc",
+        "created_by_actor_id",
+        "created_by_actor_kind",
+        "status",
+        "expected_source_file_count",
+        "canonical_payload",
+    }
+    assert set(source_info) == {
+        "id",
+        "batch_id",
+        "original_artifact_id",
+        "original_basename",
+        "detected_media_type",
+        "byte_size",
+        "sha256",
+        "perceptual_algorithm_id",
+        "perceptual_algorithm_version",
+        "perceptual_bit_width",
+        "perceptual_hex_value",
+        "width",
+        "height",
+        "exif_orientation",
+        "imported_at_utc",
+        "imported_by_actor_id",
+        "imported_by_actor_kind",
+        "canonical_payload",
+    }
+    assert set(membership_info) == {"batch_id", "order_index", "source_file_id"}
+    assert all(row[3] == 1 for name, row in batch_info.items() if name != "id")
+    assert source_info["exif_orientation"][3] == 0
+    assert all(
+        row[3] == 1 for name, row in source_info.items() if name not in {"id", "exif_orientation"}
+    )
+    assert foreign_keys(connection, "source_files") >= {
+        ("batch_id", "upload_batches", "id", "NO ACTION"),
+        ("original_artifact_id", "stored_artifacts", "artifact_id", "NO ACTION"),
+    }
+    assert foreign_keys(connection, "upload_batch_source_files") >= {
+        ("batch_id", "upload_batches", "id", "NO ACTION"),
+        ("source_file_id", "source_files", "id", "NO ACTION"),
+    }
+    indexes = {
+        row[0]
+        for row in connection.execute(
+            "SELECT name FROM sqlite_master WHERE type='index' AND tbl_name IN "
+            "('upload_batches','source_files','upload_batch_source_files')"
+        )
+    }
+    assert {
+        "source_files_batch_order_idx",
+        "source_files_sha_order_idx",
+        "source_files_perceptual_order_idx",
+        "upload_batch_source_files_order_idx",
+    } <= indexes
+
+
+def insert_batch(
+    connection: sqlite3.Connection, *, value: int = 1, number: str = "BATCH-1"
+) -> None:
+    identifier = f"00000000-0000-0000-0000-{value:012d}"
+    connection.execute(
+        "INSERT INTO upload_batches VALUES (?, ?, '2026-07-20T00:00:00Z', "
+        "'00000000-0000-0000-0000-000000000900', 'SYSTEM', 'NEW', 0, '{}')",
+        (identifier, number),
+    )
+
+
+def insert_artifact(connection: sqlite3.Connection, value: int = 1001) -> None:
+    identifier = f"00000000-0000-0000-0000-{value:012d}"
+    connection.execute(
+        "INSERT INTO stored_artifacts VALUES (?, 'ORIGINAL', 1, 1, ?, ?, 1, 1, "
+        "'2026-07-20T00:00:00Z', '{}')",
+        (identifier, "a" * 64, "b" * 64),
+    )
+
+
+def source_values() -> tuple[object, ...]:
+    return (
+        "00000000-0000-0000-0000-000000000001",
+        "00000000-0000-0000-0000-000000000001",
+        "00000000-0000-0000-0000-000000001001",
+        "synthetic.jpg",
+        "JPEG",
+        1,
+        "c" * 64,
+        "DHASH64",
+        1,
+        64,
+        "0" * 16,
+        9,
+        8,
+        None,
+        "2026-07-20T00:00:00Z",
+        "00000000-0000-0000-0000-000000000900",
+        "SYSTEM",
+        "{}",
+    )
+
+
+@pytest.mark.parametrize(
+    ("index", "invalid"),
+    [
+        (4, "BMP"),
+        (5, 0),
+        (6, "A" * 64),
+        (7, "OTHER"),
+        (8, 2),
+        (9, 63),
+        (10, "G" * 16),
+        (11, 0),
+        (12, -1),
+        (13, 0),
+        (13, 9),
+    ],
+)
+def test_v0004_source_enum_hash_dimension_and_orientation_constraints(
+    index: int, invalid: object
+) -> None:
+    connection = apply()
+    connection.execute("PRAGMA foreign_keys = ON")
+    insert_batch(connection)
+    insert_artifact(connection)
+    values = list(source_values())
+    values[index] = invalid
+    with pytest.raises(sqlite3.IntegrityError):
+        connection.execute(
+            "INSERT INTO source_files VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+            values,
+        )
+
+
+def test_v0004_uniqueness_and_membership_order_constraints() -> None:
+    connection = apply()
+    connection.execute("PRAGMA foreign_keys = ON")
+    insert_batch(connection)
+    with pytest.raises(sqlite3.IntegrityError):
+        insert_batch(connection, value=2, number="BATCH-1")
+    insert_artifact(connection)
+    connection.execute(
+        "INSERT INTO source_files VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)", source_values()
+    )
+    connection.execute(
+        "INSERT INTO upload_batch_source_files VALUES "
+        "('00000000-0000-0000-0000-000000000001', 0, "
+        "'00000000-0000-0000-0000-000000000001')"
+    )
+    with pytest.raises(sqlite3.IntegrityError):
+        connection.execute(
+            "INSERT INTO upload_batch_source_files VALUES "
+            "('00000000-0000-0000-0000-000000000001', -1, "
+            "'00000000-0000-0000-0000-000000000001')"
+        )
+    with pytest.raises(sqlite3.IntegrityError):
+        connection.execute(
+            "INSERT INTO source_files VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)", source_values()
+        )
+
+
+def test_v0004_failure_rolls_back_only_v0004(monkeypatch: pytest.MonkeyPatch) -> None:
+    connection = apply_through_v0003()
+    bad = Migration(
+        4,
+        "source_file_import_pr008",
+        (
+            "CREATE TABLE before_v4_failure(id INTEGER)",
+            "CREATE TABLE before_v4_failure(id INTEGER)",
+        ),
+        "synthetic-checksum",
+    )
+    monkeypatch.setattr(database, "MIGRATIONS", (MIGRATION, V0002_MIGRATION, V0003_MIGRATION, bad))
+    with pytest.raises(PersistenceError) as caught:
+        database._apply_migrations(connection)
+    assert caught.value.code is PersistenceErrorCode.MIGRATION_FAILED
+    assert connection.execute("PRAGMA user_version").fetchone()[0] == 3
+    assert connection.execute("SELECT count(*) FROM schema_migrations").fetchone()[0] == 3
+    assert (
+        connection.execute(
+            "SELECT name FROM sqlite_master WHERE name='before_v4_failure'"
+        ).fetchone()
+        is None
+    )
+
+
+def test_ordinary_sqlite_rejects_non_sqlite_encrypted_database_bytes(tmp_path) -> None:  # type: ignore[no-untyped-def]
+    encrypted = tmp_path / "encrypted-production-shape.db"
+    encrypted.write_bytes(b"DIOS-SQLCIPHER-SYNTHETIC" + bytes(range(64)))
+    connection = sqlite3.connect(encrypted)
+    with pytest.raises(sqlite3.DatabaseError):
+        connection.execute("SELECT name FROM sqlite_master").fetchall()
+    connection.close()

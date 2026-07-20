@@ -868,6 +868,7 @@ def audit_event_columns(event: AuditEvent) -> tuple[object, ...]:
         None if event.correlation_id is None else str(event.correlation_id),
     )
 
+
 _UPLOAD_BATCH_FIELDS = frozenset(
     {"id", "number", "created_at", "created_by", "status", "source_file_ids"}
 )
@@ -888,9 +889,7 @@ _SOURCE_FILE_FIELDS = frozenset(
         "imported_by",
     }
 )
-_PERCEPTUAL_HASH_FIELDS = frozenset(
-    {"algorithm_id", "algorithm_version", "bit_width", "hex_value"}
-)
+_PERCEPTUAL_HASH_FIELDS = frozenset({"algorithm_id", "algorithm_version", "bit_width", "hex_value"})
 
 
 def _required_actor(value: object) -> ActorRef:
@@ -1007,7 +1006,9 @@ def source_file_from_json(payload: str) -> SourceFile:
 
 def source_file_columns(
     o: SourceFile,
-) -> tuple[str, str, str, str, str, int, str, str, int, int, str, int, int, int | None, str, str, str]:
+) -> tuple[
+    str, str, str, str, str, int, str, str, int, int, str, int, int, int | None, str, str, str
+]:
     return (
         str(o.id),
         str(o.batch_id),

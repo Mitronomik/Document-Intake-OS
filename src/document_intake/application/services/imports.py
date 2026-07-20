@@ -32,7 +32,11 @@ from document_intake.domain.enums import (
 )
 from document_intake.domain.value_objects import EntityId
 from document_intake.domain.value_objects.audit import AuditReasonCode, AuditValueSummary
-from document_intake.domain.value_objects.imports import PerceptualHash, Sha256Digest, SourceBasename
+from document_intake.domain.value_objects.imports import (
+    PerceptualHash,
+    Sha256Digest,
+    SourceBasename,
+)
 from document_intake.image_pipeline.media_decoder import (
     MediaDecodeError,
     dhash64,
@@ -115,7 +119,9 @@ def _read_exactly_once(path: Path) -> bytes:
     return content
 
 
-def _read_import_input(item: SourceFileImportInput) -> tuple[SourceBasename, SourceMediaType, bytes]:
+def _read_import_input(
+    item: SourceFileImportInput,
+) -> tuple[SourceBasename, SourceMediaType, bytes]:
     try:
         basename = SourceBasename(item.source_path.name)
     except Exception:
@@ -171,7 +177,9 @@ def _perceptual_warnings(
             algorithm_id="DHASH64",
             algorithm_version=1,
         )
-        for related_id, distance in sorted(best_by_id.items(), key=lambda entry: (entry[1], str(entry[0])))
+        for related_id, distance in sorted(
+            best_by_id.items(), key=lambda entry: (entry[1], str(entry[0]))
+        )
     )
 
 
@@ -215,13 +223,17 @@ def import_source_files(
         return ImportSourceFilesResult(
             batch_id=command.batch_id,
             imported=(),
-            failed=tuple(_failed(item, SourceImportErrorCode.PERSISTENCE_FAILED) for item in command.items),
+            failed=tuple(
+                _failed(item, SourceImportErrorCode.PERSISTENCE_FAILED) for item in command.items
+            ),
         )
     if batch is None:
         return ImportSourceFilesResult(
             batch_id=command.batch_id,
             imported=(),
-            failed=tuple(_failed(item, SourceImportErrorCode.BATCH_NOT_FOUND) for item in command.items),
+            failed=tuple(
+                _failed(item, SourceImportErrorCode.BATCH_NOT_FOUND) for item in command.items
+            ),
         )
 
     for item in command.items:
@@ -252,9 +264,10 @@ def import_source_files(
                         if source_file.id != item.source_file_id
                         and source_file.original_artifact_id != item.artifact_id
                     )
+                    compatible = lookup_uow.source_files.list_compatible_perceptual_hashes
                     perceptual_candidates = tuple(
                         source_file
-                        for source_file in lookup_uow.source_files.list_compatible_perceptual_hashes(
+                        for source_file in compatible(
                             "DHASH64",
                             1,
                             64,
@@ -266,7 +279,11 @@ def import_source_files(
                 raise _ImportItemFailure(SourceImportErrorCode.PERSISTENCE_FAILED) from None
 
             exact = _exact_warnings(item, exact_matches)
-            exact_related_ids = {warning.related_source_file_id for warning in exact}
+            exact_related_ids = {
+                warning.related_source_file_id
+                for warning in exact
+                if warning.related_source_file_id is not None
+            }
             warnings = [*exact]
             warnings.extend(
                 _perceptual_warnings(

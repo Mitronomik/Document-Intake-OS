@@ -1084,14 +1084,14 @@ class UploadBatchRepo(_Repo):
             raise PersistenceError(PersistenceErrorCode.PERSISTED_DATA_INVALID)
         if tuple(row[:7]) != ser.upload_batch_columns(entity):
             raise PersistenceError(PersistenceErrorCode.PERSISTED_DATA_INVALID)
-        members = tuple(
-            EntityId.parse(member_row[0])
-            for member_row in self._fetchall(
-                "SELECT source_file_id FROM upload_batch_source_files "
-                "WHERE batch_id=? ORDER BY order_index",
-                (str(entity.id),),
-            )
+        membership_rows = self._fetchall(
+            "SELECT order_index, source_file_id FROM upload_batch_source_files "
+            "WHERE batch_id=? ORDER BY order_index",
+            (str(entity.id),),
         )
+        if tuple(row[0] for row in membership_rows) != tuple(range(len(membership_rows))):
+            raise PersistenceError(PersistenceErrorCode.PERSISTED_DATA_INVALID)
+        members = tuple(EntityId.parse(row[1]) for row in membership_rows)
         if members != entity.source_file_ids or len(members) != row[6]:
             raise PersistenceError(PersistenceErrorCode.PERSISTED_DATA_INVALID)
         if len(set(members)) != len(members):
