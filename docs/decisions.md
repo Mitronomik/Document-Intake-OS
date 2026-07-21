@@ -754,3 +754,9 @@ PR-008: `COMPLETED AND HUMAN ACCEPTED WITH DOCUMENTED RESIDUAL RISK` after GitHu
 `RISK-PR008-W11-SMOKE`: `ACCEPTED FOR THE PR-008 DEVELOPMENT ACCEPTANCE BOUNDARY; DEFERRED TO WINDOWS INSTALLER, PILOT, OR FINAL RELEASE ACCEPTANCE`. No physical Windows 11 x64 smoke was performed or claimed.
 
 PR-009: `AUTHORIZED, NOT STARTED`. PR-010 AND LATER: `UNAUTHORIZED`. Gate 2: `NOT ACCEPTED`. M3: `IN PROGRESS`.
+
+## ADR-023 — Deterministic whole-frame image quality assessment v1
+
+Status: `PROPOSED`. Decision record: `docs/decisions/ADR-023-image-quality-assessment-v1.md`. PR-009 is `AUTHORIZED, CONTRACT PROPOSED, PRODUCTION IMPLEMENTATION NOT STARTED`. PR #22 merge commit `063e4b5a981f8ef6914c055e9f50666bbf1be734` is the verified lifecycle base for this contract only; the future implementation base must be the exact merge commit of the contract PR. Q-021 is `OPEN — REQUIRES PRODUCT-OWNER ACCEPTANCE`. PR-010 AND LATER remain `UNAUTHORIZED`; Gate 2 remains `NOT ACCEPTED`; M3 remains `IN PROGRESS`.
+
+FR-04 staging conflict is explicit: PR-009 covers only deterministic whole-frame diagnostics from the decoded source image: EXIF orientation, orientation-normalized analysis view, encoded/effective dimensions, minimum resolution, blur/sharpness, contrast, glare/highlight clipping and exposure. Cut edges, perspective/skew, document presence/count, segmentation, crop, perspective correction and geometric transformation are deferred to PR-010 and PR-012 as described in ADR-023. PR-009 advances FR-04 but does not complete all of FR-04. No final production thresholds are selected.

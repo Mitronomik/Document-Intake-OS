@@ -50,6 +50,8 @@ REQUIRED_DOCUMENTS = (
     "docs/tasks/PR-006-immutable-filesystem-storage.md",
     "docs/tasks/PR-007-audit-events.md",
     "docs/tasks/PR-008-file-import-duplicate-detection.md",
+    "docs/tasks/PR-009-orientation-quality-assessment.md",
+    "docs/decisions/ADR-023-image-quality-assessment-v1.md",
 )
 
 CANONICAL_SOURCE_ORDER = (
@@ -1855,3 +1857,409 @@ def test_pr008_acceptance_and_pr009_authorization_lifecycle_contract() -> None:
     assert "Decision date\n\n2026-07-21" in decision
     assert "No physical Windows 11 x64 acceptance workstation was available" in decision
     assert "No physical Windows 11 result may be fabricated or inferred" in decision
+
+
+def test_pr009_quality_contract_is_documentation_only_and_staged() -> None:
+    adr = (REPO_ROOT / "docs/decisions/ADR-023-image-quality-assessment-v1.md").read_text(
+        encoding="utf-8"
+    )
+    task = (REPO_ROOT / "docs/tasks/PR-009-orientation-quality-assessment.md").read_text(
+        encoding="utf-8"
+    )
+    questions = (REPO_ROOT / "docs/open-questions.md").read_text(encoding="utf-8")
+    q007 = _question_section(questions, "Q-007")
+    q021 = _question_section(questions, "Q-021")
+    lifecycle_files = (
+        "docs/decisions.md",
+        "docs/progress.md",
+        "docs/roadmap.md",
+        "docs/implementation-plan.md",
+        "docs/traceability-matrix.md",
+        "docs/handoff.md",
+        "docs/image-pipeline.md",
+        "docs/domain-model.md",
+        "docs/testing-strategy.md",
+    )
+    combined = "\n".join((REPO_ROOT / name).read_text(encoding="utf-8") for name in lifecycle_files)
+
+    assert "Status: PROPOSED" in adr
+    assert "Decision owner: Product owner" in adr
+    assert "Date: 2026-07-21" in adr
+    assert "063e4b5a981f8ef6914c055e9f50666bbf1be734" in task
+    assert "exact merge commit of the PR that adds this contract" in task
+    assert "Status: AUTHORIZED FOR CONTRACT REVIEW; PRODUCTION IMPLEMENTATION NOT STARTED" in task
+    assert _question_status(q021) == "OPEN"
+    assert "REQUIRES PRODUCT-OWNER ACCEPTANCE" in q021
+
+    for required in (
+        "PR-008: `COMPLETED AND HUMAN ACCEPTED WITH DOCUMENTED RESIDUAL RISK`",
+        "PR-009: `AUTHORIZED, CONTRACT PROPOSED, PRODUCTION IMPLEMENTATION NOT STARTED`",
+        "Q-021: `OPEN — REQUIRES PRODUCT-OWNER ACCEPTANCE`",
+        "PR-010 AND LATER: `UNAUTHORIZED`",
+        "Gate 2: `NOT ACCEPTED`",
+        "M3: `IN PROGRESS`",
+    ):
+        assert required in combined, required
+
+    for required in (
+        "whole-frame diagnostics",
+        "original EXIF orientation value",
+        "orientation-normalized analysis view",
+        "minimum-resolution diagnostic",
+        "blur/sharpness metric",
+        "contrast metric",
+        "glare/highlight-clipping metric",
+        "exposure diagnostic",
+        "cut-edge detection",
+        "document presence detection",
+        "document count",
+        "PR-010 for perspective and geometry tools",
+        "PR-012 for document regions",
+        "PR-009 advances FR-04 but does not complete all of FR-04",
+    ):
+        assert required in adr, required
+
+    for required in (
+        "QualityAnalysisDecoderPort",
+        "decode_for_quality",
+        "DecodedQualityMedia",
+        "full orientation-normalized grayscale plane",
+        "performs no resize",
+        "must not call `decode_for_import()`",
+        "MediaDecoderPort.decode_for_import()",
+        "DecodedMedia",
+        "PillowMediaDecoder.decode_for_import()",
+        "DHASH64` 9" + chr(215) + "8 behavior",
+        "accepted frozen DHASH64 vectors",
+        "must not be used as the source for full-resolution blur",
+        "EXIF 5, 6, 7 and 8 swap effective axes",
+        "EXIF 1, 2, 3 and 4 do not swap effective axes",
+    ):
+        assert required in adr, required
+
+    for required in (
+        "QualityAssessmentStatus",
+        "QualityIssueCode",
+        "QualityIssueSeverity",
+        "QualityMetricCode",
+        "QualityMetricUnit",
+        "QualityPolicyVersion",
+        "ImageQualityMetric",
+        "ImageQualitySeverityRule",
+        "ImageQualityIssue",
+        "ImageQualityAssessment",
+        "ImageQualityPolicy",
+        'GOOD = "GOOD"',
+        'REVIEW_REQUIRED = "REVIEW_REQUIRED"',
+        'RETAKE_REQUIRED = "RETAKE_REQUIRED"',
+        'LOW_RESOLUTION = "LOW_RESOLUTION"',
+        'BLUR_DETECTED = "BLUR_DETECTED"',
+        'LOW_CONTRAST = "LOW_CONTRAST"',
+        'GLARE_DETECTED = "GLARE_DETECTED"',
+        'UNDEREXPOSED = "UNDEREXPOSED"',
+        'OVEREXPOSED = "OVEREXPOSED"',
+        'SHORT_SIDE_PIXELS = "SHORT_SIDE_PIXELS"',
+        'LONG_SIDE_PIXELS = "LONG_SIDE_PIXELS"',
+        'LAPLACIAN_VARIANCE = "LAPLACIAN_VARIANCE"',
+        'LUMINANCE_STANDARD_DEVIATION = "LUMINANCE_STANDARD_DEVIATION"',
+        'HIGHLIGHT_CLIPPED_FRACTION = "HIGHLIGHT_CLIPPED_FRACTION"',
+        'SHADOW_CLIPPED_FRACTION = "SHADOW_CLIPPED_FRACTION"',
+        'BRIGHT_CLIPPED_FRACTION = "BRIGHT_CLIPPED_FRACTION"',
+        'PIXELS = "PIXELS"',
+        'VARIANCE = "VARIANCE"',
+        'LUMA_LEVEL = "LUMA_LEVEL"',
+        'FRACTION = "FRACTION"',
+        "SHORT_SIDE_PIXELS -> PIXELS",
+        "LAPLACIAN_VARIANCE -> VARIANCE",
+        "LUMINANCE_STANDARD_DEVIATION -> LUMA_LEVEL",
+        "BRIGHT_CLIPPED_FRACTION -> FRACTION",
+    ):
+        assert required in adr, required
+
+    for required in (
+        "policy_id: str",
+        "version: int",
+        "[A-Z][A-Z0-9_]{0,63}",
+        "metric_code: QualityMetricCode",
+        "algorithm_id: str",
+        "algorithm_version: int",
+        "numeric_value: Decimal",
+        "unit: QualityMetricUnit",
+        "finite Decimal",
+        "no NaN or infinity",
+        "severity_rules: tuple[ImageQualitySeverityRule, ...]",
+        "minimum_short_side_pixels <= minimum_long_side_pixels",
+        "exposure_shadow_cutoff < exposure_bright_cutoff",
+        "all maximum fractions finite Decimal values in `[0, 1]`",
+        "exactly seven metrics",
+        "policy: ImageQualityPolicy",
+        "assessment.policy.version",
+        "rehydration reconstructs the complete `ImageQualityPolicy`",
+    ):
+        assert required in adr, required
+
+    assert "database: DatabasePort" not in adr + task
+    assert "DatabasePort" not in adr + task
+    assert "policy_version: QualityPolicyVersion" not in adr + task
+    assert "caller-provided assessment/audit IDs if consistent" not in adr + task
+    assert "repository's actual" not in adr + task
+    assert "raises/returns" not in adr + task
+    assert "according to existing service conventions" not in adr + task
+    assert "QUALITY_ASSESSMENT_FAILED for invalid command construction" not in adr + task
+    assert "QUALITY_ASSESSMENT_FAILED and invalid command construction" not in adr + task
+    assert "invalid command construction maps to QUALITY_ASSESSMENT_FAILED" not in adr + task
+    assert (
+        "policy does not contain the supported PR-009 policy version or supported "
+        "algorithm contract" not in adr + task
+    )
+    assert "algorithm_id field in ImageQualityPolicy" not in adr + task
+    assert "algorithm_version field in ImageQualityPolicy" not in adr + task
+    assert "policy selects the metric algorithm" not in adr + task
+
+    for required in (
+        "class AssessSourceFileQualityCommand",
+        "source_file_id: EntityId",
+        "assessment_id: EntityId",
+        "audit_event_id: EntityId",
+        "assessed_at: datetime",
+        "actor: ActorRef",
+        "policy: ImageQualityPolicy",
+        "correlation_id: EntityId",
+        "assessment_id != audit_event_id",
+        "must not generate UUIDs",
+        "read the system clock",
+        "infer actor",
+        "infer correlation ID",
+        "unit_of_work_factory: UnitOfWorkFactory",
+        "unit_of_work_factory.unit_of_work()",
+        "exactly one Unit of Work",
+        "commit()` exactly once",
+        "same Unit of Work transaction",
+    ):
+        assert required in adr + task, required
+
+    for required in (
+        "ImageQualityAssessmentRepository",
+        "add(self, assessment: ImageQualityAssessment)",
+        "def get(",
+        "def list_by_source(",
+        "image_quality_assessments: ImageQualityAssessmentRepository",
+        "assessed_at` ascending then assessment ID ascending",
+        "complete rehydrated aggregate",
+        "never silently returns a partial aggregate",
+        "Public repositories for metrics or issues are forbidden",
+        "add_metric",
+        "add_issue",
+        "update",
+        "delete",
+        "replace",
+        "upsert",
+    ):
+        assert required in adr + task, required
+
+    for required in (
+        "AuditAction.IMAGE_QUALITY_ASSESSED",
+        "AuditSubjectType.IMAGE_QUALITY_ASSESSMENT",
+        'AuditReasonCode("IMAGE_QUALITY_ASSESSMENT")',
+        "subject_id=command.assessment_id",
+        "field_key=None",
+        "before.classification=ABSENT",
+        "before.display_value=None",
+        "before.was_present=False",
+        "after.classification=NON_SENSITIVE",
+        'after.display_value="QUALITY_ASSESSMENT"',
+        "after.was_present=True",
+        "correlation_id=command.correlation_id",
+        "actor=command.actor",
+        "occurred_at=command.assessed_at",
+        "must not reuse `ARTIFACT_REGISTERED`",
+    ):
+        assert required in adr + task, required
+
+    for required in (
+        "[0, 1, 0; 1, -4, 1; 0, 1, 0]",
+        "valid-interior only",
+        "round_half_up((299*R + 587*G + 114*B) / 1000)",
+        "short_side < minimum_short_side_pixels",
+        "long_side < minimum_long_side_pixels",
+        "laplacian_variance < blur_minimum_laplacian_variance",
+        "luminance_standard_deviation < contrast_minimum_luminance_stddev",
+        "highlight_clipped_fraction > glare_maximum_fraction",
+        "shadow_clipped_fraction > exposure_maximum_shadow_fraction",
+        "bright_clipped_fraction > exposure_maximum_bright_fraction",
+        "equality does not create an issue",
+        "both `GLARE_DETECTED` and `OVEREXPOSED` may be present",
+        "All seven metrics are calculated and persisted",
+        "precision = 28",
+        "rounding = ROUND_HALF_UP",
+        "exact rounded persisted Decimal value",
+        "no binary float threshold comparison",
+    ):
+        assert required in adr + task, required
+
+    for required in (
+        "`GOOD` means `issues` is empty",
+        "`REVIEW_REQUIRED` means at least one issue exists and all issues have severity `WARNING`",
+        "`RETAKE_REQUIRED` means at least one issue has severity `BLOCKING`",
+        "RETAKE_REQUIRED > REVIEW_REQUIRED > GOOD",
+        "canonical issue-code order, not discovery order",
+        "No issue automatically rejects, deletes, suppresses, modifies or replaces the source file",
+    ):
+        assert required in adr, required
+
+    for required in (
+        "image_quality_assessments",
+        "image_quality_metrics",
+        "image_quality_issues",
+        "canonical_payload",
+        "Persist the complete canonical policy snapshot inside the assessment canonical payload",
+        "No separate mutable policy table is part of PR-009",
+        (
+            "Persisting only policy ID/version while allowing thresholds to change elsewhere "
+            "is prohibited"
+        ),
+        "complete aggregate fields",
+        "complete policy snapshot",
+        "canonical metric references/order",
+        "canonical issue references/order",
+        "severity_rules` serialize in exact canonical issue-code order",
+        "canonical fixed-point strings",
+        "scientific notation",
+    ):
+        assert required in adr + task, required
+
+    for required in (
+        "QualityAssessmentErrorCode",
+        "QualityAssessmentError",
+        "SOURCE_FILE_NOT_FOUND",
+        "ARTIFACT_NOT_FOUND",
+        "ARTIFACT_INTEGRITY_FAILED",
+        "DECODE_FAILED",
+        "QUALITY_POLICY_INVALID",
+        "QUALITY_ASSESSMENT_FAILED",
+        "PERSISTENCE_FAILED",
+        "str(error) == error.code.value",
+        "QualityAssessmentError(code=",
+        "raise QualityAssessmentError",
+        "from None",
+        "Success returns exactly one `AssessSourceFileQualityResult`",
+        "Failure raises exactly one `QualityAssessmentError`",
+        "returning `None`",
+        "returning a failure DTO",
+        "returning a success/error union",
+        "returning raw `StorageError`",
+        "returning raw `PersistenceError`",
+        "content = storage.read_bytes(expected=stored_artifact)",
+        "storage.verify()` immediately before",
+        "verify()` first would perform a redundant second encrypted read",
+        "Exactly one `read_bytes()` call is expected",
+        "missing stored-artifact database record is `ARTIFACT_NOT_FOUND`",
+        "missing or invalid encrypted filesystem object",
+        "repository failure with absent entity",
+        "No repository or storage method may be called before this failure",
+        "Invalid immutable domain-object or command construction",
+        "before the service is invoked",
+        "InvalidValueError",
+        "Once a valid `AssessSourceFileQualityCommand` enters the service",
+        "QUALITY_ASSESSMENT_FAILED` applies only to failures during metric calculation",
+        "policy evaluation",
+        "issue construction",
+        "status aggregation",
+        "complete `ImageQualityAssessment` construction",
+        "Algorithm IDs and versions are fixed by the PR-009 implementation contract",
+        "are not fields of `ImageQualityPolicy`",
+        "The service must not add algorithm-selection fields to `ImageQualityPolicy`",
+        (
+            "No concrete production policy ID/version is accepted or activated while Q-021 "
+            "remains open"
+        ),
+    ):
+        assert required in adr + task, required
+
+    for required in (
+        "AssessSourceFileQualityResult",
+        "assessment: ImageQualityAssessment",
+        "no optional or partial success state",
+        "must not return database rows or repository DTOs",
+        "AssessSourceFileQualityResult(assessment=assessment)",
+        "No object-storage write occurs in PR-009",
+        "No audit event may be committed without the assessment",
+        "No assessment may be committed without its audit event",
+        "rolls back the complete Unit of Work",
+        "PERSISTENCE_FAILED",
+        "No orphan filesystem artifact is possible",
+    ):
+        assert required in adr + task, required
+
+    assert "PR-009 whole-frame diagnostic policy thresholds" in q021
+    assert "minimum source-image dimensions for PR-009 diagnostics" in q021
+    assert "severity mapping" in q021
+    assert "activation of the default PR-009 policy" in q021
+    assert "final PR-009 human acceptance" in q021
+    assert "Q-007 controls PR-011 prepared-JPEG readability" in q007
+    assert "PR-009 whole-frame source-quality threshold portion was separated into Q-021" in q007
+    assert "Q-007 no longer blocks PR-009 algorithm or persistence implementation" in q007
+    assert "**Target:** PR-011 and pilot." in q007
+    assert _question_status(q007) == "DEFERRED"
+
+    for forbidden in (
+        "Status: ACCEPTED",
+        "Gate 2: `ACCEPTED`",
+        "PR-010: `AUTHORIZED`",
+        "physical Windows 11 validation complete",
+        "final production thresholds are accepted",
+        "Cut-edge detection (cut-edge detection)",
+    ):
+        assert forbidden not in adr + task, forbidden
+
+
+def test_pr009_contract_stage_has_no_production_implementation() -> None:
+    future_production_files = (
+        "src/document_intake/domain/image_quality.py",
+        "src/document_intake/image_pipeline/quality_assessor.py",
+        "src/document_intake/application/dto/image_quality.py",
+        "src/document_intake/application/services/image_quality.py",
+        "src/document_intake/persistence/repositories/image_quality.py",
+        "src/document_intake/persistence/migrations/v0005_image_quality.py",
+        "scripts/verify_pr009_quality.py",
+    )
+    for filename in future_production_files:
+        assert not (REPO_ROOT / filename).exists(), filename
+
+    migrations = (REPO_ROOT / "src/document_intake/persistence/migrations/__init__.py").read_text(
+        encoding="utf-8"
+    )
+    domain_enums = (REPO_ROOT / "src/document_intake/domain/enums.py").read_text(encoding="utf-8")
+    domain_init = (REPO_ROOT / "src/document_intake/domain/__init__.py").read_text(encoding="utf-8")
+    app_dto_init = (REPO_ROOT / "src/document_intake/application/dto/__init__.py").read_text(
+        encoding="utf-8"
+    )
+    persistence_init = (REPO_ROOT / "src/document_intake/persistence/__init__.py").read_text(
+        encoding="utf-8"
+    )
+
+    assert "CURRENT_SCHEMA_VERSION = 4" in migrations
+    assert "IMAGE_QUALITY_ASSESSED" not in domain_enums
+    assert "IMAGE_QUALITY_ASSESSMENT" not in domain_enums
+    assert "QualityAssessmentErrorCode" not in domain_enums
+    for package_init in (domain_init, app_dto_init, persistence_init):
+        assert "ImageQuality" not in package_init
+        assert "QualityAssessment" not in package_init
+        assert "QualityAnalysisDecoderPort" not in package_init
+
+    test_source = (REPO_ROOT / "tests/test_documentation_baseline.py").read_text(encoding="utf-8")
+    old_false_proof = "git " + "diff " + "--name-only " + "HEAD"
+    assert old_false_proof not in test_source
+
+    adr = (REPO_ROOT / "docs/decisions/ADR-023-image-quality-assessment-v1.md").read_text(
+        encoding="utf-8"
+    )
+    task = (REPO_ROOT / "docs/tasks/PR-009-orientation-quality-assessment.md").read_text(
+        encoding="utf-8"
+    )
+    q021 = _question_section(
+        (REPO_ROOT / "docs/open-questions.md").read_text(encoding="utf-8"), "Q-021"
+    )
+    assert "Status: PROPOSED" in adr
+    assert "PRODUCTION IMPLEMENTATION NOT STARTED" in task
+    assert _question_status(q021) == "OPEN"

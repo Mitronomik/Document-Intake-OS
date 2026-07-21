@@ -273,3 +273,7 @@ Q-006: `DEFERRED`. Q-007: `DEFERRED`. Q-009: `DEFERRED`. Q-010: `ACCEPTED`. Q-01
 ## PR-008 implementation note
 
 PR-008 adds source import domain contracts, Pillow/pi-heif decoding, DHASH64 advisory duplicate checks, encrypted original publication through the PR-006 storage port, SQLCipher persistence migration v0004, and PR-007 audit event creation. No UI, OCR, export, quality assessment, or PR-009 behavior is in scope.
+
+## PR-009 orientation and quality contract
+
+PR-009 is `AUTHORIZED, CONTRACT PROPOSED, PRODUCTION IMPLEMENTATION NOT STARTED`. The implementation base for future production code must be the exact merge commit of the contract PR, not `063e4b5a981f8ef6914c055e9f50666bbf1be734`. Future implementation is limited to deterministic whole-frame EXIF orientation, encoded/effective dimensions, resolution, blur/sharpness, contrast, glare/highlight clipping and exposure diagnostics with explicit typed `ImageQualityPolicy`. No hidden thresholds are allowed; Q-021 is `OPEN — REQUIRES PRODUCT-OWNER ACCEPTANCE`. Production activation of a default quality policy and final human acceptance remain blocked until Q-021 is accepted. PR-010 AND LATER remain `UNAUTHORIZED`; Gate 2 remains `NOT ACCEPTED`; M3 remains `IN PROGRESS`.

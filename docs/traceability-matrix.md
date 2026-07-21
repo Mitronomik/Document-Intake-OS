@@ -138,3 +138,7 @@ Q-006: `DEFERRED`. Q-007: `DEFERRED`. Q-009: `DEFERRED`. Q-010: `ACCEPTED`. Q-01
 | RISK-PR008-W11-SMOKE | Product-owner decision PR-008-D1 | ACCEPTED for PR-008; deferred to installer/pilot/release | hosted Windows AMD64 evidence plus explicit residual-risk record |
 | PR-009 authorization | PR-008-D1 | AUTHORIZED, NOT STARTED | documentation baseline |
 | Gate 2 | roadmap / implementation plan | NOT ACCEPTED | requires PR-009–PR-013 acceptance |
+
+## PR-009 FR-04 staging trace
+
+FR-04 is advanced by proposed PR-009 whole-frame diagnostics: EXIF orientation, orientation-normalized analysis view, encoded/effective dimensions, minimum resolution, blur/sharpness, contrast, glare/highlight clipping and exposure. FR-04 remains incomplete because cut edges, perspective/skew, document presence/count, segmentation, crop, perspective correction and geometric transformation are deferred to PR-010/PR-012. ADR-023 is `PROPOSED`; Q-021 is `OPEN — REQUIRES PRODUCT-OWNER ACCEPTANCE`; PR-009 production implementation is not started; PR-010 AND LATER are `UNAUTHORIZED`; Gate 2 is `NOT ACCEPTED`.

@@ -146,3 +146,7 @@ Q-006: `DEFERRED`. Q-007: `DEFERRED`. Q-009: `DEFERRED`. Q-010: `ACCEPTED`. Q-01
 ## PR-008 implementation evidence note
 
 PR-008 implementation records encrypted source-file import and advisory duplicate detection only. Original bytes are stored through the accepted encrypted storage port, metadata remains in SQLCipher, source paths are not persisted, decoder dependencies are pinned to `Pillow==12.3.0` and `pi-heif==1.4.0`, and no OCR, telemetry, cloud service, export, or PR-009 behavior is authorized by this change.
+
+## PR-009 synthetic quality-test contract
+
+Future PR-009 tests must be synthetic-only and cover EXIF orientations 1-8, effective dimension swaps, one-time orientation, immutable original bytes, no transformed artifact, resolution thresholds, Laplacian blur frozen vectors, population contrast vectors, glare and exposure cutoff boundaries, aggregation to `GOOD`/`REVIEW_REQUIRED`/`RETAKE_REQUIRED`, append-only persistence, schema v5 migration from v0004, unchanged v0001-v0004 checksums, rollback, tamper detection and privacy allowlists. The future verifier must run production components on supported Windows SQLCipher CI with deterministic synthetic images and return `0` pass, `1` product failure or `2` documented unsupported environment. No real documents, document-derived fixtures or PII may be used.
