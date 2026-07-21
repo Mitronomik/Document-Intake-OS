@@ -52,7 +52,7 @@ Temporary files use restricted locations, avoid PII in names and are cleaned aft
 
 Q-009 remains `DEFERRED`; no retention, deletion, purge or secure-deletion policy is implemented. Q-017 remains `DEFERRED`; PR-006 storage is backup-neutral and PR-032 remains responsible for encrypted backup/restore.
 
-## 7. Lifecycle note
+## 7. Historical lifecycle note
 
 PR-006: `COMPLETED AND HUMAN ACCEPTED`. PR-007: `COMPLETED AND HUMAN ACCEPTED`. PR-008: `COMPLETED AND HUMAN ACCEPTED WITH DOCUMENTED RESIDUAL RISK`; RISK-PR008-W11-SMOKE: `ACCEPTED FOR PR-008; DEFERRED TO INSTALLER/PILOT/RELEASE`; PR-009: `AUTHORIZED, NOT STARTED`; PR-010 AND LATER: `UNAUTHORIZED`; Gate 2: `NOT ACCEPTED`; M3: `IN PROGRESS`. Gate 1: `COMPLETED AND HUMAN ACCEPTED`. M2: `COMPLETED AND HUMAN ACCEPTED`. Storage decision: ADR-020. Audit decision: ADR-021.
 

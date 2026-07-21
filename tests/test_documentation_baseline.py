@@ -1866,6 +1866,11 @@ def test_pr009_quality_contract_is_implemented_and_in_review() -> None:
     task = (REPO_ROOT / "docs/tasks/PR-009-orientation-quality-assessment.md").read_text(
         encoding="utf-8"
     )
+    task_header = task.split("\n## Implementation base rule", maxsplit=1)[0]
+    roadmap = (REPO_ROOT / "docs/roadmap.md").read_text(encoding="utf-8")
+    current_m3 = _adr_section(roadmap, "## M3 — Manual image workflow")
+    handoff = (REPO_ROOT / "docs/handoff.md").read_text(encoding="utf-8")
+    current_handoff = _adr_section(handoff, "## Current lifecycle state")
     questions = (REPO_ROOT / "docs/open-questions.md").read_text(encoding="utf-8")
     q007 = _question_section(questions, "Q-007")
     q021 = _question_section(questions, "Q-021")
@@ -1885,12 +1890,37 @@ def test_pr009_quality_contract_is_implemented_and_in_review() -> None:
     assert "Status: ACCEPTED" in adr
     assert "Decision owner: Product owner" in adr
     assert "Date: 2026-07-21" in adr
+    assert "Status: IMPLEMENTED AND IN REVIEW; NOT HUMAN ACCEPTED" in task_header
+    assert "pre-implementation contract" in task_header
+    assert "remain authoritative for reviewing the implementation" in task_header
     assert "063e4b5a981f8ef6914c055e9f50666bbf1be734" in task
     assert "exact merge commit of the PR that adds this contract" in task
     assert "IMPLEMENTED AND IN REVIEW;" in task
     assert "NOT HUMAN ACCEPTED" in task
     assert _question_status(q021) == "OPEN"
     assert "REQUIRES PRODUCT-OWNER ACCEPTANCE" in q021
+
+    for current_section in (current_m3, current_handoff):
+        for required in (
+            "PR-009: IMPLEMENTED AND IN REVIEW; NOT HUMAN ACCEPTED",
+            "Q-021: OPEN — REQUIRES PRODUCT-OWNER ACCEPTANCE",
+            "Production default quality policy: NOT ACTIVE",
+            "Final PR-009 human acceptance: BLOCKED UNTIL Q-021 IS ACCEPTED",
+            "Gate 2: NOT ACCEPTED",
+            "M3: IN PROGRESS",
+        ):
+            assert required in current_section, required
+
+    assert "PR-010" + chr(8211) + "PR-013: UNAUTHORIZED" in current_m3
+    assert "PR-010 AND LATER: UNAUTHORIZED" in current_handoff
+
+    current_lifecycle_text = "\n".join((task_header, current_m3, current_handoff))
+    for stale in (
+        "PR-009: AUTHORIZED, NOT STARTED",
+        "PR-009 is the next authorized task and is not started",
+        "Status: AUTHORIZED FOR CONTRACT REVIEW; PRODUCTION IMPLEMENTATION NOT STARTED",
+    ):
+        assert stale not in current_lifecycle_text, stale
 
     for required in (
         "PR-008: `COMPLETED AND HUMAN ACCEPTED WITH DOCUMENTED RESIDUAL RISK`",

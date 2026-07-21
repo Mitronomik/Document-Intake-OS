@@ -1,6 +1,8 @@
 # PR-009 — Orientation and quality assessment contract
 
-Status: AUTHORIZED FOR CONTRACT REVIEW; PRODUCTION IMPLEMENTATION NOT STARTED
+Status: IMPLEMENTED AND IN REVIEW; NOT HUMAN ACCEPTED
+
+The requirements below originated as the pre-implementation contract and remain authoritative for reviewing the implementation. The lifecycle status is now implemented and in review, while final human acceptance remains blocked by Q-021 and no production default quality policy is active.
 
 ## Implementation base rule
 

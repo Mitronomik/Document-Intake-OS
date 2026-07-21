@@ -22,7 +22,7 @@ PR-004–007.
 
 Result: domain, SQLite, immutable storage and audit.
 
-PR-004 — Core Domain is completed and human accepted. GATE-S1 is completed and human accepted. ADR-018 is accepted for Q-010. PR #9 merged PR-S001 as a research harness; PR-S001 is ACCEPTED WITH DOCUMENTED RESIDUAL RISK RISK-S001-W11. PR-005 is COMPLETED AND HUMAN ACCEPTED through GitHub PR #15. PR-006 is COMPLETED AND HUMAN ACCEPTED; PR-008 is COMPLETED AND HUMAN ACCEPTED WITH DOCUMENTED RESIDUAL RISK; PR-009 is AUTHORIZED, NOT STARTED; PR-010 and every later implementation task remains UNAUTHORIZED. M2 is completed and human accepted by PR-007 acceptance; PR-008 is completed and human accepted with documented residual risk.
+PR-004 — Core Domain is completed and human accepted. GATE-S1 is completed and human accepted. ADR-018 is accepted for Q-010. PR #9 merged PR-S001 as a research harness; PR-S001 is ACCEPTED WITH DOCUMENTED RESIDUAL RISK RISK-S001-W11. PR-005 is COMPLETED AND HUMAN ACCEPTED through GitHub PR #15. PR-006 and PR-007 are COMPLETED AND HUMAN ACCEPTED. M2 is completed and human accepted by PR-007 acceptance. PR-008 is completed and human accepted with documented residual risk. PR-009 is implemented and in review, not human accepted; PR-010 and every later implementation task remains unauthorized.
 
 ## M3 — Manual image workflow
 
@@ -32,7 +32,18 @@ Result: import, quality, crop/perspective, multiple docs, merge and JPEG ≤1.90
 
 Gate: типовые реальные фото локально готовятся без потери originals. Local evidence remains outside Git, Codex and CI.
 
-M3 status: PR-008 is completed and human accepted with documented residual risk through PR #21. PR-009 is the next authorized task and is not started. PR-010–PR-013 remain unauthorized until separately approved. Gate 2 remains open and NOT ACCEPTED. The physical Windows 11 smoke risk `RISK-PR008-W11-SMOKE` remains deferred to Windows installer, pilot or final release acceptance; no physical Windows 11 smoke is claimed.
+M3 status:
+
+- PR-008: COMPLETED AND HUMAN ACCEPTED WITH DOCUMENTED RESIDUAL RISK.
+- PR-009: IMPLEMENTED AND IN REVIEW; NOT HUMAN ACCEPTED.
+- Q-021: OPEN — REQUIRES PRODUCT-OWNER ACCEPTANCE.
+- Production default quality policy: NOT ACTIVE.
+- Final PR-009 human acceptance: BLOCKED UNTIL Q-021 IS ACCEPTED.
+- PR-010–PR-013: UNAUTHORIZED.
+- Gate 2: NOT ACCEPTED.
+- M3: IN PROGRESS.
+
+The physical Windows 11 smoke risk `RISK-PR008-W11-SMOKE` remains deferred to Windows installer, pilot or final release acceptance; no physical Windows 11 smoke is claimed.
 
 ## M4 — Manual end-to-end MVP
 
@@ -78,7 +89,7 @@ Gate: offline local acceptance and release decision.
 
 Cloud, web frontend, microservices, Kubernetes, event broker, vector DB, LLM, browser automation and plugin system.
 
-## Current lifecycle after PR-005 merge and acceptance
+## Historical lifecycle snapshot after PR-005 merge and acceptance
 
 GATE-M0: COMPLETED. GATE-M0 merge commit: `3dada63ea82163c7c4497e290b303d2cc781b085`. Human acceptance of GATE-M0 occurred after PR #5 merge. M0: ACCEPTED. M1: ACCEPTED. PR-004: COMPLETED AND HUMAN ACCEPTED. GATE-S1: COMPLETED AND HUMAN ACCEPTED. ADR-018: ACCEPTED. PR-S001: ACCEPTED WITH DOCUMENTED RESIDUAL RISK RISK-S001-W11; PR-S001-F1: COMPLETED; PR-S001-F2: COMPLETED; PR-S001-F3: COMPLETED; PR-S001-F4: COMPLETED AND MERGED THROUGH PR #13 at merge commit `985fae37c7645e8f65edbe4d1609100ee24a2097`.
 
@@ -95,7 +106,7 @@ PR-007 is completed and human accepted. The template enforcement PR remains futu
 Q-009: DEFERRED. PR-006 implements no retention, deletion or secure-deletion policy.
 
 
-## PR-006 current lifecycle
+## Historical lifecycle snapshot after PR-006 acceptance
 
 PR-006: `COMPLETED AND HUMAN ACCEPTED`.
 PR-007: `COMPLETED AND HUMAN ACCEPTED`
@@ -126,7 +137,7 @@ M2: `COMPLETED AND HUMAN ACCEPTED`. Gate 1: `COMPLETED AND HUMAN ACCEPTED`. PR-0
 
 Q-006: `DEFERRED`. Q-007: `DEFERRED`. Q-009: `DEFERRED`. Q-010: `ACCEPTED`. Q-017: `DEFERRED`. `RISK-PR005-RAWKEY-PRAGMA` remains open for installer, pilot and production release. The sensitive-data/private-contour gate remains open for real documents and real personal data. Real documents and personal data remain prohibited in Git, Codex, CI, logs and test reports.
 
-## PR-009 contract staging update
+## Historical PR-009 contract staging update
 
 PR-009 is now `AUTHORIZED, CONTRACT PROPOSED, PRODUCTION IMPLEMENTATION NOT STARTED`. It is documentation-only until the contract PR is reviewed. PR-009 whole-frame diagnostics advance FR-04 but do not complete cut edges, perspective, document presence or document count. Q-021 remains `OPEN — REQUIRES PRODUCT-OWNER ACCEPTANCE`; no final production thresholds are selected. PR-010 remains the staged perspective/geometry task, PR-012 remains the staged document-region/presence/count workflow task, PR-010 AND LATER remain `UNAUTHORIZED`, Gate 2 remains `NOT ACCEPTED`, and M3 remains `IN PROGRESS`.
 

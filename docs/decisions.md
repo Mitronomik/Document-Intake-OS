@@ -742,7 +742,7 @@ Tests use only generated or clearly synthetic non-document images under the perm
 
 PR-008 implementation records encrypted source-file import and advisory duplicate detection only. Original bytes are stored through the accepted encrypted storage port, metadata remains in SQLCipher, source paths are not persisted, decoder dependencies are pinned to `Pillow==12.3.0` and `pi-heif==1.4.0`, and no OCR, telemetry, cloud service, export, or PR-009 behavior is authorized by this change.
 
-## PR-008-D1 — PR-008 lifecycle acceptance and Windows 11 smoke residual risk
+## Historical decision snapshot — PR-008-D1 lifecycle acceptance
 
 **Status:** ACCEPTED
 **Date:** 2026-07-21
@@ -755,7 +755,7 @@ PR-008: `COMPLETED AND HUMAN ACCEPTED WITH DOCUMENTED RESIDUAL RISK` after GitHu
 
 PR-009: `AUTHORIZED, NOT STARTED`. PR-010 AND LATER: `UNAUTHORIZED`. Gate 2: `NOT ACCEPTED`. M3: `IN PROGRESS`.
 
-## ADR-023 — Deterministic whole-frame image quality assessment v1
+## Historical ADR-023 proposal record — Deterministic whole-frame image quality assessment v1
 
 Status: `PROPOSED`. Decision record: `docs/decisions/ADR-023-image-quality-assessment-v1.md`. PR-009 is `AUTHORIZED, CONTRACT PROPOSED, PRODUCTION IMPLEMENTATION NOT STARTED`. PR #22 merge commit `063e4b5a981f8ef6914c055e9f50666bbf1be734` is the verified lifecycle base for this contract only; the future implementation base must be the exact merge commit of the contract PR. Q-021 is `OPEN — REQUIRES PRODUCT-OWNER ACCEPTANCE`. PR-010 AND LATER remain `UNAUTHORIZED`; Gate 2 remains `NOT ACCEPTED`; M3 remains `IN PROGRESS`.
 
