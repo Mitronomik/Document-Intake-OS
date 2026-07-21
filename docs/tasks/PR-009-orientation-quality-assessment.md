@@ -139,13 +139,163 @@ class AssessSourceFileQualityResult:
     assessment: ImageQualityAssessment
 ```
 
-`AssessSourceFileQualityResult` invariants: `assessment` is an `ImageQualityAssessment`; there is no optional or partial success state; no path, basename, image bytes, pixel raster, SHA-256, perceptual hash, raw exception or arbitrary metadata; and `repr` is safe and deterministic. The service returns one complete persisted assessment result or raises/returns the project's controlled PII-safe application error according to existing service conventions. It must not define a result containing a separate policy object inconsistent with `assessment.policy`, and it must not return database rows or repository DTOs.
+`AssessSourceFileQualityResult` invariants: `assessment` is an `ImageQualityAssessment`; there is no optional or partial success state; no path, basename, image bytes, pixel raster, SHA-256, perceptual hash, raw exception or arbitrary metadata; and `repr` is safe and deterministic. It must not define a result containing a separate policy object inconsistent with `assessment.policy`, and it must not return database rows or repository DTOs.
 
-Exact service workflow: validate command and complete policy; open one Unit of Work; load `SourceFile` through `uow.source_files.get(source_file_id)`; fail with `SOURCE_FILE_NOT_FOUND` when absent; resolve original stored artifact ID from the `SourceFile`; load expected stored-artifact state through `uow.stored_artifacts`; fail with `ARTIFACT_NOT_FOUND` when absent; read and verify encrypted original through `StoragePort` using authoritative stored-artifact state; fail with `ARTIFACT_INTEGRITY_FAILED` on controlled integrity failure; decode bytes through `QualityAnalysisDecoderPort`; fail with `DECODE_FAILED` on controlled decode failure; calculate all seven deterministic metrics; evaluate the explicit command policy; construct one complete immutable `ImageQualityAssessment` containing the complete policy; add it through `uow.image_quality_assessments.add(assessment)`; construct the exact audit event; add it through `uow.audit_events.add(event)`; commit exactly once; return `AssessSourceFileQualityResult(assessment=assessment)`.
+
+
+### 9a. Controlled application-service error boundary
+
+The future implementation must add this exact enum to `src/document_intake/domain/enums.py`:
+
+```python
+class QualityAssessmentErrorCode(StrEnum):
+    SOURCE_FILE_NOT_FOUND = "SOURCE_FILE_NOT_FOUND"
+    ARTIFACT_NOT_FOUND = "ARTIFACT_NOT_FOUND"
+    ARTIFACT_INTEGRITY_FAILED = "ARTIFACT_INTEGRITY_FAILED"
+    DECODE_FAILED = "DECODE_FAILED"
+    QUALITY_POLICY_INVALID = "QUALITY_POLICY_INVALID"
+    QUALITY_ASSESSMENT_FAILED = "QUALITY_ASSESSMENT_FAILED"
+    PERSISTENCE_FAILED = "PERSISTENCE_FAILED"
+```
+
+No additional PR-009 service error codes may be introduced without a separate decision. Do not reuse `SourceImportErrorCode`, `PersistenceErrorCode`, `StorageErrorCode`, arbitrary strings or third-party exception types. `QualityAssessmentErrorCode` is the stable external application-service failure vocabulary for PR-009.
+
+The future implementation must define this exact public exception in `src/document_intake/application/services/image_quality.py`:
+
+```python
+class QualityAssessmentError(Exception):
+    def __init__(self, code: QualityAssessmentErrorCode) -> None:
+        if not isinstance(code, QualityAssessmentErrorCode):
+            raise TypeError("quality_assessment_error.code: invalid_type")
+        self.code = code
+        super().__init__(code.value)
+
+    def __repr__(self) -> str:
+        return f"QualityAssessmentError(code={self.code.value})"
+```
+
+Binding behavior: `str(error) == error.code.value`. The exception contains only `code`. It must not contain a path, basename, artifact hash, image bytes, pixel data, SQL, database path, raw third-party exception text, original exception object, traceback text, key material or arbitrary metadata. All lower-level exception translations must use `raise QualityAssessmentError(code) from None`; raw exception chaining must not escape the application-service boundary.
+
+Success returns exactly one `AssessSourceFileQualityResult`. Failure raises exactly one `QualityAssessmentError`. Forbidden failure mechanisms are returning `None`, returning a failure DTO, returning `QualityAssessmentError` as a value, returning `Result[Success, Failure]`, returning a success/error union, embedding `error_code` in `AssessSourceFileQualityResult`, returning a partial assessment, returning raw `StorageError`, returning raw `PersistenceError`, returning raw `InvalidValueError`, returning Pillow/pi-heif exceptions, or returning SQLite/SQLCipher exceptions.
+
+`AssessSourceFileQualityResult` remains success-only. Do not add `error`, `error_code`, `success`, `failed`, `partial` or execution-failure warnings to this result DTO.
+
+Domain/command construction validation remains separate: constructing invalid immutable domain objects or commands may raise existing controlled domain `InvalidValueError` for invalid `EntityId`, naive `assessed_at`, invalid `ImageQualityPolicy`, invalid Decimal, invalid severity mapping or invalid command field type. These happen before `assess_source_file_quality()` is invoked and are not translated by the service. Once a valid `AssessSourceFileQualityCommand` reaches the service, every execution failure is translated into `QualityAssessmentError`; the service must not return or expose `InvalidValueError`.
+
+
+### 9b. Exact error mapping and encrypted artifact read
+
+`QUALITY_POLICY_INVALID`: raise before opening the Unit of Work when `command.policy` fails service preflight, the policy does not contain the supported PR-009 policy version or supported algorithm contract expected by the service, or the policy cannot produce a canonical snapshot. No repository or storage method may be called before this failure. Use `raise QualityAssessmentError(QualityAssessmentErrorCode.QUALITY_POLICY_INVALID) from None`.
+
+`PERSISTENCE_FAILED` while opening or reading the Unit of Work: map failures from `unit_of_work_factory.unit_of_work()`, entering the Unit of Work, `uow.source_files.get(...)`, `uow.stored_artifacts.get(...)`, corrupted persistence data raised by a repository, and Unit of Work exit or rollback handling. Do not confuse repository failure with absent entity.
+
+`SOURCE_FILE_NOT_FOUND`: raise only when `source_file = uow.source_files.get(command.source_file_id)` returns `None`; do not use it for repository exceptions.
+
+`ARTIFACT_NOT_FOUND`: raise only when `stored_artifact = uow.stored_artifacts.get(source_file.original_artifact_id)` returns `None`. A missing stored-artifact database record is `ARTIFACT_NOT_FOUND`; a missing or invalid encrypted filesystem object for an existing stored record is `ARTIFACT_INTEGRITY_FAILED`.
+
+`ARTIFACT_INTEGRITY_FAILED`: map every controlled or unexpected failure from `content = storage.read_bytes(expected=stored_artifact)` to `QualityAssessmentErrorCode.ARTIFACT_INTEGRITY_FAILED` without leaking lower-level storage codes. This includes encrypted object missing, expected-state mismatch, ciphertext hash mismatch, envelope context mismatch, key unavailable, key invalid, decrypt failure, invalid storage format, unsafe filesystem object and storage I/O failure.
+
+`DECODE_FAILED`: map every controlled or unexpected failure from `decoder.decode_for_quality(content=content)` to `QualityAssessmentErrorCode.DECODE_FAILED`; do not expose `MediaDecodeError`, Pillow, pi-heif or decompression details.
+
+`QUALITY_ASSESSMENT_FAILED`: map failures during seven-metric calculation, Laplacian computation, contrast computation, glare/exposure fraction computation, Decimal calculation, policy evaluation, issue construction, status aggregation and complete `ImageQualityAssessment` construction. This mapping does not apply to invalid policy caught by policy preflight.
+
+`PERSISTENCE_FAILED` during write/commit: map every controlled or unexpected failure from `uow.image_quality_assessments.add(assessment)`, constructing or adding the audit event when caused by a persistence boundary, `uow.audit_events.add(event)`, `uow.commit()` and transaction exit after a failed write. The complete Unit of Work must be rolled back and no assessment, metric, issue or audit row may remain committed.
+
+The exact encrypted artifact read is `content = storage.read_bytes(expected=stored_artifact)`, where `stored_artifact` is loaded from `uow.stored_artifacts.get(source_file.original_artifact_id)`. The service must not build or accept a filesystem path, read a file directly, call `Path.read_bytes()`, locate the encrypted object from a caller-provided path, call `storage.verify()` immediately before `storage.read_bytes()`, call both `verify()` and `read_bytes()` for the same assessment, call `read_bytes()` without an authoritative `StoredArtifactRecord`, or publish/rewrite an object. `StoragePort.read_bytes(expected=stored_artifact)` already performs accepted stored-object existence, expected-state, envelope-context, integrity and decryption checks required to return plaintext. Calling `verify()` first would perform a redundant second encrypted read and decrypt operation without increasing the accepted application guarantee. Exactly one `read_bytes()` call is expected on the successful service path. The returned plaintext exists in memory only for decoding and must not be persisted, logged, added to an error, placed in audit, included in a DTO or retained by the assessment aggregate.
+
+Exact service workflow: validate command and complete policy; open one Unit of Work; load `SourceFile` through `uow.source_files.get(source_file_id)`; fail with `SOURCE_FILE_NOT_FOUND` when absent; resolve original stored artifact ID from the `SourceFile`; load expected stored-artifact state through `uow.stored_artifacts`; fail with `ARTIFACT_NOT_FOUND` when absent; read encrypted original exactly once through `content = storage.read_bytes(expected=stored_artifact)` using authoritative stored-artifact state; fail with `ARTIFACT_INTEGRITY_FAILED` on controlled integrity failure; decode bytes through `QualityAnalysisDecoderPort`; fail with `DECODE_FAILED` on controlled decode failure; calculate all seven deterministic metrics; evaluate the explicit command policy; construct one complete immutable `ImageQualityAssessment` containing the complete policy; add it through `uow.image_quality_assessments.add(assessment)`; construct the exact audit event; add it through `uow.audit_events.add(event)`; commit exactly once; return `AssessSourceFileQualityResult(assessment=assessment)`.
+
+
+
+Implementation-equivalent flow, not production code for this documentation PR:
+
+```python
+def assess_source_file_quality(
+    command: AssessSourceFileQualityCommand,
+    *,
+    decoder: QualityAnalysisDecoderPort,
+    storage: StoragePort,
+    unit_of_work_factory: UnitOfWorkFactory,
+) -> AssessSourceFileQualityResult:
+    try:
+        validate_policy_preflight(command.policy)
+    except Exception:
+        raise QualityAssessmentError(
+            QualityAssessmentErrorCode.QUALITY_POLICY_INVALID
+        ) from None
+
+    try:
+        with unit_of_work_factory.unit_of_work() as uow:
+            source_file = uow.source_files.get(command.source_file_id)
+            if source_file is None:
+                raise QualityAssessmentError(
+                    QualityAssessmentErrorCode.SOURCE_FILE_NOT_FOUND
+                )
+
+            stored_artifact = uow.stored_artifacts.get(
+                source_file.original_artifact_id
+            )
+            if stored_artifact is None:
+                raise QualityAssessmentError(
+                    QualityAssessmentErrorCode.ARTIFACT_NOT_FOUND
+                )
+
+            try:
+                content = storage.read_bytes(expected=stored_artifact)
+            except Exception:
+                raise QualityAssessmentError(
+                    QualityAssessmentErrorCode.ARTIFACT_INTEGRITY_FAILED
+                ) from None
+
+            try:
+                decoded = decoder.decode_for_quality(content=content)
+            except Exception:
+                raise QualityAssessmentError(
+                    QualityAssessmentErrorCode.DECODE_FAILED
+                ) from None
+
+            try:
+                assessment = build_complete_assessment(
+                    command=command,
+                    decoded=decoded,
+                )
+            except Exception:
+                raise QualityAssessmentError(
+                    QualityAssessmentErrorCode.QUALITY_ASSESSMENT_FAILED
+                ) from None
+
+            try:
+                uow.image_quality_assessments.add(assessment)
+                uow.audit_events.add(
+                    build_quality_assessment_audit_event(
+                        command=command,
+                    )
+                )
+                uow.commit()
+            except Exception:
+                raise QualityAssessmentError(
+                    QualityAssessmentErrorCode.PERSISTENCE_FAILED
+                ) from None
+
+    except QualityAssessmentError:
+        raise
+    except Exception:
+        raise QualityAssessmentError(
+            QualityAssessmentErrorCode.PERSISTENCE_FAILED
+        ) from None
+
+    return AssessSourceFileQualityResult(assessment=assessment)
+```
+
+The future implementation may extract private helpers but must preserve this exact public behavior and error mapping.
 
 No database row may be persisted before the complete aggregate is constructed. No audit event may be committed without the assessment. No assessment may be committed without its audit event. No object-storage write occurs in PR-009. The original artifact remains unchanged.
 
 Transaction and failure semantics are exact. Before Unit of Work creation, `QUALITY_POLICY_INVALID` and `QUALITY_ASSESSMENT_FAILED` for invalid command construction fail before database/storage access where applicable. Inside the Unit of Work before persistence, `SOURCE_FILE_NOT_FOUND`, `ARTIFACT_NOT_FOUND`, `ARTIFACT_INTEGRITY_FAILED`, `DECODE_FAILED` and `QUALITY_ASSESSMENT_FAILED` leave no new rows. Any failure while adding assessment, metrics, issues, policy snapshot, audit event or commit rolls back the complete Unit of Work, leaves no partial PR-009 rows, leaves no audit event, leaves original source and artifact unchanged, returns only a controlled `PERSISTENCE_FAILED` boundary and exposes no raw DB-API, SQLCipher or SQLite exception. No orphan filesystem artifact is possible because PR-009 performs no storage publication.
+
+
+Rollback requirements: `SOURCE_FILE_NOT_FOUND` and `ARTIFACT_NOT_FOUND` create no rows; `ARTIFACT_INTEGRITY_FAILED` creates no rows; `DECODE_FAILED` creates no rows; `QUALITY_ASSESSMENT_FAILED` creates no rows; `PERSISTENCE_FAILED` rolls back assessment, metrics, issues and audit; no error changes the `SourceFile`; no error changes the stored-artifact record; no error changes encrypted object bytes; no error publishes an object; and no error produces a partial success result. The Unit of Work context rolls back automatically or explicitly according to the accepted UoW implementation. PR-009 must not introduce a second Unit of Work for reads or audit.
+
 
 The future implementation must add exactly `AuditAction.IMAGE_QUALITY_ASSESSED`, `AuditSubjectType.IMAGE_QUALITY_ASSESSMENT` and `AuditReasonCode("IMAGE_QUALITY_ASSESSMENT")`; it must not reuse `ARTIFACT_REGISTERED`, `ENTITY_CREATED` or another unrelated action. Exact audit event: `event_id=command.audit_event_id`, `action_code=AuditAction.IMAGE_QUALITY_ASSESSED`, `subject_type=AuditSubjectType.IMAGE_QUALITY_ASSESSMENT`, `subject_id=command.assessment_id`, `field_key=None`, `before.classification=ABSENT`, `before.display_value=None`, `before.was_present=False`, `after.classification=NON_SENSITIVE`, `after.display_value="QUALITY_ASSESSMENT"`, `after.was_present=True`, `reason_code=AuditReasonCode("IMAGE_QUALITY_ASSESSMENT")`, `correlation_id=command.correlation_id`, `actor=command.actor`, `occurred_at=command.assessed_at`. Required tests include enum serialization, migration compatibility, audit canonical payload, exact event fields, rollback, verifier assertions and unchanged historical audit values/behavior.
 
@@ -217,6 +367,16 @@ Future application-service tests must cover exact successful result DTO, complet
 Future serialization tests must cover complete policy canonical snapshot, fixed-point Decimal strings, severity-rule canonical order, deterministic round trip, no scientific notation and tamper detection.
 
 The future verifier must additionally verify schema v5, repository round trip of the complete aggregate, complete policy snapshot round trip, exact seven metrics, issue/status aggregation, exact audit event, transaction rollback, policy corruption rejection, metric/issue corruption rejection, unchanged source artifact bytes, privacy allowlist and deterministic output through real production components.
+
+
+
+## Controlled error and artifact-read tests
+
+Future controlled exception tests must cover every `QualityAssessmentErrorCode`: `SOURCE_FILE_NOT_FOUND`, `ARTIFACT_NOT_FOUND`, `ARTIFACT_INTEGRITY_FAILED`, `DECODE_FAILED`, `QUALITY_POLICY_INVALID`, `QUALITY_ASSESSMENT_FAILED` and `PERSISTENCE_FAILED`. For every error assert `type(error) is QualityAssessmentError`, `error.code is expected_code`, `str(error) == expected_code.value`, `repr(error) == f"QualityAssessmentError(code={expected_code.value})"` and `error.__cause__ is None`. Error `str` and `repr` must not contain source basename, source path, storage path, database path, artifact hash, image bytes, SQL, key or lower-level exception text.
+
+Future mapping tests must cover policy preflight failure before Unit of Work creation, Unit of Work creation failure to `PERSISTENCE_FAILED`, source repository exception to `PERSISTENCE_FAILED`, missing source to `SOURCE_FILE_NOT_FOUND`, artifact repository exception to `PERSISTENCE_FAILED`, missing stored-artifact database record to `ARTIFACT_NOT_FOUND`, encrypted object missing to `ARTIFACT_INTEGRITY_FAILED`, envelope mismatch to `ARTIFACT_INTEGRITY_FAILED`, decrypt/key failure to `ARTIFACT_INTEGRITY_FAILED`, decoder controlled failure to `DECODE_FAILED`, decoder unexpected failure to `DECODE_FAILED`, metric calculation failure to `QUALITY_ASSESSMENT_FAILED`, policy evaluation failure to `QUALITY_ASSESSMENT_FAILED`, aggregate construction failure to `QUALITY_ASSESSMENT_FAILED`, assessment repository add failure to `PERSISTENCE_FAILED`, audit add failure to `PERSISTENCE_FAILED` and commit failure to `PERSISTENCE_FAILED`.
+
+Future success-path storage tests must assert `storage.read_bytes` is called exactly once, `storage.verify` is not called, `storage.publish_bytes` is not called, the `expected` argument is the `StoredArtifactRecord` loaded from the Unit of Work, and plaintext is passed only to `decoder.decode_for_quality`. Result tests must assert success returns `AssessSourceFileQualityResult`, failure never returns a result, result has exactly one field `assessment`, no failure code is embedded in the result and no partial assessment exists.
 
 ## Cross-platform verifier
 

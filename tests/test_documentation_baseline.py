@@ -2003,6 +2003,8 @@ def test_pr009_quality_contract_is_documentation_only_and_staged() -> None:
     assert "policy_version: QualityPolicyVersion" not in adr + task
     assert "caller-provided assessment/audit IDs if consistent" not in adr + task
     assert "repository's actual" not in adr + task
+    assert "raises/returns" not in adr + task
+    assert "according to existing service conventions" not in adr + task
 
     for required in (
         "class AssessSourceFileQualityCommand",
@@ -2117,6 +2119,38 @@ def test_pr009_quality_contract_is_documentation_only_and_staged() -> None:
         assert required in adr + task, required
 
     for required in (
+        "QualityAssessmentErrorCode",
+        "QualityAssessmentError",
+        "SOURCE_FILE_NOT_FOUND",
+        "ARTIFACT_NOT_FOUND",
+        "ARTIFACT_INTEGRITY_FAILED",
+        "DECODE_FAILED",
+        "QUALITY_POLICY_INVALID",
+        "QUALITY_ASSESSMENT_FAILED",
+        "PERSISTENCE_FAILED",
+        "str(error) == error.code.value",
+        "QualityAssessmentError(code=",
+        "raise QualityAssessmentError",
+        "from None",
+        "Success returns exactly one `AssessSourceFileQualityResult`",
+        "Failure raises exactly one `QualityAssessmentError`",
+        "returning `None`",
+        "returning a failure DTO",
+        "returning a success/error union",
+        "returning raw `StorageError`",
+        "returning raw `PersistenceError`",
+        "content = storage.read_bytes(expected=stored_artifact)",
+        "storage.verify()` immediately before",
+        "verify()` first would perform a redundant second encrypted read",
+        "Exactly one `read_bytes()` call is expected",
+        "missing stored-artifact database record is `ARTIFACT_NOT_FOUND`",
+        "missing or invalid encrypted filesystem object",
+        "repository failure with absent entity",
+        "No repository or storage method may be called before this failure",
+    ):
+        assert required in adr + task, required
+
+    for required in (
         "AssessSourceFileQualityResult",
         "assessment: ImageQualityAssessment",
         "no optional or partial success state",
@@ -2181,6 +2215,7 @@ def test_pr009_contract_stage_has_no_production_implementation() -> None:
     assert "CURRENT_SCHEMA_VERSION = 4" in migrations
     assert "IMAGE_QUALITY_ASSESSED" not in domain_enums
     assert "IMAGE_QUALITY_ASSESSMENT" not in domain_enums
+    assert "QualityAssessmentErrorCode" not in domain_enums
     for package_init in (domain_init, app_dto_init, persistence_init):
         assert "ImageQuality" not in package_init
         assert "QualityAssessment" not in package_init
