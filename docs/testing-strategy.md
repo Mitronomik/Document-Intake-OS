@@ -150,3 +150,17 @@ PR-008 implementation records encrypted source-file import and advisory duplicat
 ## PR-009 synthetic quality-test contract
 
 Future PR-009 tests must be synthetic-only and cover EXIF orientations 1-8, effective dimension swaps, one-time orientation, immutable original bytes, no transformed artifact, resolution thresholds, Laplacian blur frozen vectors, population contrast vectors, glare and exposure cutoff boundaries, aggregation to `GOOD`/`REVIEW_REQUIRED`/`RETAKE_REQUIRED`, append-only persistence, schema v5 migration from v0004, unchanged v0001-v0004 checksums, rollback, tamper detection and privacy allowlists. The future verifier must run production components on supported Windows SQLCipher CI with deterministic synthetic images and return `0` pass, `1` product failure or `2` documented unsupported environment. No real documents, document-derived fixtures or PII may be used.
+
+
+## PR-009 implementation lifecycle update — 2026-07-21
+
+ADR-023: ACCEPTED.
+PR-009: IMPLEMENTED AND IN REVIEW; NOT HUMAN ACCEPTED.
+Q-021: OPEN — REQUIRES PRODUCT-OWNER ACCEPTANCE.
+Production default quality policy: NOT ACTIVE.
+Final PR-009 human acceptance: BLOCKED UNTIL Q-021 IS ACCEPTED.
+PR-010 AND LATER: UNAUTHORIZED.
+Gate 2: NOT ACCEPTED.
+M3: IN PROGRESS.
+
+PR-009 implements deterministic whole-frame metrics, explicit caller-provided typed policy handling, full-resolution orientation-normalized decoding, append-only persistence, audit integration, controlled service errors, synthetic tests and a cross-platform verifier. It does not select or activate production thresholds, add UI integration, reject documents automatically, implement PR-010 geometry, PR-011 JPEG preparation, PR-012 document detection/segmentation or use real-document calibration. Migration v0005 checksum: `74f6376fbfd42ed4b9748cadd936daba3c26755a04ddc7cedee76ed2143d95f2`.

@@ -760,3 +760,17 @@ PR-009: `AUTHORIZED, NOT STARTED`. PR-010 AND LATER: `UNAUTHORIZED`. Gate 2: `NO
 Status: `PROPOSED`. Decision record: `docs/decisions/ADR-023-image-quality-assessment-v1.md`. PR-009 is `AUTHORIZED, CONTRACT PROPOSED, PRODUCTION IMPLEMENTATION NOT STARTED`. PR #22 merge commit `063e4b5a981f8ef6914c055e9f50666bbf1be734` is the verified lifecycle base for this contract only; the future implementation base must be the exact merge commit of the contract PR. Q-021 is `OPEN — REQUIRES PRODUCT-OWNER ACCEPTANCE`. PR-010 AND LATER remain `UNAUTHORIZED`; Gate 2 remains `NOT ACCEPTED`; M3 remains `IN PROGRESS`.
 
 FR-04 staging conflict is explicit: PR-009 covers only deterministic whole-frame diagnostics from the decoded source image: EXIF orientation, orientation-normalized analysis view, encoded/effective dimensions, minimum resolution, blur/sharpness, contrast, glare/highlight clipping and exposure. Cut edges, perspective/skew, document presence/count, segmentation, crop, perspective correction and geometric transformation are deferred to PR-010 and PR-012 as described in ADR-023. PR-009 advances FR-04 but does not complete all of FR-04. No final production thresholds are selected.
+
+
+## PR-009 implementation lifecycle update — 2026-07-21
+
+ADR-023: ACCEPTED.
+PR-009: IMPLEMENTED AND IN REVIEW; NOT HUMAN ACCEPTED.
+Q-021: OPEN — REQUIRES PRODUCT-OWNER ACCEPTANCE.
+Production default quality policy: NOT ACTIVE.
+Final PR-009 human acceptance: BLOCKED UNTIL Q-021 IS ACCEPTED.
+PR-010 AND LATER: UNAUTHORIZED.
+Gate 2: NOT ACCEPTED.
+M3: IN PROGRESS.
+
+PR-009 implements deterministic whole-frame metrics, explicit caller-provided typed policy handling, full-resolution orientation-normalized decoding, append-only persistence, audit integration, controlled service errors, synthetic tests and a cross-platform verifier. It does not select or activate production thresholds, add UI integration, reject documents automatically, implement PR-010 geometry, PR-011 JPEG preparation, PR-012 document detection/segmentation or use real-document calibration. Migration v0005 checksum: `74f6376fbfd42ed4b9748cadd936daba3c26755a04ddc7cedee76ed2143d95f2`.

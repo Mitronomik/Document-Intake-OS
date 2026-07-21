@@ -58,6 +58,7 @@ from document_intake.persistence.migrations.v0001_initial import MIGRATION as V0
 from document_intake.persistence.migrations.v0002_stored_artifacts import MIGRATION as V0002
 from document_intake.persistence.migrations.v0003_audit_events import MIGRATION as V0003
 from document_intake.persistence.migrations.v0004_source_file_import import MIGRATION as V0004
+from document_intake.persistence.migrations.v0005_image_quality import MIGRATION as V0005
 from document_intake.storage.filesystem import ImmutableFilesystemStorage
 
 _EXPECTED_MIGRATION_CHECKSUMS = (
@@ -65,6 +66,7 @@ _EXPECTED_MIGRATION_CHECKSUMS = (
     "fb953af64efd3e860960eae8ef1f4078afd0a6ec078a33594e271a9285d7db3d",
     "e01d441c2572ca484cf5227d94f57a3cb62fa8e6e3e223eefc6852b81f6eb3c1",
     "a826d5bc07ba73e6d54fd25e9df8afb42028261040b7981bdd157caf26b1f7c6",
+    "74f6376fbfd42ed4b9748cadd936daba3c26755a04ddc7cedee76ed2143d95f2",
 )
 _FIXTURE = Path(__file__).parents[1] / "tests" / "fixtures" / "synthetic" / "pr008_color_grid.heic"
 _NOW = datetime(2026, 7, 20, 12, 0, tzinfo=UTC)
@@ -233,7 +235,7 @@ def _unsupported_code() -> str | None:
 
 
 def _render_status_lines(statuses: Mapping[str, bool]) -> tuple[str, ...]:
-    passed = CURRENT_SCHEMA_VERSION == 4 and all(statuses[name] for name in _CHECKS)
+    passed = CURRENT_SCHEMA_VERSION == 5 and all(statuses[name] for name in _CHECKS)
     return (
         f"PR008_VERIFY schema_version={CURRENT_SCHEMA_VERSION}",
         *(f"PR008_VERIFY {name}={'PASS' if statuses[name] else 'FAIL'}" for name in _CHECKS),
@@ -252,7 +254,7 @@ def _has_allowlisted_shape(lines: tuple[str, ...]) -> bool:
         return lines in tuple(
             (f"PR008_VERIFY result=INCONCLUSIVE code={code}",) for code in _INCONCLUSIVE_CODES
         ) or lines == ("PR008_VERIFY result=FAIL",)
-    if len(lines) != len(_CHECKS) + 2 or lines[0] != "PR008_VERIFY schema_version=4":
+    if len(lines) != len(_CHECKS) + 2 or lines[0] != "PR008_VERIFY schema_version=5":
         return False
     for name, line in zip(_CHECKS, lines[1:-1], strict=True):
         if line not in {f"PR008_VERIFY {name}=PASS", f"PR008_VERIFY {name}=FAIL"}:
@@ -289,6 +291,16 @@ def _generated_image_bytes(format_name: str, *, variant: int = 0, quality: int =
     kwargs = {"quality": quality} if format_name == "JPEG" else {}
     image.save(stream, format=format_name, **kwargs)
     return stream.getvalue()
+
+
+def _migration_chain_is_current() -> bool:
+    return (
+        CURRENT_SCHEMA_VERSION == 5
+        and tuple(migration.checksum for migration in MIGRATIONS) == _EXPECTED_MIGRATION_CHECKSUMS
+        and (V0001, V0002, V0003, V0004, V0005) == MIGRATIONS
+        and V0004.checksum == "a826d5bc07ba73e6d54fd25e9df8afb42028261040b7981bdd157caf26b1f7c6"
+        and V0005.checksum == "74f6376fbfd42ed4b9748cadd936daba3c26755a04ddc7cedee76ed2143d95f2"
+    )
 
 
 def _ordinary_sqlite_rejects(path: Path) -> bool:
@@ -334,12 +346,7 @@ def _run_supported() -> _VerificationRun:
         factory = cast(UnitOfWorkFactory, database)
         storage = ImmutableFilesystemStorage(storage_root, _StorageKeyProvider())
         decoder = PillowMediaDecoder()
-        statuses["migration_v0004"] = (
-            CURRENT_SCHEMA_VERSION == 4
-            and tuple(migration.checksum for migration in MIGRATIONS)
-            == _EXPECTED_MIGRATION_CHECKSUMS
-            and (V0001, V0002, V0003, V0004) == MIGRATIONS
-        )
+        statuses["migration_v0004"] = _migration_chain_is_current()
         create_upload_batch(
             CreateUploadBatchCommand(_eid(100), BatchNumber("VERIFY-PR008"), _NOW, _actor()),
             unit_of_work_factory=factory,
@@ -704,7 +711,7 @@ def main() -> int:
     )
     lines = _render_status_lines(statuses)
     sys.stdout.write("\n".join(lines) + "\n")
-    passed = CURRENT_SCHEMA_VERSION == 4 and all(statuses.values())
+    passed = CURRENT_SCHEMA_VERSION == 5 and all(statuses.values())
     return 0 if passed else 1
 
 

@@ -116,3 +116,17 @@ The next authorized implementation task is PR-009 only: `AUTHORIZED, NOT STARTED
 ## PR-009 contract handoff
 
 PR #22 merge commit `063e4b5a981f8ef6914c055e9f50666bbf1be734` is recorded as the verified lifecycle base for this documentation-only contract. PR-008: `COMPLETED AND HUMAN ACCEPTED WITH DOCUMENTED RESIDUAL RISK`; PR-009: `AUTHORIZED, CONTRACT PROPOSED, PRODUCTION IMPLEMENTATION NOT STARTED`; ADR-023: `PROPOSED`; Q-021: `OPEN — REQUIRES PRODUCT-OWNER ACCEPTANCE`; PR-010 AND LATER: `UNAUTHORIZED`; Gate 2: `NOT ACCEPTED`; M3: `IN PROGRESS`. Do not implement PR-009 production code until the contract PR is merged and the future implementation branches from that exact merge commit. Do not claim final calibrated thresholds, physical Windows 11 validation, Gate 2 acceptance or PR-010+ authorization.
+
+
+## PR-009 implementation lifecycle update — 2026-07-21
+
+ADR-023: ACCEPTED.
+PR-009: IMPLEMENTED AND IN REVIEW; NOT HUMAN ACCEPTED.
+Q-021: OPEN — REQUIRES PRODUCT-OWNER ACCEPTANCE.
+Production default quality policy: NOT ACTIVE.
+Final PR-009 human acceptance: BLOCKED UNTIL Q-021 IS ACCEPTED.
+PR-010 AND LATER: UNAUTHORIZED.
+Gate 2: NOT ACCEPTED.
+M3: IN PROGRESS.
+
+PR-009 implements deterministic whole-frame metrics, explicit caller-provided typed policy handling, full-resolution orientation-normalized decoding, append-only persistence, audit integration, controlled service errors, synthetic tests and a cross-platform verifier. It does not select or activate production thresholds, add UI integration, reject documents automatically, implement PR-010 geometry, PR-011 JPEG preparation, PR-012 document detection/segmentation or use real-document calibration. Migration v0005 checksum: `74f6376fbfd42ed4b9748cadd936daba3c26755a04ddc7cedee76ed2143d95f2`.
