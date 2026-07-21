@@ -79,7 +79,7 @@ def assess_source_file_quality(
             except Exception:
                 _raise(QualityAssessmentErrorCode.DECODE_FAILED)
             try:
-                metrics = calculate_quality_metrics(media)
+                metrics = calculate_quality_metrics(media, policy=command.policy)
                 status, issues = evaluate_quality_policy(metrics, command.policy)
                 assessment = ImageQualityAssessment(
                     command.assessment_id,

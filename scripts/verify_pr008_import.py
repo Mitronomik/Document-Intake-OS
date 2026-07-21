@@ -233,7 +233,7 @@ def _unsupported_code() -> str | None:
 
 
 def _render_status_lines(statuses: Mapping[str, bool]) -> tuple[str, ...]:
-    passed = CURRENT_SCHEMA_VERSION == 4 and all(statuses[name] for name in _CHECKS)
+    passed = CURRENT_SCHEMA_VERSION == 5 and all(statuses[name] for name in _CHECKS)
     return (
         f"PR008_VERIFY schema_version={CURRENT_SCHEMA_VERSION}",
         *(f"PR008_VERIFY {name}={'PASS' if statuses[name] else 'FAIL'}" for name in _CHECKS),
@@ -252,7 +252,7 @@ def _has_allowlisted_shape(lines: tuple[str, ...]) -> bool:
         return lines in tuple(
             (f"PR008_VERIFY result=INCONCLUSIVE code={code}",) for code in _INCONCLUSIVE_CODES
         ) or lines == ("PR008_VERIFY result=FAIL",)
-    if len(lines) != len(_CHECKS) + 2 or lines[0] != "PR008_VERIFY schema_version=4":
+    if len(lines) != len(_CHECKS) + 2 or lines[0] != "PR008_VERIFY schema_version=5":
         return False
     for name, line in zip(_CHECKS, lines[1:-1], strict=True):
         if line not in {f"PR008_VERIFY {name}=PASS", f"PR008_VERIFY {name}=FAIL"}:
@@ -335,7 +335,7 @@ def _run_supported() -> _VerificationRun:
         storage = ImmutableFilesystemStorage(storage_root, _StorageKeyProvider())
         decoder = PillowMediaDecoder()
         statuses["migration_v0004"] = (
-            CURRENT_SCHEMA_VERSION == 4
+            CURRENT_SCHEMA_VERSION == 5
             and tuple(migration.checksum for migration in MIGRATIONS)
             == _EXPECTED_MIGRATION_CHECKSUMS
             and (V0001, V0002, V0003, V0004) == MIGRATIONS
@@ -704,7 +704,7 @@ def main() -> int:
     )
     lines = _render_status_lines(statuses)
     sys.stdout.write("\n".join(lines) + "\n")
-    passed = CURRENT_SCHEMA_VERSION == 4 and all(statuses.values())
+    passed = CURRENT_SCHEMA_VERSION == 5 and all(statuses.values())
     return 0 if passed else 1
 
 

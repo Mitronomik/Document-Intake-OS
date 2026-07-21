@@ -1859,7 +1859,7 @@ def test_pr008_acceptance_and_pr009_authorization_lifecycle_contract() -> None:
     assert "No physical Windows 11 result may be fabricated or inferred" in decision
 
 
-def test_pr009_quality_contract_is_documentation_only_and_staged() -> None:
+def test_pr009_quality_contract_is_implemented_and_in_review() -> None:
     adr = (REPO_ROOT / "docs/decisions/ADR-023-image-quality-assessment-v1.md").read_text(
         encoding="utf-8"
     )
@@ -1882,18 +1882,19 @@ def test_pr009_quality_contract_is_documentation_only_and_staged() -> None:
     )
     combined = "\n".join((REPO_ROOT / name).read_text(encoding="utf-8") for name in lifecycle_files)
 
-    assert "Status: PROPOSED" in adr
+    assert "Status: ACCEPTED" in adr
     assert "Decision owner: Product owner" in adr
     assert "Date: 2026-07-21" in adr
     assert "063e4b5a981f8ef6914c055e9f50666bbf1be734" in task
     assert "exact merge commit of the PR that adds this contract" in task
-    assert "Status: AUTHORIZED FOR CONTRACT REVIEW; PRODUCTION IMPLEMENTATION NOT STARTED" in task
+    assert "IMPLEMENTED AND IN REVIEW;" in task
+    assert "NOT HUMAN ACCEPTED" in task
     assert _question_status(q021) == "OPEN"
     assert "REQUIRES PRODUCT-OWNER ACCEPTANCE" in q021
 
     for required in (
         "PR-008: `COMPLETED AND HUMAN ACCEPTED WITH DOCUMENTED RESIDUAL RISK`",
-        "PR-009: `AUTHORIZED, CONTRACT PROPOSED, PRODUCTION IMPLEMENTATION NOT STARTED`",
+        "PR-009: IMPLEMENTED AND IN REVIEW; NOT HUMAN ACCEPTED",
         "Q-021: `OPEN — REQUIRES PRODUCT-OWNER ACCEPTANCE`",
         "PR-010 AND LATER: `UNAUTHORIZED`",
         "Gate 2: `NOT ACCEPTED`",
@@ -2203,7 +2204,6 @@ def test_pr009_quality_contract_is_documentation_only_and_staged() -> None:
     assert _question_status(q007) == "DEFERRED"
 
     for forbidden in (
-        "Status: ACCEPTED",
         "Gate 2: `ACCEPTED`",
         "PR-010: `AUTHORIZED`",
         "physical Windows 11 validation complete",
@@ -2213,8 +2213,8 @@ def test_pr009_quality_contract_is_documentation_only_and_staged() -> None:
         assert forbidden not in adr + task, forbidden
 
 
-def test_pr009_contract_stage_has_no_production_implementation() -> None:
-    future_production_files = (
+def test_pr009_implementation_stage_has_production_contract_symbols() -> None:
+    production_files = (
         "src/document_intake/domain/image_quality.py",
         "src/document_intake/image_pipeline/quality_assessor.py",
         "src/document_intake/application/dto/image_quality.py",
@@ -2223,33 +2223,39 @@ def test_pr009_contract_stage_has_no_production_implementation() -> None:
         "src/document_intake/persistence/migrations/v0005_image_quality.py",
         "scripts/verify_pr009_quality.py",
     )
-    for filename in future_production_files:
-        assert not (REPO_ROOT / filename).exists(), filename
+    for filename in production_files:
+        assert (REPO_ROOT / filename).is_file(), filename
 
     migrations = (REPO_ROOT / "src/document_intake/persistence/migrations/__init__.py").read_text(
         encoding="utf-8"
     )
     domain_enums = (REPO_ROOT / "src/document_intake/domain/enums.py").read_text(encoding="utf-8")
-    domain_init = (REPO_ROOT / "src/document_intake/domain/__init__.py").read_text(encoding="utf-8")
-    app_dto_init = (REPO_ROOT / "src/document_intake/application/dto/__init__.py").read_text(
+    media_port = (REPO_ROOT / "src/document_intake/application/ports/media.py").read_text(
         encoding="utf-8"
     )
-    persistence_init = (REPO_ROOT / "src/document_intake/persistence/__init__.py").read_text(
+    persistence_port = (
+        REPO_ROOT / "src/document_intake/application/ports/persistence.py"
+    ).read_text(encoding="utf-8")
+    domain_quality = (REPO_ROOT / "src/document_intake/domain/image_quality.py").read_text(
+        encoding="utf-8"
+    )
+    dto_quality = (REPO_ROOT / "src/document_intake/application/dto/image_quality.py").read_text(
         encoding="utf-8"
     )
 
-    assert "CURRENT_SCHEMA_VERSION = 4" in migrations
-    assert "IMAGE_QUALITY_ASSESSED" not in domain_enums
-    assert "IMAGE_QUALITY_ASSESSMENT" not in domain_enums
-    assert "QualityAssessmentErrorCode" not in domain_enums
-    for package_init in (domain_init, app_dto_init, persistence_init):
-        assert "ImageQuality" not in package_init
-        assert "QualityAssessment" not in package_init
-        assert "QualityAnalysisDecoderPort" not in package_init
-
-    test_source = (REPO_ROOT / "tests/test_documentation_baseline.py").read_text(encoding="utf-8")
-    old_false_proof = "git " + "diff " + "--name-only " + "HEAD"
-    assert old_false_proof not in test_source
+    assert "CURRENT_SCHEMA_VERSION = 5" in migrations
+    for required in (
+        "QualityAssessmentErrorCode",
+        "IMAGE_QUALITY_ASSESSED",
+        "IMAGE_QUALITY_ASSESSMENT",
+    ):
+        assert required in domain_enums
+    assert "QualityAnalysisDecoderPort" in media_port
+    assert "ImageQualityAssessmentRepository" in persistence_port
+    for required in ("ImageQualityAssessment", "ImageQualityPolicy"):
+        assert required in domain_quality
+    for required in ("AssessSourceFileQualityCommand", "AssessSourceFileQualityResult"):
+        assert required in dto_quality
 
     adr = (REPO_ROOT / "docs/decisions/ADR-023-image-quality-assessment-v1.md").read_text(
         encoding="utf-8"
@@ -2260,6 +2266,10 @@ def test_pr009_contract_stage_has_no_production_implementation() -> None:
     q021 = _question_section(
         (REPO_ROOT / "docs/open-questions.md").read_text(encoding="utf-8"), "Q-021"
     )
-    assert "Status: PROPOSED" in adr
-    assert "PRODUCTION IMPLEMENTATION NOT STARTED" in task
+    assert "Status: ACCEPTED" in adr
+    assert "IMPLEMENTED AND IN REVIEW" in task
+    assert "NOT HUMAN ACCEPTED" in task
+    assert "Production default quality policy: NOT ACTIVE" in task
     assert _question_status(q021) == "OPEN"
+    assert "PR-010 AND LATER" in task and "UNAUTHORIZED" in task
+    assert "Gate 2" in task and "NOT ACCEPTED" in task

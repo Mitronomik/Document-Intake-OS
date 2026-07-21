@@ -1306,6 +1306,8 @@ class ImageQualityAssessmentRepo(_Repo):
         )
 
     def add(self, assessment: ImageQualityAssessment) -> None:
+        if not isinstance(assessment, ImageQualityAssessment):
+            raise PersistenceError(PersistenceErrorCode.PERSISTED_DATA_INVALID)
         if self.get(assessment.id) is not None:
             raise PersistenceError(PersistenceErrorCode.ENTITY_ALREADY_EXISTS)
         payload = ser.image_quality_assessment_to_json(assessment)
@@ -1324,7 +1326,7 @@ class ImageQualityAssessmentRepo(_Repo):
                         metric.metric_code.value,
                         metric.algorithm_id,
                         metric.algorithm_version,
-                        ser._dec_text(metric.numeric_value),
+                        ser._metric_dec_text(metric.numeric_value, metric.unit),
                         metric.unit.value,
                         ser.image_quality_metric_to_json(metric),
                     ),
@@ -1383,7 +1385,7 @@ class ImageQualityAssessmentRepo(_Repo):
                 m.metric_code.value,
                 m.algorithm_id,
                 m.algorithm_version,
-                ser._dec_text(m.numeric_value),
+                ser._metric_dec_text(m.numeric_value, m.unit),
                 m.unit.value,
             ) != tuple(r[1:6]) or ser.image_quality_metric_to_json(m) != r[6]:
                 raise PersistenceError(PersistenceErrorCode.PERSISTED_DATA_INVALID)

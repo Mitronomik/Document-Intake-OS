@@ -49,6 +49,10 @@ def _decimal(v: Decimal, name: str) -> Decimal:
     return v
 
 
+def _has_scale(value: Decimal, places: int) -> bool:
+    return value.as_tuple().exponent == -places
+
+
 def _utc(dt: datetime) -> datetime:
     if not isinstance(dt, datetime) or dt.tzinfo is None or dt.utcoffset() is None:
         raise InvalidValueError("image_quality_assessment.assessed_at: timezone_required")
@@ -78,6 +82,10 @@ class ImageQualityMetric:
     def __post_init__(self) -> None:
         if not isinstance(self.metric_code, QualityMetricCode):
             raise InvalidValueError("image_quality_metric.metric_code: invalid_type")
+        if type(self.algorithm_id) is not str:
+            raise InvalidValueError("image_quality_metric.algorithm_id: invalid_type")
+        if type(self.algorithm_version) is not int:
+            raise InvalidValueError("image_quality_metric.algorithm_version: invalid_type")
         expected_alg, expected_unit = _METRIC_META[self.metric_code]
         if (
             self.algorithm_id != expected_alg
@@ -86,13 +94,17 @@ class ImageQualityMetric:
         ):
             raise InvalidValueError("image_quality_metric: invalid_mapping")
         value = _decimal(self.numeric_value, "image_quality_metric.numeric_value")
-        if self.unit is QualityMetricUnit.PIXELS and (
-            value != value.to_integral_value() or value < 1
-        ):
-            raise InvalidValueError("image_quality_metric.numeric_value: invalid_pixels")
-        if self.unit in {QualityMetricUnit.VARIANCE, QualityMetricUnit.LUMA_LEVEL} and value < 0:
+        if value < 0:
             raise InvalidValueError("image_quality_metric.numeric_value: negative")
-        if self.unit is QualityMetricUnit.FRACTION and not Decimal("0") <= value <= Decimal("1"):
+        if self.unit is QualityMetricUnit.PIXELS:
+            if value != value.to_integral_value() or value.as_tuple().exponent != 0 or value < 1:
+                raise InvalidValueError("image_quality_metric.numeric_value: invalid_pixels")
+        elif self.unit in {QualityMetricUnit.VARIANCE, QualityMetricUnit.LUMA_LEVEL}:
+            if not _has_scale(value, 6):
+                raise InvalidValueError("image_quality_metric.numeric_value: invalid_scale")
+        elif self.unit is QualityMetricUnit.FRACTION and (
+            not _has_scale(value, 8) or not Decimal("0") <= value <= Decimal("1")
+        ):
             raise InvalidValueError("image_quality_metric.numeric_value: invalid_fraction")
 
 
@@ -170,8 +182,77 @@ class ImageQualityPolicy:
                 raise InvalidValueError("image_quality_policy.cutoff: invalid_value")
         if self.exposure_shadow_cutoff >= self.exposure_bright_cutoff:
             raise InvalidValueError("image_quality_policy.exposure_cutoffs: invalid_order")
+        if type(self.severity_rules) is not tuple:
+            raise InvalidValueError("image_quality_policy.severity_rules: invalid_type")
+        if any(not isinstance(r, ImageQualitySeverityRule) for r in self.severity_rules):
+            raise InvalidValueError("image_quality_policy.severity_rules: invalid_item_type")
         if tuple(r.issue_code for r in self.severity_rules) != ISSUE_ORDER:
             raise InvalidValueError("image_quality_policy.severity_rules: invalid_order")
+
+
+def derive_quality_issues_and_status(
+    metrics: tuple[ImageQualityMetric, ...],
+    policy: ImageQualityPolicy,
+) -> tuple[tuple[ImageQualityIssue, ...], QualityAssessmentStatus]:
+    if type(metrics) is not tuple:
+        raise InvalidValueError("image_quality_metrics: invalid_type")
+    if any(not isinstance(metric, ImageQualityMetric) for metric in metrics):
+        raise InvalidValueError("image_quality_metrics: invalid_item_type")
+    if tuple(metric.metric_code for metric in metrics) != METRIC_ORDER:
+        raise InvalidValueError("image_quality_metrics: invalid_order")
+    if len({metric.metric_code for metric in metrics}) != len(metrics) or len(metrics) != 7:
+        raise InvalidValueError("image_quality_metrics: invalid_count")
+    if not isinstance(policy, ImageQualityPolicy):
+        raise InvalidValueError("image_quality_policy: invalid_type")
+    metric_values = {metric.metric_code: metric.numeric_value for metric in metrics}
+    severities = {rule.issue_code: rule.severity for rule in policy.severity_rules}
+    checks = (
+        (
+            QualityIssueCode.LOW_RESOLUTION,
+            metric_values[QualityMetricCode.SHORT_SIDE_PIXELS]
+            < Decimal(policy.minimum_short_side_pixels)
+            or metric_values[QualityMetricCode.LONG_SIDE_PIXELS]
+            < Decimal(policy.minimum_long_side_pixels),
+        ),
+        (
+            QualityIssueCode.BLUR_DETECTED,
+            metric_values[QualityMetricCode.LAPLACIAN_VARIANCE]
+            < policy.blur_minimum_laplacian_variance,
+        ),
+        (
+            QualityIssueCode.LOW_CONTRAST,
+            metric_values[QualityMetricCode.LUMINANCE_STANDARD_DEVIATION]
+            < policy.contrast_minimum_luminance_stddev,
+        ),
+        (
+            QualityIssueCode.GLARE_DETECTED,
+            metric_values[QualityMetricCode.HIGHLIGHT_CLIPPED_FRACTION]
+            > policy.glare_maximum_fraction,
+        ),
+        (
+            QualityIssueCode.UNDEREXPOSED,
+            metric_values[QualityMetricCode.SHADOW_CLIPPED_FRACTION]
+            > policy.exposure_maximum_shadow_fraction,
+        ),
+        (
+            QualityIssueCode.OVEREXPOSED,
+            metric_values[QualityMetricCode.BRIGHT_CLIPPED_FRACTION]
+            > policy.exposure_maximum_bright_fraction,
+        ),
+    )
+    issues = tuple(
+        ImageQualityIssue(code, severities[code]) for code, is_present in checks if is_present
+    )
+    status = (
+        QualityAssessmentStatus.GOOD
+        if not issues
+        else (
+            QualityAssessmentStatus.RETAKE_REQUIRED
+            if any(issue.severity is QualityIssueSeverity.BLOCKING for issue in issues)
+            else QualityAssessmentStatus.REVIEW_REQUIRED
+        )
+    )
+    return issues, status
 
 
 @dataclass(frozen=True, slots=True)
@@ -223,23 +304,38 @@ class ImageQualityAssessment:
             raise InvalidValueError(
                 "image_quality_assessment.effective_dimensions: invalid_identity"
             )
+        if type(self.metrics) is not tuple:
+            raise InvalidValueError("image_quality_assessment.metrics: invalid_type")
+        if any(not isinstance(metric, ImageQualityMetric) for metric in self.metrics):
+            raise InvalidValueError("image_quality_assessment.metrics: invalid_item_type")
         if tuple(m.metric_code for m in self.metrics) != METRIC_ORDER:
             raise InvalidValueError("image_quality_assessment.metrics: invalid_order")
+        if (
+            len({m.metric_code for m in self.metrics}) != len(self.metrics)
+            or len(self.metrics) != 7
+        ):
+            raise InvalidValueError("image_quality_assessment.metrics: invalid_count")
+        if type(self.issues) is not tuple:
+            raise InvalidValueError("image_quality_assessment.issues: invalid_type")
+        if any(not isinstance(issue, ImageQualityIssue) for issue in self.issues):
+            raise InvalidValueError("image_quality_assessment.issues: invalid_item_type")
+        if len({i.issue_code for i in self.issues}) != len(self.issues):
+            raise InvalidValueError("image_quality_assessment.issues: duplicate")
         if tuple(i.issue_code for i in self.issues) != tuple(
             c for c in ISSUE_ORDER if c in {i.issue_code for i in self.issues}
         ):
             raise InvalidValueError("image_quality_assessment.issues: invalid_order")
-        severities = {r.issue_code: r.severity for r in self.policy.severity_rules}
-        if any(severities[i.issue_code] is not i.severity for i in self.issues):
-            raise InvalidValueError("image_quality_assessment.issues: severity_mismatch")
-        expected = (
-            QualityAssessmentStatus.GOOD
-            if not self.issues
-            else (
-                QualityAssessmentStatus.RETAKE_REQUIRED
-                if any(i.severity is QualityIssueSeverity.BLOCKING for i in self.issues)
-                else QualityAssessmentStatus.REVIEW_REQUIRED
-            )
+        metric_values = {metric.metric_code: metric.numeric_value for metric in self.metrics}
+        if metric_values[QualityMetricCode.SHORT_SIDE_PIXELS] != Decimal(
+            min(self.effective_width, self.effective_height)
+        ) or metric_values[QualityMetricCode.LONG_SIDE_PIXELS] != Decimal(
+            max(self.effective_width, self.effective_height)
+        ):
+            raise InvalidValueError("image_quality_assessment.metrics: dimension_mismatch")
+        expected_issues, expected_status = derive_quality_issues_and_status(
+            self.metrics, self.policy
         )
-        if self.status is not expected:
+        if self.issues != expected_issues:
+            raise InvalidValueError("image_quality_assessment.issues: mismatch")
+        if self.status is not expected_status:
             raise InvalidValueError("image_quality_assessment.status: mismatch")

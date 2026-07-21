@@ -337,7 +337,7 @@ def test_pr009_migration_metadata_and_checksums() -> None:
     assert V0005_IMAGE_QUALITY.name == "image_quality_pr009"
     assert (
         V0005_IMAGE_QUALITY.checksum
-        == "930d834c6c48ca2c16a1287faae18e0568da75ab6d47b72b7d5f46c52ce51885"
+        == "74f6376fbfd42ed4b9748cadd936daba3c26755a04ddc7cedee76ed2143d95f2"
     )
 
 

@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import json
+import re
 from collections.abc import Callable
 from datetime import UTC, date, datetime
 from decimal import Decimal
@@ -1030,21 +1031,92 @@ def source_file_columns(
     )
 
 
-def _dec_text(value: Decimal) -> str:
-    s = format(value, "f")
-    if "E" in s or "e" in s or s in {"NaN", "Infinity", "-Infinity"}:
-        raise PersistenceError(PersistenceErrorCode.PERSISTED_DATA_INVALID)
-    return s
+_POLICY_DECIMAL_RE = re.compile(r"^(0|[1-9][0-9]*)(\.[0-9]*[1-9])?$")
+_PIXEL_DECIMAL_RE = re.compile(r"^[1-9][0-9]*$")
+_SCALE6_DECIMAL_RE = re.compile(r"^(0|[1-9][0-9]*)\.[0-9]{6}$")
+_SCALE8_DECIMAL_RE = re.compile(r"^(0|1|[0-9])\.[0-9]{8}$|^0\.00000000$|^1\.00000000$")
 
 
-def _dec_parse(value: str) -> Decimal:
-    if (
-        not isinstance(value, str)
-        or "e" in value.lower()
-        or value in {"NaN", "Infinity", "-Infinity"}
-    ):
+def _json_dumps(value: Any) -> str:
+    return json.dumps(value, sort_keys=True, separators=(",", ":"), allow_nan=False)
+
+
+def _require_keys(value: Any, keys: set[str]) -> dict[str, Any]:
+    if type(value) is not dict or set(value) != keys:
         raise PersistenceError(PersistenceErrorCode.PERSISTED_DATA_INVALID)
-    return Decimal(value)
+    return value
+
+
+def _require_list(value: Any) -> list[Any]:
+    if type(value) is not list:
+        raise PersistenceError(PersistenceErrorCode.PERSISTED_DATA_INVALID)
+    return value
+
+
+def _require_str(value: Any) -> str:
+    if type(value) is not str:
+        raise PersistenceError(PersistenceErrorCode.PERSISTED_DATA_INVALID)
+    return value
+
+
+def _require_int(value: Any) -> int:
+    if type(value) is not int:
+        raise PersistenceError(PersistenceErrorCode.PERSISTED_DATA_INVALID)
+    return value
+
+
+def _policy_dec_text(value: Decimal) -> str:
+    if type(value) is not Decimal or value.is_nan() or value.is_infinite() or value < 0:
+        raise PersistenceError(PersistenceErrorCode.PERSISTED_DATA_INVALID)
+    normalized = value.normalize()
+    if normalized == normalized.to_integral_value():
+        text = format(normalized.quantize(Decimal("1")), "f")
+    else:
+        text = format(normalized, "f").rstrip("0").rstrip(".")
+    if not _POLICY_DECIMAL_RE.fullmatch(text):
+        raise PersistenceError(PersistenceErrorCode.PERSISTED_DATA_INVALID)
+    return text
+
+
+def _metric_dec_text(value: Decimal, unit: QualityMetricUnit) -> str:
+    if type(value) is not Decimal or value.is_nan() or value.is_infinite() or value < 0:
+        raise PersistenceError(PersistenceErrorCode.PERSISTED_DATA_INVALID)
+    text = format(value, "f")
+    pattern = {
+        QualityMetricUnit.PIXELS: _PIXEL_DECIMAL_RE,
+        QualityMetricUnit.VARIANCE: _SCALE6_DECIMAL_RE,
+        QualityMetricUnit.LUMA_LEVEL: _SCALE6_DECIMAL_RE,
+        QualityMetricUnit.FRACTION: _SCALE8_DECIMAL_RE,
+    }[unit]
+    if not pattern.fullmatch(text):
+        raise PersistenceError(PersistenceErrorCode.PERSISTED_DATA_INVALID)
+    return text
+
+
+def _parse_policy_decimal(value: Any) -> Decimal:
+    text = _require_str(value)
+    if not _POLICY_DECIMAL_RE.fullmatch(text):
+        raise PersistenceError(PersistenceErrorCode.PERSISTED_DATA_INVALID)
+    parsed = Decimal(text)
+    if _policy_dec_text(parsed) != text:
+        raise PersistenceError(PersistenceErrorCode.PERSISTED_DATA_INVALID)
+    return parsed
+
+
+def _parse_metric_decimal(value: Any, unit: QualityMetricUnit) -> Decimal:
+    text = _require_str(value)
+    pattern = {
+        QualityMetricUnit.PIXELS: _PIXEL_DECIMAL_RE,
+        QualityMetricUnit.VARIANCE: _SCALE6_DECIMAL_RE,
+        QualityMetricUnit.LUMA_LEVEL: _SCALE6_DECIMAL_RE,
+        QualityMetricUnit.FRACTION: _SCALE8_DECIMAL_RE,
+    }[unit]
+    if not pattern.fullmatch(text):
+        raise PersistenceError(PersistenceErrorCode.PERSISTED_DATA_INVALID)
+    parsed = Decimal(text)
+    if _metric_dec_text(parsed, unit) != text:
+        raise PersistenceError(PersistenceErrorCode.PERSISTED_DATA_INVALID)
+    return parsed
 
 
 def image_quality_policy_dict(o: ImageQualityPolicy) -> dict[str, Any]:
@@ -1053,14 +1125,14 @@ def image_quality_policy_dict(o: ImageQualityPolicy) -> dict[str, Any]:
         "policy_version": o.version.version,
         "minimum_short_side_pixels": o.minimum_short_side_pixels,
         "minimum_long_side_pixels": o.minimum_long_side_pixels,
-        "blur_minimum_laplacian_variance": _dec_text(o.blur_minimum_laplacian_variance),
-        "contrast_minimum_luminance_stddev": _dec_text(o.contrast_minimum_luminance_stddev),
+        "blur_minimum_laplacian_variance": _policy_dec_text(o.blur_minimum_laplacian_variance),
+        "contrast_minimum_luminance_stddev": _policy_dec_text(o.contrast_minimum_luminance_stddev),
         "glare_highlight_cutoff": o.glare_highlight_cutoff,
-        "glare_maximum_fraction": _dec_text(o.glare_maximum_fraction),
+        "glare_maximum_fraction": _policy_dec_text(o.glare_maximum_fraction),
         "exposure_shadow_cutoff": o.exposure_shadow_cutoff,
-        "exposure_maximum_shadow_fraction": _dec_text(o.exposure_maximum_shadow_fraction),
+        "exposure_maximum_shadow_fraction": _policy_dec_text(o.exposure_maximum_shadow_fraction),
         "exposure_bright_cutoff": o.exposure_bright_cutoff,
-        "exposure_maximum_bright_fraction": _dec_text(o.exposure_maximum_bright_fraction),
+        "exposure_maximum_bright_fraction": _policy_dec_text(o.exposure_maximum_bright_fraction),
         "severity_rules": [
             {"issue_code": r.issue_code.value, "severity": r.severity.value}
             for r in o.severity_rules
@@ -1069,71 +1141,101 @@ def image_quality_policy_dict(o: ImageQualityPolicy) -> dict[str, Any]:
 
 
 def image_quality_policy_to_json(o: ImageQualityPolicy) -> str:
-    return json.dumps(image_quality_policy_dict(o), sort_keys=True, separators=(",", ":"))
+    return _json_dumps(image_quality_policy_dict(o))
 
 
 def image_quality_policy_from_dict(d: dict[str, Any]) -> ImageQualityPolicy:
+    d = _require_keys(
+        d,
+        {
+            "policy_id",
+            "policy_version",
+            "minimum_short_side_pixels",
+            "minimum_long_side_pixels",
+            "blur_minimum_laplacian_variance",
+            "contrast_minimum_luminance_stddev",
+            "glare_highlight_cutoff",
+            "glare_maximum_fraction",
+            "exposure_shadow_cutoff",
+            "exposure_maximum_shadow_fraction",
+            "exposure_bright_cutoff",
+            "exposure_maximum_bright_fraction",
+            "severity_rules",
+        },
+    )
+    rules = _require_list(d["severity_rules"])
     return ImageQualityPolicy(
-        QualityPolicyVersion(d["policy_id"], int(d["policy_version"])),
-        int(d["minimum_short_side_pixels"]),
-        int(d["minimum_long_side_pixels"]),
-        _dec_parse(d["blur_minimum_laplacian_variance"]),
-        _dec_parse(d["contrast_minimum_luminance_stddev"]),
-        int(d["glare_highlight_cutoff"]),
-        _dec_parse(d["glare_maximum_fraction"]),
-        int(d["exposure_shadow_cutoff"]),
-        _dec_parse(d["exposure_maximum_shadow_fraction"]),
-        int(d["exposure_bright_cutoff"]),
-        _dec_parse(d["exposure_maximum_bright_fraction"]),
-        tuple(
-            ImageQualitySeverityRule(
-                QualityIssueCode(r["issue_code"]), QualityIssueSeverity(r["severity"])
-            )
-            for r in d["severity_rules"]
-        ),
+        QualityPolicyVersion(_require_str(d["policy_id"]), _require_int(d["policy_version"])),
+        _require_int(d["minimum_short_side_pixels"]),
+        _require_int(d["minimum_long_side_pixels"]),
+        _parse_policy_decimal(d["blur_minimum_laplacian_variance"]),
+        _parse_policy_decimal(d["contrast_minimum_luminance_stddev"]),
+        _require_int(d["glare_highlight_cutoff"]),
+        _parse_policy_decimal(d["glare_maximum_fraction"]),
+        _require_int(d["exposure_shadow_cutoff"]),
+        _parse_policy_decimal(d["exposure_maximum_shadow_fraction"]),
+        _require_int(d["exposure_bright_cutoff"]),
+        _parse_policy_decimal(d["exposure_maximum_bright_fraction"]),
+        tuple(image_quality_severity_rule_from_dict(r) for r in rules),
+    )
+
+
+def image_quality_severity_rule_from_dict(value: Any) -> ImageQualitySeverityRule:
+    d = _require_keys(value, {"issue_code", "severity"})
+    return ImageQualitySeverityRule(
+        QualityIssueCode(_require_str(d["issue_code"])),
+        QualityIssueSeverity(_require_str(d["severity"])),
     )
 
 
 def image_quality_metric_to_json(o: ImageQualityMetric) -> str:
-    return json.dumps(
+    return _json_dumps(
         {
             "metric_code": o.metric_code.value,
             "algorithm_id": o.algorithm_id,
             "algorithm_version": o.algorithm_version,
-            "numeric_value": _dec_text(o.numeric_value),
+            "numeric_value": _metric_dec_text(o.numeric_value, o.unit),
             "unit": o.unit.value,
-        },
-        sort_keys=True,
-        separators=(",", ":"),
+        }
     )
 
 
 def image_quality_metric_from_json(payload: str) -> ImageQualityMetric:
-    d = json.loads(payload)
+    return image_quality_metric_from_dict(json.loads(payload))
+
+
+def image_quality_metric_from_dict(value: Any) -> ImageQualityMetric:
+    d = _require_keys(
+        value, {"metric_code", "algorithm_id", "algorithm_version", "numeric_value", "unit"}
+    )
+    unit = QualityMetricUnit(_require_str(d["unit"]))
     return ImageQualityMetric(
-        QualityMetricCode(d["metric_code"]),
-        d["algorithm_id"],
-        int(d["algorithm_version"]),
-        _dec_parse(d["numeric_value"]),
-        QualityMetricUnit(d["unit"]),
+        QualityMetricCode(_require_str(d["metric_code"])),
+        _require_str(d["algorithm_id"]),
+        _require_int(d["algorithm_version"]),
+        _parse_metric_decimal(d["numeric_value"], unit),
+        unit,
     )
 
 
 def image_quality_issue_to_json(o: ImageQualityIssue) -> str:
-    return json.dumps(
-        {"issue_code": o.issue_code.value, "severity": o.severity.value},
-        sort_keys=True,
-        separators=(",", ":"),
-    )
+    return _json_dumps({"issue_code": o.issue_code.value, "severity": o.severity.value})
 
 
 def image_quality_issue_from_json(payload: str) -> ImageQualityIssue:
-    d = json.loads(payload)
-    return ImageQualityIssue(QualityIssueCode(d["issue_code"]), QualityIssueSeverity(d["severity"]))
+    return image_quality_issue_from_dict(json.loads(payload))
+
+
+def image_quality_issue_from_dict(value: Any) -> ImageQualityIssue:
+    d = _require_keys(value, {"issue_code", "severity"})
+    return ImageQualityIssue(
+        QualityIssueCode(_require_str(d["issue_code"])),
+        QualityIssueSeverity(_require_str(d["severity"])),
+    )
 
 
 def image_quality_assessment_to_json(o: ImageQualityAssessment) -> str:
-    return json.dumps(
+    return _json_dumps(
         {
             "id": str(o.id),
             "source_file_id": str(o.source_file_id),
@@ -1147,41 +1249,44 @@ def image_quality_assessment_to_json(o: ImageQualityAssessment) -> str:
             "effective_height": o.effective_height,
             "metrics": [json.loads(image_quality_metric_to_json(m)) for m in o.metrics],
             "issues": [json.loads(image_quality_issue_to_json(i)) for i in o.issues],
-        },
-        sort_keys=True,
-        separators=(",", ":"),
+        }
     )
 
 
 def image_quality_assessment_from_json(payload: str) -> ImageQualityAssessment:
-    d = json.loads(payload)
+    d = _require_keys(
+        json.loads(payload),
+        {
+            "id",
+            "source_file_id",
+            "assessed_at",
+            "policy",
+            "status",
+            "encoded_width",
+            "encoded_height",
+            "exif_orientation",
+            "effective_width",
+            "effective_height",
+            "metrics",
+            "issues",
+        },
+    )
+    orientation = d["exif_orientation"]
+    if orientation is not None and type(orientation) is not int:
+        raise PersistenceError(PersistenceErrorCode.PERSISTED_DATA_INVALID)
     return ImageQualityAssessment(
-        EntityId.parse(d["id"]),
-        EntityId.parse(d["source_file_id"]),
-        parse_datetime(d["assessed_at"]),
+        EntityId.parse(_require_str(d["id"])),
+        EntityId.parse(_require_str(d["source_file_id"])),
+        parse_datetime(_require_str(d["assessed_at"])),
         image_quality_policy_from_dict(d["policy"]),
-        QualityAssessmentStatus(d["status"]),
-        int(d["encoded_width"]),
-        int(d["encoded_height"]),
-        d["exif_orientation"],
-        int(d["effective_width"]),
-        int(d["effective_height"]),
-        tuple(
-            ImageQualityMetric(
-                QualityMetricCode(m["metric_code"]),
-                m["algorithm_id"],
-                int(m["algorithm_version"]),
-                _dec_parse(m["numeric_value"]),
-                QualityMetricUnit(m["unit"]),
-            )
-            for m in d["metrics"]
-        ),
-        tuple(
-            ImageQualityIssue(
-                QualityIssueCode(i["issue_code"]), QualityIssueSeverity(i["severity"])
-            )
-            for i in d["issues"]
-        ),
+        QualityAssessmentStatus(_require_str(d["status"])),
+        _require_int(d["encoded_width"]),
+        _require_int(d["encoded_height"]),
+        orientation,
+        _require_int(d["effective_width"]),
+        _require_int(d["effective_height"]),
+        tuple(image_quality_metric_from_dict(m) for m in _require_list(d["metrics"])),
+        tuple(image_quality_issue_from_dict(i) for i in _require_list(d["issues"])),
     )
 
 

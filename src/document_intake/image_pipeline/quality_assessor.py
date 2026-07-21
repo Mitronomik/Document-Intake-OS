@@ -7,8 +7,6 @@ from decimal import ROUND_HALF_UP, Decimal, localcontext
 from document_intake.application.ports.media import DecodedQualityMedia
 from document_intake.domain.enums import (
     QualityAssessmentStatus,
-    QualityIssueCode,
-    QualityIssueSeverity,
     QualityMetricCode,
     QualityMetricUnit,
 )
@@ -16,6 +14,7 @@ from document_intake.domain.image_quality import (
     ImageQualityIssue,
     ImageQualityMetric,
     ImageQualityPolicy,
+    derive_quality_issues_and_status,
 )
 
 Q6 = Decimal("0.000001")
@@ -33,7 +32,9 @@ def _frac(n: int, d: int) -> Decimal:
     return _q(Decimal(n) / Decimal(d), Q8)
 
 
-def calculate_quality_metrics(media: DecodedQualityMedia) -> tuple[ImageQualityMetric, ...]:
+def calculate_quality_metrics(
+    media: DecodedQualityMedia, *, policy: ImageQualityPolicy
+) -> tuple[ImageQualityMetric, ...]:
     w = media.grayscale_width
     h = media.grayscale_height
     px = media.grayscale_pixels
@@ -90,21 +91,21 @@ def calculate_quality_metrics(media: DecodedQualityMedia) -> tuple[ImageQualityM
             QualityMetricCode.HIGHLIGHT_CLIPPED_FRACTION,
             "GLARE_CLIPPED_FRACTION_V1",
             1,
-            _frac(sum(v >= 255 for v in vals), total),
+            _frac(sum(v >= policy.glare_highlight_cutoff for v in vals), total),
             QualityMetricUnit.FRACTION,
         ),
         ImageQualityMetric(
             QualityMetricCode.SHADOW_CLIPPED_FRACTION,
             "EXPOSURE_CLIPPED_FRACTION_V1",
             1,
-            _frac(sum(v <= 0 for v in vals), total),
+            _frac(sum(v <= policy.exposure_shadow_cutoff for v in vals), total),
             QualityMetricUnit.FRACTION,
         ),
         ImageQualityMetric(
             QualityMetricCode.BRIGHT_CLIPPED_FRACTION,
             "EXPOSURE_CLIPPED_FRACTION_V1",
             1,
-            _frac(sum(v >= 255 for v in vals), total),
+            _frac(sum(v >= policy.exposure_bright_cutoff for v in vals), total),
             QualityMetricUnit.FRACTION,
         ),
     )
@@ -113,48 +114,6 @@ def calculate_quality_metrics(media: DecodedQualityMedia) -> tuple[ImageQualityM
 def evaluate_quality_policy(
     metrics: tuple[ImageQualityMetric, ...], policy: ImageQualityPolicy
 ) -> tuple[QualityAssessmentStatus, tuple[ImageQualityIssue, ...]]:
-    m = {x.metric_code: x.numeric_value for x in metrics}
-    sev = {r.issue_code: r.severity for r in policy.severity_rules}
-    issues = []
-    checks = [
-        (
-            QualityIssueCode.LOW_RESOLUTION,
-            m[QualityMetricCode.SHORT_SIDE_PIXELS] < policy.minimum_short_side_pixels
-            or m[QualityMetricCode.LONG_SIDE_PIXELS] < policy.minimum_long_side_pixels,
-        ),
-        (
-            QualityIssueCode.BLUR_DETECTED,
-            m[QualityMetricCode.LAPLACIAN_VARIANCE] < policy.blur_minimum_laplacian_variance,
-        ),
-        (
-            QualityIssueCode.LOW_CONTRAST,
-            m[QualityMetricCode.LUMINANCE_STANDARD_DEVIATION]
-            < policy.contrast_minimum_luminance_stddev,
-        ),
-        (
-            QualityIssueCode.GLARE_DETECTED,
-            m[QualityMetricCode.HIGHLIGHT_CLIPPED_FRACTION] > policy.glare_maximum_fraction,
-        ),
-        (
-            QualityIssueCode.UNDEREXPOSED,
-            m[QualityMetricCode.SHADOW_CLIPPED_FRACTION] > policy.exposure_maximum_shadow_fraction,
-        ),
-        (
-            QualityIssueCode.OVEREXPOSED,
-            m[QualityMetricCode.BRIGHT_CLIPPED_FRACTION] > policy.exposure_maximum_bright_fraction,
-        ),
-    ]
-    for code, bad in checks:
-        if bad:
-            issues.append(ImageQualityIssue(code, sev[code]))
-    t = tuple(issues)
-    status = (
-        QualityAssessmentStatus.GOOD
-        if not t
-        else (
-            QualityAssessmentStatus.RETAKE_REQUIRED
-            if any(i.severity is QualityIssueSeverity.BLOCKING for i in t)
-            else QualityAssessmentStatus.REVIEW_REQUIRED
-        )
-    )
-    return status, t
+    """Return status then issues for compatibility with the initial PR-009 service."""
+    issues, status = derive_quality_issues_and_status(metrics, policy)
+    return status, issues
