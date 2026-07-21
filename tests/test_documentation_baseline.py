@@ -2005,6 +2005,16 @@ def test_pr009_quality_contract_is_documentation_only_and_staged() -> None:
     assert "repository's actual" not in adr + task
     assert "raises/returns" not in adr + task
     assert "according to existing service conventions" not in adr + task
+    assert "QUALITY_ASSESSMENT_FAILED for invalid command construction" not in adr + task
+    assert "QUALITY_ASSESSMENT_FAILED and invalid command construction" not in adr + task
+    assert "invalid command construction maps to QUALITY_ASSESSMENT_FAILED" not in adr + task
+    assert (
+        "policy does not contain the supported PR-009 policy version or supported "
+        "algorithm contract" not in adr + task
+    )
+    assert "algorithm_id field in ImageQualityPolicy" not in adr + task
+    assert "algorithm_version field in ImageQualityPolicy" not in adr + task
+    assert "policy selects the metric algorithm" not in adr + task
 
     for required in (
         "class AssessSourceFileQualityCommand",
@@ -2147,6 +2157,22 @@ def test_pr009_quality_contract_is_documentation_only_and_staged() -> None:
         "missing or invalid encrypted filesystem object",
         "repository failure with absent entity",
         "No repository or storage method may be called before this failure",
+        "Invalid immutable domain-object or command construction",
+        "before the service is invoked",
+        "InvalidValueError",
+        "Once a valid `AssessSourceFileQualityCommand` enters the service",
+        "QUALITY_ASSESSMENT_FAILED` applies only to failures during metric calculation",
+        "policy evaluation",
+        "issue construction",
+        "status aggregation",
+        "complete `ImageQualityAssessment` construction",
+        "Algorithm IDs and versions are fixed by the PR-009 implementation contract",
+        "are not fields of `ImageQualityPolicy`",
+        "The service must not add algorithm-selection fields to `ImageQualityPolicy`",
+        (
+            "No concrete production policy ID/version is accepted or activated while Q-021 "
+            "remains open"
+        ),
     ):
         assert required in adr + task, required
 
