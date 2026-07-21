@@ -43,6 +43,14 @@ from document_intake.domain.errors import (
     SnapshotInvariantError,
     VerificationPolicyError,
 )
+from document_intake.domain.image_quality import (
+    ImageQualityAssessment,
+    ImageQualityIssue,
+    ImageQualityMetric,
+    ImageQualityPolicy,
+    ImageQualitySeverityRule,
+    QualityPolicyVersion,
+)
 from document_intake.domain.policies import (
     CRITICAL_FIELD_KEYS,
     admin_override,
@@ -105,6 +113,11 @@ __all__ = [
     "FieldRef",
     "IdentifierText",
     "IdentityDocument",
+    "ImageQualityAssessment",
+    "ImageQualityIssue",
+    "ImageQualityMetric",
+    "ImageQualityPolicy",
+    "ImageQualitySeverityRule",
     "ImportWarning",
     "ImportWarningCode",
     "InvalidTransitionError",
@@ -116,6 +129,7 @@ __all__ = [
     "ParticipantAssignment",
     "PerceptualHash",
     "Person",
+    "QualityPolicyVersion",
     "Sha256Digest",
     "SnapshotInvariantError",
     "SnapshotPayload",

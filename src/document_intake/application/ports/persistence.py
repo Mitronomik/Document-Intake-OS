@@ -14,6 +14,7 @@ from document_intake.domain import (
     FieldCandidate,
     FieldRef,
     IdentityDocument,
+    ImageQualityAssessment,
     MigrationDocument,
     OwnerRef,
     Person,
@@ -129,6 +130,12 @@ class SourceFileRepository(Protocol):
     ) -> tuple[SourceFile, ...]: ...
 
 
+class ImageQualityAssessmentRepository(Protocol):
+    def add(self, assessment: ImageQualityAssessment) -> None: ...
+    def get(self, assessment_id: EntityId) -> ImageQualityAssessment | None: ...
+    def list_by_source(self, source_file_id: EntityId) -> tuple[ImageQualityAssessment, ...]: ...
+
+
 class UnitOfWork(Protocol):
     persons: PersonRepository
     identity_documents: IdentityDocumentRepository
@@ -143,6 +150,7 @@ class UnitOfWork(Protocol):
     audit_events: AuditEventRepository
     upload_batches: UploadBatchRepository
     source_files: SourceFileRepository
+    image_quality_assessments: ImageQualityAssessmentRepository
 
     def __enter__(self) -> Self: ...
     def __exit__(

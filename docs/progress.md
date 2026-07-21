@@ -147,3 +147,17 @@ Next safe step: Implement PR-009 — Orientation and quality assessment only aft
 - [x] M3: `IN PROGRESS`.
 
 PR-009 whole-frame contract scope is EXIF orientation, orientation-normalized analysis view, encoded/effective dimensions, minimum resolution, blur/sharpness, contrast, glare/highlight clipping and exposure. Deferred scope is cut edges, perspective/skew, document presence/count, segmentation, crop, perspective correction and geometric transformation. No production implementation, migration, dependency, workflow, real document or PII change is made by the contract proposal.
+
+
+## PR-009 implementation lifecycle update — 2026-07-21
+
+ADR-023: ACCEPTED.
+PR-009: IMPLEMENTED AND IN REVIEW; NOT HUMAN ACCEPTED.
+Q-021: OPEN — REQUIRES PRODUCT-OWNER ACCEPTANCE.
+Production default quality policy: NOT ACTIVE.
+Final PR-009 human acceptance: BLOCKED UNTIL Q-021 IS ACCEPTED.
+PR-010 AND LATER: UNAUTHORIZED.
+Gate 2: NOT ACCEPTED.
+M3: IN PROGRESS.
+
+PR-009 implements deterministic whole-frame metrics, explicit caller-provided typed policy handling, full-resolution orientation-normalized decoding, append-only persistence, audit integration, controlled service errors, synthetic tests and a cross-platform verifier. It does not select or activate production thresholds, add UI integration, reject documents automatically, implement PR-010 geometry, PR-011 JPEG preparation, PR-012 document detection/segmentation or use real-document calibration. Migration v0005 checksum: `930d834c6c48ca2c16a1287faae18e0568da75ab6d47b72b7d5f46c52ce51885`.

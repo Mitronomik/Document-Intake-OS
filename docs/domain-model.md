@@ -286,3 +286,17 @@ Q-006: `DEFERRED`. Q-007: `DEFERRED`. Q-009: `DEFERRED`. Q-010: `ACCEPTED`. Q-01
 ## PR-009 proposed image-quality domain contract
 
 ADR-023 proposes immutable frozen/slotted `QualityAssessmentStatus`, `QualityIssueCode`, `QualityIssueSeverity`, `QualityMetricCode`, `QualityPolicyVersion`, `ImageQualityMetric`, `ImageQualityIssue`, `ImageQualityAssessment` and `ImageQualityPolicy` types. Status values are `GOOD`, `REVIEW_REQUIRED`, `RETAKE_REQUIRED`. PR-009 issue codes are `LOW_RESOLUTION`, `BLUR_DETECTED`, `LOW_CONTRAST`, `GLARE_DETECTED`, `UNDEREXPOSED`, `OVEREXPOSED`; deferred codes are `CUT_EDGES`, `PERSPECTIVE`, `DOCUMENT_NOT_FOUND`, `MULTIPLE_DOCUMENTS`. PR-009 production implementation is not started. Q-021 is open, so final production thresholds are not accepted.
+
+
+## PR-009 implementation lifecycle update — 2026-07-21
+
+ADR-023: ACCEPTED.
+PR-009: IMPLEMENTED AND IN REVIEW; NOT HUMAN ACCEPTED.
+Q-021: OPEN — REQUIRES PRODUCT-OWNER ACCEPTANCE.
+Production default quality policy: NOT ACTIVE.
+Final PR-009 human acceptance: BLOCKED UNTIL Q-021 IS ACCEPTED.
+PR-010 AND LATER: UNAUTHORIZED.
+Gate 2: NOT ACCEPTED.
+M3: IN PROGRESS.
+
+PR-009 implements deterministic whole-frame metrics, explicit caller-provided typed policy handling, full-resolution orientation-normalized decoding, append-only persistence, audit integration, controlled service errors, synthetic tests and a cross-platform verifier. It does not select or activate production thresholds, add UI integration, reject documents automatically, implement PR-010 geometry, PR-011 JPEG preparation, PR-012 document detection/segmentation or use real-document calibration. Migration v0005 checksum: `930d834c6c48ca2c16a1287faae18e0568da75ab6d47b72b7d5f46c52ce51885`.

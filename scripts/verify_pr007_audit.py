@@ -107,7 +107,7 @@ def main() -> int:
         ok &= line(True, f"os={platform.system()}")
         ok &= line(True, f"arch={platform.machine()}")
         ok &= line(True, f"python={platform.python_version()}")
-        ok &= line(CURRENT_SCHEMA_VERSION == 4, "schema_version=4")
+        ok &= line(CURRENT_SCHEMA_VERSION >= 4, f"schema_version={CURRENT_SCHEMA_VERSION}")
         ok &= line(
             V0003.checksum == "e01d441c2572ca484cf5227d94f57a3cb62fa8e6e3e223eefc6852b81f6eb3c1",
             f"v0003_checksum={V0003.checksum}",

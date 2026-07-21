@@ -1028,3 +1028,174 @@ def source_file_columns(
         str(o.imported_by.actor_id),
         o.imported_by.kind.value,
     )
+
+
+def _dec_text(value: Decimal) -> str:
+    s = format(value, "f")
+    if "E" in s or "e" in s or s in {"NaN", "Infinity", "-Infinity"}:
+        raise PersistenceError(PersistenceErrorCode.PERSISTED_DATA_INVALID)
+    return s
+
+
+def _dec_parse(value: str) -> Decimal:
+    if (
+        not isinstance(value, str)
+        or "e" in value.lower()
+        or value in {"NaN", "Infinity", "-Infinity"}
+    ):
+        raise PersistenceError(PersistenceErrorCode.PERSISTED_DATA_INVALID)
+    return Decimal(value)
+
+
+def image_quality_policy_dict(o: ImageQualityPolicy) -> dict[str, Any]:
+    return {
+        "policy_id": o.version.policy_id,
+        "policy_version": o.version.version,
+        "minimum_short_side_pixels": o.minimum_short_side_pixels,
+        "minimum_long_side_pixels": o.minimum_long_side_pixels,
+        "blur_minimum_laplacian_variance": _dec_text(o.blur_minimum_laplacian_variance),
+        "contrast_minimum_luminance_stddev": _dec_text(o.contrast_minimum_luminance_stddev),
+        "glare_highlight_cutoff": o.glare_highlight_cutoff,
+        "glare_maximum_fraction": _dec_text(o.glare_maximum_fraction),
+        "exposure_shadow_cutoff": o.exposure_shadow_cutoff,
+        "exposure_maximum_shadow_fraction": _dec_text(o.exposure_maximum_shadow_fraction),
+        "exposure_bright_cutoff": o.exposure_bright_cutoff,
+        "exposure_maximum_bright_fraction": _dec_text(o.exposure_maximum_bright_fraction),
+        "severity_rules": [
+            {"issue_code": r.issue_code.value, "severity": r.severity.value}
+            for r in o.severity_rules
+        ],
+    }
+
+
+def image_quality_policy_to_json(o: ImageQualityPolicy) -> str:
+    return json.dumps(image_quality_policy_dict(o), sort_keys=True, separators=(",", ":"))
+
+
+def image_quality_policy_from_dict(d: dict[str, Any]) -> ImageQualityPolicy:
+    return ImageQualityPolicy(
+        QualityPolicyVersion(d["policy_id"], int(d["policy_version"])),
+        int(d["minimum_short_side_pixels"]),
+        int(d["minimum_long_side_pixels"]),
+        _dec_parse(d["blur_minimum_laplacian_variance"]),
+        _dec_parse(d["contrast_minimum_luminance_stddev"]),
+        int(d["glare_highlight_cutoff"]),
+        _dec_parse(d["glare_maximum_fraction"]),
+        int(d["exposure_shadow_cutoff"]),
+        _dec_parse(d["exposure_maximum_shadow_fraction"]),
+        int(d["exposure_bright_cutoff"]),
+        _dec_parse(d["exposure_maximum_bright_fraction"]),
+        tuple(
+            ImageQualitySeverityRule(
+                QualityIssueCode(r["issue_code"]), QualityIssueSeverity(r["severity"])
+            )
+            for r in d["severity_rules"]
+        ),
+    )
+
+
+def image_quality_metric_to_json(o: ImageQualityMetric) -> str:
+    return json.dumps(
+        {
+            "metric_code": o.metric_code.value,
+            "algorithm_id": o.algorithm_id,
+            "algorithm_version": o.algorithm_version,
+            "numeric_value": _dec_text(o.numeric_value),
+            "unit": o.unit.value,
+        },
+        sort_keys=True,
+        separators=(",", ":"),
+    )
+
+
+def image_quality_metric_from_json(payload: str) -> ImageQualityMetric:
+    d = json.loads(payload)
+    return ImageQualityMetric(
+        QualityMetricCode(d["metric_code"]),
+        d["algorithm_id"],
+        int(d["algorithm_version"]),
+        _dec_parse(d["numeric_value"]),
+        QualityMetricUnit(d["unit"]),
+    )
+
+
+def image_quality_issue_to_json(o: ImageQualityIssue) -> str:
+    return json.dumps(
+        {"issue_code": o.issue_code.value, "severity": o.severity.value},
+        sort_keys=True,
+        separators=(",", ":"),
+    )
+
+
+def image_quality_issue_from_json(payload: str) -> ImageQualityIssue:
+    d = json.loads(payload)
+    return ImageQualityIssue(QualityIssueCode(d["issue_code"]), QualityIssueSeverity(d["severity"]))
+
+
+def image_quality_assessment_to_json(o: ImageQualityAssessment) -> str:
+    return json.dumps(
+        {
+            "id": str(o.id),
+            "source_file_id": str(o.source_file_id),
+            "assessed_at": utc_iso(o.assessed_at),
+            "policy": image_quality_policy_dict(o.policy),
+            "status": o.status.value,
+            "encoded_width": o.encoded_width,
+            "encoded_height": o.encoded_height,
+            "exif_orientation": o.exif_orientation,
+            "effective_width": o.effective_width,
+            "effective_height": o.effective_height,
+            "metrics": [json.loads(image_quality_metric_to_json(m)) for m in o.metrics],
+            "issues": [json.loads(image_quality_issue_to_json(i)) for i in o.issues],
+        },
+        sort_keys=True,
+        separators=(",", ":"),
+    )
+
+
+def image_quality_assessment_from_json(payload: str) -> ImageQualityAssessment:
+    d = json.loads(payload)
+    return ImageQualityAssessment(
+        EntityId.parse(d["id"]),
+        EntityId.parse(d["source_file_id"]),
+        parse_datetime(d["assessed_at"]),
+        image_quality_policy_from_dict(d["policy"]),
+        QualityAssessmentStatus(d["status"]),
+        int(d["encoded_width"]),
+        int(d["encoded_height"]),
+        d["exif_orientation"],
+        int(d["effective_width"]),
+        int(d["effective_height"]),
+        tuple(
+            ImageQualityMetric(
+                QualityMetricCode(m["metric_code"]),
+                m["algorithm_id"],
+                int(m["algorithm_version"]),
+                _dec_parse(m["numeric_value"]),
+                QualityMetricUnit(m["unit"]),
+            )
+            for m in d["metrics"]
+        ),
+        tuple(
+            ImageQualityIssue(
+                QualityIssueCode(i["issue_code"]), QualityIssueSeverity(i["severity"])
+            )
+            for i in d["issues"]
+        ),
+    )
+
+
+def image_quality_assessment_columns(o: ImageQualityAssessment) -> tuple[Any, ...]:
+    return (
+        str(o.id),
+        str(o.source_file_id),
+        utc_iso(o.assessed_at),
+        o.policy.version.policy_id,
+        o.policy.version.version,
+        o.status.value,
+        o.encoded_width,
+        o.encoded_height,
+        o.exif_orientation,
+        o.effective_width,
+        o.effective_height,
+    )

@@ -1,6 +1,6 @@
 # ADR-023 — Deterministic whole-frame image quality assessment v1
 
-Status: PROPOSED
+Status: ACCEPTED
 
 Decision owner: Product owner
 

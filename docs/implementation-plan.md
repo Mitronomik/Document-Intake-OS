@@ -277,3 +277,17 @@ PR-008 adds source import domain contracts, Pillow/pi-heif decoding, DHASH64 adv
 ## PR-009 orientation and quality contract
 
 PR-009 is `AUTHORIZED, CONTRACT PROPOSED, PRODUCTION IMPLEMENTATION NOT STARTED`. The implementation base for future production code must be the exact merge commit of the contract PR, not `063e4b5a981f8ef6914c055e9f50666bbf1be734`. Future implementation is limited to deterministic whole-frame EXIF orientation, encoded/effective dimensions, resolution, blur/sharpness, contrast, glare/highlight clipping and exposure diagnostics with explicit typed `ImageQualityPolicy`. No hidden thresholds are allowed; Q-021 is `OPEN — REQUIRES PRODUCT-OWNER ACCEPTANCE`. Production activation of a default quality policy and final human acceptance remain blocked until Q-021 is accepted. PR-010 AND LATER remain `UNAUTHORIZED`; Gate 2 remains `NOT ACCEPTED`; M3 remains `IN PROGRESS`.
+
+
+## PR-009 implementation lifecycle update — 2026-07-21
+
+ADR-023: ACCEPTED.
+PR-009: IMPLEMENTED AND IN REVIEW; NOT HUMAN ACCEPTED.
+Q-021: OPEN — REQUIRES PRODUCT-OWNER ACCEPTANCE.
+Production default quality policy: NOT ACTIVE.
+Final PR-009 human acceptance: BLOCKED UNTIL Q-021 IS ACCEPTED.
+PR-010 AND LATER: UNAUTHORIZED.
+Gate 2: NOT ACCEPTED.
+M3: IN PROGRESS.
+
+PR-009 implements deterministic whole-frame metrics, explicit caller-provided typed policy handling, full-resolution orientation-normalized decoding, append-only persistence, audit integration, controlled service errors, synthetic tests and a cross-platform verifier. It does not select or activate production thresholds, add UI integration, reject documents automatically, implement PR-010 geometry, PR-011 JPEG preparation, PR-012 document detection/segmentation or use real-document calibration. Migration v0005 checksum: `930d834c6c48ca2c16a1287faae18e0568da75ab6d47b72b7d5f46c52ce51885`.
