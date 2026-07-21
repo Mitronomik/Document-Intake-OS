@@ -54,10 +54,12 @@ from document_intake.image_pipeline.media_decoder import (
 from document_intake.persistence import CURRENT_SCHEMA_VERSION, EncryptedDatabase
 from document_intake.persistence.errors import PersistenceError, PersistenceErrorCode
 from document_intake.persistence.migrations import MIGRATIONS
+from document_intake.persistence.migrations.model import Migration
 from document_intake.persistence.migrations.v0001_initial import MIGRATION as V0001
 from document_intake.persistence.migrations.v0002_stored_artifacts import MIGRATION as V0002
 from document_intake.persistence.migrations.v0003_audit_events import MIGRATION as V0003
 from document_intake.persistence.migrations.v0004_source_file_import import MIGRATION as V0004
+from document_intake.persistence.migrations.v0005_image_quality import MIGRATION as V0005
 from document_intake.storage.filesystem import ImmutableFilesystemStorage
 
 _EXPECTED_MIGRATION_CHECKSUMS = (
@@ -65,6 +67,7 @@ _EXPECTED_MIGRATION_CHECKSUMS = (
     "fb953af64efd3e860960eae8ef1f4078afd0a6ec078a33594e271a9285d7db3d",
     "e01d441c2572ca484cf5227d94f57a3cb62fa8e6e3e223eefc6852b81f6eb3c1",
     "a826d5bc07ba73e6d54fd25e9df8afb42028261040b7981bdd157caf26b1f7c6",
+    "6d020d1acfbce3fcb7168e935617f2ae008a32bea7def1f37de84e36e9e2224f",
 )
 _FIXTURE = Path(__file__).parents[1] / "tests" / "fixtures" / "synthetic" / "pr008_color_grid.heic"
 _NOW = datetime(2026, 7, 20, 12, 0, tzinfo=UTC)
@@ -308,6 +311,18 @@ def _warning_codes(result: ImportedSourceFileResult) -> tuple[ImportWarningCode,
     return tuple(warning.code for warning in result.warnings)
 
 
+def _migration_chain_valid(
+    current_schema_version: int,
+    migrations: tuple[Migration, ...],
+) -> bool:
+    expected = (V0001, V0002, V0003, V0004, V0005)
+    return (
+        current_schema_version == 5
+        and migrations == expected
+        and tuple(migration.checksum for migration in migrations) == _EXPECTED_MIGRATION_CHECKSUMS
+    )
+
+
 def _run_supported() -> _VerificationRun:
     statuses = {name: False for name in _CHECKS}
     temporary = Path(tempfile.mkdtemp(prefix="pr008-verify-"))
@@ -334,11 +349,9 @@ def _run_supported() -> _VerificationRun:
         factory = cast(UnitOfWorkFactory, database)
         storage = ImmutableFilesystemStorage(storage_root, _StorageKeyProvider())
         decoder = PillowMediaDecoder()
-        statuses["migration_v0004"] = (
-            CURRENT_SCHEMA_VERSION == 5
-            and tuple(migration.checksum for migration in MIGRATIONS)
-            == _EXPECTED_MIGRATION_CHECKSUMS
-            and (V0001, V0002, V0003, V0004) == MIGRATIONS
+        statuses["migration_v0004"] = _migration_chain_valid(
+            CURRENT_SCHEMA_VERSION,
+            MIGRATIONS,
         )
         create_upload_batch(
             CreateUploadBatchCommand(_eid(100), BatchNumber("VERIFY-PR008"), _NOW, _actor()),

@@ -89,7 +89,7 @@ def test_migration_metadata_contract() -> None:
     )
     assert (
         V0005_MIGRATION.checksum
-        == "74f6376fbfd42ed4b9748cadd936daba3c26755a04ddc7cedee76ed2143d95f2"
+        == "6d020d1acfbce3fcb7168e935617f2ae008a32bea7def1f37de84e36e9e2224f"
     )
     for table in (
         "schema_migrations",

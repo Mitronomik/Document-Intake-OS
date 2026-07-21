@@ -337,8 +337,42 @@ def test_pr009_migration_metadata_and_checksums() -> None:
     assert V0005_IMAGE_QUALITY.name == "image_quality_pr009"
     assert (
         V0005_IMAGE_QUALITY.checksum
-        == "74f6376fbfd42ed4b9748cadd936daba3c26755a04ddc7cedee76ed2143d95f2"
+        == "6d020d1acfbce3fcb7168e935617f2ae008a32bea7def1f37de84e36e9e2224f"
     )
+
+
+def test_v0005_preserves_historical_audit_rows_and_accepts_pr009_event_values() -> None:
+    connection = apply_through_v0003()
+    event_id = "00000000-0000-0000-0000-000000000701"
+    actor_id = "00000000-0000-0000-0000-000000000702"
+    subject_id = "00000000-0000-0000-0000-000000000703"
+    connection.execute(
+        "INSERT INTO audit_events(event_id, occurred_at_utc, actor_id, actor_kind, "
+        "action_code, subject_type, subject_id, payload) "
+        "VALUES (?, '2026-07-21T00:00:00Z', ?, 'SYSTEM', "
+        "'ENTITY_CREATED', 'PERSON', ?, '{}')",
+        (event_id, actor_id, subject_id),
+    )
+
+    database._apply_migrations(connection)
+
+    assert connection.execute(
+        "SELECT action_code, subject_type FROM audit_events WHERE event_id=?",
+        (event_id,),
+    ).fetchone() == ("ENTITY_CREATED", "PERSON")
+    connection.execute(
+        "INSERT INTO audit_events(event_id, occurred_at_utc, actor_id, actor_kind, "
+        "action_code, subject_type, subject_id, payload) "
+        "VALUES ('00000000-0000-0000-0000-000000000704', "
+        "'2026-07-21T00:01:00Z', ?, 'SYSTEM', 'IMAGE_QUALITY_ASSESSED', "
+        "'IMAGE_QUALITY_ASSESSMENT', ?, '{}')",
+        (actor_id, subject_id),
+    )
+    with pytest.raises(sqlite3.IntegrityError):
+        connection.execute(
+            "UPDATE audit_events SET subject_id=? WHERE event_id=?",
+            (actor_id, event_id),
+        )
 
 
 def test_pr008_tables_exist_after_migration() -> None:
