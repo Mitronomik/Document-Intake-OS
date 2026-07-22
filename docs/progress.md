@@ -184,3 +184,13 @@ The narrow accepted conclusion is that the current PR-009 V1 whole-frame metrics
 Q-021 is `DEFERRED — NEGATIVE CALIBRATION EVIDENCE ACCEPTED; NO PRODUCTION POLICY SELECTED`. `RISK-PR009-NO-PRODUCTION-QUALITY-POLICY` is open and accepted for the PR-009 infrastructure merge boundary. Production composition must fail closed without an accepted policy, and no unaccepted PR-009 policy may automatically reject, delete, suppress or block a document. The production default PR-009 quality policy remains `NOT ACTIVE`.
 
 PR-009 is `IMPLEMENTED AND READY FOR HUMAN ACCEPTANCE WITH DOCUMENTED RESIDUAL LIMITATION`. PR #24 remains open and unmerged at the time of this correction; human acceptance and merge remain pending. PR-010 AND LATER remain `UNAUTHORIZED`; Gate 2 remains `NOT ACCEPTED`; M3 remains `IN PROGRESS`.
+
+## 2026-07-22 — PR-009 human acceptance and PR-010 contract-definition authorization
+
+GitHub PR #24 (`PR-009: Implement orientation and quality assessment`) merged on 2026-07-22. Final reviewed head: `72c01662031f73985f8715d6c3c87abf7aa5c4db`. Merge commit: `b491226878cabfc87c484f6a4d41bc2969851273`.
+
+PR-009 is COMPLETED AND HUMAN ACCEPTED WITH DOCUMENTED RESIDUAL LIMITATION. Q-021 remains DEFERRED — NEGATIVE CALIBRATION EVIDENCE ACCEPTED; NO PRODUCTION POLICY SELECTED. No production default PR-009 quality policy is active. Production `policy_id` is NOT ASSIGNED. Production `policy_version` is NOT ASSIGNED. Automatic PR-009 quality-based document blocking is NOT ACTIVE. Automatic PR-009 production `RETAKE_REQUIRED` enforcement is NOT ACTIVE.
+
+`RISK-PR009-NO-PRODUCTION-QUALITY-POLICY` remains OPEN AND ACCEPTED FOR THE PR-009 INFRASTRUCTURE AND HUMAN-ACCEPTANCE BOUNDARY. PR-010 CONTRACT DEFINITION is AUTHORIZED, NOT STARTED. PR-010 PRODUCTION IMPLEMENTATION remains UNAUTHORIZED. PR-011 AND LATER remain UNAUTHORIZED. Gate 2 remains NOT ACCEPTED. M3 remains IN PROGRESS.
+
+Lifecycle authorization exact status: PR-011 AND LATER: UNAUTHORIZED.
