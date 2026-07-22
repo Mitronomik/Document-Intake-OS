@@ -103,20 +103,20 @@ flowchart TD
 - failed write keeps prior valid artifact;
 - deterministic rerun.
 
-## 14. PR-009 whole-frame staging
+## 14. Historical PR-009 whole-frame staging contract
 
-ADR-023 proposes that PR-009 covers only deterministic whole-frame diagnostics computed from the decoded source image without segmentation or geometry inference: original EXIF orientation value, orientation-normalized analysis view, original encoded dimensions, orientation-normalized effective dimensions, minimum-resolution diagnostic, blur/sharpness metric, contrast metric, glare/highlight-clipping metric and exposure diagnostic. The broader quality list above remains the product direction for FR-04, but PR-009 does not complete all of FR-04. Cut-edge detection, perspective/skew assessment from document boundaries, document presence detection, document count, segmentation, automatic crop, perspective correction and geometric transformation are deferred to PR-010/PR-012. Q-021 remains open for final thresholds.
+At contract staging, ADR-023 proposed that PR-009 cover only deterministic whole-frame diagnostics computed from the decoded source image without segmentation or geometry inference: original EXIF orientation value, orientation-normalized analysis view, original encoded dimensions, orientation-normalized effective dimensions, minimum-resolution diagnostic, blur/sharpness metric, contrast metric, glare/highlight-clipping metric and exposure diagnostic. The broader quality list above remained the product direction for FR-04, but PR-009 did not complete all of FR-04. Cut-edge detection, perspective/skew assessment from document boundaries, document presence detection, document count, segmentation, automatic crop, perspective correction and geometric transformation were deferred to PR-010/PR-012. Q-021 remained open for final thresholds at that historical stage.
 
 
-## PR-009 implementation lifecycle update — 2026-07-21
+## PR-009 calibration lifecycle update — 2026-07-22
 
 ADR-023: ACCEPTED.
-PR-009: IMPLEMENTED AND IN REVIEW; NOT HUMAN ACCEPTED.
-Q-021: OPEN — REQUIRES PRODUCT-OWNER ACCEPTANCE.
-Production default quality policy: NOT ACTIVE.
-Final PR-009 human acceptance: BLOCKED UNTIL Q-021 IS ACCEPTED.
+PR-009: IMPLEMENTED AND READY FOR HUMAN ACCEPTANCE WITH DOCUMENTED RESIDUAL LIMITATION.
+Q-021: DEFERRED — NEGATIVE CALIBRATION EVIDENCE ACCEPTED; NO PRODUCTION POLICY SELECTED.
+Production default PR-009 quality policy: NOT ACTIVE.
+RISK-PR009-NO-PRODUCTION-QUALITY-POLICY: OPEN AND ACCEPTED FOR THE PR-009 INFRASTRUCTURE MERGE BOUNDARY.
 PR-010 AND LATER: UNAUTHORIZED.
 Gate 2: NOT ACCEPTED.
 M3: IN PROGRESS.
 
-PR-009 implements deterministic whole-frame metrics, explicit caller-provided typed policy handling, full-resolution orientation-normalized decoding, append-only persistence, audit integration, controlled service errors, synthetic tests and a cross-platform verifier. It does not select or activate production thresholds, add UI integration, reject documents automatically, implement PR-010 geometry, PR-011 JPEG preparation, PR-012 document detection/segmentation or use real-document calibration. Migration v0005 checksum: `6d020d1acfbce3fcb7168e935617f2ae008a32bea7def1f37de84e36e9e2224f`.
+The V1 metric formulas and algorithm identities remain frozen. The negative calibration outcome selects no replacement algorithm and activates no policy; any future metric-separability work must be separately versioned and accepted.

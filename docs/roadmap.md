@@ -22,7 +22,7 @@ PR-004–007.
 
 Result: domain, SQLite, immutable storage and audit.
 
-PR-004 — Core Domain is completed and human accepted. GATE-S1 is completed and human accepted. ADR-018 is accepted for Q-010. PR #9 merged PR-S001 as a research harness; PR-S001 is ACCEPTED WITH DOCUMENTED RESIDUAL RISK RISK-S001-W11. PR-005 is COMPLETED AND HUMAN ACCEPTED through GitHub PR #15. PR-006 and PR-007 are COMPLETED AND HUMAN ACCEPTED. M2 is completed and human accepted by PR-007 acceptance. PR-008 is completed and human accepted with documented residual risk. PR-009 is implemented and in review, not human accepted; PR-010 and every later implementation task remains unauthorized.
+PR-004 — Core Domain is completed and human accepted. GATE-S1 is completed and human accepted. ADR-018 is accepted for Q-010. PR #9 merged PR-S001 as a research harness; PR-S001 is ACCEPTED WITH DOCUMENTED RESIDUAL RISK RISK-S001-W11. PR-005 is COMPLETED AND HUMAN ACCEPTED through GitHub PR #15. PR-006 and PR-007 are COMPLETED AND HUMAN ACCEPTED. M2 is completed and human accepted by PR-007 acceptance. PR-008 is completed and human accepted with documented residual risk. PR-009 is implemented and ready for human acceptance with a documented residual limitation; PR-010 and every later implementation task remains unauthorized.
 
 ## M3 — Manual image workflow
 
@@ -35,15 +35,17 @@ Gate: типовые реальные фото локально готовятс
 M3 status:
 
 - PR-008: COMPLETED AND HUMAN ACCEPTED WITH DOCUMENTED RESIDUAL RISK.
-- PR-009: IMPLEMENTED AND IN REVIEW; NOT HUMAN ACCEPTED.
-- Q-021: OPEN — REQUIRES PRODUCT-OWNER ACCEPTANCE.
+- PR-009: IMPLEMENTED AND READY FOR HUMAN ACCEPTANCE WITH DOCUMENTED RESIDUAL LIMITATION.
+- Q-021: DEFERRED — NEGATIVE CALIBRATION EVIDENCE ACCEPTED; NO PRODUCTION POLICY SELECTED.
 - Production default quality policy: NOT ACTIVE.
-- Final PR-009 human acceptance: BLOCKED UNTIL Q-021 IS ACCEPTED.
+- RISK-PR009-NO-PRODUCTION-QUALITY-POLICY: OPEN AND ACCEPTED FOR THE PR-009 INFRASTRUCTURE MERGE BOUNDARY.
 - PR-010–PR-013: UNAUTHORIZED.
 - Gate 2: NOT ACCEPTED.
 - M3: IN PROGRESS.
 
 The physical Windows 11 smoke risk `RISK-PR008-W11-SMOKE` remains deferred to Windows installer, pilot or final release acceptance; no physical Windows 11 smoke is claimed.
+
+PR-009 infrastructure may be human accepted and merged without a production default policy. Policy injection remains explicit, production composition must fail closed when no accepted policy is configured, and the residual limitation blocks production quality decisions rather than infrastructure acceptance. Human acceptance and merge are still pending.
 
 ## M4 — Manual end-to-end MVP
 
@@ -142,15 +144,15 @@ Q-006: `DEFERRED`. Q-007: `DEFERRED`. Q-009: `DEFERRED`. Q-010: `ACCEPTED`. Q-01
 PR-009 is now `AUTHORIZED, CONTRACT PROPOSED, PRODUCTION IMPLEMENTATION NOT STARTED`. It is documentation-only until the contract PR is reviewed. PR-009 whole-frame diagnostics advance FR-04 but do not complete cut edges, perspective, document presence or document count. Q-021 remains `OPEN — REQUIRES PRODUCT-OWNER ACCEPTANCE`; no final production thresholds are selected. PR-010 remains the staged perspective/geometry task, PR-012 remains the staged document-region/presence/count workflow task, PR-010 AND LATER remain `UNAUTHORIZED`, Gate 2 remains `NOT ACCEPTED`, and M3 remains `IN PROGRESS`.
 
 
-## PR-009 implementation lifecycle update — 2026-07-21
+## PR-009 calibration lifecycle update — 2026-07-22
 
 ADR-023: ACCEPTED.
-PR-009: IMPLEMENTED AND IN REVIEW; NOT HUMAN ACCEPTED.
-Q-021: OPEN — REQUIRES PRODUCT-OWNER ACCEPTANCE.
-Production default quality policy: NOT ACTIVE.
-Final PR-009 human acceptance: BLOCKED UNTIL Q-021 IS ACCEPTED.
+PR-009: IMPLEMENTED AND READY FOR HUMAN ACCEPTANCE WITH DOCUMENTED RESIDUAL LIMITATION.
+Q-021: DEFERRED — NEGATIVE CALIBRATION EVIDENCE ACCEPTED; NO PRODUCTION POLICY SELECTED.
+Production default PR-009 quality policy: NOT ACTIVE.
+RISK-PR009-NO-PRODUCTION-QUALITY-POLICY: OPEN AND ACCEPTED FOR THE PR-009 INFRASTRUCTURE MERGE BOUNDARY.
 PR-010 AND LATER: UNAUTHORIZED.
 Gate 2: NOT ACCEPTED.
 M3: IN PROGRESS.
 
-PR-009 implements deterministic whole-frame metrics, explicit caller-provided typed policy handling, full-resolution orientation-normalized decoding, append-only persistence, audit integration, controlled service errors, synthetic tests and a cross-platform verifier. It does not select or activate production thresholds, add UI integration, reject documents automatically, implement PR-010 geometry, PR-011 JPEG preparation, PR-012 document detection/segmentation or use real-document calibration. Migration v0005 checksum: `6d020d1acfbce3fcb7168e935617f2ae008a32bea7def1f37de84e36e9e2224f`.
+PR-009 infrastructure is ready for human acceptance and may be merged under the documented limitation without activating a production default policy. Human acceptance and merge remain separate pending actions. PR-010 and later require a separate post-merge product-owner decision.

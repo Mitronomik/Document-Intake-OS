@@ -283,20 +283,20 @@ M2: `COMPLETED AND HUMAN ACCEPTED`. Gate 1: `COMPLETED AND HUMAN ACCEPTED`. PR-0
 
 Q-006: `DEFERRED`. Q-007: `DEFERRED`. Q-009: `DEFERRED`. Q-010: `ACCEPTED`. Q-017: `DEFERRED`. `RISK-PR005-RAWKEY-PRAGMA` remains open for installer, pilot and production release. The sensitive-data/private-contour gate remains open for real documents and real personal data. Real documents and personal data remain prohibited in Git, Codex, CI, logs and test reports.
 
-## PR-009 proposed image-quality domain contract
+## Historical PR-009 proposed image-quality domain contract
 
-ADR-023 proposes immutable frozen/slotted `QualityAssessmentStatus`, `QualityIssueCode`, `QualityIssueSeverity`, `QualityMetricCode`, `QualityPolicyVersion`, `ImageQualityMetric`, `ImageQualityIssue`, `ImageQualityAssessment` and `ImageQualityPolicy` types. Status values are `GOOD`, `REVIEW_REQUIRED`, `RETAKE_REQUIRED`. PR-009 issue codes are `LOW_RESOLUTION`, `BLUR_DETECTED`, `LOW_CONTRAST`, `GLARE_DETECTED`, `UNDEREXPOSED`, `OVEREXPOSED`; deferred codes are `CUT_EDGES`, `PERSPECTIVE`, `DOCUMENT_NOT_FOUND`, `MULTIPLE_DOCUMENTS`. PR-009 production implementation is not started. Q-021 is open, so final production thresholds are not accepted.
+At contract proposal time, ADR-023 proposed immutable frozen/slotted `QualityAssessmentStatus`, `QualityIssueCode`, `QualityIssueSeverity`, `QualityMetricCode`, `QualityPolicyVersion`, `ImageQualityMetric`, `ImageQualityIssue`, `ImageQualityAssessment` and `ImageQualityPolicy` types. Status values were `GOOD`, `REVIEW_REQUIRED`, `RETAKE_REQUIRED`. PR-009 issue codes were `LOW_RESOLUTION`, `BLUR_DETECTED`, `LOW_CONTRAST`, `GLARE_DETECTED`, `UNDEREXPOSED`, `OVEREXPOSED`; deferred codes were `CUT_EDGES`, `PERSPECTIVE`, `DOCUMENT_NOT_FOUND`, `MULTIPLE_DOCUMENTS`. Production implementation had not started, and Q-021 was open, so no final production thresholds were accepted.
 
 
-## PR-009 implementation lifecycle update — 2026-07-21
+## PR-009 calibration lifecycle update — 2026-07-22
 
 ADR-023: ACCEPTED.
-PR-009: IMPLEMENTED AND IN REVIEW; NOT HUMAN ACCEPTED.
-Q-021: OPEN — REQUIRES PRODUCT-OWNER ACCEPTANCE.
-Production default quality policy: NOT ACTIVE.
-Final PR-009 human acceptance: BLOCKED UNTIL Q-021 IS ACCEPTED.
+PR-009: IMPLEMENTED AND READY FOR HUMAN ACCEPTANCE WITH DOCUMENTED RESIDUAL LIMITATION.
+Q-021: DEFERRED — NEGATIVE CALIBRATION EVIDENCE ACCEPTED; NO PRODUCTION POLICY SELECTED.
+Production default PR-009 quality policy: NOT ACTIVE.
+RISK-PR009-NO-PRODUCTION-QUALITY-POLICY: OPEN AND ACCEPTED FOR THE PR-009 INFRASTRUCTURE MERGE BOUNDARY.
 PR-010 AND LATER: UNAUTHORIZED.
 Gate 2: NOT ACCEPTED.
 M3: IN PROGRESS.
 
-PR-009 implements deterministic whole-frame metrics, explicit caller-provided typed policy handling, full-resolution orientation-normalized decoding, append-only persistence, audit integration, controlled service errors, synthetic tests and a cross-platform verifier. It does not select or activate production thresholds, add UI integration, reject documents automatically, implement PR-010 geometry, PR-011 JPEG preparation, PR-012 document detection/segmentation or use real-document calibration. Migration v0005 checksum: `6d020d1acfbce3fcb7168e935617f2ae008a32bea7def1f37de84e36e9e2224f`.
+The explicit policy domain model is accepted as infrastructure. No production policy identity, thresholds or severity mapping were accepted; any future metric change requires a new version and must not alter persisted V1 algorithm identities silently.

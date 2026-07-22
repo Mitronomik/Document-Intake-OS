@@ -762,7 +762,7 @@ Status: `PROPOSED`. Decision record: `docs/decisions/ADR-023-image-quality-asses
 FR-04 staging conflict is explicit: PR-009 covers only deterministic whole-frame diagnostics from the decoded source image: EXIF orientation, orientation-normalized analysis view, encoded/effective dimensions, minimum resolution, blur/sharpness, contrast, glare/highlight clipping and exposure. Cut edges, perspective/skew, document presence/count, segmentation, crop, perspective correction and geometric transformation are deferred to PR-010 and PR-012 as described in ADR-023. PR-009 advances FR-04 but does not complete all of FR-04. No final production thresholds are selected.
 
 
-## PR-009 implementation lifecycle update — 2026-07-21
+## Historical PR-009 implementation lifecycle update — 2026-07-21
 
 ADR-023: ACCEPTED.
 PR-009: IMPLEMENTED AND IN REVIEW; NOT HUMAN ACCEPTED.
@@ -786,4 +786,26 @@ Only primary frame 0 is decoded.
 Original bytes remain immutable.
 Secondary frames are ignored in MVP.
 
-This decision changes only controlled JPEG input compatibility. It adds no `SourceMediaType.MPO`, no extension inference, no arbitrary multi-page/animated format support, no secondary-frame processing and no converted artifact. Q-021 remains `OPEN — REQUIRES PRODUCT-OWNER ACCEPTANCE`; the production default quality policy remains `NOT ACTIVE`; final PR-009 human acceptance remains blocked until Q-021 is accepted.
+This decision changes only controlled JPEG input compatibility. It adds no `SourceMediaType.MPO`, no extension inference, no arbitrary multi-page/animated format support, no secondary-frame processing and no converted artifact. Historical lifecycle context at the time of this input-compatibility decision: Q-021 remained `OPEN — REQUIRES PRODUCT-OWNER ACCEPTANCE`; the production default quality policy remained `NOT ACTIVE`; final PR-009 human acceptance remained blocked until Q-021 was accepted. PR-009-D3 below supersedes only that lifecycle context.
+
+## PR-009-D3 — Q-021 negative calibration outcome and infrastructure acceptance boundary
+
+**Status:** ACCEPTED
+**Date:** 2026-07-22
+**Decision owner:** Product owner
+
+The product owner accepts the completed private local Q-021 calibration contour as valid negative evidence. The safe aggregate record is: 60 samples processed; 60 metric sets calculated; zero failures and no failure stages; 43 calibration samples; 17 held-out validation samples; 54 Pareto candidates; `CALIBRATION_ONLY` search scope; no candidate accepted; no production policy selected or activated.
+
+Maximum listed validation exact was `0.411765`. Candidates with zero calibration missed RETAKE still had at least one validation missed RETAKE and between six and nine validation false RETAKE results. The listed held-out issue results showed zero UNDEREXPOSED recall for every listed candidate role; BLUR_DETECTED and OVEREXPOSED were more promising; GLARE_DETECTED, LOW_CONTRAST and LOW_RESOLUTION remained insufficiently reliable.
+
+The accepted conclusion is deliberately narrow: the current PR-009 V1 whole-frame metrics, current candidate search space and tested severity combinations did not produce an acceptable production quality policy on the completed local Q-021 calibration and validation set. This evidence does not establish universal failure of the algorithms.
+
+Q-021 is `DEFERRED — NEGATIVE CALIBRATION EVIDENCE ACCEPTED; NO PRODUCTION POLICY SELECTED`. No production `policy_id`, `policy_version`, threshold set or severity mapping was accepted. The production default PR-009 quality policy remains `NOT ACTIVE`.
+
+PR-009 is `IMPLEMENTED AND READY FOR HUMAN ACCEPTANCE WITH DOCUMENTED RESIDUAL LIMITATION`. Its explicit-policy infrastructure may proceed to human acceptance and merge under `RISK-PR009-NO-PRODUCTION-QUALITY-POLICY`. Human acceptance and merge remain separate product-owner actions after review and exact-head CI; this decision does not mark PR-009 accepted or merged.
+
+`RISK-PR009-NO-PRODUCTION-QUALITY-POLICY` means that the deterministic PR-009 V1 metrics, explicit policy domain model, persistence, audit, controlled errors and synthetic verification are accepted as infrastructure, while the completed calibration identified no acceptable production threshold and severity policy. No process-global, hidden or default production policy may be configured. Production composition must fail closed when an accepted policy is absent. No document may be automatically rejected, deleted, suppressed or blocked using an unaccepted PR-009 policy. Explicit synthetic policies remain allowed in tests and verifiers. The limitation blocks production activation of PR-009 quality decisions; it does not block acceptance and merge of the explicit-policy infrastructure.
+
+Any future production policy requires a separate versioned metric-separability task, local recalibration and explicit product-owner acceptance. Future metric changes must use new algorithm identities and versions. The V1 formulas and persisted V1 algorithm identities must not be silently changed.
+
+PR-010 AND LATER remain `UNAUTHORIZED` until a separate post-merge product-owner decision. Gate 2 remains `NOT ACCEPTED`. M3 remains `IN PROGRESS`.

@@ -251,27 +251,30 @@ Q-017: `DEFERRED`. PR-006 storage remains backup-neutral. Q-017 remains assigned
 
 **Question:** PR-009 whole-frame diagnostic policy thresholds.
 
-**Status:** OPEN
+**Status:** DEFERRED
 **Owner:** Product owner.
-**Acceptance requirement:** REQUIRES PRODUCT-OWNER ACCEPTANCE.
-**Scope controlled by Q-021:** minimum source-image dimensions for PR-009 diagnostics; blur threshold; contrast threshold; glare cutoff/fraction; exposure cutoffs/fractions; severity mapping; production `policy_id`; production policy version; activation of the default PR-009 policy; final PR-009 human acceptance.
-**Required evidence:** Local synthetic calibration; local anonymized/non-PII image set where legally and operationally allowed; no real documents in Git, Codex or CI; comparison of false warning and missed warning rates; explicit selected `policy_id` and `policy_version`.
-**Target:** Before production activation and final human acceptance of PR-009.
-**Current gate impact:** ADR-023 allows deterministic metrics, typed policy handling, persistence and tests, but production activation of a default quality policy and final human acceptance remain blocked until Q-021 is accepted.
-**Implementation block:** Production baseline threshold values must not be claimed final; PR-009 must not be described as pilot-calibrated; application composition must fail closed if no accepted production policy is configured.
+**Decision:** DEFERRED — NEGATIVE CALIBRATION EVIDENCE ACCEPTED; NO PRODUCTION POLICY SELECTED.
+**Historical acceptance requirement:** Q-021 required explicit product-owner acceptance of a production `policy_id`, `policy_version`, thresholds and severity mapping. That requirement was not met: no candidate, production policy identity, threshold set or severity mapping was accepted.
+**Controlled scope:** minimum source-image dimensions for PR-009 diagnostics; blur threshold; contrast threshold; glare cutoff/fraction; exposure cutoffs/fractions; severity mapping; production policy identity and version; and activation of the default PR-009 policy.
+**Completed aggregate evidence:** The accepted local calibration contour processed 60 samples, calculated 60 metric sets and had zero failures or failure stages. It used 43 calibration samples, 17 held-out validation samples, 54 Pareto candidates and a `CALIBRATION_ONLY` search scope. No policy was accepted or selected.
+**Accepted narrow conclusion:** The current PR-009 V1 whole-frame metrics, current candidate search space and tested severity combinations did not produce an acceptable production quality policy on the completed local Q-021 calibration and validation set. This result does not establish universal failure of the algorithms.
+**Aggregate observations:** Maximum listed validation exact was `0.411765`. Candidates with zero calibration missed RETAKE still had at least one validation missed RETAKE and between six and nine validation false RETAKE results. UNDEREXPOSED recall was zero for all listed candidate roles; BLUR_DETECTED and OVEREXPOSED were more promising; GLARE_DETECTED, LOW_CONTRAST and LOW_RESOLUTION remained insufficiently reliable.
+**Reason for deferral:** The V1 metrics and searched policies were not sufficiently reliable on the local validation set, so no production default may be activated. Future resolution requires a separate versioned metric-separability improvement, local recalibration and explicit product-owner acceptance. V1 formulas and persisted algorithm identities must not be changed silently.
+**Current gate impact:** Q-021 no longer blocks human acceptance or merge of the explicit-policy PR-009 infrastructure. It continues to block selection or activation of a production default quality policy and any claim that PR-009 thresholds are calibrated for production.
+**Residual limitation:** `RISK-PR009-NO-PRODUCTION-QUALITY-POLICY` is open and accepted for the PR-009 infrastructure merge boundary. Production composition must fail closed when no accepted policy is configured, and no document may be automatically rejected, deleted, suppressed or blocked using an unaccepted PR-009 policy. Explicit synthetic policies remain allowed in tests and verifiers.
 **Placeholder rule:** Do not silently select final production thresholds or use real-document fixtures.
 **MPO compatibility clarification:** The 2026-07-22 product-owner decision accepts Pillow-detected MPO as JPEG with only primary frame 0 decoded, immutable original bytes and ignored secondary frames. It resolves only a JPEG input-compatibility gap and does not accept any Q-021 threshold, severity mapping, policy activation or final PR-009 human acceptance.
 
 
-## PR-009 implementation lifecycle update — 2026-07-21
+## PR-009 calibration lifecycle update — 2026-07-22
 
 ADR-023: ACCEPTED.
-PR-009: IMPLEMENTED AND IN REVIEW; NOT HUMAN ACCEPTED.
-Q-021: OPEN — REQUIRES PRODUCT-OWNER ACCEPTANCE.
-Production default quality policy: NOT ACTIVE.
-Final PR-009 human acceptance: BLOCKED UNTIL Q-021 IS ACCEPTED.
+PR-009: IMPLEMENTED AND READY FOR HUMAN ACCEPTANCE WITH DOCUMENTED RESIDUAL LIMITATION.
+Q-021: DEFERRED — NEGATIVE CALIBRATION EVIDENCE ACCEPTED; NO PRODUCTION POLICY SELECTED.
+Production default PR-009 quality policy: NOT ACTIVE.
+RISK-PR009-NO-PRODUCTION-QUALITY-POLICY: OPEN AND ACCEPTED FOR THE PR-009 INFRASTRUCTURE MERGE BOUNDARY.
 PR-010 AND LATER: UNAUTHORIZED.
 Gate 2: NOT ACCEPTED.
 M3: IN PROGRESS.
 
-PR-009 implements deterministic whole-frame metrics, explicit caller-provided typed policy handling, full-resolution orientation-normalized decoding, append-only persistence, audit integration, controlled service errors, synthetic tests and a cross-platform verifier. It does not select or activate production thresholds, add UI integration, reject documents automatically, implement PR-010 geometry, PR-011 JPEG preparation, PR-012 document detection/segmentation or use real-document calibration. Migration v0005 checksum: `6d020d1acfbce3fcb7168e935617f2ae008a32bea7def1f37de84e36e9e2224f`.
+Human acceptance and merge remain separate product-owner actions after review and exact-head CI. PR-010 and later remain unauthorized until a separate post-merge product-owner decision.

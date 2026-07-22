@@ -161,15 +161,15 @@ Secondary frames are ignored in MVP.
 
 Tests generate deterministic, PII-free, visually distinct primary and secondary frames with Pillow's pinned MPO writer. Decoder tests prove Pillow reports `MPO`, production mapping returns `SourceMediaType.JPEG`, frame-1 changes leave the import raster, DHASH64, quality pixels, dimensions and all seven metrics unchanged, frame-0 changes affect those outputs, EXIF is applied once, and source bytes are unchanged. Regression coverage retains ordinary JPEG, PNG, HEIF/HEIC, unsupported-format, orientations 1–8, transparency, frozen PR-008 import vectors, frozen PR-009 quality vectors and privacy-safe failure behavior. The PR-008 and PR-009 verifiers incorporate the same production-path MPO proof without adding or renaming public output records.
 
-## PR-009 implementation lifecycle update — 2026-07-21
+## PR-009 calibration lifecycle update — 2026-07-22
 
 ADR-023: ACCEPTED.
-PR-009: IMPLEMENTED AND IN REVIEW; NOT HUMAN ACCEPTED.
-Q-021: OPEN — REQUIRES PRODUCT-OWNER ACCEPTANCE.
-Production default quality policy: NOT ACTIVE.
-Final PR-009 human acceptance: BLOCKED UNTIL Q-021 IS ACCEPTED.
+PR-009: IMPLEMENTED AND READY FOR HUMAN ACCEPTANCE WITH DOCUMENTED RESIDUAL LIMITATION.
+Q-021: DEFERRED — NEGATIVE CALIBRATION EVIDENCE ACCEPTED; NO PRODUCTION POLICY SELECTED.
+Production default PR-009 quality policy: NOT ACTIVE.
+RISK-PR009-NO-PRODUCTION-QUALITY-POLICY: OPEN AND ACCEPTED FOR THE PR-009 INFRASTRUCTURE MERGE BOUNDARY.
 PR-010 AND LATER: UNAUTHORIZED.
 Gate 2: NOT ACCEPTED.
 M3: IN PROGRESS.
 
-PR-009 implements deterministic whole-frame metrics, explicit caller-provided typed policy handling, full-resolution orientation-normalized decoding, append-only persistence, audit integration, controlled service errors, synthetic tests and a cross-platform verifier. It does not select or activate production thresholds, add UI integration, reject documents automatically, implement PR-010 geometry, PR-011 JPEG preparation, PR-012 document detection/segmentation or use real-document calibration. Migration v0005 checksum: `6d020d1acfbce3fcb7168e935617f2ae008a32bea7def1f37de84e36e9e2224f`.
+Synthetic policies remain permitted in tests and verifiers. No test may imply that a production policy was selected or activated; future metric changes require new algorithm versions and local recalibration.

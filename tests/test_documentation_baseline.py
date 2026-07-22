@@ -1858,7 +1858,7 @@ def test_pr008_acceptance_and_pr009_authorization_lifecycle_contract() -> None:
     assert "No physical Windows 11 result may be fabricated or inferred" in decision
 
 
-def test_pr009_quality_contract_is_implemented_and_in_review() -> None:
+def test_pr009_quality_contract_is_ready_with_deferred_q021_policy() -> None:
     adr = (REPO_ROOT / "docs/decisions/ADR-023-image-quality-assessment-v1.md").read_text(
         encoding="utf-8"
     )
@@ -1904,15 +1904,19 @@ def test_pr009_quality_contract_is_implemented_and_in_review() -> None:
     assert "Status: ACCEPTED" in adr
     assert "Decision owner: Product owner" in adr
     assert "Date: 2026-07-21" in adr
-    assert "Status: IMPLEMENTED AND IN REVIEW; NOT HUMAN ACCEPTED" in task_header
+    assert (
+        "Status: IMPLEMENTED AND READY FOR HUMAN ACCEPTANCE WITH DOCUMENTED RESIDUAL LIMITATION"
+    ) in task_header
     assert "pre-implementation contract" in task_header
     assert "remain authoritative for reviewing the implementation" in task_header
     assert "063e4b5a981f8ef6914c055e9f50666bbf1be734" in task
     assert "exact merge commit of the PR that adds this contract" in task
-    assert "IMPLEMENTED AND IN REVIEW;" in task
-    assert "NOT HUMAN ACCEPTED" in task
-    assert _question_status(q021) == "OPEN"
-    assert "REQUIRES PRODUCT-OWNER ACCEPTANCE" in q021
+    assert "IMPLEMENTED AND READY FOR HUMAN ACCEPTANCE" in task
+    assert "RISK-PR009-NO-PRODUCTION-QUALITY-POLICY" in task
+    assert _question_status(q021) == "DEFERRED"
+    assert "NEGATIVE CALIBRATION EVIDENCE ACCEPTED" in q021
+    assert "no production policy selected" in q021.lower()
+    assert "Historical acceptance requirement" in q021
     assert "resolves only a JPEG input-compatibility gap" in q021
     for filename in mpo_decision_files:
         assert mpo_rule in (REPO_ROOT / filename).read_text(encoding="utf-8"), filename
@@ -1921,15 +1925,18 @@ def test_pr009_quality_contract_is_implemented_and_in_review() -> None:
 
     for current_section in (current_m3, current_handoff):
         for required in (
-            "PR-009: IMPLEMENTED AND IN REVIEW; NOT HUMAN ACCEPTED",
-            "Q-021: OPEN — REQUIRES PRODUCT-OWNER ACCEPTANCE",
-            "Production default quality policy: NOT ACTIVE",
-            "Final PR-009 human acceptance: BLOCKED UNTIL Q-021 IS ACCEPTED",
+            "PR-009: IMPLEMENTED AND READY FOR HUMAN ACCEPTANCE "
+            "WITH DOCUMENTED RESIDUAL LIMITATION",
+            "Q-021: DEFERRED — NEGATIVE CALIBRATION EVIDENCE ACCEPTED; "
+            "NO PRODUCTION POLICY SELECTED",
+            "RISK-PR009-NO-PRODUCTION-QUALITY-POLICY",
             "Gate 2: NOT ACCEPTED",
             "M3: IN PROGRESS",
         ):
             assert required in current_section, required
 
+    assert "Production default quality policy: NOT ACTIVE" in current_m3
+    assert "Production default PR-009 quality policy: NOT ACTIVE" in current_handoff
     assert "PR-010" + chr(8211) + "PR-013: UNAUTHORIZED" in current_m3
     assert "PR-010 AND LATER: UNAUTHORIZED" in current_handoff
 
@@ -1938,13 +1945,21 @@ def test_pr009_quality_contract_is_implemented_and_in_review() -> None:
         "PR-009: AUTHORIZED, NOT STARTED",
         "PR-009 is the next authorized task and is not started",
         "Status: AUTHORIZED FOR CONTRACT REVIEW; PRODUCTION IMPLEMENTATION NOT STARTED",
+        "Q-021: ACCEPTED",
+        "Production default quality policy: ACTIVE",
+        "Production default PR-009 quality policy: ACTIVE",
+        "PR-009: COMPLETED AND HUMAN ACCEPTED",
+        "PR-009: MERGED",
+        "PR-010: AUTHORIZED",
+        "PR-010: STARTED",
     ):
         assert stale not in current_lifecycle_text, stale
 
     for required in (
         "PR-008: `COMPLETED AND HUMAN ACCEPTED WITH DOCUMENTED RESIDUAL RISK`",
-        "PR-009: IMPLEMENTED AND IN REVIEW; NOT HUMAN ACCEPTED",
-        "Q-021: `OPEN — REQUIRES PRODUCT-OWNER ACCEPTANCE`",
+        "PR-009: IMPLEMENTED AND READY FOR HUMAN ACCEPTANCE WITH DOCUMENTED RESIDUAL LIMITATION",
+        "Q-021: `DEFERRED — NEGATIVE CALIBRATION EVIDENCE ACCEPTED; NO PRODUCTION POLICY SELECTED`",
+        "RISK-PR009-NO-PRODUCTION-QUALITY-POLICY",
         "PR-010 AND LATER: `UNAUTHORIZED`",
         "Gate 2: `NOT ACCEPTED`",
         "M3: `IN PROGRESS`",
@@ -2219,10 +2234,7 @@ def test_pr009_quality_contract_is_implemented_and_in_review() -> None:
         "Algorithm IDs and versions are fixed by the PR-009 implementation contract",
         "are not fields of `ImageQualityPolicy`",
         "The service must not add algorithm-selection fields to `ImageQualityPolicy`",
-        (
-            "No concrete production policy ID/version is accepted or activated while Q-021 "
-            "remains open"
-        ),
+        "No concrete production policy ID/version is accepted or activated",
     ):
         assert required in adr + task, required
 
@@ -2244,8 +2256,9 @@ def test_pr009_quality_contract_is_implemented_and_in_review() -> None:
     assert "PR-009 whole-frame diagnostic policy thresholds" in q021
     assert "minimum source-image dimensions for PR-009 diagnostics" in q021
     assert "severity mapping" in q021
-    assert "activation of the default PR-009 policy" in q021
-    assert "final PR-009 human acceptance" in q021
+    assert "production default quality policy" in q021
+    assert "no longer blocks human acceptance or merge" in q021
+    assert "continues to block selection or activation" in q021
     assert "Q-007 controls PR-011 prepared-JPEG readability" in q007
     assert "PR-009 whole-frame source-quality threshold portion was separated into Q-021" in q007
     assert "Q-007 no longer blocks PR-009 algorithm or persistence implementation" in q007
@@ -2316,9 +2329,10 @@ def test_pr009_implementation_stage_has_production_contract_symbols() -> None:
         (REPO_ROOT / "docs/open-questions.md").read_text(encoding="utf-8"), "Q-021"
     )
     assert "Status: ACCEPTED" in adr
-    assert "IMPLEMENTED AND IN REVIEW" in task
-    assert "NOT HUMAN ACCEPTED" in task
-    assert "Production default quality policy: NOT ACTIVE" in task
-    assert _question_status(q021) == "OPEN"
+    assert "IMPLEMENTED AND READY FOR HUMAN ACCEPTANCE" in task
+    assert "DOCUMENTED RESIDUAL LIMITATION" in task
+    assert "Production default PR-009 quality policy: NOT ACTIVE" in task
+    assert "RISK-PR009-NO-PRODUCTION-QUALITY-POLICY" in task
+    assert _question_status(q021) == "DEFERRED"
     assert "PR-010 AND LATER" in task and "UNAUTHORIZED" in task
     assert "Gate 2" in task and "NOT ACCEPTED" in task

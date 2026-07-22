@@ -1,8 +1,8 @@
 # PR-009 — Orientation and quality assessment contract
 
-Status: IMPLEMENTED AND IN REVIEW; NOT HUMAN ACCEPTED
+Status: IMPLEMENTED AND READY FOR HUMAN ACCEPTANCE WITH DOCUMENTED RESIDUAL LIMITATION
 
-The requirements below originated as the pre-implementation contract and remain authoritative for reviewing the implementation. The lifecycle status is now implemented and in review, while final human acceptance remains blocked by Q-021 and no production default quality policy is active.
+The requirements below originated as the pre-implementation contract and remain authoritative for reviewing the implementation. The lifecycle status is now implemented and ready for human acceptance with `RISK-PR009-NO-PRODUCTION-QUALITY-POLICY`. Q-021 is deferred after accepted negative calibration evidence; no production default quality policy is active, and human acceptance and merge remain separate product-owner actions.
 
 ## Implementation base rule
 
@@ -189,7 +189,7 @@ Domain/command construction validation remains separate: constructing invalid im
 
 `QUALITY_POLICY_INVALID` is raised before opening the Unit of Work when an already constructed `ImageQualityPolicy` fails service preflight because its controlled policy ID/version is unsupported by the selected application composition, it cannot be serialized into the exact canonical policy snapshot, its severity rules are inconsistent with the fixed PR-009 issue-code contract, or it is incompatible with the PR-009 whole-frame policy schema. No repository or storage method may be called before this failure. Use `raise QualityAssessmentError(QualityAssessmentErrorCode.QUALITY_POLICY_INVALID) from None`.
 
-Algorithm IDs and versions are fixed by the PR-009 implementation contract and are not fields of `ImageQualityPolicy`. The service must not add algorithm-selection fields to `ImageQualityPolicy`. No concrete production policy ID/version is accepted or activated while Q-021 remains open.
+Algorithm IDs and versions are fixed by the PR-009 implementation contract and are not fields of `ImageQualityPolicy`. The service must not add algorithm-selection fields to `ImageQualityPolicy`. No concrete production policy ID/version is accepted or activated while Q-021 remains deferred without a selected policy.
 
 Policy/algorithm separation is exact: `ImageQualityPolicy` contains thresholds, controlled policy identity/version and severity mapping; the PR-009 implementation contract contains metric algorithms, algorithm IDs/versions, kernels, grayscale conversion, rounding and deterministic execution rules. Policy preflight may confirm compatibility with the fixed PR-009 whole-frame schema, but it must not expect algorithm identifiers supplied by policy.
 
@@ -352,7 +352,15 @@ Privacy restrictions prohibit basenames, paths, hashes, image bytes, pixel dumps
 
 ## Q-021 and activation boundary
 
-Q-021 — PR-009 whole-frame diagnostic policy thresholds is OPEN and requires product-owner acceptance. It controls minimum source-image dimensions, blur threshold, contrast threshold, glare cutoff/fraction, exposure cutoffs/fractions, severity mapping, production `policy_id`, production policy version, activation of default PR-009 policy and final PR-009 human acceptance. PR-009 implementation may build deterministic metrics, typed policy handling, persistence and tests. Production activation of a default quality policy and final human acceptance remain blocked until Q-021 is accepted. Tests may use explicit synthetic policies. Production composition must fail closed if no accepted production policy is configured.
+Q-021 — PR-009 whole-frame diagnostic policy thresholds is DEFERRED after the product owner accepted the completed local calibration as valid negative evidence. No production `policy_id`, `policy_version`, threshold set or severity mapping was accepted, and no default policy is active.
+
+PR-009 infrastructure is ready for human acceptance with `RISK-PR009-NO-PRODUCTION-QUALITY-POLICY`. Q-021 is deferred and continues to block only:
+
+- selection of a production default policy;
+- activation of production quality decisions;
+- claims that PR-009 thresholds are calibrated for production.
+
+The deterministic V1 metrics, explicit policy domain model, persistence, audit, controlled errors and synthetic verification are accepted as infrastructure. The completed local calibration did not identify an acceptable production threshold and severity policy. No process-global, hidden or default production policy may be configured. Production composition must fail closed when an accepted policy is absent. No document may be automatically rejected, deleted, suppressed or blocked using an unaccepted PR-009 policy. Explicit synthetic policies remain allowed in tests and verifiers. Any future production policy requires a separate versioned metric-separability task, local recalibration and explicit product-owner acceptance.
 
 Q-007 remains separate and deferred for PR-011 prepared-JPEG readability and post-compression resolution thresholds. The PR-009 whole-frame source-quality threshold portion is separated into Q-021. Q-007 no longer blocks PR-009 algorithm or persistence implementation.
 
@@ -392,16 +400,11 @@ Future success-path storage tests must assert `storage.read_bytes` is called exa
 
 ## Manual local calibration
 
-Calibration for Q-021 must be local. Evidence may include synthetic calibration and anonymized/non-PII images where legally and operationally allowed. No real documents, document-derived images or PII may enter Git, Codex or CI. Evidence must compare false warnings and missed warnings and select explicit `policy_id` and `policy_version` before production activation.
+The private local Q-021 calibration contour completed with 60 samples processed, 60 metric sets calculated, zero failures, 43 calibration samples, 17 held-out validation samples and 54 Pareto candidates in a `CALIBRATION_ONLY` search. No candidate or production policy was accepted. Only these aggregate results are recorded; private inputs and exported calibration artifacts remain outside Git, Codex and CI.
 
-After checking out the corrected PR head, the product owner may run the existing private Q-021 suite locally with its established verifier entry point, substituting the private suite path without copying that suite or its inputs into this repository:
+The accepted narrow conclusion is that the current PR-009 V1 whole-frame metrics, current candidate search space and tested severity combinations did not produce an acceptable production quality policy on the completed local Q-021 calibration and validation set. This does not prove universal failure of the algorithms. Future metric changes must be versioned; V1 formulas and persisted algorithm identities must not be silently changed.
 
-```bash
-LOCAL_Q021_SUITE=/absolute/path/to/private/q021-suite
-uv run python "$LOCAL_Q021_SUITE/verify_q021.py" --project-root "$PWD"
-```
-
-The expected sanitized compatibility result is:
+The previously accepted sanitized MPO/JPEG compatibility result remains:
 
 ```text
 Q021-0017 result=PASS media_type=JPEG
@@ -411,7 +414,7 @@ Q021-0019 result=PASS media_type=JPEG
 summary total=22 passed=20 failed=0 duplicates=2
 ```
 
-This command is for the product owner's local private contour only and was not run during the correction.
+This controlled output contains no private input identity or calibration artifact and selects no quality policy.
 
 ## Accepted MPO/JPEG input correction
 
@@ -424,24 +427,24 @@ Synthetic tests and both production-component verifiers must prove Pillow detect
 
 ## Acceptance criteria for the future implementation PR
 
-PR-009 production code is acceptable only when ADR-023 is accepted or explicitly reaffirmed, Q-021 status is respected, whole-frame scope is maintained, import decoder DHASH64 behavior is preserved, quality decoder is full-resolution and separate, command IDs/timestamp are caller-supplied, audit event is exact, algorithms/comparisons/rounding match frozen vectors, policy is explicit/versioned/snapshotted, persistence/privacy/failure contracts are met, all tests and verifier pass on supported platforms, no production default policy is activated without Q-021 acceptance, no real documents or PII are committed, PR-010+ remain unauthorized and Gate 2 remains not accepted.
+PR-009 production code is acceptable only when ADR-023 is accepted or explicitly reaffirmed, Q-021 status is respected, whole-frame scope is maintained, import decoder DHASH64 behavior is preserved, quality decoder is full-resolution and separate, command IDs/timestamp are caller-supplied, audit event is exact, algorithms/comparisons/rounding match frozen vectors, policy is explicit/versioned/snapshotted, persistence/privacy/failure contracts are met, all tests and verifier pass on supported platforms, no production default policy is activated without a separate explicit product-owner acceptance, no real documents or PII are committed, PR-010+ remain unauthorized and Gate 2 remains not accepted.
 
 ## Non-goals
 
 No image modification, correction, enhancement, crop, perspective correction, segmentation, document detection/count, OCR, UI, automatic rejection/deletion, prepared JPEG generation, PR-010+ work, final calibrated threshold claim or real-document fixtures.
 
 
-## PR-009 implementation lifecycle update — 2026-07-21
+## PR-009 calibration lifecycle update — 2026-07-22
 
 ADR-023: ACCEPTED.
-PR-009: IMPLEMENTED AND IN REVIEW; NOT HUMAN ACCEPTED.
-Q-021: OPEN — REQUIRES PRODUCT-OWNER ACCEPTANCE.
-Production default quality policy: NOT ACTIVE.
-Final PR-009 human acceptance: BLOCKED UNTIL Q-021 IS ACCEPTED.
+PR-009: IMPLEMENTED AND READY FOR HUMAN ACCEPTANCE WITH DOCUMENTED RESIDUAL LIMITATION.
+Q-021: DEFERRED — NEGATIVE CALIBRATION EVIDENCE ACCEPTED; NO PRODUCTION POLICY SELECTED.
+Production default PR-009 quality policy: NOT ACTIVE.
+RISK-PR009-NO-PRODUCTION-QUALITY-POLICY: OPEN AND ACCEPTED FOR THE PR-009 INFRASTRUCTURE MERGE BOUNDARY.
 PR-010 AND LATER: UNAUTHORIZED.
 Gate 2: NOT ACCEPTED.
 M3: IN PROGRESS.
 
-PR-009 implements deterministic whole-frame metrics, explicit caller-provided typed policy handling, full-resolution orientation-normalized decoding, append-only persistence, audit integration, controlled service errors, synthetic tests and a cross-platform verifier. It does not select or activate production thresholds, add UI integration, reject documents automatically, implement PR-010 geometry, PR-011 JPEG preparation, PR-012 document detection/segmentation or use real-document calibration. Migration v0005 checksum: `6d020d1acfbce3fcb7168e935617f2ae008a32bea7def1f37de84e36e9e2224f`.
+PR-009 implements deterministic whole-frame metrics, explicit caller-provided typed policy handling, full-resolution orientation-normalized decoding, append-only persistence, audit integration, controlled service errors, synthetic tests and a cross-platform verifier. The residual limitation blocks production activation of PR-009 quality decisions, not human acceptance or merge of the explicit-policy infrastructure. Human acceptance and merge are still pending; PR-010 and later require a separate post-merge product-owner decision.
 
 Review correction verification uses literal synthetic import-grayscale, DHASH64, full-resolution grayscale, orientation/dimension and seven-metric vectors. On supported Windows SQLCipher it creates and imports through production services, assesses through `assess_source_file_quality()`, reads the complete aggregate and exact audit event through production repositories, proves source/artifact/encrypted-object immutability, proves deterministic `list_by_source()`, proves failing-audit rollback through a wrapper around the real Unit of Work, and proves repository rejection after controlled corruption through the isolated real SQLCipher connection. The PR-008 verifier independently freezes the exact migration chain through v0005 while preserving its accepted `migration_v0004` output field.
