@@ -476,7 +476,7 @@ def _verify_mpo_production_flow(
     pillow_mpo = []
     for content in contents:
         with Image.open(io.BytesIO(content)) as image:
-            pillow_mpo.append(image.format == "MPO" and image.n_frames == 2)
+            pillow_mpo.append(image.format == "MPO" and getattr(image, "n_frames", 1) == 2)
 
     assessments = tuple(
         assess_source_file_quality(
