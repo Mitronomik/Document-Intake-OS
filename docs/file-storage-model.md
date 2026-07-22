@@ -68,25 +68,28 @@ Q-006: `DEFERRED`. Q-007: `DEFERRED`. Q-009: `DEFERRED`. Q-010: `ACCEPTED`. Q-01
 ## PR-009 calibration lifecycle update — 2026-07-22
 
 ADR-023: ACCEPTED.
-PR-009: COMPLETED AND HUMAN ACCEPTED WITH DOCUMENTED RESIDUAL LIMITATION.
+PR-009: IMPLEMENTED AND READY FOR HUMAN ACCEPTANCE WITH DOCUMENTED RESIDUAL LIMITATION.
 Q-021: DEFERRED — NEGATIVE CALIBRATION EVIDENCE ACCEPTED; NO PRODUCTION POLICY SELECTED.
 Production default PR-009 quality policy: NOT ACTIVE.
-RISK-PR009-NO-PRODUCTION-QUALITY-POLICY: OPEN AND ACCEPTED FOR THE PR-009 INFRASTRUCTURE AND HUMAN-ACCEPTANCE BOUNDARY.
-PR-010 CONTRACT DEFINITION: AUTHORIZED, NOT STARTED.
-PR-010 PRODUCTION IMPLEMENTATION: UNAUTHORIZED.
-PR-011 AND LATER: UNAUTHORIZED.
+RISK-PR009-NO-PRODUCTION-QUALITY-POLICY: OPEN AND ACCEPTED FOR THE PR-009 INFRASTRUCTURE MERGE BOUNDARY.
+PR-010 AND LATER: UNAUTHORIZED.
 Gate 2: NOT ACCEPTED.
 M3: IN PROGRESS.
 
 Original-byte immutability and the no-storage-publication PR-009 boundary remain unchanged. No unaccepted quality policy may reject, delete, suppress, block or modify a document.
-
-
 ## PR-009 human acceptance lifecycle state — 2026-07-22
 
 PR-009: COMPLETED AND HUMAN ACCEPTED WITH DOCUMENTED RESIDUAL LIMITATION.
 Q-021: DEFERRED — NEGATIVE CALIBRATION EVIDENCE ACCEPTED; NO PRODUCTION POLICY SELECTED.
 Production default PR-009 quality policy: NOT ACTIVE.
+Production policy_id: NOT ASSIGNED.
+Production policy_version: NOT ASSIGNED.
+Automatic PR-009 quality-based document blocking: NOT ACTIVE.
+Automatic PR-009 production RETAKE_REQUIRED enforcement: NOT ACTIVE.
 RISK-PR009-NO-PRODUCTION-QUALITY-POLICY: OPEN AND ACCEPTED FOR THE PR-009 INFRASTRUCTURE AND HUMAN-ACCEPTANCE BOUNDARY.
+PR-010 CONTRACT DEFINITION: AUTHORIZED, NOT STARTED.
+PR-010 PRODUCTION IMPLEMENTATION: UNAUTHORIZED.
+PR-011 AND LATER: UNAUTHORIZED.
 Gate 2: NOT ACCEPTED.
 M3: IN PROGRESS.
 
@@ -94,12 +97,5 @@ GitHub PR: #24.
 Final reviewed head: `72c01662031f73985f8715d6c3c87abf7aa5c4db`.
 Merge commit: `b491226878cabfc87c484f6a4d41bc2969851273`.
 Merge date: 2026-07-22.
-Production policy_id: NOT ASSIGNED.
-Production policy_version: NOT ASSIGNED.
-Automatic PR-009 quality-based document blocking: NOT ACTIVE.
-Automatic PR-009 production RETAKE_REQUIRED enforcement: NOT ACTIVE.
-PR-010 CONTRACT DEFINITION: AUTHORIZED, NOT STARTED.
-PR-010 PRODUCTION IMPLEMENTATION: UNAUTHORIZED.
-PR-011 AND LATER: UNAUTHORIZED.
 
-The next safe task is preparation of the exact PR-010 documentation contract. PR-010 production implementation and PR-011 and later remain unauthorized. This lifecycle update does not define or implement PR-010 runtime behavior, and FR-04 remains incomplete because geometry, document regions and later image-preparation work remain future scope.
+This current PR-009-D4-backed section supersedes earlier historical lifecycle snapshots for current status only. It does not rewrite those historical records and does not authorize PR-010 production implementation or PR-011 and later work. FR-04 remains incomplete because geometry, document regions and later image-preparation work remain future scope.

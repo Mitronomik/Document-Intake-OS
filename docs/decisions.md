@@ -769,9 +769,7 @@ PR-009: IMPLEMENTED AND IN REVIEW; NOT HUMAN ACCEPTED.
 Q-021: OPEN — REQUIRES PRODUCT-OWNER ACCEPTANCE.
 Production default quality policy: NOT ACTIVE.
 Final PR-009 human acceptance: BLOCKED UNTIL Q-021 IS ACCEPTED.
-PR-010 CONTRACT DEFINITION: AUTHORIZED, NOT STARTED.
-PR-010 PRODUCTION IMPLEMENTATION: UNAUTHORIZED.
-PR-011 AND LATER: UNAUTHORIZED.
+PR-010 AND LATER: UNAUTHORIZED.
 Gate 2: NOT ACCEPTED.
 M3: IN PROGRESS.
 
@@ -811,6 +809,7 @@ PR-009 is `IMPLEMENTED AND READY FOR HUMAN ACCEPTANCE WITH DOCUMENTED RESIDUAL L
 Any future production policy requires a separate versioned metric-separability task, local recalibration and explicit product-owner acceptance. Future metric changes must use new algorithm identities and versions. The V1 formulas and persisted V1 algorithm identities must not be silently changed.
 
 PR-010 AND LATER remain `UNAUTHORIZED` until a separate post-merge product-owner decision. Gate 2 remains `NOT ACCEPTED`. M3 remains `IN PROGRESS`.
+
 
 ## PR-009-D4 — PR-009 human acceptance and PR-010 contract authorization
 

@@ -22,7 +22,7 @@ PR-004–007.
 
 Result: domain, SQLite, immutable storage and audit.
 
-PR-004 — Core Domain is completed and human accepted. GATE-S1 is completed and human accepted. ADR-018 is accepted for Q-010. PR #9 merged PR-S001 as a research harness; PR-S001 is ACCEPTED WITH DOCUMENTED RESIDUAL RISK RISK-S001-W11. PR-005 is COMPLETED AND HUMAN ACCEPTED through GitHub PR #15. PR-006 and PR-007 are COMPLETED AND HUMAN ACCEPTED. M2 is completed and human accepted by PR-007 acceptance. PR-008 is completed and human accepted with documented residual risk. PR-009 is completed and human accepted with a documented residual limitation; PR-010 and every later implementation task remains unauthorized.
+PR-004 — Core Domain is completed and human accepted. GATE-S1 is completed and human accepted. ADR-018 is accepted for Q-010. PR #9 merged PR-S001 as a research harness; PR-S001 is ACCEPTED WITH DOCUMENTED RESIDUAL RISK RISK-S001-W11. PR-005 is COMPLETED AND HUMAN ACCEPTED through GitHub PR #15. PR-006 and PR-007 are COMPLETED AND HUMAN ACCEPTED. M2 is completed and human accepted by PR-007 acceptance. PR-008 is completed and human accepted with documented residual risk. PR-009 is implemented and ready for human acceptance with a documented residual limitation; PR-010 and every later implementation task remains unauthorized.
 
 ## M3 — Manual image workflow
 
@@ -38,6 +38,10 @@ M3 status:
 - PR-009: COMPLETED AND HUMAN ACCEPTED WITH DOCUMENTED RESIDUAL LIMITATION.
 - Q-021: DEFERRED — NEGATIVE CALIBRATION EVIDENCE ACCEPTED; NO PRODUCTION POLICY SELECTED.
 - Production default quality policy: NOT ACTIVE.
+- Production policy_id: NOT ASSIGNED.
+- Production policy_version: NOT ASSIGNED.
+- Automatic PR-009 quality-based document blocking: NOT ACTIVE.
+- Automatic PR-009 production RETAKE_REQUIRED enforcement: NOT ACTIVE.
 - RISK-PR009-NO-PRODUCTION-QUALITY-POLICY: OPEN AND ACCEPTED FOR THE PR-009 INFRASTRUCTURE AND HUMAN-ACCEPTANCE BOUNDARY.
 - PR-010 CONTRACT DEFINITION: AUTHORIZED, NOT STARTED.
 - PR-010 PRODUCTION IMPLEMENTATION: UNAUTHORIZED.
@@ -45,21 +49,9 @@ M3 status:
 - Gate 2: NOT ACCEPTED.
 - M3: IN PROGRESS.
 
-- GitHub PR: #24.
-- Final reviewed head: `72c01662031f73985f8715d6c3c87abf7aa5c4db`.
-- Merge commit: `b491226878cabfc87c484f6a4d41bc2969851273`.
-- Merge date: 2026-07-22.
-- Production policy_id: NOT ASSIGNED.
-- Production policy_version: NOT ASSIGNED.
-- Automatic PR-009 quality-based document blocking: NOT ACTIVE.
-- Automatic PR-009 production RETAKE_REQUIRED enforcement: NOT ACTIVE.
-- PR-010 CONTRACT DEFINITION: AUTHORIZED, NOT STARTED.
-- PR-010 PRODUCTION IMPLEMENTATION: UNAUTHORIZED.
-- PR-011 AND LATER: UNAUTHORIZED.
-
 The physical Windows 11 smoke risk `RISK-PR008-W11-SMOKE` remains deferred to Windows installer, pilot or final release acceptance; no physical Windows 11 smoke is claimed.
 
-PR-009 is completed and human accepted without a production default policy. Policy injection remains explicit, production composition must fail closed when no accepted policy is configured, and the residual limitation blocks production quality decisions rather than infrastructure acceptance. The next safe task is preparation of the exact PR-010 documentation contract.
+PR-009 is completed and human accepted after GitHub PR #24 merged on 2026-07-22 from reviewed head `72c01662031f73985f8715d6c3c87abf7aa5c4db` at merge commit `b491226878cabfc87c484f6a4d41bc2969851273`. Policy injection remains explicit, production composition must fail closed when no accepted policy is configured, and the residual limitation blocks production quality decisions rather than infrastructure acceptance. The next safe task is preparation of the exact PR-010 documentation contract; PR-010 production implementation and PR-011 and later remain unauthorized.
 
 ## M4 — Manual end-to-end MVP
 
@@ -141,7 +133,7 @@ PR-006: `COMPLETED AND HUMAN ACCEPTED` through GitHub PR `#17`, final reviewed h
 
 ADR numbering after repair: ADR-019 is PR-005 SQLCipher binding and raw-key staging; ADR-020 is immutable encrypted filesystem storage v1; ADR-021 is immutable PII-safe audit events. The PR #17 description historically referred to the storage decision as ADR-019 before this documentation numbering correction.
 
-PR-007: `COMPLETED AND HUMAN ACCEPTED`. PR-007 was merged and human accepted through GitHub PR #19. PR-008: `COMPLETED AND HUMAN ACCEPTED WITH DOCUMENTED RESIDUAL RISK`; RISK-PR008-W11-SMOKE: `ACCEPTED FOR PR-008; DEFERRED TO INSTALLER/PILOT/RELEASE`; PR-009: `AUTHORIZED, NOT STARTED`; PR-010 AND LATER: `UNAUTHORIZED`; Gate 2: `NOT ACCEPTED`; M3: `IN PROGRESS`. Gate 1: `COMPLETED AND HUMAN ACCEPTED`. M2: `COMPLETED AND HUMAN ACCEPTED`. PR-009 is authorized, not started; PR-010 contract definition is authorized but not started; PR-010 production implementation and PR-011 and later remain unauthorized.
+PR-007: `COMPLETED AND HUMAN ACCEPTED`. PR-007 was merged and human accepted through GitHub PR #19. PR-008: `COMPLETED AND HUMAN ACCEPTED WITH DOCUMENTED RESIDUAL RISK`; RISK-PR008-W11-SMOKE: `ACCEPTED FOR PR-008; DEFERRED TO INSTALLER/PILOT/RELEASE`; PR-009: `AUTHORIZED, NOT STARTED`; PR-010 AND LATER: `UNAUTHORIZED`; Gate 2: `NOT ACCEPTED`; M3: `IN PROGRESS`. Gate 1: `COMPLETED AND HUMAN ACCEPTED`. M2: `COMPLETED AND HUMAN ACCEPTED`. PR-009 is authorized, not started; PR-010 and later remain unauthorized.
 
 Q-009: `DEFERRED`. Q-017: `DEFERRED`. Q-010: `ACCEPTED`. `RISK-PR005-RAWKEY-PRAGMA` remains open for installer, pilot and production release. Existing unresolved SQLCipher legal, redistribution and release-binding questions remain unresolved. Real documents and personal data remain prohibited in Git, Codex, CI, logs and test reports. The sensitive-data/private-contour gate remains open for real data.
 
@@ -161,25 +153,28 @@ PR-009 is now `AUTHORIZED, CONTRACT PROPOSED, PRODUCTION IMPLEMENTATION NOT STAR
 ## PR-009 calibration lifecycle update — 2026-07-22
 
 ADR-023: ACCEPTED.
-PR-009: COMPLETED AND HUMAN ACCEPTED WITH DOCUMENTED RESIDUAL LIMITATION.
+PR-009: IMPLEMENTED AND READY FOR HUMAN ACCEPTANCE WITH DOCUMENTED RESIDUAL LIMITATION.
 Q-021: DEFERRED — NEGATIVE CALIBRATION EVIDENCE ACCEPTED; NO PRODUCTION POLICY SELECTED.
 Production default PR-009 quality policy: NOT ACTIVE.
-RISK-PR009-NO-PRODUCTION-QUALITY-POLICY: OPEN AND ACCEPTED FOR THE PR-009 INFRASTRUCTURE AND HUMAN-ACCEPTANCE BOUNDARY.
-PR-010 CONTRACT DEFINITION: AUTHORIZED, NOT STARTED.
-PR-010 PRODUCTION IMPLEMENTATION: UNAUTHORIZED.
-PR-011 AND LATER: UNAUTHORIZED.
+RISK-PR009-NO-PRODUCTION-QUALITY-POLICY: OPEN AND ACCEPTED FOR THE PR-009 INFRASTRUCTURE MERGE BOUNDARY.
+PR-010 AND LATER: UNAUTHORIZED.
 Gate 2: NOT ACCEPTED.
 M3: IN PROGRESS.
 
 PR-009 infrastructure is ready for human acceptance and may be merged under the documented limitation without activating a production default policy. Human acceptance and merge remain separate pending actions. PR-010 and later require a separate post-merge product-owner decision.
-
-
 ## PR-009 human acceptance lifecycle state — 2026-07-22
 
 PR-009: COMPLETED AND HUMAN ACCEPTED WITH DOCUMENTED RESIDUAL LIMITATION.
 Q-021: DEFERRED — NEGATIVE CALIBRATION EVIDENCE ACCEPTED; NO PRODUCTION POLICY SELECTED.
 Production default PR-009 quality policy: NOT ACTIVE.
+Production policy_id: NOT ASSIGNED.
+Production policy_version: NOT ASSIGNED.
+Automatic PR-009 quality-based document blocking: NOT ACTIVE.
+Automatic PR-009 production RETAKE_REQUIRED enforcement: NOT ACTIVE.
 RISK-PR009-NO-PRODUCTION-QUALITY-POLICY: OPEN AND ACCEPTED FOR THE PR-009 INFRASTRUCTURE AND HUMAN-ACCEPTANCE BOUNDARY.
+PR-010 CONTRACT DEFINITION: AUTHORIZED, NOT STARTED.
+PR-010 PRODUCTION IMPLEMENTATION: UNAUTHORIZED.
+PR-011 AND LATER: UNAUTHORIZED.
 Gate 2: NOT ACCEPTED.
 M3: IN PROGRESS.
 
@@ -187,12 +182,5 @@ GitHub PR: #24.
 Final reviewed head: `72c01662031f73985f8715d6c3c87abf7aa5c4db`.
 Merge commit: `b491226878cabfc87c484f6a4d41bc2969851273`.
 Merge date: 2026-07-22.
-Production policy_id: NOT ASSIGNED.
-Production policy_version: NOT ASSIGNED.
-Automatic PR-009 quality-based document blocking: NOT ACTIVE.
-Automatic PR-009 production RETAKE_REQUIRED enforcement: NOT ACTIVE.
-PR-010 CONTRACT DEFINITION: AUTHORIZED, NOT STARTED.
-PR-010 PRODUCTION IMPLEMENTATION: UNAUTHORIZED.
-PR-011 AND LATER: UNAUTHORIZED.
 
-The next safe task is preparation of the exact PR-010 documentation contract. PR-010 production implementation and PR-011 and later remain unauthorized. This lifecycle update does not define or implement PR-010 runtime behavior, and FR-04 remains incomplete because geometry, document regions and later image-preparation work remain future scope.
+This current PR-009-D4-backed section supersedes earlier historical lifecycle snapshots for current status only. It does not rewrite those historical records and does not authorize PR-010 production implementation or PR-011 and later work. FR-04 remains incomplete because geometry, document regions and later image-preparation work remain future scope.

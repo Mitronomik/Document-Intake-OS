@@ -16,7 +16,7 @@ PR-009 advances FR-04 but does not complete all of FR-04. FR-04 and `docs/image-
 
 ## Deferred scope
 
-Deferred outside PR-009: cut-edge detection, perspective/skew assessment based on document boundaries, document presence detection, document count, segmentation, automatic crop, perspective correction and geometric transformation. PR-010 is staged for perspective and geometry tools. PR-012 is staged for document regions, document presence/count and multiple-document workflow. PR-010 contract definition is authorized but not started; PR-010 production implementation and PR-011 and later remain unauthorized.
+Deferred outside PR-009: cut-edge detection, perspective/skew assessment based on document boundaries, document presence detection, document count, segmentation, automatic crop, perspective correction and geometric transformation. PR-010 is staged for perspective and geometry tools. PR-012 is staged for document regions, document presence/count and multiple-document workflow. PR-010 and later remain unauthorized.
 
 ## Decoder boundary
 
@@ -437,27 +437,30 @@ No image modification, correction, enhancement, crop, perspective correction, se
 ## PR-009 calibration lifecycle update — 2026-07-22
 
 ADR-023: ACCEPTED.
-PR-009: COMPLETED AND HUMAN ACCEPTED WITH DOCUMENTED RESIDUAL LIMITATION.
+PR-009: IMPLEMENTED AND READY FOR HUMAN ACCEPTANCE WITH DOCUMENTED RESIDUAL LIMITATION.
 Q-021: DEFERRED — NEGATIVE CALIBRATION EVIDENCE ACCEPTED; NO PRODUCTION POLICY SELECTED.
 Production default PR-009 quality policy: NOT ACTIVE.
-RISK-PR009-NO-PRODUCTION-QUALITY-POLICY: OPEN AND ACCEPTED FOR THE PR-009 INFRASTRUCTURE AND HUMAN-ACCEPTANCE BOUNDARY.
-PR-010 CONTRACT DEFINITION: AUTHORIZED, NOT STARTED.
-PR-010 PRODUCTION IMPLEMENTATION: UNAUTHORIZED.
-PR-011 AND LATER: UNAUTHORIZED.
+RISK-PR009-NO-PRODUCTION-QUALITY-POLICY: OPEN AND ACCEPTED FOR THE PR-009 INFRASTRUCTURE MERGE BOUNDARY.
+PR-010 AND LATER: UNAUTHORIZED.
 Gate 2: NOT ACCEPTED.
 M3: IN PROGRESS.
 
-PR-009 implements deterministic whole-frame metrics, explicit caller-provided typed policy handling, full-resolution orientation-normalized decoding, append-only persistence, audit integration, controlled service errors, synthetic tests and a cross-platform verifier. The residual limitation blocks production activation of PR-009 quality decisions, not the completed human acceptance of the explicit-policy infrastructure. PR-010 contract definition is authorized but not started; PR-010 production implementation and PR-011 and later require separate future product-owner authorization.
+PR-009 implements deterministic whole-frame metrics, explicit caller-provided typed policy handling, full-resolution orientation-normalized decoding, append-only persistence, audit integration, controlled service errors, synthetic tests and a cross-platform verifier. The residual limitation blocks production activation of PR-009 quality decisions, not human acceptance or merge of the explicit-policy infrastructure. Human acceptance and merge are still pending; PR-010 and later require a separate post-merge product-owner decision.
 
 Review correction verification uses literal synthetic import-grayscale, DHASH64, full-resolution grayscale, orientation/dimension and seven-metric vectors. On supported Windows SQLCipher it creates and imports through production services, assesses through `assess_source_file_quality()`, reads the complete aggregate and exact audit event through production repositories, proves source/artifact/encrypted-object immutability, proves deterministic `list_by_source()`, proves failing-audit rollback through a wrapper around the real Unit of Work, and proves repository rejection after controlled corruption through the isolated real SQLCipher connection. The PR-008 verifier independently freezes the exact migration chain through v0005 while preserving its accepted `migration_v0004` output field.
-
-
 ## PR-009 human acceptance lifecycle state — 2026-07-22
 
 PR-009: COMPLETED AND HUMAN ACCEPTED WITH DOCUMENTED RESIDUAL LIMITATION.
 Q-021: DEFERRED — NEGATIVE CALIBRATION EVIDENCE ACCEPTED; NO PRODUCTION POLICY SELECTED.
 Production default PR-009 quality policy: NOT ACTIVE.
+Production policy_id: NOT ASSIGNED.
+Production policy_version: NOT ASSIGNED.
+Automatic PR-009 quality-based document blocking: NOT ACTIVE.
+Automatic PR-009 production RETAKE_REQUIRED enforcement: NOT ACTIVE.
 RISK-PR009-NO-PRODUCTION-QUALITY-POLICY: OPEN AND ACCEPTED FOR THE PR-009 INFRASTRUCTURE AND HUMAN-ACCEPTANCE BOUNDARY.
+PR-010 CONTRACT DEFINITION: AUTHORIZED, NOT STARTED.
+PR-010 PRODUCTION IMPLEMENTATION: UNAUTHORIZED.
+PR-011 AND LATER: UNAUTHORIZED.
 Gate 2: NOT ACCEPTED.
 M3: IN PROGRESS.
 
@@ -465,12 +468,5 @@ GitHub PR: #24.
 Final reviewed head: `72c01662031f73985f8715d6c3c87abf7aa5c4db`.
 Merge commit: `b491226878cabfc87c484f6a4d41bc2969851273`.
 Merge date: 2026-07-22.
-Production policy_id: NOT ASSIGNED.
-Production policy_version: NOT ASSIGNED.
-Automatic PR-009 quality-based document blocking: NOT ACTIVE.
-Automatic PR-009 production RETAKE_REQUIRED enforcement: NOT ACTIVE.
-PR-010 CONTRACT DEFINITION: AUTHORIZED, NOT STARTED.
-PR-010 PRODUCTION IMPLEMENTATION: UNAUTHORIZED.
-PR-011 AND LATER: UNAUTHORIZED.
 
-The next safe task is preparation of the exact PR-010 documentation contract. PR-010 production implementation and PR-011 and later remain unauthorized. This lifecycle update does not define or implement PR-010 runtime behavior, and FR-04 remains incomplete because geometry, document regions and later image-preparation work remain future scope.
+This later lifecycle decision does not alter accepted PR-009 algorithms, comparisons, rounding, DTOs, domain model, policy snapshot contract, persistence contract, audit contract, migration contract, verifier contract, tests or acceptance vectors. It authorizes preparation of the exact PR-010 documentation contract only and does not authorize PR-010 runtime behavior.
