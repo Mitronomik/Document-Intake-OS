@@ -55,6 +55,7 @@ jobs:
           scripts/verify_pr006_storage.py
           scripts/verify_pr007_audit.py
           scripts/verify_pr008_import.py
+          scripts/verify_pr009_quality.py
       - name: Pytest
         run: uv run pytest -ra
       - name: Build package
@@ -67,6 +68,9 @@ jobs:
       - name: Verify PR-008 import on production SQLCipher
         if: runner.os == 'Windows'
         run: uv run python scripts/verify_pr008_import.py
+      - name: Verify PR-009 quality on production SQLCipher
+        if: runner.os == 'Windows'
+        run: uv run python scripts/verify_pr009_quality.py
 
   windows-encryption-spike:
     name: PR-S001 Windows encryption spike

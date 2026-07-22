@@ -259,7 +259,7 @@ Deferred exactly as domain-model concepts for later PRs: UploadBatch behavior, S
 
 PR-005 persists only existing PR-004 domain concepts: Person, IdentityDocument, MigrationDocument, Vehicle, Terminal, Document, FieldCandidate, Application with ParticipantAssignment, VerifiedField and ValidationReport issues, and immutable ApplicationSnapshot artifact references. UploadBatch, SourceFile, DocumentRegion, RecognitionRun, ExportRun, AuditEvent and filesystem references beyond opaque IDs remain deferred. Intentionally opaque references include `Application.batch_id`, document side IDs, prepared artifact IDs, snapshot artifact references and `Vehicle.registration_document_id`. The PR-005 persistence slice for FR-13 is COMPLETED AND HUMAN ACCEPTED. FR-13 remains not fully complete beyond the accepted persisted PR-004 domain scope because later storage and application concepts remain deferred.
 
-## PR-006 lifecycle note
+## Historical PR-006 lifecycle note
 
 PR-005: `COMPLETED AND HUMAN ACCEPTED`. PR-006: `COMPLETED AND HUMAN ACCEPTED`. PR-007: `COMPLETED AND HUMAN ACCEPTED`. PR-008: `COMPLETED AND HUMAN ACCEPTED WITH DOCUMENTED RESIDUAL RISK`; RISK-PR008-W11-SMOKE: `ACCEPTED FOR PR-008; DEFERRED TO INSTALLER/PILOT/RELEASE`; PR-009: `AUTHORIZED, NOT STARTED`; PR-010 AND LATER: `UNAUTHORIZED`; Gate 2: `NOT ACCEPTED`; M3: `IN PROGRESS`. Gate 1: `COMPLETED AND HUMAN ACCEPTED`. M2: `COMPLETED AND HUMAN ACCEPTED`. Q-009: `DEFERRED`; PR-006 implements immutable stored final artifacts and no retention, deletion or secure-deletion policy. Q-017: `DEFERRED`; PR-006 storage layout is backup-neutral and PR-032 remains responsible for encrypted backup/restore. Real documents and personal data remain prohibited in Git, Codex and CI.
 
@@ -283,6 +283,20 @@ M2: `COMPLETED AND HUMAN ACCEPTED`. Gate 1: `COMPLETED AND HUMAN ACCEPTED`. PR-0
 
 Q-006: `DEFERRED`. Q-007: `DEFERRED`. Q-009: `DEFERRED`. Q-010: `ACCEPTED`. Q-017: `DEFERRED`. `RISK-PR005-RAWKEY-PRAGMA` remains open for installer, pilot and production release. The sensitive-data/private-contour gate remains open for real documents and real personal data. Real documents and personal data remain prohibited in Git, Codex, CI, logs and test reports.
 
-## PR-009 proposed image-quality domain contract
+## Historical PR-009 proposed image-quality domain contract
 
-ADR-023 proposes immutable frozen/slotted `QualityAssessmentStatus`, `QualityIssueCode`, `QualityIssueSeverity`, `QualityMetricCode`, `QualityPolicyVersion`, `ImageQualityMetric`, `ImageQualityIssue`, `ImageQualityAssessment` and `ImageQualityPolicy` types. Status values are `GOOD`, `REVIEW_REQUIRED`, `RETAKE_REQUIRED`. PR-009 issue codes are `LOW_RESOLUTION`, `BLUR_DETECTED`, `LOW_CONTRAST`, `GLARE_DETECTED`, `UNDEREXPOSED`, `OVEREXPOSED`; deferred codes are `CUT_EDGES`, `PERSPECTIVE`, `DOCUMENT_NOT_FOUND`, `MULTIPLE_DOCUMENTS`. PR-009 production implementation is not started. Q-021 is open, so final production thresholds are not accepted.
+At contract proposal time, ADR-023 proposed immutable frozen/slotted `QualityAssessmentStatus`, `QualityIssueCode`, `QualityIssueSeverity`, `QualityMetricCode`, `QualityPolicyVersion`, `ImageQualityMetric`, `ImageQualityIssue`, `ImageQualityAssessment` and `ImageQualityPolicy` types. Status values were `GOOD`, `REVIEW_REQUIRED`, `RETAKE_REQUIRED`. PR-009 issue codes were `LOW_RESOLUTION`, `BLUR_DETECTED`, `LOW_CONTRAST`, `GLARE_DETECTED`, `UNDEREXPOSED`, `OVEREXPOSED`; deferred codes were `CUT_EDGES`, `PERSPECTIVE`, `DOCUMENT_NOT_FOUND`, `MULTIPLE_DOCUMENTS`. Production implementation had not started, and Q-021 was open, so no final production thresholds were accepted.
+
+
+## PR-009 calibration lifecycle update — 2026-07-22
+
+ADR-023: ACCEPTED.
+PR-009: IMPLEMENTED AND READY FOR HUMAN ACCEPTANCE WITH DOCUMENTED RESIDUAL LIMITATION.
+Q-021: DEFERRED — NEGATIVE CALIBRATION EVIDENCE ACCEPTED; NO PRODUCTION POLICY SELECTED.
+Production default PR-009 quality policy: NOT ACTIVE.
+RISK-PR009-NO-PRODUCTION-QUALITY-POLICY: OPEN AND ACCEPTED FOR THE PR-009 INFRASTRUCTURE MERGE BOUNDARY.
+PR-010 AND LATER: UNAUTHORIZED.
+Gate 2: NOT ACCEPTED.
+M3: IN PROGRESS.
+
+The explicit policy domain model is accepted as infrastructure. No production policy identity, thresholds or severity mapping were accepted; any future metric change requires a new version and must not alter persisted V1 algorithm identities silently.

@@ -380,7 +380,7 @@ def test_lifecycle_state_records_pr005_accepted_state() -> None:
     assert "PR-S001-F3 is the current correction" not in progress
     assert "**Обновлено:** 2026-07-17" not in progress
     assert "**Обновлено:** 2026-07-18" not in progress
-    assert "**Обновлено:** 2026-07-21" in progress
+    assert "**Обновлено:** 2026-07-22" in progress
     assert "- [x] GATE-S1: COMPLETED AND HUMAN ACCEPTED;" in progress
     assert "- [x] ADR-018: ACCEPTED;" in progress
     assert "- [x] Q-010: ACCEPTED;" in progress
@@ -1818,7 +1818,6 @@ def test_pr008_acceptance_and_pr009_authorization_lifecycle_contract() -> None:
         "docs/decisions/PR-008-D1-lifecycle-acceptance.md",
     )
     combined = "\n".join((REPO_ROOT / name).read_text(encoding="utf-8") for name in lifecycle_files)
-
     for required in (
         "PR-008: `COMPLETED AND HUMAN ACCEPTED",
         "RISK-PR008-W11-SMOKE",
@@ -1859,13 +1858,18 @@ def test_pr008_acceptance_and_pr009_authorization_lifecycle_contract() -> None:
     assert "No physical Windows 11 result may be fabricated or inferred" in decision
 
 
-def test_pr009_quality_contract_is_documentation_only_and_staged() -> None:
+def test_pr009_quality_contract_is_ready_with_deferred_q021_policy() -> None:
     adr = (REPO_ROOT / "docs/decisions/ADR-023-image-quality-assessment-v1.md").read_text(
         encoding="utf-8"
     )
     task = (REPO_ROOT / "docs/tasks/PR-009-orientation-quality-assessment.md").read_text(
         encoding="utf-8"
     )
+    task_header = task.split("\n## Implementation base rule", maxsplit=1)[0]
+    roadmap = (REPO_ROOT / "docs/roadmap.md").read_text(encoding="utf-8")
+    current_m3 = _adr_section(roadmap, "## M3 — Manual image workflow")
+    handoff = (REPO_ROOT / "docs/handoff.md").read_text(encoding="utf-8")
+    current_handoff = _adr_section(handoff, "## Current lifecycle state")
     questions = (REPO_ROOT / "docs/open-questions.md").read_text(encoding="utf-8")
     q007 = _question_section(questions, "Q-007")
     q021 = _question_section(questions, "Q-021")
@@ -1881,20 +1885,81 @@ def test_pr009_quality_contract_is_documentation_only_and_staged() -> None:
         "docs/testing-strategy.md",
     )
     combined = "\n".join((REPO_ROOT / name).read_text(encoding="utf-8") for name in lifecycle_files)
+    mpo_decision_files = (
+        "docs/technical-specification.md",
+        "docs/decisions.md",
+        "docs/decisions/ADR-023-image-quality-assessment-v1.md",
+        "docs/tasks/PR-009-orientation-quality-assessment.md",
+        "docs/testing-strategy.md",
+        "docs/traceability-matrix.md",
+        "docs/progress.md",
+    )
+    mpo_rule = (
+        "MPO detected as a JPEG container is accepted as JPEG.\n"
+        "Only primary frame 0 is decoded.\n"
+        "Original bytes remain immutable.\n"
+        "Secondary frames are ignored in MVP."
+    )
 
-    assert "Status: PROPOSED" in adr
+    assert "Status: ACCEPTED" in adr
     assert "Decision owner: Product owner" in adr
     assert "Date: 2026-07-21" in adr
+    assert (
+        "Status: IMPLEMENTED AND READY FOR HUMAN ACCEPTANCE WITH DOCUMENTED RESIDUAL LIMITATION"
+    ) in task_header
+    assert "pre-implementation contract" in task_header
+    assert "remain authoritative for reviewing the implementation" in task_header
     assert "063e4b5a981f8ef6914c055e9f50666bbf1be734" in task
     assert "exact merge commit of the PR that adds this contract" in task
-    assert "Status: AUTHORIZED FOR CONTRACT REVIEW; PRODUCTION IMPLEMENTATION NOT STARTED" in task
-    assert _question_status(q021) == "OPEN"
-    assert "REQUIRES PRODUCT-OWNER ACCEPTANCE" in q021
+    assert "IMPLEMENTED AND READY FOR HUMAN ACCEPTANCE" in task
+    assert "RISK-PR009-NO-PRODUCTION-QUALITY-POLICY" in task
+    assert _question_status(q021) == "DEFERRED"
+    assert "NEGATIVE CALIBRATION EVIDENCE ACCEPTED" in q021
+    assert "no production policy selected" in q021.lower()
+    assert "Historical acceptance requirement" in q021
+    assert "resolves only a JPEG input-compatibility gap" in q021
+    for filename in mpo_decision_files:
+        assert mpo_rule in (REPO_ROOT / filename).read_text(encoding="utf-8"), filename
+    assert "Q021-0017 result=PASS media_type=JPEG" in task
+    assert "summary total=22 passed=20 failed=0 duplicates=2" in task
+
+    for current_section in (current_m3, current_handoff):
+        for required in (
+            "PR-009: IMPLEMENTED AND READY FOR HUMAN ACCEPTANCE "
+            "WITH DOCUMENTED RESIDUAL LIMITATION",
+            "Q-021: DEFERRED — NEGATIVE CALIBRATION EVIDENCE ACCEPTED; "
+            "NO PRODUCTION POLICY SELECTED",
+            "RISK-PR009-NO-PRODUCTION-QUALITY-POLICY",
+            "Gate 2: NOT ACCEPTED",
+            "M3: IN PROGRESS",
+        ):
+            assert required in current_section, required
+
+    assert "Production default quality policy: NOT ACTIVE" in current_m3
+    assert "Production default PR-009 quality policy: NOT ACTIVE" in current_handoff
+    assert "PR-010" + chr(8211) + "PR-013: UNAUTHORIZED" in current_m3
+    assert "PR-010 AND LATER: UNAUTHORIZED" in current_handoff
+
+    current_lifecycle_text = "\n".join((task_header, current_m3, current_handoff))
+    for stale in (
+        "PR-009: AUTHORIZED, NOT STARTED",
+        "PR-009 is the next authorized task and is not started",
+        "Status: AUTHORIZED FOR CONTRACT REVIEW; PRODUCTION IMPLEMENTATION NOT STARTED",
+        "Q-021: ACCEPTED",
+        "Production default quality policy: ACTIVE",
+        "Production default PR-009 quality policy: ACTIVE",
+        "PR-009: COMPLETED AND HUMAN ACCEPTED",
+        "PR-009: MERGED",
+        "PR-010: AUTHORIZED",
+        "PR-010: STARTED",
+    ):
+        assert stale not in current_lifecycle_text, stale
 
     for required in (
         "PR-008: `COMPLETED AND HUMAN ACCEPTED WITH DOCUMENTED RESIDUAL RISK`",
-        "PR-009: `AUTHORIZED, CONTRACT PROPOSED, PRODUCTION IMPLEMENTATION NOT STARTED`",
-        "Q-021: `OPEN — REQUIRES PRODUCT-OWNER ACCEPTANCE`",
+        "PR-009: IMPLEMENTED AND READY FOR HUMAN ACCEPTANCE WITH DOCUMENTED RESIDUAL LIMITATION",
+        "Q-021: `DEFERRED — NEGATIVE CALIBRATION EVIDENCE ACCEPTED; NO PRODUCTION POLICY SELECTED`",
+        "RISK-PR009-NO-PRODUCTION-QUALITY-POLICY",
         "PR-010 AND LATER: `UNAUTHORIZED`",
         "Gate 2: `NOT ACCEPTED`",
         "M3: `IN PROGRESS`",
@@ -2169,10 +2234,7 @@ def test_pr009_quality_contract_is_documentation_only_and_staged() -> None:
         "Algorithm IDs and versions are fixed by the PR-009 implementation contract",
         "are not fields of `ImageQualityPolicy`",
         "The service must not add algorithm-selection fields to `ImageQualityPolicy`",
-        (
-            "No concrete production policy ID/version is accepted or activated while Q-021 "
-            "remains open"
-        ),
+        "No concrete production policy ID/version is accepted or activated",
     ):
         assert required in adr + task, required
 
@@ -2194,8 +2256,9 @@ def test_pr009_quality_contract_is_documentation_only_and_staged() -> None:
     assert "PR-009 whole-frame diagnostic policy thresholds" in q021
     assert "minimum source-image dimensions for PR-009 diagnostics" in q021
     assert "severity mapping" in q021
-    assert "activation of the default PR-009 policy" in q021
-    assert "final PR-009 human acceptance" in q021
+    assert "production default quality policy" in q021
+    assert "no longer blocks human acceptance or merge" in q021
+    assert "continues to block selection or activation" in q021
     assert "Q-007 controls PR-011 prepared-JPEG readability" in q007
     assert "PR-009 whole-frame source-quality threshold portion was separated into Q-021" in q007
     assert "Q-007 no longer blocks PR-009 algorithm or persistence implementation" in q007
@@ -2203,7 +2266,6 @@ def test_pr009_quality_contract_is_documentation_only_and_staged() -> None:
     assert _question_status(q007) == "DEFERRED"
 
     for forbidden in (
-        "Status: ACCEPTED",
         "Gate 2: `ACCEPTED`",
         "PR-010: `AUTHORIZED`",
         "physical Windows 11 validation complete",
@@ -2213,8 +2275,8 @@ def test_pr009_quality_contract_is_documentation_only_and_staged() -> None:
         assert forbidden not in adr + task, forbidden
 
 
-def test_pr009_contract_stage_has_no_production_implementation() -> None:
-    future_production_files = (
+def test_pr009_implementation_stage_has_production_contract_symbols() -> None:
+    production_files = (
         "src/document_intake/domain/image_quality.py",
         "src/document_intake/image_pipeline/quality_assessor.py",
         "src/document_intake/application/dto/image_quality.py",
@@ -2223,33 +2285,39 @@ def test_pr009_contract_stage_has_no_production_implementation() -> None:
         "src/document_intake/persistence/migrations/v0005_image_quality.py",
         "scripts/verify_pr009_quality.py",
     )
-    for filename in future_production_files:
-        assert not (REPO_ROOT / filename).exists(), filename
+    for filename in production_files:
+        assert (REPO_ROOT / filename).is_file(), filename
 
     migrations = (REPO_ROOT / "src/document_intake/persistence/migrations/__init__.py").read_text(
         encoding="utf-8"
     )
     domain_enums = (REPO_ROOT / "src/document_intake/domain/enums.py").read_text(encoding="utf-8")
-    domain_init = (REPO_ROOT / "src/document_intake/domain/__init__.py").read_text(encoding="utf-8")
-    app_dto_init = (REPO_ROOT / "src/document_intake/application/dto/__init__.py").read_text(
+    media_port = (REPO_ROOT / "src/document_intake/application/ports/media.py").read_text(
         encoding="utf-8"
     )
-    persistence_init = (REPO_ROOT / "src/document_intake/persistence/__init__.py").read_text(
+    persistence_port = (
+        REPO_ROOT / "src/document_intake/application/ports/persistence.py"
+    ).read_text(encoding="utf-8")
+    domain_quality = (REPO_ROOT / "src/document_intake/domain/image_quality.py").read_text(
+        encoding="utf-8"
+    )
+    dto_quality = (REPO_ROOT / "src/document_intake/application/dto/image_quality.py").read_text(
         encoding="utf-8"
     )
 
-    assert "CURRENT_SCHEMA_VERSION = 4" in migrations
-    assert "IMAGE_QUALITY_ASSESSED" not in domain_enums
-    assert "IMAGE_QUALITY_ASSESSMENT" not in domain_enums
-    assert "QualityAssessmentErrorCode" not in domain_enums
-    for package_init in (domain_init, app_dto_init, persistence_init):
-        assert "ImageQuality" not in package_init
-        assert "QualityAssessment" not in package_init
-        assert "QualityAnalysisDecoderPort" not in package_init
-
-    test_source = (REPO_ROOT / "tests/test_documentation_baseline.py").read_text(encoding="utf-8")
-    old_false_proof = "git " + "diff " + "--name-only " + "HEAD"
-    assert old_false_proof not in test_source
+    assert "CURRENT_SCHEMA_VERSION = 5" in migrations
+    for required in (
+        "QualityAssessmentErrorCode",
+        "IMAGE_QUALITY_ASSESSED",
+        "IMAGE_QUALITY_ASSESSMENT",
+    ):
+        assert required in domain_enums
+    assert "QualityAnalysisDecoderPort" in media_port
+    assert "ImageQualityAssessmentRepository" in persistence_port
+    for required in ("ImageQualityAssessment", "ImageQualityPolicy"):
+        assert required in domain_quality
+    for required in ("AssessSourceFileQualityCommand", "AssessSourceFileQualityResult"):
+        assert required in dto_quality
 
     adr = (REPO_ROOT / "docs/decisions/ADR-023-image-quality-assessment-v1.md").read_text(
         encoding="utf-8"
@@ -2260,6 +2328,11 @@ def test_pr009_contract_stage_has_no_production_implementation() -> None:
     q021 = _question_section(
         (REPO_ROOT / "docs/open-questions.md").read_text(encoding="utf-8"), "Q-021"
     )
-    assert "Status: PROPOSED" in adr
-    assert "PRODUCTION IMPLEMENTATION NOT STARTED" in task
-    assert _question_status(q021) == "OPEN"
+    assert "Status: ACCEPTED" in adr
+    assert "IMPLEMENTED AND READY FOR HUMAN ACCEPTANCE" in task
+    assert "DOCUMENTED RESIDUAL LIMITATION" in task
+    assert "Production default PR-009 quality policy: NOT ACTIVE" in task
+    assert "RISK-PR009-NO-PRODUCTION-QUALITY-POLICY" in task
+    assert _question_status(q021) == "DEFERRED"
+    assert "PR-010 AND LATER" in task and "UNAUTHORIZED" in task
+    assert "Gate 2" in task and "NOT ACCEPTED" in task

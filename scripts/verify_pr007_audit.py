@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import importlib.util
 import platform
 import shutil
 import tempfile
@@ -98,6 +99,9 @@ def verify_rejection_preserves_event(
 
 
 def main() -> int:
+    if importlib.util.find_spec("sqlcipher3") is None:
+        print("INCONCLUSIVE sqlcipher_unavailable")
+        return 2
     ok = True
     temp_dir = Path(tempfile.mkdtemp(prefix="pr007-audit-"))
     try:
@@ -107,7 +111,7 @@ def main() -> int:
         ok &= line(True, f"os={platform.system()}")
         ok &= line(True, f"arch={platform.machine()}")
         ok &= line(True, f"python={platform.python_version()}")
-        ok &= line(CURRENT_SCHEMA_VERSION == 4, "schema_version=4")
+        ok &= line(CURRENT_SCHEMA_VERSION == 5, "schema_version=5")
         ok &= line(
             V0003.checksum == "e01d441c2572ca484cf5227d94f57a3cb62fa8e6e3e223eefc6852b81f6eb3c1",
             f"v0003_checksum={V0003.checksum}",

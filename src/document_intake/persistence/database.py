@@ -1295,6 +1295,113 @@ class AuditEventRepo(_Repo):
         return entity
 
 
+class ImageQualityAssessmentRepo(_Repo):
+    def __init__(self, uow: SqlCipherUnitOfWork) -> None:
+        super().__init__(
+            uow,
+            "image_quality_assessments",
+            ser.image_quality_assessment_to_json,
+            ser.image_quality_assessment_from_json,
+            lambda x: str(x.id),
+        )
+
+    def add(self, assessment: ImageQualityAssessment) -> None:
+        if not isinstance(assessment, ImageQualityAssessment):
+            raise PersistenceError(PersistenceErrorCode.PERSISTED_DATA_INVALID)
+        if self.get(assessment.id) is not None:
+            raise PersistenceError(PersistenceErrorCode.ENTITY_ALREADY_EXISTS)
+        payload = ser.image_quality_assessment_to_json(assessment)
+        with self._atomic_write():
+            self._execute(
+                "INSERT INTO image_quality_assessments(id, source_file_id, assessed_at, policy_id, policy_version, status, encoded_width, encoded_height, exif_orientation, effective_width, effective_height, canonical_payload) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
+                (*ser.image_quality_assessment_columns(assessment), payload),
+                duplicate_is_already_exists=True,
+            )
+            for ordinal, metric in enumerate(assessment.metrics):
+                self._execute(
+                    "INSERT INTO image_quality_metrics(assessment_id, ordinal, metric_code, algorithm_id, algorithm_version, numeric_value, unit, canonical_payload) VALUES (?,?,?,?,?,?,?,?)",
+                    (
+                        str(assessment.id),
+                        ordinal,
+                        metric.metric_code.value,
+                        metric.algorithm_id,
+                        metric.algorithm_version,
+                        ser._metric_dec_text(metric.numeric_value, metric.unit),
+                        metric.unit.value,
+                        ser.image_quality_metric_to_json(metric),
+                    ),
+                    duplicate_is_already_exists=True,
+                )
+            for ordinal, issue in enumerate(assessment.issues):
+                self._execute(
+                    "INSERT INTO image_quality_issues(assessment_id, ordinal, issue_code, severity, canonical_payload) VALUES (?,?,?,?,?)",
+                    (
+                        str(assessment.id),
+                        ordinal,
+                        issue.issue_code.value,
+                        issue.severity.value,
+                        ser.image_quality_issue_to_json(issue),
+                    ),
+                    duplicate_is_already_exists=True,
+                )
+
+    def get(self, assessment_id: EntityId) -> ImageQualityAssessment | None:
+        rows = self._fetchall(
+            "SELECT id, source_file_id, assessed_at, policy_id, policy_version, status, encoded_width, encoded_height, exif_orientation, effective_width, effective_height, canonical_payload FROM image_quality_assessments WHERE id=?",
+            (str(assessment_id),),
+        )
+        return None if not rows else self._from_projection(rows[0])
+
+    def list_by_source(self, source_file_id: EntityId) -> tuple[ImageQualityAssessment, ...]:
+        return tuple(
+            self._from_projection(r)
+            for r in self._fetchall(
+                "SELECT id, source_file_id, assessed_at, policy_id, policy_version, status, encoded_width, encoded_height, exif_orientation, effective_width, effective_height, canonical_payload FROM image_quality_assessments WHERE source_file_id=? ORDER BY assessed_at, id",
+                (str(source_file_id),),
+            )
+        )
+
+    def _from_projection(self, row: tuple[Any, ...]) -> ImageQualityAssessment:
+        entity = self._deserialize(row[11])
+        if (
+            not isinstance(entity, ImageQualityAssessment)
+            or ser.image_quality_assessment_columns(entity) != tuple(row[:11])
+            or ser.image_quality_assessment_to_json(entity) != row[11]
+        ):
+            raise PersistenceError(PersistenceErrorCode.PERSISTED_DATA_INVALID)
+        metric_rows = self._fetchall(
+            "SELECT ordinal, metric_code, algorithm_id, algorithm_version, numeric_value, unit, canonical_payload FROM image_quality_metrics WHERE assessment_id=? ORDER BY ordinal",
+            (str(entity.id),),
+        )
+        issue_rows = self._fetchall(
+            "SELECT ordinal, issue_code, severity, canonical_payload FROM image_quality_issues WHERE assessment_id=? ORDER BY ordinal",
+            (str(entity.id),),
+        )
+        if len(metric_rows) != 7 or tuple(r[0] for r in metric_rows) != tuple(range(7)):
+            raise PersistenceError(PersistenceErrorCode.PERSISTED_DATA_INVALID)
+        metrics = tuple(ser.image_quality_metric_from_json(r[6]) for r in metric_rows)
+        for r, m in zip(metric_rows, metrics, strict=True):
+            if (
+                m.metric_code.value,
+                m.algorithm_id,
+                m.algorithm_version,
+                ser._metric_dec_text(m.numeric_value, m.unit),
+                m.unit.value,
+            ) != tuple(r[1:6]) or ser.image_quality_metric_to_json(m) != r[6]:
+                raise PersistenceError(PersistenceErrorCode.PERSISTED_DATA_INVALID)
+        issues = tuple(ser.image_quality_issue_from_json(r[3]) for r in issue_rows)
+        if tuple(r[0] for r in issue_rows) != tuple(range(len(issue_rows))):
+            raise PersistenceError(PersistenceErrorCode.PERSISTED_DATA_INVALID)
+        for r, i in zip(issue_rows, issues, strict=True):
+            if (i.issue_code.value, i.severity.value) != tuple(
+                r[1:3]
+            ) or ser.image_quality_issue_to_json(i) != r[3]:
+                raise PersistenceError(PersistenceErrorCode.PERSISTED_DATA_INVALID)
+        if metrics != entity.metrics or issues != entity.issues:
+            raise PersistenceError(PersistenceErrorCode.PERSISTED_DATA_INVALID)
+        return entity
+
+
 class _UowState(Enum):
     NEW = auto()
     ACTIVE = auto()
@@ -1322,6 +1429,7 @@ class SqlCipherUnitOfWork:
         self._audit_events: AuditEventRepo | None = None
         self._upload_batches: UploadBatchRepo | None = None
         self._source_files: SourceFileRepo | None = None
+        self._image_quality_assessments: ImageQualityAssessmentRepo | None = None
 
     def __repr__(self) -> str:
         return "SqlCipherUnitOfWork(<redacted>)"
@@ -1392,6 +1500,10 @@ class SqlCipherUnitOfWork:
     def source_files(self) -> SourceFileRepo:
         return self._repository(self._source_files)
 
+    @property
+    def image_quality_assessments(self) -> ImageQualityAssessmentRepo:
+        return self._repository(self._image_quality_assessments)
+
     def _construct_repositories(self) -> None:
         self._persons = PersonRepo(self)
         self._identity_documents = IdentityRepo(self)
@@ -1406,6 +1518,7 @@ class SqlCipherUnitOfWork:
         self._audit_events = AuditEventRepo(self)
         self._upload_batches = UploadBatchRepo(self)
         self._source_files = SourceFileRepo(self)
+        self._image_quality_assessments = ImageQualityAssessmentRepo(self)
 
     def _invalidate(self) -> None:
         connection = self._conn

@@ -8,7 +8,7 @@
 - ADR-015 created a narrow exception for PR-001 through PR-003 repository-safety work while M0 remained open;
 - PR-003 is completed and merged through GitHub PR #4 at `ad5782045473d3ef5eb0a097cc8f6982bab821c7`;
 - M1 Safe Repository is accepted;
-- GATE-M0 and M0 are accepted; PR-004 is completed and human accepted; GATE-S1 is completed and human accepted; ADR-018 is accepted; PR #9 merged PR-S001 as a research harness; PR-S001 is ACCEPTED WITH DOCUMENTED RESIDUAL RISK RISK-S001-W11; PR-005 is COMPLETED AND HUMAN ACCEPTED through GitHub PR #15 at merge commit `2161fbbf7fb4065a5913fb6e62c207546caf5dd9`; PR-006 and PR-007 are COMPLETED AND HUMAN ACCEPTED; PR-008 is COMPLETED AND HUMAN ACCEPTED WITH DOCUMENTED RESIDUAL RISK; PR-009 is AUTHORIZED, NOT STARTED; PR-010 and later tasks remain UNAUTHORIZED;
+- GATE-M0 and M0 are accepted; PR-004 is completed and human accepted; GATE-S1 is completed and human accepted; ADR-018 is accepted; PR #9 merged PR-S001 as a research harness; PR-S001 is ACCEPTED WITH DOCUMENTED RESIDUAL RISK RISK-S001-W11; PR-005 is COMPLETED AND HUMAN ACCEPTED through GitHub PR #15 at merge commit `2161fbbf7fb4065a5913fb6e62c207546caf5dd9`; PR-006 and PR-007 are COMPLETED AND HUMAN ACCEPTED; PR-008 is COMPLETED AND HUMAN ACCEPTED WITH DOCUMENTED RESIDUAL RISK; ADR-023 is ACCEPTED; PR-009 is IMPLEMENTED AND READY FOR HUMAN ACCEPTANCE WITH DOCUMENTED RESIDUAL LIMITATION; Q-021 is DEFERRED — NEGATIVE CALIBRATION EVIDENCE ACCEPTED, NO PRODUCTION POLICY SELECTED; no production default quality policy is active; RISK-PR009-NO-PRODUCTION-QUALITY-POLICY is open and accepted for the PR-009 infrastructure merge boundary; PR-010 and later tasks remain UNAUTHORIZED; Gate 2 is NOT ACCEPTED; M3 is IN PROGRESS;
 - реальные документы не используются в Codex Web;
 - OCR начинается только после готовности ручного контура.
 
@@ -90,7 +90,7 @@ JPG/PNG/HEIC, metadata, SHA-256 and perceptual duplicate warning.
 
 ### PR-009 — Orientation and quality assessment
 
-Status: AUTHORIZED, NOT STARTED. This lifecycle PR adds no technical design for PR-009 and does not implement PR-009.
+Status: IMPLEMENTED AND READY FOR HUMAN ACCEPTANCE WITH DOCUMENTED RESIDUAL LIMITATION. Q-021 is deferred after accepted negative calibration evidence, no production default quality policy is active, and `RISK-PR009-NO-PRODUCTION-QUALITY-POLICY` blocks production activation rather than infrastructure acceptance or merge.
 
 EXIF, dimensions, blur/glare/contrast diagnostics.
 
@@ -218,13 +218,13 @@ Network block, PII logs, template tampering, formula injection and fault injecti
 
 Рабочий Windows MVP: 8–12 недель. Стабильная версия после пилота: 3–5 месяцев. Оценка пересматривается после Gate 1 и Gate 4.
 
-## Current authorization state for GATE-S1
+## Current lifecycle state
 
 GATE-M0: COMPLETED. GATE-M0 merge commit: `3dada63ea82163c7c4497e290b303d2cc781b085`. Human acceptance of GATE-M0 occurred after PR #5 merge. M0: ACCEPTED. M1: ACCEPTED. PR-004: COMPLETED AND HUMAN ACCEPTED. GATE-S1: COMPLETED AND HUMAN ACCEPTED. ADR-018: ACCEPTED. PR-S001: ACCEPTED WITH DOCUMENTED RESIDUAL RISK RISK-S001-W11. PR-005: COMPLETED AND HUMAN ACCEPTED through GitHub PR #15 at merge commit `2161fbbf7fb4065a5913fb6e62c207546caf5dd9` from reviewed head `325b49555dee49fa22b008d9522bbbc6eb873ca2`. PR-005 final migration v0001 checksum is `e1e1f5f6d8d675a146f3d0c538a0d544b6f8a984c301d177ee1ad86e42f2d500`; v0001 is frozen and every future schema change must use migration v0002 or later. Exact-head CI run #73 succeeded on Ubuntu and Windows, including `Python checks (ubuntu-latest)`, `Python checks (windows-latest)`, `PR-S001 Windows encryption spike` and `PR-S001 DPAPI cross-runner negative`; Windows SQLCipher evidence is complete for the PR-005 acceptance boundary.
 
-PR-006: COMPLETED AND HUMAN ACCEPTED. PR-007: COMPLETED AND HUMAN ACCEPTED. PR-008: COMPLETED AND HUMAN ACCEPTED WITH DOCUMENTED RESIDUAL RISK; RISK-PR008-W11-SMOKE: ACCEPTED FOR PR-008; DEFERRED TO INSTALLER/PILOT/RELEASE; PR-009: AUTHORIZED, NOT STARTED; PR-010 AND LATER: UNAUTHORIZED; Gate 2: NOT ACCEPTED; M3: IN PROGRESS. Gate 1: COMPLETED AND HUMAN ACCEPTED. M2: COMPLETED AND HUMAN ACCEPTED. Q-010: ACCEPTED. Q-017 remains DEFERRED. The template enforcement PR remains future work. The sensitive-data/private-contour gate remains open, and real documents and personal data remain prohibited in Git, Codex and CI. PR-007 is completed and human accepted.
+PR-006: COMPLETED AND HUMAN ACCEPTED. PR-007: COMPLETED AND HUMAN ACCEPTED. PR-008: COMPLETED AND HUMAN ACCEPTED WITH DOCUMENTED RESIDUAL RISK; RISK-PR008-W11-SMOKE: ACCEPTED FOR PR-008; DEFERRED TO INSTALLER/PILOT/RELEASE. ADR-023: ACCEPTED. PR-009: IMPLEMENTED AND READY FOR HUMAN ACCEPTANCE WITH DOCUMENTED RESIDUAL LIMITATION. Q-021: DEFERRED — NEGATIVE CALIBRATION EVIDENCE ACCEPTED; NO PRODUCTION POLICY SELECTED. Production default PR-009 quality policy: NOT ACTIVE. RISK-PR009-NO-PRODUCTION-QUALITY-POLICY: OPEN AND ACCEPTED FOR THE PR-009 INFRASTRUCTURE MERGE BOUNDARY. PR-010 AND LATER: UNAUTHORIZED. Gate 2: NOT ACCEPTED. M3: IN PROGRESS. Gate 1: COMPLETED AND HUMAN ACCEPTED. M2: COMPLETED AND HUMAN ACCEPTED. Q-010: ACCEPTED. Q-017 remains DEFERRED. The template enforcement PR remains future work. The sensitive-data/private-contour gate remains open, and real documents and personal data remain prohibited in Git, Codex and CI. PR-007 is completed and human accepted.
 
-## PR-005 lifecycle update
+## Historical PR-005 lifecycle update
 
 PR-S001-F1: COMPLETED. PR-S001-F2: COMPLETED. PR-S001-F3: COMPLETED. PR-S001-F4: COMPLETED AND MERGED THROUGH PR #13; PR-S001-F4 merge commit: `985fae37c7645e8f65edbe4d1609100ee24a2097`.
 
@@ -239,7 +239,7 @@ PR-006 and PR-007 are COMPLETED AND HUMAN ACCEPTED; PR-008 is COMPLETED AND HUMA
 Q-009: DEFERRED. PR-006 implements no retention, deletion or secure-deletion policy.
 
 
-## PR-006 current lifecycle
+## Historical lifecycle snapshot after PR-006 acceptance
 
 PR-006: `COMPLETED AND HUMAN ACCEPTED`.
 PR-007: `COMPLETED AND HUMAN ACCEPTED`
@@ -274,6 +274,20 @@ Q-006: `DEFERRED`. Q-007: `DEFERRED`. Q-009: `DEFERRED`. Q-010: `ACCEPTED`. Q-01
 
 PR-008 adds source import domain contracts, Pillow/pi-heif decoding, DHASH64 advisory duplicate checks, encrypted original publication through the PR-006 storage port, SQLCipher persistence migration v0004, and PR-007 audit event creation. No UI, OCR, export, quality assessment, or PR-009 behavior is in scope.
 
-## PR-009 orientation and quality contract
+## Historical PR-009 orientation and quality contract
 
 PR-009 is `AUTHORIZED, CONTRACT PROPOSED, PRODUCTION IMPLEMENTATION NOT STARTED`. The implementation base for future production code must be the exact merge commit of the contract PR, not `063e4b5a981f8ef6914c055e9f50666bbf1be734`. Future implementation is limited to deterministic whole-frame EXIF orientation, encoded/effective dimensions, resolution, blur/sharpness, contrast, glare/highlight clipping and exposure diagnostics with explicit typed `ImageQualityPolicy`. No hidden thresholds are allowed; Q-021 is `OPEN — REQUIRES PRODUCT-OWNER ACCEPTANCE`. Production activation of a default quality policy and final human acceptance remain blocked until Q-021 is accepted. PR-010 AND LATER remain `UNAUTHORIZED`; Gate 2 remains `NOT ACCEPTED`; M3 remains `IN PROGRESS`.
+
+
+## PR-009 calibration lifecycle update — 2026-07-22
+
+ADR-023: ACCEPTED.
+PR-009: IMPLEMENTED AND READY FOR HUMAN ACCEPTANCE WITH DOCUMENTED RESIDUAL LIMITATION.
+Q-021: DEFERRED — NEGATIVE CALIBRATION EVIDENCE ACCEPTED; NO PRODUCTION POLICY SELECTED.
+Production default PR-009 quality policy: NOT ACTIVE.
+RISK-PR009-NO-PRODUCTION-QUALITY-POLICY: OPEN AND ACCEPTED FOR THE PR-009 INFRASTRUCTURE MERGE BOUNDARY.
+PR-010 AND LATER: UNAUTHORIZED.
+Gate 2: NOT ACCEPTED.
+M3: IN PROGRESS.
+
+PR-009 infrastructure may proceed to human acceptance and merge under the residual limitation without activating a production default policy. Human acceptance and merge remain pending. PR-010 and later require a separate post-merge product-owner decision.

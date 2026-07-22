@@ -4,6 +4,7 @@
 |---|---|---|---|
 | FR-01 Партии | application/persistence/ui | batch tests | PR-014 |
 | FR-02 Импорт | storage/image | immutable import | PR-008 |
+| FR-02 MPO-as-JPEG compatibility | image/import | synthetic two-frame MPO; frame-0-only; byte identity | PR-009 correction |
 | FR-03 Дубли | storage/domain | SHA-256/pHash | PR-008 |
 | FR-04 Качество | image | quality fixtures | PR-009 |
 | FR-05 Области | image/ui | one/two docs | PR-012 |
@@ -38,6 +39,11 @@
 
 Изменение требования обновляет source document, decision log, acceptance criteria, tests and this matrix.
 
+MPO detected as a JPEG container is accepted as JPEG.
+Only primary frame 0 is decoded.
+Original bytes remain immutable.
+Secondary frames are ignored in MVP.
+
 
 ## Gate and decision traceability
 
@@ -67,7 +73,11 @@
 | PR-S001 | ADR-018 acceptance / PR #14 | ACCEPTED WITH DOCUMENTED RESIDUAL RISK RISK-S001-W11 | documentation baseline test |
 | PR-005 | Q-010 / PR #14 authorization boundary / PR #15 | COMPLETED AND HUMAN ACCEPTED at reviewed head `325b49555dee49fa22b008d9522bbbc6eb873ca2` and merge commit `2161fbbf7fb4065a5913fb6e62c207546caf5dd9`; verified by documentation baseline checks and persistence tests | documentation and persistence test verification |
 | PR-006 | Q-010 / authorization boundary / PR #17 | COMPLETED AND HUMAN ACCEPTED | documentation baseline test |
-| PR-009 AND LATER | authorization boundary | UNAUTHORIZED | documentation baseline test |
+| PR-009 | ADR-023 / PR #24 | IMPLEMENTED AND READY FOR HUMAN ACCEPTANCE WITH DOCUMENTED RESIDUAL LIMITATION | deterministic infrastructure implemented and verified; human acceptance and merge pending |
+| Q-021 | Open questions / PR-009-D3 | DEFERRED — NEGATIVE CALIBRATION EVIDENCE ACCEPTED; NO PRODUCTION POLICY SELECTED | local calibration completed; production-policy acceptance not achieved |
+| RISK-PR009-NO-PRODUCTION-QUALITY-POLICY | PR-009-D3 | OPEN AND ACCEPTED FOR THE PR-009 INFRASTRUCTURE MERGE BOUNDARY | production activation deferred; fail-closed composition; infrastructure merge allowed |
+| MPO/JPEG input decision | PR-009-D2 / ADR-023 | ACCEPTED for JPEG compatibility only; its historical Q-021 lifecycle context is superseded by PR-009-D3 | decoder tests, PR-008 verifier, PR-009 verifier, documentation baseline |
+| PR-010 AND LATER | authorization boundary | UNAUTHORIZED | documentation baseline test |
 
 ## Current lifecycle state
 
@@ -75,7 +85,7 @@ GATE-M0: COMPLETED. M0: ACCEPTED. M1: ACCEPTED. PR-004: COMPLETED AND HUMAN ACCE
 
 PR-005: COMPLETED AND HUMAN ACCEPTED through GitHub PR #15 (`PR-005: Add encrypted SQLite persistence and migrations`) at merge commit `2161fbbf7fb4065a5913fb6e62c207546caf5dd9` from final reviewed head `325b49555dee49fa22b008d9522bbbc6eb873ca2`; final migration v0001 checksum is `e1e1f5f6d8d675a146f3d0c538a0d544b6f8a984c301d177ee1ad86e42f2d500`. Exact-head CI run #73 succeeded on Ubuntu and Windows, including Windows SQLCipher evidence for the PR-005 acceptance boundary. Migration v0001 is frozen after merge and every future schema change must use migration v0002 or later.
 
-PR-006: COMPLETED AND HUMAN ACCEPTED. PR-007: COMPLETED AND HUMAN ACCEPTED. PR-008: COMPLETED AND HUMAN ACCEPTED WITH DOCUMENTED RESIDUAL RISK; RISK-PR008-W11-SMOKE: ACCEPTED FOR PR-008; DEFERRED TO INSTALLER/PILOT/RELEASE; PR-009: AUTHORIZED, NOT STARTED; PR-010 AND LATER: UNAUTHORIZED; Gate 2: NOT ACCEPTED; M3: IN PROGRESS. Gate 1: COMPLETED AND HUMAN ACCEPTED. M2: COMPLETED AND HUMAN ACCEPTED. Q-017 remains DEFERRED. The sensitive-data/private-contour gate remains open, and real documents and personal data remain prohibited in Git, Codex and CI. The next safe step is Implement PR-009 — Orientation and quality assessment only after this lifecycle PR is merged.
+PR-006: COMPLETED AND HUMAN ACCEPTED. PR-007: COMPLETED AND HUMAN ACCEPTED. PR-008: COMPLETED AND HUMAN ACCEPTED WITH DOCUMENTED RESIDUAL RISK; RISK-PR008-W11-SMOKE: ACCEPTED FOR PR-008; DEFERRED TO INSTALLER/PILOT/RELEASE. ADR-023: ACCEPTED. PR-009: IMPLEMENTED AND READY FOR HUMAN ACCEPTANCE WITH DOCUMENTED RESIDUAL LIMITATION. Q-021: DEFERRED — NEGATIVE CALIBRATION EVIDENCE ACCEPTED; NO PRODUCTION POLICY SELECTED. Production default PR-009 quality policy: NOT ACTIVE. RISK-PR009-NO-PRODUCTION-QUALITY-POLICY: OPEN AND ACCEPTED FOR THE PR-009 INFRASTRUCTURE MERGE BOUNDARY. PR-010 AND LATER: UNAUTHORIZED. Gate 2: NOT ACCEPTED. M3: IN PROGRESS. Gate 1: COMPLETED AND HUMAN ACCEPTED. M2: COMPLETED AND HUMAN ACCEPTED. Q-017 remains DEFERRED. The sensitive-data/private-contour gate remains open, and real documents and personal data remain prohibited in Git, Codex and CI. The next safe activity is to complete PR-009 review and exact-head verification before separate human-acceptance and merge decisions; PR-010 remains unauthorized.
 
 RISK-PR005-RAWKEY-PRAGMA remains accepted only for the PR-005 development boundary and remains open for installer, pilot and production release.
 
@@ -90,7 +100,7 @@ Verification includes migrations, SQLCipher Windows integration, repository roun
 Q-009: DEFERRED. PR-006 implements no retention, deletion or secure-deletion policy.
 
 
-## PR-006 current lifecycle
+## Historical lifecycle snapshot after PR-006 acceptance
 
 PR-006: `COMPLETED AND HUMAN ACCEPTED`.
 PR-007: `COMPLETED AND HUMAN ACCEPTED`
@@ -120,7 +130,7 @@ Q-009: `DEFERRED`. Q-017: `DEFERRED`. Q-010: `ACCEPTED`. `RISK-PR005-RAWKEY-PRAG
 | FR-12 | Technical specification / ADR-021 / PR-007 / PR-017 | PR-007 provides immutable PII-safe audit foundation only; FR-12 remains incomplete after PR-007 alone; PR-017 remains responsible for operator correction and verification event emission | future PR-007 and PR-017 tests |
 | FR-13 | Technical specification / ADR-021 / PR-007 | PR-007 authorized to add append-only audit persistence foundation | future PR-007 tests |
 
-Current lifecycle: PR-007: `COMPLETED AND HUMAN ACCEPTED`; PR-008: `COMPLETED AND HUMAN ACCEPTED WITH DOCUMENTED RESIDUAL RISK`; RISK-PR008-W11-SMOKE: `ACCEPTED FOR PR-008; DEFERRED TO INSTALLER/PILOT/RELEASE`; PR-009: `AUTHORIZED, NOT STARTED`; PR-010 AND LATER: `UNAUTHORIZED`; Gate 2: `NOT ACCEPTED`; M3: `IN PROGRESS`; Gate 1: `COMPLETED AND HUMAN ACCEPTED`; M2: `COMPLETED AND HUMAN ACCEPTED`.
+Current lifecycle: PR-007: `COMPLETED AND HUMAN ACCEPTED`; PR-008: `COMPLETED AND HUMAN ACCEPTED WITH DOCUMENTED RESIDUAL RISK`; RISK-PR008-W11-SMOKE: `ACCEPTED FOR PR-008; DEFERRED TO INSTALLER/PILOT/RELEASE`; ADR-023: `ACCEPTED`; PR-009: `IMPLEMENTED AND READY FOR HUMAN ACCEPTANCE WITH DOCUMENTED RESIDUAL LIMITATION`; Q-021: `DEFERRED — NEGATIVE CALIBRATION EVIDENCE ACCEPTED; NO PRODUCTION POLICY SELECTED`; production default PR-009 quality policy: `NOT ACTIVE`; RISK-PR009-NO-PRODUCTION-QUALITY-POLICY: `OPEN AND ACCEPTED FOR THE PR-009 INFRASTRUCTURE MERGE BOUNDARY`; PR-010 AND LATER: `UNAUTHORIZED`; Gate 2: `NOT ACCEPTED`; M3: `IN PROGRESS`; Gate 1: `COMPLETED AND HUMAN ACCEPTED`; M2: `COMPLETED AND HUMAN ACCEPTED`.
 
 ## Lifecycle status — PR-007 accepted, PR-008 in review
 
@@ -136,9 +146,25 @@ Q-006: `DEFERRED`. Q-007: `DEFERRED`. Q-009: `DEFERRED`. Q-010: `ACCEPTED`. Q-01
 | --- | --- | --- | --- |
 | PR-008 | ADR-022 / PR #21 / PR-008-D1 | COMPLETED AND HUMAN ACCEPTED WITH DOCUMENTED RESIDUAL RISK | exact-head CI #106, PR-008 verifier, documentation baseline |
 | RISK-PR008-W11-SMOKE | Product-owner decision PR-008-D1 | ACCEPTED for PR-008; deferred to installer/pilot/release | hosted Windows AMD64 evidence plus explicit residual-risk record |
-| PR-009 authorization | PR-008-D1 | AUTHORIZED, NOT STARTED | documentation baseline |
+| PR-009 lifecycle | ADR-023 / PR #24 | IMPLEMENTED AND READY FOR HUMAN ACCEPTANCE WITH DOCUMENTED RESIDUAL LIMITATION | deterministic infrastructure implemented and verified; human acceptance and merge pending |
+| Q-021 | Open questions / PR-009-D3 | DEFERRED — NEGATIVE CALIBRATION EVIDENCE ACCEPTED; NO PRODUCTION POLICY SELECTED | production-policy acceptance not achieved; production activation deferred |
+| RISK-PR009-NO-PRODUCTION-QUALITY-POLICY | PR-009-D3 | OPEN AND ACCEPTED FOR THE PR-009 INFRASTRUCTURE MERGE BOUNDARY | fail-closed composition; infrastructure merge allowed |
 | Gate 2 | roadmap / implementation plan | NOT ACCEPTED | requires PR-009–PR-013 acceptance |
 
-## PR-009 FR-04 staging trace
+## Historical PR-009 FR-04 contract staging trace
 
 FR-04 is advanced by proposed PR-009 whole-frame diagnostics: EXIF orientation, orientation-normalized analysis view, encoded/effective dimensions, minimum resolution, blur/sharpness, contrast, glare/highlight clipping and exposure. FR-04 remains incomplete because cut edges, perspective/skew, document presence/count, segmentation, crop, perspective correction and geometric transformation are deferred to PR-010/PR-012. ADR-023 is `PROPOSED`; Q-021 is `OPEN — REQUIRES PRODUCT-OWNER ACCEPTANCE`; PR-009 production implementation is not started; PR-010 AND LATER are `UNAUTHORIZED`; Gate 2 is `NOT ACCEPTED`.
+
+
+## PR-009 calibration lifecycle update — 2026-07-22
+
+ADR-023: ACCEPTED.
+PR-009: IMPLEMENTED AND READY FOR HUMAN ACCEPTANCE WITH DOCUMENTED RESIDUAL LIMITATION.
+Q-021: DEFERRED — NEGATIVE CALIBRATION EVIDENCE ACCEPTED; NO PRODUCTION POLICY SELECTED.
+Production default PR-009 quality policy: NOT ACTIVE.
+RISK-PR009-NO-PRODUCTION-QUALITY-POLICY: OPEN AND ACCEPTED FOR THE PR-009 INFRASTRUCTURE MERGE BOUNDARY.
+PR-010 AND LATER: UNAUTHORIZED.
+Gate 2: NOT ACCEPTED.
+M3: IN PROGRESS.
+
+The deterministic metric infrastructure is implemented and verified, and local calibration is complete. Production-policy acceptance was not achieved, so production activation remains deferred. The explicit-policy infrastructure may proceed to human acceptance and merge under the documented limitation; no production threshold-calibration requirement is marked satisfied.

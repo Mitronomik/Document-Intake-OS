@@ -15,14 +15,18 @@ from document_intake.persistence.migrations.v0003_audit_events import (
 from document_intake.persistence.migrations.v0004_source_file_import import (
     MIGRATION as V0004_SOURCE_FILE_IMPORT,
 )
+from document_intake.persistence.migrations.v0005_image_quality import (
+    MIGRATION as V0005_IMAGE_QUALITY,
+)
 
 MIGRATIONS: tuple[Migration, ...] = (
     V0001_INITIAL,
     V0002_STORED_ARTIFACTS,
     V0003_AUDIT_EVENTS,
     V0004_SOURCE_FILE_IMPORT,
+    V0005_IMAGE_QUALITY,
 )
-CURRENT_SCHEMA_VERSION = 4
+CURRENT_SCHEMA_VERSION = 5
 
 __all__ = [
     "APPLICATION_ID",

@@ -52,7 +52,7 @@ Temporary files use restricted locations, avoid PII in names and are cleaned aft
 
 Q-009 remains `DEFERRED`; no retention, deletion, purge or secure-deletion policy is implemented. Q-017 remains `DEFERRED`; PR-006 storage is backup-neutral and PR-032 remains responsible for encrypted backup/restore.
 
-## 7. Lifecycle note
+## 7. Historical lifecycle note
 
 PR-006: `COMPLETED AND HUMAN ACCEPTED`. PR-007: `COMPLETED AND HUMAN ACCEPTED`. PR-008: `COMPLETED AND HUMAN ACCEPTED WITH DOCUMENTED RESIDUAL RISK`; RISK-PR008-W11-SMOKE: `ACCEPTED FOR PR-008; DEFERRED TO INSTALLER/PILOT/RELEASE`; PR-009: `AUTHORIZED, NOT STARTED`; PR-010 AND LATER: `UNAUTHORIZED`; Gate 2: `NOT ACCEPTED`; M3: `IN PROGRESS`. Gate 1: `COMPLETED AND HUMAN ACCEPTED`. M2: `COMPLETED AND HUMAN ACCEPTED`. Storage decision: ADR-020. Audit decision: ADR-021.
 
@@ -63,3 +63,17 @@ PR-007: `COMPLETED AND HUMAN ACCEPTED`. GitHub PR: `#19`. Final reviewed head: `
 M2: `COMPLETED AND HUMAN ACCEPTED`. Gate 1: `COMPLETED AND HUMAN ACCEPTED`. PR-008: `COMPLETED AND HUMAN ACCEPTED WITH DOCUMENTED RESIDUAL RISK` for the non-UI encrypted original import and advisory duplicate-detection foundation only, governed by ADR-022, PR #21 and PR-008-D1. PR-009: `AUTHORIZED, NOT STARTED`; PR-010 AND LATER: `UNAUTHORIZED`. Do not claim Gate 2 is accepted, do not claim a physical Windows 11 smoke occurred, and do not begin PR-010 or later work.
 
 Q-006: `DEFERRED`. Q-007: `DEFERRED`. Q-009: `DEFERRED`. Q-010: `ACCEPTED`. Q-017: `DEFERRED`. `RISK-PR005-RAWKEY-PRAGMA` remains open for installer, pilot and production release. The sensitive-data/private-contour gate remains open for real documents and real personal data. Real documents and personal data remain prohibited in Git, Codex, CI, logs and test reports.
+
+
+## PR-009 calibration lifecycle update — 2026-07-22
+
+ADR-023: ACCEPTED.
+PR-009: IMPLEMENTED AND READY FOR HUMAN ACCEPTANCE WITH DOCUMENTED RESIDUAL LIMITATION.
+Q-021: DEFERRED — NEGATIVE CALIBRATION EVIDENCE ACCEPTED; NO PRODUCTION POLICY SELECTED.
+Production default PR-009 quality policy: NOT ACTIVE.
+RISK-PR009-NO-PRODUCTION-QUALITY-POLICY: OPEN AND ACCEPTED FOR THE PR-009 INFRASTRUCTURE MERGE BOUNDARY.
+PR-010 AND LATER: UNAUTHORIZED.
+Gate 2: NOT ACCEPTED.
+M3: IN PROGRESS.
+
+Original-byte immutability and the no-storage-publication PR-009 boundary remain unchanged. No unaccepted quality policy may reject, delete, suppress, block or modify a document.

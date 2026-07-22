@@ -23,6 +23,7 @@ from document_intake.persistence.migrations.v0003_audit_events import (
 from document_intake.persistence.migrations.v0004_source_file_import import (
     MIGRATION as V0004_MIGRATION,
 )
+from document_intake.persistence.migrations.v0005_image_quality import MIGRATION as V0005_MIGRATION
 
 
 def memory_connection() -> sqlite3.Connection:
@@ -77,7 +78,7 @@ def test_v0001_checksum_unchanged_and_v0002_checksum_stable() -> None:
 
 def test_clean_database_migrates_to_current_schema_and_preserves_v0002_history() -> None:
     connection = memory_connection()
-    assert connection.execute("PRAGMA user_version").fetchone()[0] == 4
+    assert connection.execute("PRAGMA user_version").fetchone()[0] == 5
     assert connection.execute(
         "SELECT version, name, checksum FROM schema_migrations ORDER BY version"
     ).fetchall() == [
@@ -85,6 +86,7 @@ def test_clean_database_migrates_to_current_schema_and_preserves_v0002_history()
         (2, V0002_MIGRATION.name, V0002_MIGRATION.checksum),
         (3, V0003_MIGRATION.name, V0003_MIGRATION.checksum),
         (4, V0004_MIGRATION.name, V0004_MIGRATION.checksum),
+        (5, V0005_MIGRATION.name, V0005_MIGRATION.checksum),
     ]
 
 
@@ -422,7 +424,7 @@ def test_v0001_to_v0002_preserves_populated_rows() -> None:
     assert MIGRATIONS[1].version == 2
     assert MIGRATIONS[1].checksum == V0002_MIGRATION.checksum
     database._apply_migrations(connection)
-    assert connection.execute("PRAGMA user_version").fetchone()[0] == 4
+    assert connection.execute("PRAGMA user_version").fetchone()[0] == 5
     assert connection.execute(
         "SELECT version, name, checksum FROM schema_migrations ORDER BY version"
     ).fetchall() == [
@@ -430,6 +432,7 @@ def test_v0001_to_v0002_preserves_populated_rows() -> None:
         (2, V0002_MIGRATION.name, V0002_MIGRATION.checksum),
         (3, V0003_MIGRATION.name, V0003_MIGRATION.checksum),
         (4, V0004_MIGRATION.name, V0004_MIGRATION.checksum),
+        (5, V0005_MIGRATION.name, V0005_MIGRATION.checksum),
     ]
     for table, rows in before.items():
         assert tuple(connection.execute(f"SELECT * FROM {table}").fetchall()) == rows

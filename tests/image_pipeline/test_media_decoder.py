@@ -7,6 +7,7 @@ from typing import Any
 
 import pytest
 from PIL import Image, ImageOps
+from synthetic_mpo import synthetic_mpo, synthetic_pattern
 
 from document_intake.domain.enums import SourceImportErrorCode, SourceMediaType
 from document_intake.image_pipeline import media_decoder
@@ -100,6 +101,49 @@ def test_generated_jpeg_and_png_detect_content_dimensions_and_exact_raster() -> 
         assert (result.grayscale_width, result.grayscale_height) == (9, 8)
         assert isinstance(result.grayscale_pixels, bytes)
         assert len(result.grayscale_pixels) == 72
+
+
+def test_mpo_maps_to_jpeg_and_import_uses_only_oriented_primary_frame() -> None:
+    primary = synthetic_pattern((18, 12), 1)
+    changed_primary = synthetic_pattern((18, 12), 2)
+    first_secondary = synthetic_pattern((7, 5), 3)
+    changed_secondary = synthetic_pattern((31, 19), 4)
+    content = synthetic_mpo(primary, first_secondary, orientation=6)
+    secondary_changed_content = synthetic_mpo(primary, changed_secondary, orientation=6)
+    primary_changed_content = synthetic_mpo(changed_primary, first_secondary, orientation=6)
+    original = bytes(content)
+
+    assert content == synthetic_mpo(primary.copy(), first_secondary.copy(), orientation=6)
+
+    with Image.open(io.BytesIO(content)) as reopened:
+        assert reopened.format == "MPO"
+        assert reopened.n_frames == 2
+        reopened.seek(0)
+        expected = (
+            ImageOps.exif_transpose(reopened.copy())
+            .convert("RGB")
+            .convert("L")
+            .resize((9, 8), Image.Resampling.LANCZOS)
+            .tobytes()
+        )
+
+    decoded_primary = decode(content)
+    decoded_secondary_changed = decode(secondary_changed_content)
+    decoded_primary_changed = decode(primary_changed_content)
+
+    assert content == original
+    assert decoded_primary.media_type is SourceMediaType.JPEG
+    assert (decoded_primary.width, decoded_primary.height) == primary.size
+    assert decoded_primary.exif_orientation == 6
+    assert decoded_primary.grayscale_pixels == expected
+    assert decoded_secondary_changed.grayscale_pixels == decoded_primary.grayscale_pixels
+    assert dhash64(decoded_secondary_changed.grayscale_pixels) == dhash64(
+        decoded_primary.grayscale_pixels
+    )
+    assert decoded_primary_changed.grayscale_pixels != decoded_primary.grayscale_pixels
+    assert dhash64(decoded_primary_changed.grayscale_pixels) != dhash64(
+        decoded_primary.grayscale_pixels
+    )
 
 
 def test_synthetic_heif_fixture_decodes_primary_frame() -> None:

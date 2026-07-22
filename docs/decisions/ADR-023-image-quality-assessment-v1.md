@@ -1,6 +1,6 @@
 # ADR-023 — Deterministic whole-frame image quality assessment v1
 
-Status: PROPOSED
+Status: ACCEPTED
 
 Decision owner: Product owner
 
@@ -48,6 +48,13 @@ Invariants are: `encoded_width >= 1`, `encoded_height >= 1`, `effective_width >=
 Orientation behavior is exact: absent EXIF yields `exif_orientation=None` and identity analysis orientation; invalid EXIF yields `exif_orientation=None` and identity analysis orientation; EXIF 1 is identity; EXIF 2–8 apply the corresponding EXIF transform exactly once to the quality-analysis image; EXIF 5, 6, 7 and 8 swap effective axes; EXIF 1, 2, 3 and 4 do not swap effective axes.
 
 `PillowMediaDecoder` may implement both `MediaDecoderPort` and `QualityAnalysisDecoderPort`. `decode_for_quality()` uses the same accepted byte-based media detection, primary-frame selection, decompression-bomb protection, alpha compositing and controlled-error boundary; returns the full orientation-normalized grayscale plane; performs no resize; publishes no artifact; does not mutate original bytes; and must not call `decode_for_import()` to reconstruct quality pixels from the 9×8 DHASH64 raster. Shared private decode helpers are permitted only if all existing PR-008 decoder and DHASH64 tests remain unchanged and green.
+
+The product owner accepts Pillow-detected `MPO` only as JPEG input compatibility. Both decoder methods explicitly seek frame `0`, apply its EXIF orientation exactly once and ignore all additional frames. They do not expose frame counts or secondary-frame data and do not create a flattened or converted artifact.
+
+MPO detected as a JPEG container is accepted as JPEG.
+Only primary frame 0 is decoded.
+Original bytes remain immutable.
+Secondary frames are ignored in MVP.
 
 ### 2. Analysis coordinate contract
 

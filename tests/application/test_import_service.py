@@ -48,7 +48,7 @@ from document_intake.persistence.errors import PersistenceError, PersistenceErro
 NOW = datetime(2026, 7, 20, 12, 0, tzinfo=UTC)
 PIXELS = bytes(range(9)) * 8
 EXPECTED_PR008_SUCCESS_LINES = (
-    "PR008_VERIFY schema_version=4",
+    "PR008_VERIFY schema_version=5",
     "PR008_VERIFY migration_v0004=PASS",
     "PR008_VERIFY encrypted_storage=PASS",
     "PR008_VERIFY byte_identity=PASS",
@@ -783,7 +783,7 @@ def test_pr008_deterministic_product_failure_is_exit_one_and_allowlisted(
     captured = capsys.readouterr()
     lines = tuple(captured.out.splitlines())
     assert len(lines) == len(EXPECTED_PR008_SUCCESS_LINES)
-    assert lines[0] == "PR008_VERIFY schema_version=4"
+    assert lines[0] == "PR008_VERIFY schema_version=5"
     assert "PR008_VERIFY media_jpeg=FAIL" in lines
     assert "PR008_VERIFY privacy=PASS" in lines
     assert lines[-1] == "PR008_VERIFY result=FAIL"
