@@ -774,3 +774,16 @@ Gate 2: NOT ACCEPTED.
 M3: IN PROGRESS.
 
 PR-009 implements deterministic whole-frame metrics, explicit caller-provided typed policy handling, full-resolution orientation-normalized decoding, append-only persistence, audit integration, controlled service errors, synthetic tests and a cross-platform verifier. It does not select or activate production thresholds, add UI integration, reject documents automatically, implement PR-010 geometry, PR-011 JPEG preparation, PR-012 document detection/segmentation or use real-document calibration. Migration v0005 checksum: `6d020d1acfbce3fcb7168e935617f2ae008a32bea7def1f37de84e36e9e2224f`.
+
+## PR-009-D2 — MPO compatibility within JPEG input
+
+**Status:** ACCEPTED
+**Date:** 2026-07-22
+**Decision owner:** Product owner
+
+MPO detected as a JPEG container is accepted as JPEG.
+Only primary frame 0 is decoded.
+Original bytes remain immutable.
+Secondary frames are ignored in MVP.
+
+This decision changes only controlled JPEG input compatibility. It adds no `SourceMediaType.MPO`, no extension inference, no arbitrary multi-page/animated format support, no secondary-frame processing and no converted artifact. Q-021 remains `OPEN — REQUIRES PRODUCT-OWNER ACCEPTANCE`; the production default quality policy remains `NOT ACTIVE`; final PR-009 human acceptance remains blocked until Q-021 is accepted.

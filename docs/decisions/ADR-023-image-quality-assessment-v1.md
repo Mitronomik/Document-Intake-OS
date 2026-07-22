@@ -49,6 +49,13 @@ Orientation behavior is exact: absent EXIF yields `exif_orientation=None` and id
 
 `PillowMediaDecoder` may implement both `MediaDecoderPort` and `QualityAnalysisDecoderPort`. `decode_for_quality()` uses the same accepted byte-based media detection, primary-frame selection, decompression-bomb protection, alpha compositing and controlled-error boundary; returns the full orientation-normalized grayscale plane; performs no resize; publishes no artifact; does not mutate original bytes; and must not call `decode_for_import()` to reconstruct quality pixels from the 9×8 DHASH64 raster. Shared private decode helpers are permitted only if all existing PR-008 decoder and DHASH64 tests remain unchanged and green.
 
+The product owner accepts Pillow-detected `MPO` only as JPEG input compatibility. Both decoder methods explicitly seek frame `0`, apply its EXIF orientation exactly once and ignore all additional frames. They do not expose frame counts or secondary-frame data and do not create a flattened or converted artifact.
+
+MPO detected as a JPEG container is accepted as JPEG.
+Only primary frame 0 is decoded.
+Original bytes remain immutable.
+Secondary frames are ignored in MVP.
+
 ### 2. Analysis coordinate contract
 
 Every assessment records `encoded_width`, `encoded_height`, `exif_orientation`, `effective_width` and `effective_height`. `effective_width` and `effective_height` describe the orientation-normalized analysis view. For EXIF orientations that swap axes, namely 5, 6, 7 and 8, effective dimensions are swapped deterministically. Orientations 1, 2, 3 and 4 preserve axes. No transformed image path or transformed image bytes are persisted by PR-009.

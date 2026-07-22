@@ -69,6 +69,15 @@
 | FR-22 | Резервное копирование | Администратор создает зашифрованную резервную копию базы и файлов и может восстановить ее на том же или новом рабочем месте. |
 | FR-23 | Настройки шаблонов | Версии Excel-шаблонов и правила терминалов хранятся отдельно от кода и могут обновляться через административный экран. |
 
+### 5.1. MPO compatibility within JPEG input
+
+The accepted FR-02 JPEG input boundary includes a JPEG image container that Pillow detects as `MPO`; this does not add a separate source-media type or authorize other multi-page or animated formats.
+
+MPO detected as a JPEG container is accepted as JPEG.
+Only primary frame 0 is decoded.
+Original bytes remain immutable.
+Secondary frames are ignored in MVP.
+
 ## 6. Поддерживаемые документы
 | Категория | Страны/варианты | Извлекаемые поля | Метод | Ожидаемая автоматизация | Контроль |
 |---|---|---|---|---|---|

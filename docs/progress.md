@@ -1,6 +1,6 @@
 # Progress
 
-**Обновлено:** 2026-07-21
+**Обновлено:** 2026-07-22
 **Статус:** PR-005: COMPLETED AND HUMAN ACCEPTED; PR-006: COMPLETED AND HUMAN ACCEPTED; PR-007: COMPLETED AND HUMAN ACCEPTED; PR-008: COMPLETED AND HUMAN ACCEPTED WITH DOCUMENTED RESIDUAL RISK; RISK-PR008-W11-SMOKE: ACCEPTED FOR PR-008; DEFERRED TO INSTALLER/PILOT/RELEASE; ADR-023: ACCEPTED; PR-009: IMPLEMENTED AND IN REVIEW; NOT HUMAN ACCEPTED; Q-021: OPEN — REQUIRES PRODUCT-OWNER ACCEPTANCE; Production default quality policy: NOT ACTIVE; Final PR-009 human acceptance: BLOCKED UNTIL Q-021 IS ACCEPTED; PR-010 AND LATER: UNAUTHORIZED; Gate 2: NOT ACCEPTED; M3: IN PROGRESS
 
 ## Завершено
@@ -39,6 +39,14 @@
 - [x] PR-005 final persistence audit blockers closed before merge: SQLite replacement forms cannot replace immutable snapshot rows; loss of the outer transaction invalidates and closes the UoW; list reads detect payload/projection corruption before filtering; canonical boolean and collection deserialization is strict;
 - [x] no terminal templates are committed;
 - [x] no personal data are committed.
+- [x] PR-009 MPO/JPEG compatibility correction: MPO detected by Pillow is mapped to JPEG, only primary frame 0 is decoded, original bytes remain immutable, and secondary frames are ignored in MVP; synthetic tests and both existing verifiers cover the rule without changing their public records.
+
+MPO detected as a JPEG container is accepted as JPEG.
+Only primary frame 0 is decoded.
+Original bytes remain immutable.
+Secondary frames are ignored in MVP.
+
+This correction does not accept Q-021, activate a production default quality policy, human-accept PR-009, authorize PR-010 or later, accept Gate 2 or complete M3.
 
 ## Current lifecycle state
 

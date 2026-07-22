@@ -49,6 +49,7 @@ from document_intake.domain.value_objects.imports import (
 )
 from document_intake.image_pipeline.media_decoder import (
     PillowMediaDecoder,
+    dhash64,
     dhash64_hamming_distance,
 )
 from document_intake.persistence import CURRENT_SCHEMA_VERSION, EncryptedDatabase
@@ -294,6 +295,45 @@ def _generated_image_bytes(format_name: str, *, variant: int = 0, quality: int =
     return stream.getvalue()
 
 
+def _generated_mpo_bytes(*, primary_variant: int, secondary_variant: int) -> bytes:
+    image_module = importlib.import_module("PIL.Image")
+    primary = image_module.new("RGB", (32, 24))
+    primary.putdata(
+        [
+            (
+                (x * 17 + y * 3 + primary_variant * 29) % 256,
+                (x * 7 + y * 19 + primary_variant * 11) % 256,
+                (x * 13 + y * 5 + primary_variant * 23) % 256,
+            )
+            for y in range(24)
+            for x in range(32)
+        ]
+    )
+    secondary_size = (13, 9) if secondary_variant % 2 else (41, 27)
+    secondary = image_module.new("RGB", secondary_size)
+    secondary.putdata(
+        [
+            (
+                (x * 31 + secondary_variant * 37) % 256,
+                (y * 43 + secondary_variant * 17) % 256,
+                ((x + y) * 23 + secondary_variant * 7) % 256,
+            )
+            for y in range(secondary_size[1])
+            for x in range(secondary_size[0])
+        ]
+    )
+    stream = io.BytesIO()
+    primary.save(
+        stream,
+        format="MPO",
+        save_all=True,
+        append_images=[secondary],
+        quality=95,
+        subsampling=0,
+    )
+    return stream.getvalue()
+
+
 def _ordinary_sqlite_rejects(path: Path) -> bool:
     connection: sqlite3.Connection | None = None
     try:
@@ -451,6 +491,61 @@ def _run_supported() -> _VerificationRun:
             and corrupt.failed[0].error_code is SourceImportErrorCode.DECODE_FAILED
         )
 
+        mpo_bytes = _generated_mpo_bytes(primary_variant=1, secondary_variant=1)
+        mpo_secondary_changed_bytes = _generated_mpo_bytes(primary_variant=1, secondary_variant=2)
+        mpo_primary_changed_bytes = _generated_mpo_bytes(primary_variant=2, secondary_variant=1)
+        mpo_paths = (
+            temporary / "synthetic-multi-frame-a.jpg",
+            temporary / "synthetic-multi-frame-b.jpeg",
+            temporary / "synthetic-multi-frame-c.JPG",
+        )
+        for path, mpo_content in zip(
+            mpo_paths,
+            (mpo_bytes, mpo_secondary_changed_bytes, mpo_primary_changed_bytes),
+            strict=True,
+        ):
+            path.write_bytes(mpo_content)
+        forbidden_values.extend(str(path) for path in mpo_paths)
+        forbidden_values.extend(path.name for path in mpo_paths)
+        forbidden_values.extend(
+            hashlib.sha256(mpo_content).hexdigest()
+            for mpo_content in (
+                mpo_bytes,
+                mpo_secondary_changed_bytes,
+                mpo_primary_changed_bytes,
+            )
+        )
+        mpo_import = import_source_files(
+            _command(
+                *(_item(path, value) for path, value in zip(mpo_paths, (20, 21, 22), strict=True))
+            ),
+            storage=storage,
+            media_decoder=decoder,
+            unit_of_work_factory=factory,
+        )
+        mpo_sources = tuple(entry.source_file for entry in mpo_import.imported)
+        forbidden_values.extend(source.perceptual_hash.hex_value for source in mpo_sources)
+        mpo_decoded = tuple(
+            decoder.decode_for_import(content=mpo_content)
+            for mpo_content in (
+                mpo_bytes,
+                mpo_secondary_changed_bytes,
+                mpo_primary_changed_bytes,
+            )
+        )
+        statuses["media_jpeg"] &= (
+            len(mpo_sources) == 3
+            and not mpo_import.failed
+            and all(source.detected_media_type is SourceMediaType.JPEG for source in mpo_sources)
+            and all(decoded.media_type is SourceMediaType.JPEG for decoded in mpo_decoded)
+            and mpo_sources[0].perceptual_hash == mpo_sources[1].perceptual_hash
+            and mpo_sources[0].perceptual_hash != mpo_sources[2].perceptual_hash
+            and mpo_decoded[0].grayscale_pixels == mpo_decoded[1].grayscale_pixels
+            and dhash64(mpo_decoded[0].grayscale_pixels) == dhash64(mpo_decoded[1].grayscale_pixels)
+            and mpo_decoded[0].grayscale_pixels != mpo_decoded[2].grayscale_pixels
+            and mpo_paths[0].read_bytes() == mpo_bytes
+        )
+
         threshold_content = _generated_image_bytes("PNG", variant=47)
         threshold_path = temporary / "threshold-candidate.png"
         threshold_path.write_bytes(threshold_content)
@@ -593,12 +688,15 @@ def _run_supported() -> _VerificationRun:
         with database.unit_of_work() as uow:
             first = uow.source_files.get(_eid(1))
             expected = uow.stored_artifacts.get(_eid(1001))
+            mpo_expected = uow.stored_artifacts.get(_eid(1020))
             event = uow.audit_events.get(_eid(2001))
             committed_batch = uow.upload_batches.get(primary_command.batch_id)
         statuses["byte_identity"] = (
             first is not None
             and expected is not None
+            and mpo_expected is not None
             and storage.read_bytes(expected=expected) == jpeg_bytes
+            and storage.read_bytes(expected=mpo_expected) == mpo_bytes
         )
         statuses["audit_atomicity"] = (
             first is not None
@@ -677,6 +775,9 @@ def _run_supported() -> _VerificationRun:
             partial_good_bytes,
             partial_bad_bytes,
             orphan_bytes,
+            mpo_bytes,
+            mpo_secondary_changed_bytes,
+            mpo_primary_changed_bytes,
         )
         statuses["encrypted_storage"] = (
             _ordinary_sqlite_rejects(database_path)

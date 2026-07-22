@@ -260,6 +260,7 @@ Q-017: `DEFERRED`. PR-006 storage remains backup-neutral. Q-017 remains assigned
 **Current gate impact:** ADR-023 allows deterministic metrics, typed policy handling, persistence and tests, but production activation of a default quality policy and final human acceptance remain blocked until Q-021 is accepted.
 **Implementation block:** Production baseline threshold values must not be claimed final; PR-009 must not be described as pilot-calibrated; application composition must fail closed if no accepted production policy is configured.
 **Placeholder rule:** Do not silently select final production thresholds or use real-document fixtures.
+**MPO compatibility clarification:** The 2026-07-22 product-owner decision accepts Pillow-detected MPO as JPEG with only primary frame 0 decoded, immutable original bytes and ignored secondary frames. It resolves only a JPEG input-compatibility gap and does not accept any Q-021 threshold, severity mapping, policy activation or final PR-009 human acceptance.
 
 
 ## PR-009 implementation lifecycle update — 2026-07-21

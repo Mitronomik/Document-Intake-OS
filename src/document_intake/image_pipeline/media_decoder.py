@@ -47,7 +47,7 @@ def _register_heif_opener() -> None:
 
 def _media_type(format_name: str | None) -> SourceMediaType:
     match (format_name or "").upper():
-        case "JPEG":
+        case "JPEG" | "MPO":
             return SourceMediaType.JPEG
         case "PNG":
             return SourceMediaType.PNG

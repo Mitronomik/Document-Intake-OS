@@ -43,6 +43,7 @@ from document_intake.domain.enums import (
     QualityAssessmentStatus,
     QualityIssueCode,
     QualityIssueSeverity,
+    SourceMediaType,
 )
 from document_intake.domain.image_quality import (
     ImageQualityPolicy,
@@ -286,6 +287,47 @@ def _synthetic_png() -> bytes:
     return buffer.getvalue()
 
 
+def _synthetic_mpo(*, primary_variant: int, secondary_variant: int) -> bytes:
+    primary = Image.new("RGB", (18, 12))
+    primary.putdata(
+        [
+            (
+                (x * 29 + y * 7 + primary_variant * 31) % 256,
+                (x * 5 + y * 37 + primary_variant * 17) % 256,
+                (x * 19 + y * 11 + primary_variant * 43) % 256,
+            )
+            for y in range(12)
+            for x in range(18)
+        ]
+    )
+    secondary_size = (9, 7) if secondary_variant % 2 else (25, 21)
+    secondary = Image.new("RGB", secondary_size)
+    secondary.putdata(
+        [
+            (
+                (x * 41 + secondary_variant * 13) % 256,
+                (y * 23 + secondary_variant * 47) % 256,
+                ((x + y) * 31 + secondary_variant * 19) % 256,
+            )
+            for y in range(secondary_size[1])
+            for x in range(secondary_size[0])
+        ]
+    )
+    exif = Image.Exif()
+    exif[274] = 6
+    buffer = io.BytesIO()
+    primary.save(
+        buffer,
+        format="MPO",
+        save_all=True,
+        append_images=[secondary],
+        quality=95,
+        subsampling=0,
+        exif=exif,
+    )
+    return buffer.getvalue()
+
+
 def _dependency_available(module_name: str) -> bool:
     try:
         importlib.import_module(module_name)
@@ -379,6 +421,113 @@ def _quality_command(value: int, source_id: EntityId, *, minute: int = 0):  # ty
     )
 
 
+def _verify_mpo_production_flow(
+    temporary: Path,
+) -> tuple[bool, bool, bool, tuple[str, ...]]:
+    database_path = temporary / "multi-frame-quality.db"
+    storage_root = temporary / "multi-frame-managed"
+    storage_root.mkdir()
+    contents = (
+        _synthetic_mpo(primary_variant=1, secondary_variant=1),
+        _synthetic_mpo(primary_variant=1, secondary_variant=2),
+        _synthetic_mpo(primary_variant=2, secondary_variant=1),
+    )
+    paths = (
+        temporary / "multi-frame-a.jpg",
+        temporary / "multi-frame-b.jpeg",
+        temporary / "multi-frame-c.JPG",
+    )
+    for path, content in zip(paths, contents, strict=True):
+        path.write_bytes(content)
+
+    database = EncryptedDatabase(database_path, _DatabaseKeyProvider())
+    database.initialize()
+    factory = cast(UnitOfWorkFactory, database)
+    storage = ImmutableFilesystemStorage(storage_root, _StorageKeyProvider())
+    decoder = PillowMediaDecoder()
+    batch_id = _eid(700)
+    create_upload_batch(
+        CreateUploadBatchCommand(batch_id, BatchNumber("VERIFY-MPO"), _NOW, _actor()),
+        unit_of_work_factory=factory,
+    )
+    import_result = import_source_files(
+        ImportSourceFilesCommand(
+            batch_id,
+            _actor(),
+            tuple(
+                SourceFileImportInput(
+                    _eid(source_value),
+                    _eid(artifact_value),
+                    _eid(audit_value),
+                    path,
+                    _NOW + timedelta(minutes=index),
+                )
+                for index, (path, source_value, artifact_value, audit_value) in enumerate(
+                    zip(paths, (701, 702, 703), (801, 802, 803), (901, 902, 903), strict=True)
+                )
+            ),
+        ),
+        storage=storage,
+        media_decoder=decoder,
+        unit_of_work_factory=factory,
+    )
+    sources = tuple(entry.source_file for entry in import_result.imported)
+    decoded = tuple(decoder.decode_for_quality(content=content) for content in contents)
+    pillow_mpo = []
+    for content in contents:
+        with Image.open(io.BytesIO(content)) as image:
+            pillow_mpo.append(image.format == "MPO" and image.n_frames == 2)
+
+    assessments = tuple(
+        assess_source_file_quality(
+            _quality_command(1001 + index, source.id, minute=10 + index),
+            decoder=decoder,
+            storage=storage,
+            unit_of_work_factory=factory,
+        ).assessment
+        for index, source in enumerate(sources)
+    )
+    with database.unit_of_work() as uow:
+        artifacts = tuple(uow.stored_artifacts.get(_eid(value)) for value in (801, 802, 803))
+    stored_bytes_unchanged = all(
+        artifact is not None and storage.read_bytes(expected=artifact) == content
+        for artifact, content in zip(artifacts, contents, strict=True)
+    )
+    import_ok = (
+        len(sources) == 3
+        and not import_result.failed
+        and all(source.detected_media_type is SourceMediaType.JPEG for source in sources)
+        and sources[0].perceptual_hash == sources[1].perceptual_hash
+        and sources[0].perceptual_hash != sources[2].perceptual_hash
+        and stored_bytes_unchanged
+        and all(path.read_bytes() == content for path, content in zip(paths, contents, strict=True))
+    )
+    quality_ok = (
+        all(pillow_mpo)
+        and all(media.media_type is SourceMediaType.JPEG for media in decoded)
+        and all((media.encoded_width, media.encoded_height) == (18, 12) for media in decoded)
+        and all((media.effective_width, media.effective_height) == (12, 18) for media in decoded)
+        and all(media.exif_orientation == 6 for media in decoded)
+        and decoded[0].grayscale_pixels == decoded[1].grayscale_pixels
+        and decoded[0].grayscale_pixels != decoded[2].grayscale_pixels
+    )
+    metric_vectors = tuple(_metric_vector(assessment) for assessment in assessments)
+    metrics_ok = (
+        all(len(vector) == 7 for vector in metric_vectors)
+        and metric_vectors[0] == metric_vectors[1]
+        and metric_vectors[0] != metric_vectors[2]
+    )
+    forbidden = (
+        str(database_path),
+        str(storage_root),
+        *(str(path) for path in paths),
+        *(path.name for path in paths),
+        *(source.sha256.value for source in sources),
+        *(source.perceptual_hash.hex_value for source in sources),
+    )
+    return import_ok, quality_ok, metrics_ok, forbidden
+
+
 def _run_supported() -> _Run:
     statuses = dict.fromkeys(_CHECKS, False)
     temporary = Path(tempfile.mkdtemp(prefix="pr009-verify-"))
@@ -393,6 +542,10 @@ def _run_supported() -> _Run:
     ]
     unexpected_failure = False
     try:
+        mpo_import_ok, mpo_quality_ok, mpo_metrics_ok, mpo_forbidden = _verify_mpo_production_flow(
+            temporary
+        )
+        forbidden_values.extend(mpo_forbidden)
         database_path = temporary / "quality.db"
         storage_root = temporary / "managed"
         storage_root.mkdir()
@@ -481,6 +634,7 @@ def _run_supported() -> _Run:
             == _EXPECTED_DHASH64
             and authoritative_source == imported_source
             and imported_source.perceptual_hash.hex_value == _EXPECTED_DHASH64
+            and mpo_import_ok
         )
         quality_decoded = decoder.decode_for_quality(content=content)
         statuses["quality_decoder"] = (
@@ -491,6 +645,7 @@ def _run_supported() -> _Run:
             and quality_decoded.exif_orientation == _EXPECTED_EXIF_ORIENTATION
             and quality_decoded.grayscale_pixels == _EXPECTED_QUALITY_GRAYSCALE
             and source_path.read_bytes() == content
+            and mpo_quality_ok
         )
 
         first_command = _quality_command(401, source_id)
@@ -522,6 +677,7 @@ def _run_supported() -> _Run:
             _metric_vector(persisted) == _EXPECTED_METRICS
             and _issue_vector(persisted) == _EXPECTED_ISSUES
             and persisted.status is QualityAssessmentStatus.RETAKE_REQUIRED
+            and mpo_metrics_ok
         )
         complete_round_trip = (
             persisted == first_result.assessment

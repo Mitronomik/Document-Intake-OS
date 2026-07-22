@@ -4,6 +4,7 @@
 |---|---|---|---|
 | FR-01 Партии | application/persistence/ui | batch tests | PR-014 |
 | FR-02 Импорт | storage/image | immutable import | PR-008 |
+| FR-02 MPO-as-JPEG compatibility | image/import | synthetic two-frame MPO; frame-0-only; byte identity | PR-009 correction |
 | FR-03 Дубли | storage/domain | SHA-256/pHash | PR-008 |
 | FR-04 Качество | image | quality fixtures | PR-009 |
 | FR-05 Области | image/ui | one/two docs | PR-012 |
@@ -38,6 +39,11 @@
 
 Изменение требования обновляет source document, decision log, acceptance criteria, tests and this matrix.
 
+MPO detected as a JPEG container is accepted as JPEG.
+Only primary frame 0 is decoded.
+Original bytes remain immutable.
+Secondary frames are ignored in MVP.
+
 
 ## Gate and decision traceability
 
@@ -69,6 +75,7 @@
 | PR-006 | Q-010 / authorization boundary / PR #17 | COMPLETED AND HUMAN ACCEPTED | documentation baseline test |
 | PR-009 | ADR-023 / PR #24 | IMPLEMENTED AND IN REVIEW; NOT HUMAN ACCEPTED | documentation baseline and exact-head verification |
 | Q-021 | Open questions | OPEN — REQUIRES PRODUCT-OWNER ACCEPTANCE | local calibration and explicit product-owner acceptance required |
+| MPO/JPEG input decision | PR-009-D2 / ADR-023 | ACCEPTED for JPEG compatibility only; Q-021 unchanged | decoder tests, PR-008 verifier, PR-009 verifier, documentation baseline |
 | PR-010 AND LATER | authorization boundary | UNAUTHORIZED | documentation baseline test |
 
 ## Current lifecycle state

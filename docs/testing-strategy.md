@@ -152,6 +152,15 @@ PR-008 implementation records encrypted source-file import and advisory duplicat
 PR-009 tests are synthetic-only and cover EXIF orientations 1-8, effective dimension swaps, one-time orientation, immutable original bytes, no transformed artifact, resolution thresholds, Laplacian blur frozen vectors, population contrast vectors, glare and exposure cutoff boundaries, aggregation to `GOOD`/`REVIEW_REQUIRED`/`RETAKE_REQUIRED`, append-only persistence, schema v5 migration from v0004, unchanged v0001-v0004 checksums, rollback, tamper detection and privacy allowlists. The PR-009 verifier runs the production encrypted database, immutable storage, import service, quality service, aggregate repository and audit repository on supported Windows SQLCipher CI. Literal synthetic decoder and seven-metric vectors are independent from production calculation helpers; verification proves complete persistence, the exact audit event, failing-audit transaction rollback, deterministic source listing, immutable source/storage state and fail-closed corruption rejection. It returns `0` for pass, `1` for product failure or `2` only for a documented unsupported environment. No real documents, document-derived fixtures or PII are used.
 
 
+## MPO compatibility regression contract
+
+MPO detected as a JPEG container is accepted as JPEG.
+Only primary frame 0 is decoded.
+Original bytes remain immutable.
+Secondary frames are ignored in MVP.
+
+Tests generate deterministic, PII-free, visually distinct primary and secondary frames with Pillow's pinned MPO writer. Decoder tests prove Pillow reports `MPO`, production mapping returns `SourceMediaType.JPEG`, frame-1 changes leave the import raster, DHASH64, quality pixels, dimensions and all seven metrics unchanged, frame-0 changes affect those outputs, EXIF is applied once, and source bytes are unchanged. Regression coverage retains ordinary JPEG, PNG, HEIF/HEIC, unsupported-format, orientations 1–8, transparency, frozen PR-008 import vectors, frozen PR-009 quality vectors and privacy-safe failure behavior. The PR-008 and PR-009 verifiers incorporate the same production-path MPO proof without adding or renaming public output records.
+
 ## PR-009 implementation lifecycle update — 2026-07-21
 
 ADR-023: ACCEPTED.

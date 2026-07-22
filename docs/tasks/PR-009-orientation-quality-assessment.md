@@ -394,6 +394,34 @@ Future success-path storage tests must assert `storage.read_bytes` is called exa
 
 Calibration for Q-021 must be local. Evidence may include synthetic calibration and anonymized/non-PII images where legally and operationally allowed. No real documents, document-derived images or PII may enter Git, Codex or CI. Evidence must compare false warnings and missed warnings and select explicit `policy_id` and `policy_version` before production activation.
 
+After checking out the corrected PR head, the product owner may run the existing private Q-021 suite locally with its established verifier entry point, substituting the private suite path without copying that suite or its inputs into this repository:
+
+```bash
+LOCAL_Q021_SUITE=/absolute/path/to/private/q021-suite
+uv run python "$LOCAL_Q021_SUITE/verify_q021.py" --project-root "$PWD"
+```
+
+The expected sanitized compatibility result is:
+
+```text
+Q021-0017 result=PASS media_type=JPEG
+Q021-0018 result=PASS media_type=JPEG
+Q021-0019 result=PASS media_type=JPEG
+
+summary total=22 passed=20 failed=0 duplicates=2
+```
+
+This command is for the product owner's local private contour only and was not run during the correction.
+
+## Accepted MPO/JPEG input correction
+
+MPO detected as a JPEG container is accepted as JPEG.
+Only primary frame 0 is decoded.
+Original bytes remain immutable.
+Secondary frames are ignored in MVP.
+
+Synthetic tests and both production-component verifiers must prove Pillow detection as `MPO`, mapping to `SourceMediaType.JPEG`, explicit frame-0 import and quality decoding, one-time EXIF orientation, secondary-frame independence, primary-frame sensitivity, byte immutability and unchanged JPEG/PNG/HEIF/unsupported behavior. No real MPO input, path, filename, hash, thumbnail, EXIF payload, manifest or label enters Git, Codex, CI, logs or reports.
+
 ## Acceptance criteria for the future implementation PR
 
 PR-009 production code is acceptable only when ADR-023 is accepted or explicitly reaffirmed, Q-021 status is respected, whole-frame scope is maintained, import decoder DHASH64 behavior is preserved, quality decoder is full-resolution and separate, command IDs/timestamp are caller-supplied, audit event is exact, algorithms/comparisons/rounding match frozen vectors, policy is explicit/versioned/snapshotted, persistence/privacy/failure contracts are met, all tests and verifier pass on supported platforms, no production default policy is activated without Q-021 acceptance, no real documents or PII are committed, PR-010+ remain unauthorized and Gate 2 remains not accepted.

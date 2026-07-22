@@ -2,7 +2,9 @@ from __future__ import annotations
 
 import ast
 import inspect
+import io
 
+from PIL import Image
 from scripts import verify_pr009_quality as verifier
 
 
@@ -217,6 +219,29 @@ def test_pr009_verifier_uses_required_production_components_and_services() -> No
         "database.unit_of_work()",
         "uow.image_quality_assessments.get(",
         "uow.audit_events.get(",
+    ):
+        assert required in source
+
+
+def test_pr009_verifier_proves_mpo_primary_frame_through_production_flow() -> None:
+    content = verifier._synthetic_mpo(primary_variant=1, secondary_variant=1)
+    assert content == verifier._synthetic_mpo(primary_variant=1, secondary_variant=1)
+    with Image.open(io.BytesIO(content)) as image:
+        assert image.format == "MPO"
+        assert image.n_frames == 2
+
+    source = inspect.getsource(verifier._verify_mpo_production_flow)
+    for required in (
+        "import_source_files(",
+        "assess_source_file_quality(",
+        "source.detected_media_type is SourceMediaType.JPEG",
+        "sources[0].perceptual_hash == sources[1].perceptual_hash",
+        "sources[0].perceptual_hash != sources[2].perceptual_hash",
+        "decoded[0].grayscale_pixels == decoded[1].grayscale_pixels",
+        "decoded[0].grayscale_pixels != decoded[2].grayscale_pixels",
+        "metric_vectors[0] == metric_vectors[1]",
+        "metric_vectors[0] != metric_vectors[2]",
+        "storage.read_bytes(expected=artifact) == content",
     ):
         assert required in source
 

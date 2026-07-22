@@ -380,7 +380,7 @@ def test_lifecycle_state_records_pr005_accepted_state() -> None:
     assert "PR-S001-F3 is the current correction" not in progress
     assert "**Обновлено:** 2026-07-17" not in progress
     assert "**Обновлено:** 2026-07-18" not in progress
-    assert "**Обновлено:** 2026-07-21" in progress
+    assert "**Обновлено:** 2026-07-22" in progress
     assert "- [x] GATE-S1: COMPLETED AND HUMAN ACCEPTED;" in progress
     assert "- [x] ADR-018: ACCEPTED;" in progress
     assert "- [x] Q-010: ACCEPTED;" in progress
@@ -1818,7 +1818,6 @@ def test_pr008_acceptance_and_pr009_authorization_lifecycle_contract() -> None:
         "docs/decisions/PR-008-D1-lifecycle-acceptance.md",
     )
     combined = "\n".join((REPO_ROOT / name).read_text(encoding="utf-8") for name in lifecycle_files)
-
     for required in (
         "PR-008: `COMPLETED AND HUMAN ACCEPTED",
         "RISK-PR008-W11-SMOKE",
@@ -1886,6 +1885,21 @@ def test_pr009_quality_contract_is_implemented_and_in_review() -> None:
         "docs/testing-strategy.md",
     )
     combined = "\n".join((REPO_ROOT / name).read_text(encoding="utf-8") for name in lifecycle_files)
+    mpo_decision_files = (
+        "docs/technical-specification.md",
+        "docs/decisions.md",
+        "docs/decisions/ADR-023-image-quality-assessment-v1.md",
+        "docs/tasks/PR-009-orientation-quality-assessment.md",
+        "docs/testing-strategy.md",
+        "docs/traceability-matrix.md",
+        "docs/progress.md",
+    )
+    mpo_rule = (
+        "MPO detected as a JPEG container is accepted as JPEG.\n"
+        "Only primary frame 0 is decoded.\n"
+        "Original bytes remain immutable.\n"
+        "Secondary frames are ignored in MVP."
+    )
 
     assert "Status: ACCEPTED" in adr
     assert "Decision owner: Product owner" in adr
@@ -1899,6 +1913,11 @@ def test_pr009_quality_contract_is_implemented_and_in_review() -> None:
     assert "NOT HUMAN ACCEPTED" in task
     assert _question_status(q021) == "OPEN"
     assert "REQUIRES PRODUCT-OWNER ACCEPTANCE" in q021
+    assert "resolves only a JPEG input-compatibility gap" in q021
+    for filename in mpo_decision_files:
+        assert mpo_rule in (REPO_ROOT / filename).read_text(encoding="utf-8"), filename
+    assert "Q021-0017 result=PASS media_type=JPEG" in task
+    assert "summary total=22 passed=20 failed=0 duplicates=2" in task
 
     for current_section in (current_m3, current_handoff):
         for required in (
