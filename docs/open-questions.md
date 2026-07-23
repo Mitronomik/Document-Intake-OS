@@ -279,23 +279,6 @@ M3: IN PROGRESS.
 
 Human acceptance and merge remain separate product-owner actions after review and exact-head CI. PR-010 and later remain unauthorized until a separate post-merge product-owner decision.
 
-## PR-009-D4 current lifecycle update — 2026-07-22
-
-PR-009: COMPLETED AND HUMAN ACCEPTED WITH DOCUMENTED RESIDUAL LIMITATION.
-Q-021: DEFERRED — NEGATIVE CALIBRATION EVIDENCE ACCEPTED; NO PRODUCTION POLICY SELECTED.
-Production default PR-009 quality policy: NOT ACTIVE.
-Production policy_id: NOT ASSIGNED.
-Production policy_version: NOT ASSIGNED.
-Automatic PR-009 quality-based document blocking: NOT ACTIVE.
-Automatic PR-009 production RETAKE_REQUIRED enforcement: NOT ACTIVE.
-RISK-PR009-NO-PRODUCTION-QUALITY-POLICY: OPEN AND ACCEPTED FOR THE PR-009 INFRASTRUCTURE AND HUMAN-ACCEPTANCE BOUNDARY.
-PR-010 CONTRACT DEFINITION: AUTHORIZED, NOT STARTED.
-PR-010 PRODUCTION IMPLEMENTATION: UNAUTHORIZED.
-PR-011 AND LATER: UNAUTHORIZED.
-Gate 2: NOT ACCEPTED.
-M3: IN PROGRESS.
-
-This later PR-009-D4-backed current section supersedes the historical calibration section for current status only. It does not authorize PR-010 production implementation or PR-011 and later work.
 ## PR-009 human acceptance lifecycle state — 2026-07-22
 
 PR-009: COMPLETED AND HUMAN ACCEPTED WITH DOCUMENTED RESIDUAL LIMITATION.

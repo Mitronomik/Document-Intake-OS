@@ -173,6 +173,27 @@ def _compact(text: str) -> str:
     return " ".join(text.split())
 
 
+def _bounded_question_section(markdown: str, question_id: str) -> str:
+    heading = f"### {question_id}"
+    lines = markdown.splitlines()
+    start = None
+
+    for index, line in enumerate(lines):
+        if line.strip() == heading:
+            start = index
+            break
+
+    assert start is not None, f"Missing open-question heading: {heading}"
+
+    section_lines: list[str] = []
+    for line in lines[start:]:
+        if section_lines and (line.startswith("### Q-") or line.startswith("## ")):
+            break
+        section_lines.append(line)
+
+    return "\n".join(section_lines)
+
+
 def _question_status(section: str) -> str:
     match = re.search(r"^\*\*Status:\*\* ([A-Z_]+)$", section, flags=re.MULTILINE)
     assert match is not None, "Question section is missing exactly formatted status"
@@ -2354,43 +2375,44 @@ def test_current_pr009_lifecycle_sections_are_scoped_after_d4() -> None:
     traceability = (REPO_ROOT / "docs/traceability-matrix.md").read_text(encoding="utf-8")
     current_traceability = _adr_section(traceability, "## Current lifecycle state")
     questions = (REPO_ROOT / "docs/open-questions.md").read_text(encoding="utf-8")
-    q021 = _question_section(questions, "Q-021")
-    current_q021 = _adr_section(questions, "## PR-009-D4 current lifecycle update — 2026-07-22")
+    q021 = _bounded_question_section(questions, "Q-021")
+    current_q021 = _adr_section(
+        questions, "## PR-009 human acceptance lifecycle state — 2026-07-22"
+    )
 
-    for current_section in (current_traceability, q021, current_q021):
+    assert "## PR-009-D4 current lifecycle update — 2026-07-22" not in questions
+    assert questions.count("## PR-009 human acceptance lifecycle state — 2026-07-22") == 1
+
+    for current_section in (current_traceability, current_q021):
         for required in (
+            "PR-009: COMPLETED AND HUMAN ACCEPTED WITH DOCUMENTED RESIDUAL LIMITATION",
             "Q-021: DEFERRED — NEGATIVE CALIBRATION EVIDENCE ACCEPTED; "
             "NO PRODUCTION POLICY SELECTED",
+            "Production default PR-009 quality policy: NOT ACTIVE",
             "Production policy_id: NOT ASSIGNED",
             "Production policy_version: NOT ASSIGNED",
             "Automatic PR-009 quality-based document blocking: NOT ACTIVE",
             "Automatic PR-009 production RETAKE_REQUIRED enforcement: NOT ACTIVE",
-            "RISK-PR009-NO-PRODUCTION-QUALITY-POLICY",
+            "RISK-PR009-NO-PRODUCTION-QUALITY-POLICY: OPEN AND ACCEPTED FOR THE "
+            "PR-009 INFRASTRUCTURE AND HUMAN-ACCEPTANCE BOUNDARY",
             "PR-010 CONTRACT DEFINITION: AUTHORIZED, NOT STARTED",
             "PR-010 PRODUCTION IMPLEMENTATION: UNAUTHORIZED",
             "PR-011 AND LATER: UNAUTHORIZED",
+            "Gate 2: NOT ACCEPTED",
+            "M3: IN PROGRESS",
         ):
             assert required in current_section, required
 
     assert (
-        "PR-009: COMPLETED AND HUMAN ACCEPTED WITH DOCUMENTED RESIDUAL LIMITATION"
-        in current_traceability
-    )
-    assert (
-        "RISK-PR009-NO-PRODUCTION-QUALITY-POLICY: OPEN AND ACCEPTED FOR THE "
-        "PR-009 INFRASTRUCTURE AND HUMAN-ACCEPTANCE BOUNDARY"
-    ) in current_traceability
-    assert "Gate 2: NOT ACCEPTED" in current_traceability
-    assert "M3: IN PROGRESS" in current_traceability
-    assert (
         "next authorized work is preparation of the exact PR-010 documentation contract only"
-        in (current_traceability)
+        in current_traceability
     )
     assert "real documents and personal data remain prohibited in Git, Codex and CI" in (
         current_traceability
     )
 
     assert "**Status:** DEFERRED" in q021
+    assert "completed and human accepted through PR-009-D4" in q021
     assert "infrastructure and human-acceptance boundary" in q021
     for required in (
         "selection or activation of a production default quality policy",
@@ -2399,8 +2421,19 @@ def test_current_pr009_lifecycle_sections_are_scoped_after_d4() -> None:
         "automatic quality-based blocking",
         "automatic production `RETAKE_REQUIRED` enforcement",
         "claim that PR-009 thresholds are calibrated for production",
+        "Production composition must fail closed when no accepted policy is configured",
+        "no document may be automatically rejected, deleted, suppressed or blocked",
     ):
         assert required in q021, required
+
+    for forbidden in (
+        "## PR-009 human acceptance lifecycle state — 2026-07-22",
+        "PR-010 CONTRACT DEFINITION: AUTHORIZED, NOT STARTED",
+        "PR-011 AND LATER: UNAUTHORIZED",
+        "Gate 2: NOT ACCEPTED",
+        "M3: IN PROGRESS",
+    ):
+        assert forbidden not in q021, forbidden
 
     for filename in ("docs/traceability-matrix.md", "docs/open-questions.md"):
         historical = _adr_section(
@@ -2409,6 +2442,10 @@ def test_current_pr009_lifecycle_sections_are_scoped_after_d4() -> None:
         )
         assert "IMPLEMENTED AND READY FOR HUMAN ACCEPTANCE" in historical, filename
         assert "PR-010 AND LATER: UNAUTHORIZED" in historical, filename
+        assert (
+            "RISK-PR009-NO-PRODUCTION-QUALITY-POLICY: OPEN AND ACCEPTED FOR THE "
+            "PR-009 INFRASTRUCTURE MERGE BOUNDARY"
+        ) in historical, filename
         assert "PR-010 CONTRACT DEFINITION: AUTHORIZED" not in historical, filename
         assert "COMPLETED AND HUMAN ACCEPTED" not in historical, filename
         assert "INFRASTRUCTURE AND HUMAN-ACCEPTANCE BOUNDARY" not in historical, filename
