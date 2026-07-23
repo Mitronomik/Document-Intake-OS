@@ -52,6 +52,8 @@ REQUIRED_DOCUMENTS = (
     "docs/tasks/PR-008-file-import-duplicate-detection.md",
     "docs/tasks/PR-009-orientation-quality-assessment.md",
     "docs/decisions/ADR-023-image-quality-assessment-v1.md",
+    "docs/decisions/ADR-024-image-geometry-recipe-v1.md",
+    "docs/tasks/PR-010-geometry-tools.md",
 )
 
 CANONICAL_SOURCE_ORDER = (
@@ -401,7 +403,7 @@ def test_lifecycle_state_records_pr005_accepted_state() -> None:
     assert "PR-S001-F3 is the current correction" not in progress
     assert "**Обновлено:** 2026-07-17" not in progress
     assert "**Обновлено:** 2026-07-18" not in progress
-    assert "**Обновлено:** 2026-07-22" in progress
+    assert "**Обновлено:** 2026-07-23" in progress
     assert "- [x] GATE-S1: COMPLETED AND HUMAN ACCEPTED;" in progress
     assert "- [x] ADR-018: ACCEPTED;" in progress
     assert "- [x] Q-010: ACCEPTED;" in progress
@@ -1951,7 +1953,7 @@ def test_pr009_quality_contract_is_human_accepted_with_deferred_q021_policy() ->
             "Q-021: DEFERRED — NEGATIVE CALIBRATION EVIDENCE ACCEPTED; "
             "NO PRODUCTION POLICY SELECTED",
             "RISK-PR009-NO-PRODUCTION-QUALITY-POLICY",
-            "PR-010 CONTRACT DEFINITION: AUTHORIZED, NOT STARTED",
+            "PR-010 CONTRACT: PROPOSED FOR HUMAN REVIEW",
             "PR-010 PRODUCTION IMPLEMENTATION: UNAUTHORIZED",
             "PR-011 AND LATER: UNAUTHORIZED",
             "Gate 2: NOT ACCEPTED",
@@ -1992,7 +1994,7 @@ def test_pr009_quality_contract_is_human_accepted_with_deferred_q021_policy() ->
         "Q-021: `DEFERRED — NEGATIVE CALIBRATION EVIDENCE ACCEPTED; NO PRODUCTION POLICY SELECTED`",
         "RISK-PR009-NO-PRODUCTION-QUALITY-POLICY",
         "PR-010 AND LATER: `UNAUTHORIZED`",
-        "PR-010 CONTRACT DEFINITION: AUTHORIZED, NOT STARTED",
+        "PR-010 CONTRACT: PROPOSED FOR HUMAN REVIEW",
         "PR-010 PRODUCTION IMPLEMENTATION: UNAUTHORIZED",
         "PR-011 AND LATER: UNAUTHORIZED",
         "Gate 2: `NOT ACCEPTED`",
@@ -2006,13 +2008,13 @@ def test_pr009_quality_contract_is_human_accepted_with_deferred_q021_policy() ->
     )
     assert "PR-009: IMPLEMENTED AND IN REVIEW; NOT HUMAN ACCEPTED" in historical_implementation
     assert "PR-010 AND LATER: UNAUTHORIZED" in historical_implementation
-    assert "PR-010 CONTRACT DEFINITION: AUTHORIZED" not in historical_implementation
+    assert "PR-010 CONTRACT: PROPOSED FOR HUMAN REVIEW" not in historical_implementation
 
     pr009_d2 = _adr_section(decisions, "## PR-009-D2 — MPO compatibility within JPEG input")
     assert "Q-021 remained `OPEN — REQUIRES PRODUCT-OWNER ACCEPTANCE`" in pr009_d2
     assert "final PR-009 human acceptance remained blocked" in pr009_d2
     assert "PR-009-D3 below supersedes only that lifecycle context" in pr009_d2
-    assert "PR-010 CONTRACT DEFINITION: AUTHORIZED" not in pr009_d2
+    assert "PR-010 CONTRACT: PROPOSED FOR HUMAN REVIEW" not in pr009_d2
     assert "COMPLETED AND HUMAN ACCEPTED" not in pr009_d2
 
     pr009_d3 = _adr_section(
@@ -2024,7 +2026,7 @@ def test_pr009_quality_contract_is_human_accepted_with_deferred_q021_policy() ->
     ) in pr009_d3
     assert "PR-010 AND LATER remain `UNAUTHORIZED`" in pr009_d3
     assert "COMPLETED AND HUMAN ACCEPTED" not in pr009_d3
-    assert "PR-010 CONTRACT DEFINITION: AUTHORIZED" not in pr009_d3
+    assert "PR-010 CONTRACT: PROPOSED FOR HUMAN REVIEW" not in pr009_d3
 
     pr009_d4_file = (REPO_ROOT / "docs/decisions/PR-009-D4-lifecycle-acceptance.md").read_text(
         encoding="utf-8"
@@ -2374,6 +2376,9 @@ def test_pr009_quality_contract_is_human_accepted_with_deferred_q021_policy() ->
 def test_current_pr009_lifecycle_sections_are_scoped_after_d4() -> None:
     traceability = (REPO_ROOT / "docs/traceability-matrix.md").read_text(encoding="utf-8")
     current_traceability = _adr_section(traceability, "## Current lifecycle state")
+    current_pr010_traceability = _adr_section(
+        traceability, "## Current PR-010 geometry contract staging — 2026-07-23"
+    )
     questions = (REPO_ROOT / "docs/open-questions.md").read_text(encoding="utf-8")
     q021 = _bounded_question_section(questions, "Q-021")
     current_q021 = _adr_section(
@@ -2383,29 +2388,37 @@ def test_current_pr009_lifecycle_sections_are_scoped_after_d4() -> None:
     assert "## PR-009-D4 current lifecycle update — 2026-07-22" not in questions
     assert questions.count("## PR-009 human acceptance lifecycle state — 2026-07-22") == 1
 
-    for current_section in (current_traceability, current_q021):
-        for required in (
-            "PR-009: COMPLETED AND HUMAN ACCEPTED WITH DOCUMENTED RESIDUAL LIMITATION",
-            "Q-021: DEFERRED — NEGATIVE CALIBRATION EVIDENCE ACCEPTED; "
-            "NO PRODUCTION POLICY SELECTED",
-            "Production default PR-009 quality policy: NOT ACTIVE",
-            "Production policy_id: NOT ASSIGNED",
-            "Production policy_version: NOT ASSIGNED",
-            "Automatic PR-009 quality-based document blocking: NOT ACTIVE",
-            "Automatic PR-009 production RETAKE_REQUIRED enforcement: NOT ACTIVE",
-            "RISK-PR009-NO-PRODUCTION-QUALITY-POLICY: OPEN AND ACCEPTED FOR THE "
-            "PR-009 INFRASTRUCTURE AND HUMAN-ACCEPTANCE BOUNDARY",
-            "PR-010 CONTRACT DEFINITION: AUTHORIZED, NOT STARTED",
-            "PR-010 PRODUCTION IMPLEMENTATION: UNAUTHORIZED",
-            "PR-011 AND LATER: UNAUTHORIZED",
-            "Gate 2: NOT ACCEPTED",
-            "M3: IN PROGRESS",
-        ):
-            assert required in current_section, required
+    for required in (
+        "PR-009: COMPLETED AND HUMAN ACCEPTED WITH DOCUMENTED RESIDUAL LIMITATION",
+        "Q-021: DEFERRED — NEGATIVE CALIBRATION EVIDENCE ACCEPTED; NO PRODUCTION POLICY SELECTED",
+        "Production default PR-009 quality policy: NOT ACTIVE",
+        "Production policy_id: NOT ASSIGNED",
+        "Production policy_version: NOT ASSIGNED",
+        "Automatic PR-009 quality-based document blocking: NOT ACTIVE",
+        "Automatic PR-009 production RETAKE_REQUIRED enforcement: NOT ACTIVE",
+        "RISK-PR009-NO-PRODUCTION-QUALITY-POLICY: OPEN AND ACCEPTED FOR THE "
+        "PR-009 INFRASTRUCTURE AND HUMAN-ACCEPTANCE BOUNDARY",
+        "PR-010 CONTRACT DEFINITION: AUTHORIZED, NOT STARTED",
+        "PR-010 PRODUCTION IMPLEMENTATION: UNAUTHORIZED",
+        "PR-011 AND LATER: UNAUTHORIZED",
+        "Gate 2: NOT ACCEPTED",
+        "M3: IN PROGRESS",
+    ):
+        assert required in current_q021, required
+
+    for required in (
+        "ADR-024 is PROPOSED",
+        "PR-010 CONTRACT is PROPOSED FOR HUMAN REVIEW",
+        "PR-010 PRODUCTION IMPLEMENTATION is UNAUTHORIZED",
+        "PR-011 AND LATER are UNAUTHORIZED",
+        "Gate 2 is NOT ACCEPTED",
+        "M3 is IN PROGRESS",
+    ):
+        assert required in current_pr010_traceability, required
 
     assert (
         "next authorized work is preparation of the exact PR-010 documentation contract only"
-        in current_traceability
+        in (current_traceability)
     )
     assert "real documents and personal data remain prohibited in Git, Codex and CI" in (
         current_traceability
@@ -2427,12 +2440,11 @@ def test_current_pr009_lifecycle_sections_are_scoped_after_d4() -> None:
         assert required in q021, required
 
     for forbidden in (
-        "## PR-009 human acceptance lifecycle state — 2026-07-22",
-        "PR-010 CONTRACT DEFINITION: AUTHORIZED, NOT STARTED",
-        "PR-011 AND LATER: UNAUTHORIZED",
-        "Gate 2: NOT ACCEPTED",
-        "M3: IN PROGRESS",
+        "ADR-024: PROPOSED",
+        "PR-010 CONTRACT: PROPOSED FOR HUMAN REVIEW",
+        "PR-010 CONTRACT is PROPOSED FOR HUMAN REVIEW",
     ):
+        assert forbidden not in current_q021, forbidden
         assert forbidden not in q021, forbidden
 
     for filename in ("docs/traceability-matrix.md", "docs/open-questions.md"):
@@ -2513,3 +2525,291 @@ def test_pr009_implementation_stage_has_production_contract_symbols() -> None:
     assert _question_status(q021) == "DEFERRED"
     assert "PR-010 AND LATER" in task and "UNAUTHORIZED" in task
     assert "Gate 2" in task and "NOT ACCEPTED" in task
+
+
+def _section(markdown: str, heading: str) -> str:
+    lines = markdown.splitlines()
+    start = None
+    for index, line in enumerate(lines):
+        if line.strip() == heading:
+            start = index
+            break
+    assert start is not None, f"Missing heading: {heading}"
+    level = len(heading) - len(heading.lstrip("#"))
+    section: list[str] = []
+    for line in lines[start:]:
+        if section and line.startswith("#" * level + " "):
+            break
+        section.append(line)
+    return "\n".join(section)
+
+
+def test_pr010_contract_current_lifecycle_and_merge_evidence_are_section_scoped() -> None:
+    progress = (REPO_ROOT / "docs/progress.md").read_text(encoding="utf-8")
+    current = _section(progress, "## Current lifecycle state")
+    next_step = _section(progress, "## Следующий безопасный шаг")
+    historical = _section(progress, "## PR-009 implementation lifecycle update — 2026-07-21")
+
+    for required in (
+        "PR #26",
+        "cc79a80fcacdbde2667cae858815b30176f87555",
+        "f27647e8cdfb2f8d3e5bb13478a4df50987ca1cb",
+        "2026-07-23",
+        "CI #129",
+        "29972502518",
+        "PR-009: COMPLETED AND HUMAN ACCEPTED WITH DOCUMENTED RESIDUAL LIMITATION",
+        "Q-021: DEFERRED — NEGATIVE CALIBRATION EVIDENCE ACCEPTED; NO PRODUCTION POLICY SELECTED",
+        "Production default PR-009 quality policy: NOT ACTIVE",
+        "Production policy_id: NOT ASSIGNED",
+        "Production policy_version: NOT ASSIGNED",
+        "Automatic PR-009 quality-based document blocking: NOT ACTIVE",
+        "Automatic PR-009 production RETAKE_REQUIRED enforcement: NOT ACTIVE",
+        "RISK-PR009-NO-PRODUCTION-QUALITY-POLICY: OPEN AND ACCEPTED",
+        "ADR-024: PROPOSED",
+        "PR-010 CONTRACT: PROPOSED FOR HUMAN REVIEW",
+        "PR-010 PRODUCTION IMPLEMENTATION: UNAUTHORIZED",
+        "PR-011 AND LATER: UNAUTHORIZED",
+        "Gate 2: NOT ACCEPTED",
+        "M3: IN PROGRESS",
+    ):
+        assert required in current, required
+
+    for stale in (
+        "PR-009: IMPLEMENTED AND IN REVIEW",
+        "Q-021: OPEN — REQUIRES PRODUCT-OWNER ACCEPTANCE",
+        "Final PR-009 human acceptance: BLOCKED UNTIL Q-021 IS ACCEPTED",
+        "PR-010 PRODUCTION IMPLEMENTATION: AUTHORIZED",
+        "Gate 2: ACCEPTED",
+        "M3: COMPLETED",
+    ):
+        assert stale not in current, stale
+        assert stale not in next_step, stale
+
+    assert "PR-009: IMPLEMENTED AND IN REVIEW; NOT HUMAN ACCEPTED" in historical
+    assert "Q-021: OPEN — REQUIRES PRODUCT-OWNER ACCEPTANCE" in historical
+    assert "PR-010 AND LATER: UNAUTHORIZED" in historical
+
+
+def _assert_ordered_markers(section: str) -> None:
+    markers = (
+        "Validate the caller-supplied command",
+        "Decode the full-resolution RGB source",
+        "Render the internal RGB raster",
+        "Construct the immutable `ImageGeometryRecipe`",
+        "uow.image_geometry_recipes.add",
+        "uow.audit_events.add",
+        "uow.commit()",
+        "return `CreateImageGeometryRecipeResult`",
+    )
+    indexes = [section.index(marker) for marker in markers]
+    assert indexes == sorted(indexes), markers
+    assert section.index("uow.commit()") < section.index("return `CreateImageGeometryRecipeResult`")
+
+
+def test_pr010_task_and_adr024_contract_terms_are_exact() -> None:
+    adr_path = REPO_ROOT / "docs/decisions/ADR-024-image-geometry-recipe-v1.md"
+    task_path = REPO_ROOT / "docs/tasks/PR-010-geometry-tools.md"
+    assert adr_path.is_file()
+    assert task_path.is_file()
+    adr = adr_path.read_text(encoding="utf-8")
+    task = task_path.read_text(encoding="utf-8")
+    combined = adr + "\n" + task
+
+    assert "**Status:** PROPOSED" in adr
+    assert "**Status:** CONTRACT PROPOSED; PRODUCTION IMPLEMENTATION NOT AUTHORIZED" in task
+    assert "## Exact PR-010 V1 contract completion" not in adr
+    assert "## Exact contract completion addendum" not in task
+
+    adr_order = _section(adr, "## Exact operation order")
+    task_order = _section(task, "## 12. Exact transformation order")
+    _assert_ordered_markers(adr_order)
+    _assert_ordered_markers(task_order)
+    assert "No application result is constructed or returned before" in adr_order
+    assert "No application result is constructed or returned before" in task_order
+
+    adr_coord = _section(adr, "## Coordinate space")
+    task_coord = _section(task, "## 7. Exact coordinate system")
+    for section in (adr_coord, task_coord):
+        for required in (
+            "integer pixel-edge coordinates",
+            "outer top-left boundary",
+            "0 <= x <= source_effective_width",
+            "0 <= y <= source_effective_height",
+            "outer bottom-right boundary",
+            "not a pixel center",
+            "full-frame quadrilateral",
+            "Preview coordinates must be converted before command construction",
+            "EXIF is applied exactly once",
+        ):
+            assert required in section, required
+        for forbidden in (
+            "top-left pixel of that effective grid",
+            "top-left of the effective pixel grid",
+        ):
+            assert forbidden not in section, forbidden
+
+    primary_sections = "\n".join(
+        (
+            _section(adr, "## Recipe immutability"),
+            _section(adr, "## Coordinate space"),
+            _section(adr, "## Manual crop representation"),
+            _section(adr, "## Output dimensions"),
+            _section(adr, "## Rendering boundary"),
+            _section(adr, "## Determinism"),
+            _section(adr, "## Persistence boundary"),
+            _section(adr, "## Service and transaction boundary"),
+            _section(adr, "## Audit boundary"),
+            _section(adr, "## Controlled errors"),
+            _section(task, "## 7. Exact coordinate system"),
+            _section(task, "## 8. Exact geometry recipe domain contract"),
+            _section(task, "## 9. Exact decoder and renderer port contracts"),
+            _section(task, "## 10. Exact application command and result DTO contracts"),
+            _section(task, "## 11. Exact service contract"),
+            _section(task, "## 12. Exact transformation order"),
+            _section(task, "## 13. Exact validation rules"),
+            _section(task, "## 14. Exact output-dimension derivation"),
+            _section(task, "## 15. Exact persistence contract"),
+            _section(task, "## 16. Proposed migration v0006 contract"),
+            _section(task, "## 17. Unit of Work and atomicity"),
+            _section(task, "## 18. Audit-event contract"),
+            _section(task, "## 19. Controlled error contract"),
+            _section(task, "## 20. Expected future implementation files"),
+        )
+    )
+
+    for heading in (
+        "## 1. Status and lifecycle boundary",
+        "## 2. Verified implementation base rule",
+        "## 3. Goal",
+        "## 4. Exact scope",
+        "## 5. Deferred scope",
+        "## 6. Existing accepted contracts that must remain unchanged",
+        "## 7. Exact coordinate system",
+        "## 8. Exact geometry recipe domain contract",
+        "## 9. Exact decoder and renderer port contracts",
+        "## 10. Exact application command and result DTO contracts",
+        "## 11. Exact service contract",
+        "## 12. Exact transformation order",
+        "## 13. Exact validation rules",
+        "## 14. Exact output-dimension derivation",
+        "## 15. Exact persistence contract",
+        "## 16. Proposed migration v0006 contract",
+        "## 17. Unit of Work and atomicity",
+        "## 18. Audit-event contract",
+        "## 19. Controlled error contract",
+        "## 20. Expected future implementation files",
+        "## 21. Exact test plan",
+        "## 22. Synthetic fixture rules",
+        "## 23. Manual verification",
+        "## 24. Acceptance criteria",
+        "## 25. Non-goals",
+        "## 26. Security and privacy prohibitions",
+        "## 27. Future implementation authorization boundary",
+    ):
+        assert heading in task, heading
+
+    for required in (
+        "GeometryCoordinateSpace",
+        'SOURCE_EFFECTIVE_PIXELS_V1 = "SOURCE_EFFECTIVE_PIXELS_V1"',
+        "GeometryQuarterTurn",
+        "DEG_0 = 0",
+        "DEG_90 = 90",
+        "DEG_180 = 180",
+        "DEG_270 = 270",
+        "GeometryErrorCode",
+        'SOURCE_FILE_NOT_FOUND = "SOURCE_FILE_NOT_FOUND"',
+        'ARTIFACT_NOT_FOUND = "ARTIFACT_NOT_FOUND"',
+        'ARTIFACT_INTEGRITY_FAILED = "ARTIFACT_INTEGRITY_FAILED"',
+        'DECODE_FAILED = "DECODE_FAILED"',
+        'SOURCE_DIMENSIONS_MISMATCH = "SOURCE_DIMENSIONS_MISMATCH"',
+        'POINT_OUT_OF_BOUNDS = "POINT_OUT_OF_BOUNDS"',
+        'DUPLICATE_POINT = "DUPLICATE_POINT"',
+        'NON_CLOCKWISE_QUADRILATERAL = "NON_CLOCKWISE_QUADRILATERAL"',
+        'SELF_INTERSECTING_QUADRILATERAL = "SELF_INTERSECTING_QUADRILATERAL"',
+        'NON_CONVEX_QUADRILATERAL = "NON_CONVEX_QUADRILATERAL"',
+        'AREA_TOO_SMALL = "AREA_TOO_SMALL"',
+        'OUTPUT_DIMENSIONS_TOO_SMALL = "OUTPUT_DIMENSIONS_TOO_SMALL"',
+        'INVALID_QUARTER_TURN = "INVALID_QUARTER_TURN"',
+        'INVALID_PIPELINE_VERSION = "INVALID_PIPELINE_VERSION"',
+        'REVISION_CONFLICT = "REVISION_CONFLICT"',
+        'RENDER_FAILED = "RENDER_FAILED"',
+        'RECIPE_PERSISTENCE_FAILED = "RECIPE_PERSISTENCE_FAILED"',
+        'AUDIT_PERSISTENCE_FAILED = "AUDIT_PERSISTENCE_FAILED"',
+        'COMMIT_FAILED = "COMMIT_FAILED"',
+        "pipeline_id = PILLOW_QUAD_BICUBIC",
+        "pipeline_version = 1",
+        "locked Pillow version is `12.3.0`",
+        "GeometryPipelineVersion",
+        "GeometryPoint",
+        "SourceQuadrilateral",
+        "ImageGeometryRecipe",
+        "DecodedGeometryMedia",
+        "RenderedGeometryRaster",
+        "CreateImageGeometryRecipeCommand",
+        "CreateImageGeometryRecipeResult",
+        "recipe_version_id: EntityId",
+        "source_file_id: EntityId",
+        "superseded_recipe_version_id: EntityId | None",
+        "expected_source_effective_width: int",
+        "expected_source_effective_height: int",
+        "actor: ActorRef",
+        "audit_event_id: EntityId",
+        "correlation_id: EntityId",
+        "media_type: SourceMediaType",
+        "rgb_pixels: bytes",
+        "GeometryDecoderPort",
+        "decode_for_geometry",
+        "GeometryRendererPort",
+        "render_geometry",
+        "ImageGeometryRecipeRepository",
+        "def add(self, recipe: ImageGeometryRecipe) -> None",
+        "def get(",
+        "def get_latest_by_source(",
+        "def get_by_source_revision(",
+        "def list_by_source(",
+        "image_geometry_recipes: ImageGeometryRecipeRepository",
+        "create_image_geometry_recipe",
+        "decoder: GeometryDecoderPort",
+        "renderer: GeometryRendererPort",
+        "storage: StoragePort",
+        "unit_of_work_factory: UnitOfWorkFactory",
+        "signed_twice_area",
+        "signed_twice_area >= 8",
+        "strictly positive",
+        "precision = 28",
+        "ROUND_HALF_UP",
+        "Image.Transform.QUAD",
+        "Image.Resampling.BICUBIC",
+        "fill=1",
+        "fillcolor=(255, 255, 255)",
+        "upper-left, lower-left, lower-right, upper-right",
+        "TL, BL, BR, TR",
+        "quad_data = (",
+        "Image.Transpose.ROTATE_270",
+        "Image.Transpose.ROTATE_180",
+        "Image.Transpose.ROTATE_90",
+        "AuditAction.IMAGE_GEOMETRY_RECIPE_CREATED",
+        "AuditSubjectType.IMAGE_GEOMETRY_RECIPE",
+        "RGB bytes",
+        "no encoded JPEG",
+    ):
+        assert required in primary_sections, required
+
+    for required in (
+        "PR-010 does not publish a final JPEG",
+        "PR-012",
+        "PR-011",
+        "PRODUCTION IMPLEMENTATION is UNAUTHORIZED",
+    ):
+        assert required in combined, required
+
+    for vague in (
+        "Return internal geometry-render result",
+        "returns an internal geometry-render result",
+        "must define the exact Pillow transform mode",
+        "must define the resampling mode",
+        "or an equivalently controlled accepted action",
+        "expected new files may include",
+    ):
+        assert vague not in combined, vague
+    assert "return" not in combined.lower().split("commit", maxsplit=1)[0]

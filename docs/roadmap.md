@@ -22,7 +22,7 @@ PR-004–007.
 
 Result: domain, SQLite, immutable storage and audit.
 
-PR-004 — Core Domain is completed and human accepted. GATE-S1 is completed and human accepted. ADR-018 is accepted for Q-010. PR #9 merged PR-S001 as a research harness; PR-S001 is ACCEPTED WITH DOCUMENTED RESIDUAL RISK RISK-S001-W11. PR-005 is COMPLETED AND HUMAN ACCEPTED through GitHub PR #15. PR-006 and PR-007 are COMPLETED AND HUMAN ACCEPTED. M2 is completed and human accepted by PR-007 acceptance. PR-008 is completed and human accepted with documented residual risk. PR-009 is implemented and ready for human acceptance with a documented residual limitation; PR-010 and every later implementation task remains unauthorized.
+PR-004 — Core Domain is completed and human accepted. GATE-S1 is completed and human accepted. ADR-018 is accepted for Q-010. PR #9 merged PR-S001 as a research harness; PR-S001 is ACCEPTED WITH DOCUMENTED RESIDUAL RISK RISK-S001-W11. PR-005 is COMPLETED AND HUMAN ACCEPTED through GitHub PR #15. PR-006 and PR-007 are COMPLETED AND HUMAN ACCEPTED. M2 is completed and human accepted by PR-007 acceptance. PR-008 is completed and human accepted with documented residual risk. PR-009 is completed and human accepted with a documented residual limitation; ADR-024 is proposed; the PR-010 contract is proposed for human review; PR-010 production implementation is unauthorized; PR-011 and later are unauthorized.
 
 ## M3 — Manual image workflow
 
@@ -34,6 +34,9 @@ Gate: типовые реальные фото локально готовятс
 
 M3 status:
 
+PR #26 merged successfully on 2026-07-23: final reviewed head `cc79a80fcacdbde2667cae858815b30176f87555`, merge commit `f27647e8cdfb2f8d3e5bb13478a4df50987ca1cb`, exact-head CI `CI #129`, run ID `29972502518`, conclusion `success`.
+
+
 - PR-008: COMPLETED AND HUMAN ACCEPTED WITH DOCUMENTED RESIDUAL RISK.
 - PR-009: COMPLETED AND HUMAN ACCEPTED WITH DOCUMENTED RESIDUAL LIMITATION.
 - Q-021: DEFERRED — NEGATIVE CALIBRATION EVIDENCE ACCEPTED; NO PRODUCTION POLICY SELECTED.
@@ -43,7 +46,7 @@ M3 status:
 - Automatic PR-009 quality-based document blocking: NOT ACTIVE.
 - Automatic PR-009 production RETAKE_REQUIRED enforcement: NOT ACTIVE.
 - RISK-PR009-NO-PRODUCTION-QUALITY-POLICY: OPEN AND ACCEPTED FOR THE PR-009 INFRASTRUCTURE AND HUMAN-ACCEPTANCE BOUNDARY.
-- PR-010 CONTRACT DEFINITION: AUTHORIZED, NOT STARTED.
+- ADR-024: PROPOSED. PR-010 CONTRACT: PROPOSED FOR HUMAN REVIEW.
 - PR-010 PRODUCTION IMPLEMENTATION: UNAUTHORIZED.
 - PR-011 AND LATER: UNAUTHORIZED.
 - Gate 2: NOT ACCEPTED.
@@ -184,3 +187,8 @@ Merge commit: `b491226878cabfc87c484f6a4d41bc2969851273`.
 Merge date: 2026-07-22.
 
 This current PR-009-D4-backed section supersedes earlier historical lifecycle snapshots for current status only. It does not rewrite those historical records and does not authorize PR-010 production implementation or PR-011 and later work. FR-04 remains incomplete because geometry, document regions and later image-preparation work remain future scope.
+## Current PR-010 geometry contract staging — 2026-07-23
+
+This current section supersedes historical lifecycle sections for current status only and does not rewrite the historical record.
+
+PR #26 merged successfully on 2026-07-23 from reviewed head `cc79a80fcacdbde2667cae858815b30176f87555` at merge commit `f27647e8cdfb2f8d3e5bb13478a4df50987ca1cb`; exact-head CI `CI #129` succeeded. PR-009 is COMPLETED AND HUMAN ACCEPTED WITH DOCUMENTED RESIDUAL LIMITATION. Q-021 is DEFERRED — NEGATIVE CALIBRATION EVIDENCE ACCEPTED; NO PRODUCTION POLICY SELECTED. Production default PR-009 quality policy is NOT ACTIVE. Production `policy_id` and `policy_version` are NOT ASSIGNED. Automatic PR-009 quality-based document blocking and production RETAKE_REQUIRED enforcement are NOT ACTIVE. `RISK-PR009-NO-PRODUCTION-QUALITY-POLICY` remains OPEN AND ACCEPTED FOR THE PR-009 INFRASTRUCTURE AND HUMAN-ACCEPTANCE BOUNDARY. ADR-024 is PROPOSED. PR-010 CONTRACT is PROPOSED FOR HUMAN REVIEW. PR-010 PRODUCTION IMPLEMENTATION is UNAUTHORIZED. PR-011 AND LATER are UNAUTHORIZED. Gate 2 is NOT ACCEPTED. M3 is IN PROGRESS.

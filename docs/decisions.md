@@ -848,3 +848,10 @@ Gate 2: NOT ACCEPTED.
 M3: IN PROGRESS.
 
 This decision authorizes preparation of the exact PR-010 documentation contract only. It does not authorize, start or implement PR-010 production code. PR-011 and later remain unauthorized, and no production quality policy identity or version is assigned.
+
+
+## ADR-024 — Deterministic image geometry recipe v1
+
+**Status:** PROPOSED
+
+ADR-024 proposes the exact PR-010 Geometry Tools contract. PR-010 CONTRACT is PROPOSED FOR HUMAN REVIEW; PR-010 PRODUCTION IMPLEMENTATION is UNAUTHORIZED; PR-011 AND LATER are UNAUTHORIZED. The proposal binds `SOURCE_EFFECTIVE_PIXELS_V1`, EXIF orientation exactly once, immutable originals, canonical corner order, append-only recipe versions, `v0006_image_geometry` staging, one Unit of Work, no production JPEG, PR-011 compression boundary, PR-012 multiple-document boundary, and preservation of Q-021 deferred production-policy state.
