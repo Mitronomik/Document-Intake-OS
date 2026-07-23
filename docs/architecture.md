@@ -260,7 +260,7 @@ PR-010 AND LATER: UNAUTHORIZED.
 Gate 2: NOT ACCEPTED.
 M3: IN PROGRESS.
 
-The explicit-policy infrastructure may be human accepted and merged under the residual limitation. Production composition must fail closed without a separately accepted policy; no process-global, hidden or default production policy is permitted.
+PR-009 implements deterministic whole-frame metrics, explicit caller-provided typed policy handling, full-resolution orientation-normalized decoding, append-only persistence, audit integration, controlled service errors, synthetic tests and a cross-platform verifier. The residual limitation blocks production activation of PR-009 quality decisions, not human acceptance or merge of the explicit-policy infrastructure. Human acceptance and merge are still pending; PR-010 and later require a separate post-merge product-owner decision.
 ## PR-009 human acceptance lifecycle state — 2026-07-22
 
 PR-009: COMPLETED AND HUMAN ACCEPTED WITH DOCUMENTED RESIDUAL LIMITATION.
@@ -283,3 +283,8 @@ Merge commit: `b491226878cabfc87c484f6a4d41bc2969851273`.
 Merge date: 2026-07-22.
 
 This current PR-009-D4-backed section supersedes earlier historical lifecycle snapshots for current status only. It does not rewrite those historical records and does not authorize PR-010 production implementation or PR-011 and later work. FR-04 remains incomplete because geometry, document regions and later image-preparation work remain future scope.
+
+
+## PR-010 geometry contract staging
+
+ADR-024 proposes the deterministic image geometry recipe v1 boundary for future PR-010. The staged implementation must use existing application ports in `src/document_intake/application/ports/`, the accepted SQLCipher Unit of Work in `src/document_intake/persistence/unit_of_work.py`, immutable storage, image-pipeline adapters under `src/document_intake/image_pipeline/`, and PII-safe audit integration. It must not add production code in this documentation-only PR.

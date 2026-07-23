@@ -83,11 +83,14 @@ Secondary frames are ignored in MVP.
 
 ## Current lifecycle state
 
+PR #26 merged successfully on 2026-07-23: final reviewed head `cc79a80fcacdbde2667cae858815b30176f87555`, merge commit `f27647e8cdfb2f8d3e5bb13478a4df50987ca1cb`, exact-head CI `CI #129`, run ID `29972502518`, conclusion `success`.
+
+
 GATE-M0: COMPLETED. M0: ACCEPTED. M1: ACCEPTED. PR-004: COMPLETED AND HUMAN ACCEPTED. GATE-S1: COMPLETED AND HUMAN ACCEPTED. ADR-018: ACCEPTED. Q-010: ACCEPTED. PR-S001: ACCEPTED WITH DOCUMENTED RESIDUAL RISK RISK-S001-W11; PR-S001-F1: COMPLETED; PR-S001-F2: COMPLETED; PR-S001-F3: COMPLETED; PR-S001-F4: COMPLETED AND MERGED THROUGH PR #13; PR-S001-F4 merge commit: `985fae37c7645e8f65edbe4d1609100ee24a2097`.
 
 PR-005: COMPLETED AND HUMAN ACCEPTED through GitHub PR #15 (`PR-005: Add encrypted SQLite persistence and migrations`) at merge commit `2161fbbf7fb4065a5913fb6e62c207546caf5dd9` from final reviewed head `325b49555dee49fa22b008d9522bbbc6eb873ca2`; final migration v0001 checksum is `e1e1f5f6d8d675a146f3d0c538a0d544b6f8a984c301d177ee1ad86e42f2d500`. Exact-head CI run #73 succeeded on Ubuntu and Windows, including Windows SQLCipher evidence for the PR-005 acceptance boundary. Migration v0001 is frozen after merge and every future schema change must use migration v0002 or later.
 
-PR-006: COMPLETED AND HUMAN ACCEPTED. PR-007: COMPLETED AND HUMAN ACCEPTED. PR-008: COMPLETED AND HUMAN ACCEPTED WITH DOCUMENTED RESIDUAL RISK; RISK-PR008-W11-SMOKE: ACCEPTED FOR PR-008; DEFERRED TO INSTALLER/PILOT/RELEASE. ADR-023: ACCEPTED. PR-009: COMPLETED AND HUMAN ACCEPTED WITH DOCUMENTED RESIDUAL LIMITATION. Q-021: DEFERRED — NEGATIVE CALIBRATION EVIDENCE ACCEPTED; NO PRODUCTION POLICY SELECTED. Production default PR-009 quality policy: NOT ACTIVE. Production policy_id: NOT ASSIGNED. Production policy_version: NOT ASSIGNED. Automatic PR-009 quality-based document blocking: NOT ACTIVE. Automatic PR-009 production RETAKE_REQUIRED enforcement: NOT ACTIVE. RISK-PR009-NO-PRODUCTION-QUALITY-POLICY: OPEN AND ACCEPTED FOR THE PR-009 INFRASTRUCTURE AND HUMAN-ACCEPTANCE BOUNDARY. PR-010 CONTRACT DEFINITION: AUTHORIZED, NOT STARTED. PR-010 PRODUCTION IMPLEMENTATION: UNAUTHORIZED. PR-011 AND LATER: UNAUTHORIZED. Gate 2: NOT ACCEPTED. M3: IN PROGRESS. Gate 1: COMPLETED AND HUMAN ACCEPTED. M2: COMPLETED AND HUMAN ACCEPTED. Q-017 remains DEFERRED. The sensitive-data/private-contour gate remains open, and real documents and personal data remain prohibited in Git, Codex and CI. The next authorized work is preparation of the exact PR-010 documentation contract only; PR-010 production implementation is unauthorized, PR-011 and later are unauthorized, and no production PR-009 quality policy is active.
+PR-006: COMPLETED AND HUMAN ACCEPTED. PR-007: COMPLETED AND HUMAN ACCEPTED. PR-008: COMPLETED AND HUMAN ACCEPTED WITH DOCUMENTED RESIDUAL RISK; RISK-PR008-W11-SMOKE: ACCEPTED FOR PR-008; DEFERRED TO INSTALLER/PILOT/RELEASE. ADR-023: ACCEPTED. PR-009: COMPLETED AND HUMAN ACCEPTED WITH DOCUMENTED RESIDUAL LIMITATION. Q-021: DEFERRED — NEGATIVE CALIBRATION EVIDENCE ACCEPTED; NO PRODUCTION POLICY SELECTED. Production default PR-009 quality policy: NOT ACTIVE. Production policy_id: NOT ASSIGNED. Production policy_version: NOT ASSIGNED. Automatic PR-009 quality-based document blocking: NOT ACTIVE. Automatic PR-009 production RETAKE_REQUIRED enforcement: NOT ACTIVE. RISK-PR009-NO-PRODUCTION-QUALITY-POLICY: OPEN AND ACCEPTED FOR THE PR-009 INFRASTRUCTURE AND HUMAN-ACCEPTANCE BOUNDARY. ADR-024: PROPOSED. PR-010 CONTRACT: PROPOSED FOR HUMAN REVIEW. PR-010 PRODUCTION IMPLEMENTATION: UNAUTHORIZED. PR-011 AND LATER: UNAUTHORIZED. Gate 2: NOT ACCEPTED. M3: IN PROGRESS. Gate 1: COMPLETED AND HUMAN ACCEPTED. M2: COMPLETED AND HUMAN ACCEPTED. Q-017 remains DEFERRED. The sensitive-data/private-contour gate remains open, and real documents and personal data remain prohibited in Git, Codex and CI. The next authorized work is preparation of the exact PR-010 documentation contract only; PR-010 production implementation is unauthorized, PR-011 and later are unauthorized, and no production PR-009 quality policy is active.
 
 RISK-PR005-RAWKEY-PRAGMA remains accepted only for the PR-005 development boundary and remains open for installer, pilot and production release.
 
@@ -169,7 +172,7 @@ PR-010 AND LATER: UNAUTHORIZED.
 Gate 2: NOT ACCEPTED.
 M3: IN PROGRESS.
 
-The deterministic metric infrastructure is implemented and verified, and local calibration is complete. Production-policy acceptance was not achieved, so production activation remains deferred. The explicit-policy infrastructure may proceed to human acceptance and merge under the documented limitation; no production threshold-calibration requirement is marked satisfied.
+PR-009 implements deterministic whole-frame metrics, explicit caller-provided typed policy handling, full-resolution orientation-normalized decoding, append-only persistence, audit integration, controlled service errors, synthetic tests and a cross-platform verifier. The residual limitation blocks production activation of PR-009 quality decisions, not human acceptance or merge of the explicit-policy infrastructure. Human acceptance and merge are still pending; PR-010 and later require a separate post-merge product-owner decision.
 ## PR-009 human acceptance lifecycle state — 2026-07-22
 
 PR-009: COMPLETED AND HUMAN ACCEPTED WITH DOCUMENTED RESIDUAL LIMITATION.
@@ -180,7 +183,7 @@ Production policy_version: NOT ASSIGNED.
 Automatic PR-009 quality-based document blocking: NOT ACTIVE.
 Automatic PR-009 production RETAKE_REQUIRED enforcement: NOT ACTIVE.
 RISK-PR009-NO-PRODUCTION-QUALITY-POLICY: OPEN AND ACCEPTED FOR THE PR-009 INFRASTRUCTURE AND HUMAN-ACCEPTANCE BOUNDARY.
-PR-010 CONTRACT DEFINITION: AUTHORIZED, NOT STARTED.
+ADR-024: PROPOSED. PR-010 CONTRACT: PROPOSED FOR HUMAN REVIEW.
 PR-010 PRODUCTION IMPLEMENTATION: UNAUTHORIZED.
 PR-011 AND LATER: UNAUTHORIZED.
 Gate 2: NOT ACCEPTED.

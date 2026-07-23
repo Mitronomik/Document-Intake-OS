@@ -172,7 +172,7 @@ PR-010 AND LATER: UNAUTHORIZED.
 Gate 2: NOT ACCEPTED.
 M3: IN PROGRESS.
 
-Synthetic policies remain permitted in tests and verifiers. No test may imply that a production policy was selected or activated; future metric changes require new algorithm versions and local recalibration.
+PR-009 implements deterministic whole-frame metrics, explicit caller-provided typed policy handling, full-resolution orientation-normalized decoding, append-only persistence, audit integration, controlled service errors, synthetic tests and a cross-platform verifier. The residual limitation blocks production activation of PR-009 quality decisions, not human acceptance or merge of the explicit-policy infrastructure. Human acceptance and merge are still pending; PR-010 and later require a separate post-merge product-owner decision.
 ## PR-009 human acceptance lifecycle state — 2026-07-22
 
 PR-009: COMPLETED AND HUMAN ACCEPTED WITH DOCUMENTED RESIDUAL LIMITATION.
@@ -195,3 +195,8 @@ Merge commit: `b491226878cabfc87c484f6a4d41bc2969851273`.
 Merge date: 2026-07-22.
 
 This current PR-009-D4-backed section supersedes earlier historical lifecycle snapshots for current status only. It does not rewrite those historical records and does not authorize PR-010 production implementation or PR-011 and later work. FR-04 remains incomplete because geometry, document regions and later image-preparation work remain future scope.
+
+
+## PR-010 geometry contract test staging
+
+Future PR-010 tests must use generated synthetic rasters only and cover immutable originals, EXIF orientation exactly once, source-effective coordinate mapping, quadrilateral validation, deterministic dimensions, RGB rendering, append-only persistence, one Unit of Work atomicity, PII-safe audit/errors, no production JPEG, no network access, and preservation of PR-008/PR-009 regressions.
