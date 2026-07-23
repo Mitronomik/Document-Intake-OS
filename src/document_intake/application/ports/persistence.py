@@ -14,6 +14,7 @@ from document_intake.domain import (
     FieldCandidate,
     FieldRef,
     IdentityDocument,
+    ImageGeometryRecipe,
     ImageQualityAssessment,
     MigrationDocument,
     OwnerRef,
@@ -130,6 +131,16 @@ class SourceFileRepository(Protocol):
     ) -> tuple[SourceFile, ...]: ...
 
 
+class ImageGeometryRecipeRepository(Protocol):
+    def add(self, recipe: ImageGeometryRecipe) -> None: ...
+    def get(self, recipe_version_id: EntityId) -> ImageGeometryRecipe | None: ...
+    def get_latest_by_source(self, source_file_id: EntityId) -> ImageGeometryRecipe | None: ...
+    def get_by_source_revision(
+        self, source_file_id: EntityId, revision: int
+    ) -> ImageGeometryRecipe | None: ...
+    def list_by_source(self, source_file_id: EntityId) -> tuple[ImageGeometryRecipe, ...]: ...
+
+
 class ImageQualityAssessmentRepository(Protocol):
     def add(self, assessment: ImageQualityAssessment) -> None: ...
     def get(self, assessment_id: EntityId) -> ImageQualityAssessment | None: ...
@@ -151,6 +162,7 @@ class UnitOfWork(Protocol):
     upload_batches: UploadBatchRepository
     source_files: SourceFileRepository
     image_quality_assessments: ImageQualityAssessmentRepository
+    image_geometry_recipes: ImageGeometryRecipeRepository
 
     def __enter__(self) -> Self: ...
     def __exit__(

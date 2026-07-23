@@ -18,6 +18,9 @@ from document_intake.persistence.migrations.v0004_source_file_import import (
 from document_intake.persistence.migrations.v0005_image_quality import (
     MIGRATION as V0005_IMAGE_QUALITY,
 )
+from document_intake.persistence.migrations.v0006_image_geometry import (
+    MIGRATION as V0006_IMAGE_GEOMETRY,
+)
 
 MIGRATIONS: tuple[Migration, ...] = (
     V0001_INITIAL,
@@ -25,8 +28,9 @@ MIGRATIONS: tuple[Migration, ...] = (
     V0003_AUDIT_EVENTS,
     V0004_SOURCE_FILE_IMPORT,
     V0005_IMAGE_QUALITY,
+    V0006_IMAGE_GEOMETRY,
 )
-CURRENT_SCHEMA_VERSION = 5
+CURRENT_SCHEMA_VERSION = 6
 
 __all__ = [
     "APPLICATION_ID",

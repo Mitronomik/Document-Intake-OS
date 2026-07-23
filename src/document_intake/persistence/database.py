@@ -1402,6 +1402,69 @@ class ImageQualityAssessmentRepo(_Repo):
         return entity
 
 
+class ImageGeometryRecipeRepo(_Repo):
+    def __init__(self, uow: SqlCipherUnitOfWork) -> None:
+        super().__init__(
+            uow,
+            "image_geometry_recipes",
+            ser.image_geometry_recipe_to_json,
+            ser.image_geometry_recipe_from_json,
+            lambda x: str(x.recipe_version_id),
+        )
+
+    def add(self, recipe: ImageGeometryRecipe) -> None:
+        if not isinstance(recipe, ImageGeometryRecipe):
+            raise PersistenceError(PersistenceErrorCode.PERSISTED_DATA_INVALID)
+        payload = ser.image_geometry_recipe_to_json(recipe)
+        self._execute(
+            "INSERT INTO image_geometry_recipes(recipe_version_id, source_file_id, superseded_recipe_version_id, revision, coordinate_space, source_effective_width, source_effective_height, quarter_turn, top_left_x, top_left_y, top_right_x, top_right_y, bottom_right_x, bottom_right_y, bottom_left_x, bottom_left_y, pipeline_id, pipeline_version, created_at_utc, canonical_payload) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+            (*ser.image_geometry_recipe_columns(recipe), payload),
+            duplicate_is_already_exists=True,
+        )
+
+    def get(self, recipe_version_id: EntityId) -> ImageGeometryRecipe | None:
+        rows = self._fetchall(
+            "SELECT recipe_version_id, source_file_id, superseded_recipe_version_id, revision, coordinate_space, source_effective_width, source_effective_height, quarter_turn, top_left_x, top_left_y, top_right_x, top_right_y, bottom_right_x, bottom_right_y, bottom_left_x, bottom_left_y, pipeline_id, pipeline_version, created_at_utc, canonical_payload FROM image_geometry_recipes WHERE recipe_version_id=?",
+            (str(recipe_version_id),),
+        )
+        return None if not rows else self._from_projection(rows[0])
+
+    def get_latest_by_source(self, source_file_id: EntityId) -> ImageGeometryRecipe | None:
+        rows = self._fetchall(
+            "SELECT recipe_version_id, source_file_id, superseded_recipe_version_id, revision, coordinate_space, source_effective_width, source_effective_height, quarter_turn, top_left_x, top_left_y, top_right_x, top_right_y, bottom_right_x, bottom_right_y, bottom_left_x, bottom_left_y, pipeline_id, pipeline_version, created_at_utc, canonical_payload FROM image_geometry_recipes WHERE source_file_id=? ORDER BY revision DESC, created_at_utc DESC, recipe_version_id DESC LIMIT 1",
+            (str(source_file_id),),
+        )
+        return None if not rows else self._from_projection(rows[0])
+
+    def get_by_source_revision(
+        self, source_file_id: EntityId, revision: int
+    ) -> ImageGeometryRecipe | None:
+        rows = self._fetchall(
+            "SELECT recipe_version_id, source_file_id, superseded_recipe_version_id, revision, coordinate_space, source_effective_width, source_effective_height, quarter_turn, top_left_x, top_left_y, top_right_x, top_right_y, bottom_right_x, bottom_right_y, bottom_left_x, bottom_left_y, pipeline_id, pipeline_version, created_at_utc, canonical_payload FROM image_geometry_recipes WHERE source_file_id=? AND revision=?",
+            (str(source_file_id), revision),
+        )
+        return None if not rows else self._from_projection(rows[0])
+
+    def list_by_source(self, source_file_id: EntityId) -> tuple[ImageGeometryRecipe, ...]:
+        return tuple(
+            self._from_projection(r)
+            for r in self._fetchall(
+                "SELECT recipe_version_id, source_file_id, superseded_recipe_version_id, revision, coordinate_space, source_effective_width, source_effective_height, quarter_turn, top_left_x, top_left_y, top_right_x, top_right_y, bottom_right_x, bottom_right_y, bottom_left_x, bottom_left_y, pipeline_id, pipeline_version, created_at_utc, canonical_payload FROM image_geometry_recipes WHERE source_file_id=? ORDER BY revision, created_at_utc, recipe_version_id",
+                (str(source_file_id),),
+            )
+        )
+
+    def _from_projection(self, row: tuple[Any, ...]) -> ImageGeometryRecipe:
+        entity = self._deserialize(row[19])
+        if (
+            not isinstance(entity, ImageGeometryRecipe)
+            or ser.image_geometry_recipe_columns(entity) != tuple(row[:19])
+            or ser.image_geometry_recipe_to_json(entity) != row[19]
+        ):
+            raise PersistenceError(PersistenceErrorCode.PERSISTED_DATA_INVALID)
+        return entity
+
+
 class _UowState(Enum):
     NEW = auto()
     ACTIVE = auto()
@@ -1430,6 +1493,7 @@ class SqlCipherUnitOfWork:
         self._upload_batches: UploadBatchRepo | None = None
         self._source_files: SourceFileRepo | None = None
         self._image_quality_assessments: ImageQualityAssessmentRepo | None = None
+        self._image_geometry_recipes: ImageGeometryRecipeRepo | None = None
 
     def __repr__(self) -> str:
         return "SqlCipherUnitOfWork(<redacted>)"
@@ -1504,6 +1568,10 @@ class SqlCipherUnitOfWork:
     def image_quality_assessments(self) -> ImageQualityAssessmentRepo:
         return self._repository(self._image_quality_assessments)
 
+    @property
+    def image_geometry_recipes(self) -> ImageGeometryRecipeRepo:
+        return self._repository(self._image_geometry_recipes)
+
     def _construct_repositories(self) -> None:
         self._persons = PersonRepo(self)
         self._identity_documents = IdentityRepo(self)
@@ -1519,6 +1587,7 @@ class SqlCipherUnitOfWork:
         self._upload_batches = UploadBatchRepo(self)
         self._source_files = SourceFileRepo(self)
         self._image_quality_assessments = ImageQualityAssessmentRepo(self)
+        self._image_geometry_recipes = ImageGeometryRecipeRepo(self)
 
     def _invalidate(self) -> None:
         connection = self._conn

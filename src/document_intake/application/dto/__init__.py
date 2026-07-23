@@ -1,8 +1,17 @@
-from document_intake.application.dto.image_quality import (
-    AssessSourceFileQualityCommand as AssessSourceFileQualityCommand,
+"""Application DTO public exports."""
+
+from document_intake.application.dto.image_geometry import (
+    CreateImageGeometryRecipeCommand,
+    CreateImageGeometryRecipeResult,
 )
 from document_intake.application.dto.image_quality import (
-    AssessSourceFileQualityResult as AssessSourceFileQualityResult,
+    AssessSourceFileQualityCommand,
+    AssessSourceFileQualityResult,
 )
 
-__all__ = ["AssessSourceFileQualityCommand", "AssessSourceFileQualityResult"]
+__all__ = [
+    "AssessSourceFileQualityCommand",
+    "AssessSourceFileQualityResult",
+    "CreateImageGeometryRecipeCommand",
+    "CreateImageGeometryRecipeResult",
+]

@@ -1304,3 +1304,108 @@ def image_quality_assessment_columns(o: ImageQualityAssessment) -> tuple[Any, ..
         o.effective_width,
         o.effective_height,
     )
+
+
+def geometry_point_to_dict(p: GeometryPoint) -> dict[str, int]:
+    return {"x": p.x, "y": p.y}
+
+
+def geometry_point_from_dict(value: Any) -> GeometryPoint:
+    d = _require_keys(value, {"x", "y"})
+    return GeometryPoint(_require_int(d["x"]), _require_int(d["y"]))
+
+
+def source_quadrilateral_to_dict(q: SourceQuadrilateral) -> dict[str, dict[str, int]]:
+    return {
+        "top_left": geometry_point_to_dict(q.top_left),
+        "top_right": geometry_point_to_dict(q.top_right),
+        "bottom_right": geometry_point_to_dict(q.bottom_right),
+        "bottom_left": geometry_point_to_dict(q.bottom_left),
+    }
+
+
+def source_quadrilateral_from_dict(value: Any) -> SourceQuadrilateral:
+    d = _require_keys(value, {"top_left", "top_right", "bottom_right", "bottom_left"})
+    return SourceQuadrilateral(
+        geometry_point_from_dict(d["top_left"]),
+        geometry_point_from_dict(d["top_right"]),
+        geometry_point_from_dict(d["bottom_right"]),
+        geometry_point_from_dict(d["bottom_left"]),
+    )
+
+
+def image_geometry_recipe_to_json(o: ImageGeometryRecipe) -> str:
+    return _json_dumps(
+        {
+            "recipe_version_id": str(o.recipe_version_id),
+            "source_file_id": str(o.source_file_id),
+            "superseded_recipe_version_id": _id(o.superseded_recipe_version_id),
+            "revision": o.revision,
+            "coordinate_space": o.coordinate_space.value,
+            "source_effective_width": o.source_effective_width,
+            "source_effective_height": o.source_effective_height,
+            "quarter_turn": int(o.quarter_turn),
+            "quadrilateral": source_quadrilateral_to_dict(o.quadrilateral),
+            "pipeline": {"pipeline_id": o.pipeline.pipeline_id, "version": o.pipeline.version},
+            "created_at": utc_iso(o.created_at),
+        }
+    )
+
+
+@persisted_data_boundary
+def image_geometry_recipe_from_json(payload: str) -> ImageGeometryRecipe:
+    d = _require_keys(
+        json.loads(payload),
+        {
+            "recipe_version_id",
+            "source_file_id",
+            "superseded_recipe_version_id",
+            "revision",
+            "coordinate_space",
+            "source_effective_width",
+            "source_effective_height",
+            "quarter_turn",
+            "quadrilateral",
+            "pipeline",
+            "created_at",
+        },
+    )
+    p = _require_keys(d["pipeline"], {"pipeline_id", "version"})
+    return ImageGeometryRecipe(
+        EntityId.parse(_require_str(d["recipe_version_id"])),
+        EntityId.parse(_require_str(d["source_file_id"])),
+        parse_id(d["superseded_recipe_version_id"]),
+        _require_int(d["revision"]),
+        GeometryCoordinateSpace(_require_str(d["coordinate_space"])),
+        _require_int(d["source_effective_width"]),
+        _require_int(d["source_effective_height"]),
+        GeometryQuarterTurn(_require_int(d["quarter_turn"])),
+        source_quadrilateral_from_dict(d["quadrilateral"]),
+        GeometryPipelineVersion(_require_str(p["pipeline_id"]), _require_int(p["version"])),
+        parse_datetime(_require_str(d["created_at"])),
+    )
+
+
+def image_geometry_recipe_columns(o: ImageGeometryRecipe) -> tuple[Any, ...]:
+    q = o.quadrilateral
+    return (
+        str(o.recipe_version_id),
+        str(o.source_file_id),
+        _id(o.superseded_recipe_version_id),
+        o.revision,
+        o.coordinate_space.value,
+        o.source_effective_width,
+        o.source_effective_height,
+        int(o.quarter_turn),
+        q.top_left.x,
+        q.top_left.y,
+        q.top_right.x,
+        q.top_right.y,
+        q.bottom_right.x,
+        q.bottom_right.y,
+        q.bottom_left.x,
+        q.bottom_left.y,
+        o.pipeline.pipeline_id,
+        o.pipeline.version,
+        utc_iso(o.created_at),
+    )
