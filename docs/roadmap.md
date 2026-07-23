@@ -46,15 +46,15 @@ PR #26 merged successfully on 2026-07-23: final reviewed head `cc79a80fcacdbde26
 - Automatic PR-009 quality-based document blocking: NOT ACTIVE.
 - Automatic PR-009 production RETAKE_REQUIRED enforcement: NOT ACTIVE.
 - RISK-PR009-NO-PRODUCTION-QUALITY-POLICY: OPEN AND ACCEPTED FOR THE PR-009 INFRASTRUCTURE AND HUMAN-ACCEPTANCE BOUNDARY.
-- ADR-024: PROPOSED. PR-010 CONTRACT: PROPOSED FOR HUMAN REVIEW.
-- PR-010 PRODUCTION IMPLEMENTATION: UNAUTHORIZED.
+- ADR-024: ACCEPTED. PR-010 CONTRACT: ACCEPTED.
+- PR-010 PRODUCTION IMPLEMENTATION: AUTHORIZED AND IN REVIEW; NOT HUMAN ACCEPTED.
 - PR-011 AND LATER: UNAUTHORIZED.
 - Gate 2: NOT ACCEPTED.
 - M3: IN PROGRESS.
 
 The physical Windows 11 smoke risk `RISK-PR008-W11-SMOKE` remains deferred to Windows installer, pilot or final release acceptance; no physical Windows 11 smoke is claimed.
 
-PR-009 is completed and human accepted after GitHub PR #24 merged on 2026-07-22 from reviewed head `72c01662031f73985f8715d6c3c87abf7aa5c4db` at merge commit `b491226878cabfc87c484f6a4d41bc2969851273`. Policy injection remains explicit, production composition must fail closed when no accepted policy is configured, and the residual limitation blocks production quality decisions rather than infrastructure acceptance. The next safe task is preparation of the exact PR-010 documentation contract; PR-010 production implementation and PR-011 and later remain unauthorized.
+PR-009 is completed and human accepted after GitHub PR #24 merged on 2026-07-22 from reviewed head `72c01662031f73985f8715d6c3c87abf7aa5c4db` at merge commit `b491226878cabfc87c484f6a4d41bc2969851273`. Policy injection remains explicit, production composition must fail closed when no accepted policy is configured, and the residual limitation blocks production quality decisions rather than infrastructure acceptance. The next safe task is review of the PR-010 production implementation; PR-010 remains authorized and in review, not human accepted, and PR-011 and later remain unauthorized.
 
 ## M4 — Manual end-to-end MVP
 
@@ -176,7 +176,7 @@ Automatic PR-009 quality-based document blocking: NOT ACTIVE.
 Automatic PR-009 production RETAKE_REQUIRED enforcement: NOT ACTIVE.
 RISK-PR009-NO-PRODUCTION-QUALITY-POLICY: OPEN AND ACCEPTED FOR THE PR-009 INFRASTRUCTURE AND HUMAN-ACCEPTANCE BOUNDARY.
 PR-010 CONTRACT DEFINITION: AUTHORIZED, NOT STARTED.
-PR-010 PRODUCTION IMPLEMENTATION: UNAUTHORIZED.
+PR-010 PRODUCTION IMPLEMENTATION: AUTHORIZED AND IN REVIEW; NOT HUMAN ACCEPTED.
 PR-011 AND LATER: UNAUTHORIZED.
 Gate 2: NOT ACCEPTED.
 M3: IN PROGRESS.

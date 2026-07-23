@@ -61,6 +61,7 @@ from document_intake.persistence.migrations.v0002_stored_artifacts import MIGRAT
 from document_intake.persistence.migrations.v0003_audit_events import MIGRATION as V0003
 from document_intake.persistence.migrations.v0004_source_file_import import MIGRATION as V0004
 from document_intake.persistence.migrations.v0005_image_quality import MIGRATION as V0005
+from document_intake.persistence.migrations.v0006_image_geometry import MIGRATION as V0006
 from document_intake.storage.filesystem import ImmutableFilesystemStorage
 
 _EXPECTED_MIGRATION_CHECKSUMS = (
@@ -69,6 +70,7 @@ _EXPECTED_MIGRATION_CHECKSUMS = (
     "e01d441c2572ca484cf5227d94f57a3cb62fa8e6e3e223eefc6852b81f6eb3c1",
     "a826d5bc07ba73e6d54fd25e9df8afb42028261040b7981bdd157caf26b1f7c6",
     "6d020d1acfbce3fcb7168e935617f2ae008a32bea7def1f37de84e36e9e2224f",
+    "ac9d5bfbe79160d880f30af6ee1ed645ab500b9be140a18b9d6498cc68eba5ec",
 )
 _FIXTURE = Path(__file__).parents[1] / "tests" / "fixtures" / "synthetic" / "pr008_color_grid.heic"
 _NOW = datetime(2026, 7, 20, 12, 0, tzinfo=UTC)
@@ -237,7 +239,7 @@ def _unsupported_code() -> str | None:
 
 
 def _render_status_lines(statuses: Mapping[str, bool]) -> tuple[str, ...]:
-    passed = CURRENT_SCHEMA_VERSION == 5 and all(statuses[name] for name in _CHECKS)
+    passed = CURRENT_SCHEMA_VERSION == 6 and all(statuses[name] for name in _CHECKS)
     return (
         f"PR008_VERIFY schema_version={CURRENT_SCHEMA_VERSION}",
         *(f"PR008_VERIFY {name}={'PASS' if statuses[name] else 'FAIL'}" for name in _CHECKS),
@@ -256,7 +258,7 @@ def _has_allowlisted_shape(lines: tuple[str, ...]) -> bool:
         return lines in tuple(
             (f"PR008_VERIFY result=INCONCLUSIVE code={code}",) for code in _INCONCLUSIVE_CODES
         ) or lines == ("PR008_VERIFY result=FAIL",)
-    if len(lines) != len(_CHECKS) + 2 or lines[0] != "PR008_VERIFY schema_version=5":
+    if len(lines) != len(_CHECKS) + 2 or lines[0] != "PR008_VERIFY schema_version=6":
         return False
     for name, line in zip(_CHECKS, lines[1:-1], strict=True):
         if line not in {f"PR008_VERIFY {name}=PASS", f"PR008_VERIFY {name}=FAIL"}:
@@ -355,9 +357,9 @@ def _migration_chain_valid(
     current_schema_version: int,
     migrations: tuple[Migration, ...],
 ) -> bool:
-    expected = (V0001, V0002, V0003, V0004, V0005)
+    expected = (V0001, V0002, V0003, V0004, V0005, V0006)
     return (
-        current_schema_version == 5
+        current_schema_version == 6
         and migrations == expected
         and tuple(migration.checksum for migration in migrations) == _EXPECTED_MIGRATION_CHECKSUMS
     )
@@ -818,7 +820,7 @@ def main() -> int:
     )
     lines = _render_status_lines(statuses)
     sys.stdout.write("\n".join(lines) + "\n")
-    passed = CURRENT_SCHEMA_VERSION == 5 and all(statuses.values())
+    passed = CURRENT_SCHEMA_VERSION == 6 and all(statuses.values())
     return 0 if passed else 1
 
 

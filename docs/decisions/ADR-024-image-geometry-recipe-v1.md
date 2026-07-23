@@ -1,6 +1,6 @@
 # ADR-024 — Deterministic image geometry recipe v1
 
-**Status:** PROPOSED
+**Status:** ACCEPTED
 **Date:** 2026-07-23
 
 ## Context
@@ -11,7 +11,7 @@ PR-009 remains COMPLETED AND HUMAN ACCEPTED WITH DOCUMENTED RESIDUAL LIMITATION.
 
 ## Decision
 
-ADR-024 is PROPOSED. It defines the exact deterministic image geometry recipe v1 contract for the documentation-only PR-010 contract proposal. PR-010 CONTRACT is PROPOSED FOR HUMAN REVIEW. PR-010 PRODUCTION IMPLEMENTATION is UNAUTHORIZED. PR-011 AND LATER are UNAUTHORIZED. Merging this contract proposal does not authorize implementation; a later explicit product-owner decision is required.
+ADR-024 is ACCEPTED by Product owner on 2026-07-23. It defines the exact deterministic image geometry recipe v1 contract accepted through merge commit `329dd5653a3faadd3c62387c1d900710f14b2f4e`. PR-010 CONTRACT is ACCEPTED. PR-010 PRODUCTION IMPLEMENTATION is AUTHORIZED AND IN REVIEW; NOT HUMAN ACCEPTED. PR-011 AND LATER are UNAUTHORIZED.
 
 ## Geometry scope
 
@@ -318,3 +318,8 @@ ADR-024 does not decide automatic document detection, automatic crop, automatic 
 ## Consequences
 
 PR-010 implementation must branch from the exact merge commit of the documentation-contract PR after it exists. This ADR introduces no production source files, migrations, dependency changes, CI workflow changes, UI behavior, runtime image transformation behavior, final JPEG publication, production quality-policy activation or PR-011/PR-012/PR-013 implementation.
+
+
+## PR-010 implementation review state
+
+Product owner accepted ADR-024 on 2026-07-23 and authorized production implementation in review from exact base `329dd5653a3faadd3c62387c1d900710f14b2f4e`. PR-011 and later remain UNAUTHORIZED. Gate 2 remains NOT ACCEPTED. M3 remains IN PROGRESS. Q-021 remains DEFERRED. Production PR-009 quality policy remains NOT ACTIVE.

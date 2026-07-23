@@ -1953,8 +1953,8 @@ def test_pr009_quality_contract_is_human_accepted_with_deferred_q021_policy() ->
             "Q-021: DEFERRED — NEGATIVE CALIBRATION EVIDENCE ACCEPTED; "
             "NO PRODUCTION POLICY SELECTED",
             "RISK-PR009-NO-PRODUCTION-QUALITY-POLICY",
-            "PR-010 CONTRACT: PROPOSED FOR HUMAN REVIEW",
-            "PR-010 PRODUCTION IMPLEMENTATION: UNAUTHORIZED",
+            "PR-010 CONTRACT: ACCEPTED",
+            "PR-010 PRODUCTION IMPLEMENTATION: AUTHORIZED AND IN REVIEW",
             "PR-011 AND LATER: UNAUTHORIZED",
             "Gate 2: NOT ACCEPTED",
             "M3: IN PROGRESS",
@@ -1982,7 +1982,7 @@ def test_pr009_quality_contract_is_human_accepted_with_deferred_q021_policy() ->
         "Production default PR-009 quality policy: ACTIVE",
         "PR-009: AWAITING HUMAN ACCEPTANCE",
         "PR-009: UNMERGED",
-        "PR-010 PRODUCTION IMPLEMENTATION: AUTHORIZED",
+        "PR-010 PRODUCTION IMPLEMENTATION: UNAUTHORIZED",
         "PR-010 PRODUCTION IMPLEMENTATION: STARTED",
     ):
         assert stale not in current_lifecycle_text, stale
@@ -1994,7 +1994,7 @@ def test_pr009_quality_contract_is_human_accepted_with_deferred_q021_policy() ->
         "Q-021: `DEFERRED — NEGATIVE CALIBRATION EVIDENCE ACCEPTED; NO PRODUCTION POLICY SELECTED`",
         "RISK-PR009-NO-PRODUCTION-QUALITY-POLICY",
         "PR-010 AND LATER: `UNAUTHORIZED`",
-        "PR-010 CONTRACT: PROPOSED FOR HUMAN REVIEW",
+        "PR-010 CONTRACT is PROPOSED FOR HUMAN REVIEW",
         "PR-010 PRODUCTION IMPLEMENTATION: UNAUTHORIZED",
         "PR-011 AND LATER: UNAUTHORIZED",
         "Gate 2: `NOT ACCEPTED`",
@@ -2407,18 +2407,17 @@ def test_current_pr009_lifecycle_sections_are_scoped_after_d4() -> None:
         assert required in current_q021, required
 
     for required in (
-        "ADR-024 is PROPOSED",
-        "PR-010 CONTRACT is PROPOSED FOR HUMAN REVIEW",
-        "PR-010 PRODUCTION IMPLEMENTATION is UNAUTHORIZED",
+        "ADR-024 is ACCEPTED",
+        "PR-010 CONTRACT is ACCEPTED",
+        "PR-010 PRODUCTION IMPLEMENTATION is AUTHORIZED AND IN REVIEW",
         "PR-011 AND LATER are UNAUTHORIZED",
         "Gate 2 is NOT ACCEPTED",
         "M3 is IN PROGRESS",
     ):
         assert required in current_pr010_traceability, required
 
-    assert (
-        "next authorized work is preparation of the exact PR-010 documentation contract only"
-        in (current_traceability)
+    assert "next authorized work is review of the PR-010 production implementation" in (
+        current_traceability
     )
     assert "real documents and personal data remain prohibited in Git, Codex and CI" in (
         current_traceability
@@ -2493,7 +2492,7 @@ def test_pr009_implementation_stage_has_production_contract_symbols() -> None:
         encoding="utf-8"
     )
 
-    assert "CURRENT_SCHEMA_VERSION = 5" in migrations
+    assert "CURRENT_SCHEMA_VERSION = 6" in migrations
     for required in (
         "QualityAssessmentErrorCode",
         "IMAGE_QUALITY_ASSESSED",
@@ -2565,9 +2564,9 @@ def test_pr010_contract_current_lifecycle_and_merge_evidence_are_section_scoped(
         "Automatic PR-009 quality-based document blocking: NOT ACTIVE",
         "Automatic PR-009 production RETAKE_REQUIRED enforcement: NOT ACTIVE",
         "RISK-PR009-NO-PRODUCTION-QUALITY-POLICY: OPEN AND ACCEPTED",
-        "ADR-024: PROPOSED",
-        "PR-010 CONTRACT: PROPOSED FOR HUMAN REVIEW",
-        "PR-010 PRODUCTION IMPLEMENTATION: UNAUTHORIZED",
+        "ADR-024: ACCEPTED",
+        "PR-010 CONTRACT: ACCEPTED",
+        "PR-010 PRODUCTION IMPLEMENTATION: AUTHORIZED AND IN REVIEW",
         "PR-011 AND LATER: UNAUTHORIZED",
         "Gate 2: NOT ACCEPTED",
         "M3: IN PROGRESS",
@@ -2578,7 +2577,7 @@ def test_pr010_contract_current_lifecycle_and_merge_evidence_are_section_scoped(
         "PR-009: IMPLEMENTED AND IN REVIEW",
         "Q-021: OPEN — REQUIRES PRODUCT-OWNER ACCEPTANCE",
         "Final PR-009 human acceptance: BLOCKED UNTIL Q-021 IS ACCEPTED",
-        "PR-010 PRODUCTION IMPLEMENTATION: AUTHORIZED",
+        "PR-010 PRODUCTION IMPLEMENTATION: UNAUTHORIZED",
         "Gate 2: ACCEPTED",
         "M3: COMPLETED",
     ):
@@ -2615,8 +2614,10 @@ def test_pr010_task_and_adr024_contract_terms_are_exact() -> None:
     task = task_path.read_text(encoding="utf-8")
     combined = adr + "\n" + task
 
-    assert "**Status:** PROPOSED" in adr
-    assert "**Status:** CONTRACT PROPOSED; PRODUCTION IMPLEMENTATION NOT AUTHORIZED" in task
+    assert "**Status:** ACCEPTED" in adr
+    assert (
+        "**Status:** CONTRACT ACCEPTED; PRODUCTION IMPLEMENTATION AUTHORIZED AND IN REVIEW" in task
+    )
     assert "## Exact PR-010 V1 contract completion" not in adr
     assert "## Exact contract completion addendum" not in task
 
@@ -2799,7 +2800,7 @@ def test_pr010_task_and_adr024_contract_terms_are_exact() -> None:
         "PR-010 does not publish a final JPEG",
         "PR-012",
         "PR-011",
-        "PRODUCTION IMPLEMENTATION is UNAUTHORIZED",
+        "PRODUCTION IMPLEMENTATION is AUTHORIZED AND IN REVIEW",
     ):
         assert required in combined, required
 

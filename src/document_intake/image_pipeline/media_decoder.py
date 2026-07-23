@@ -7,7 +7,11 @@ import io
 import warnings
 from typing import Any
 
-from document_intake.application.ports.media import DecodedMedia, DecodedQualityMedia
+from document_intake.application.ports.media import (
+    DecodedGeometryMedia,
+    DecodedMedia,
+    DecodedQualityMedia,
+)
 from document_intake.domain.enums import SourceImportErrorCode, SourceMediaType
 
 _HEIF_REGISTERED = False
@@ -64,6 +68,47 @@ def _orientation(value: object) -> int | None:
 
 
 class PillowMediaDecoder:
+    def decode_for_geometry(self, *, content: bytes) -> DecodedGeometryMedia:
+        try:
+            image_module, image_ops_module = _import_pillow()
+            _register_heif_opener()
+            with warnings.catch_warnings():
+                warnings.simplefilter("error", image_module.DecompressionBombWarning)
+                with image_module.open(io.BytesIO(content)) as image:
+                    image.seek(0)
+                    media_type = _media_type(image.format)
+                    encoded_width, encoded_height = image.size
+                    exif_orientation = _orientation(image.getexif().get(274))
+                    primary = image.copy()
+                    primary.load()
+            working = image_ops_module.exif_transpose(primary)
+            bands = working.getbands()
+            if (
+                "A" in bands
+                or working.mode in {"RGBA", "LA", "PA"}
+                or "transparency" in working.info
+            ):
+                rgba = working.convert("RGBA")
+                background = image_module.new("RGBA", rgba.size, (255, 255, 255, 255))
+                background.alpha_composite(rgba)
+                rgb = background.convert("RGB")
+            else:
+                rgb = working.convert("RGB")
+            effective_width, effective_height = rgb.size
+            return DecodedGeometryMedia(
+                media_type,
+                encoded_width,
+                encoded_height,
+                exif_orientation,
+                effective_width,
+                effective_height,
+                rgb.tobytes(),
+            )
+        except MediaDecodeError:
+            raise
+        except Exception:
+            raise MediaDecodeError(SourceImportErrorCode.DECODE_FAILED) from None
+
     def decode_for_quality(self, *, content: bytes) -> DecodedQualityMedia:
         try:
             image_module, image_ops_module = _import_pillow()

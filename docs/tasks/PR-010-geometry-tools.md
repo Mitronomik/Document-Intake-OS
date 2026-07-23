@@ -1,22 +1,22 @@
 # PR-010 — Geometry Tools Contract
 
-**Status:** CONTRACT PROPOSED; PRODUCTION IMPLEMENTATION NOT AUTHORIZED
+**Status:** CONTRACT ACCEPTED; PRODUCTION IMPLEMENTATION AUTHORIZED AND IN REVIEW
 
 ## 1. Status and lifecycle boundary
 
 PR #26 is merged successfully. Final reviewed head: `cc79a80fcacdbde2667cae858815b30176f87555`. Merge commit: `f27647e8cdfb2f8d3e5bb13478a4df50987ca1cb`. Merge date: `2026-07-23`. Exact-head CI: `CI #129`, run ID `29972502518`, conclusion `success`. PR-009 lifecycle documentation and test corrections delivered through PR #26 are completed and human accepted.
 
-ADR-024 is PROPOSED. PR-010 CONTRACT is PROPOSED FOR HUMAN REVIEW. PR-010 PRODUCTION IMPLEMENTATION is UNAUTHORIZED. PR-011 AND LATER are UNAUTHORIZED. Gate 2 is NOT ACCEPTED. M3 is IN PROGRESS. Q-021 remains DEFERRED — NEGATIVE CALIBRATION EVIDENCE ACCEPTED; NO PRODUCTION POLICY SELECTED. No production PR-009 quality policy is active; production `policy_id` and `policy_version` are NOT ASSIGNED; automatic PR-009 quality-based document blocking and production `RETAKE_REQUIRED` enforcement are NOT ACTIVE.
+ADR-024 is ACCEPTED by Product owner on 2026-07-23. PR-010 CONTRACT is ACCEPTED. PR-010 PRODUCTION IMPLEMENTATION is AUTHORIZED AND IN REVIEW; NOT HUMAN ACCEPTED. PR-011 AND LATER are UNAUTHORIZED. Gate 2 is NOT ACCEPTED. M3 is IN PROGRESS. Q-021 remains DEFERRED — NEGATIVE CALIBRATION EVIDENCE ACCEPTED; NO PRODUCTION POLICY SELECTED. No production PR-009 quality policy is active; production `policy_id` and `policy_version` are NOT ASSIGNED; automatic PR-009 quality-based document blocking and production `RETAKE_REQUIRED` enforcement are NOT ACTIVE.
 
 ## 2. Verified implementation base rule
 
-This documentation-contract PR is based on `f27647e8cdfb2f8d3e5bb13478a4df50987ca1cb`.
+The historical documentation-contract PR was based on `f27647e8cdfb2f8d3e5bb13478a4df50987ca1cb`.
 
-Future PR-010 production implementation must branch from the exact merge commit of this documentation-contract PR. Placeholder: `PR-010 implementation base = <FILL ONLY AFTER THIS CONTRACT PR MERGE COMMIT EXISTS>`. Do not invent this SHA before merge.
+The current PR-010 production implementation is based on accepted contract merge commit `329dd5653a3faadd3c62387c1d900710f14b2f4e`. This implementation is in review, not completed and not human accepted.
 
 ## 3. Goal
 
-Define an implementation-ready, deterministic, non-UI geometry recipe contract for one manually selected document area from one immutable source file, without implementing production code in this PR.
+Implement the accepted deterministic, non-UI geometry recipe contract for one manually selected document area from one immutable source file. PR-010 does not publish a final JPEG.
 
 ## 4. Exact scope
 
@@ -335,15 +335,15 @@ The future verifier and tests must use generated synthetic raster data only. No 
 
 ## 23. Manual verification
 
-Future local manual verification uses a generated synthetic image only. It verifies visible corner mapping, crop boundaries, perspective rectification, clockwise rotation, output dimensions, unchanged original checksum, no original overwrite, recipe persistence, audit insertion, deterministic rerun and controlled invalid-geometry failure. Manual verification in this contract PR is documentation only; no real-photo or Windows 11 pilot occurred.
+Local manual verification uses a generated synthetic image only. It verifies visible corner mapping, crop boundaries, perspective rectification, clockwise rotation, output dimensions, unchanged original checksum, no original overwrite, recipe persistence, audit insertion, deterministic rerun and controlled invalid-geometry failure. No real-photo or Windows 11 pilot acceptance is part of PR-010.
 
 ## 24. Acceptance criteria
 
-Accept only when coordinate space is unambiguous; EXIF is applied exactly once; originals remain immutable; transformation order is fixed; recipe versions are append-only; persistence and audit are atomic; PR-010 does not publish a final JPEG is produced; PR-011, PR-012 and PR-013 boundaries are preserved; PR-010 production implementation remains unauthorized; documentation tests and repository policy pass; no production code, real documents or personal data are added.
+Accept this implementation review only when coordinate space is unambiguous; EXIF is applied exactly once; originals remain immutable; transformation order is fixed; recipe versions are append-only; persistence and audit are atomic; PR-010 does not encode, persist or publish a final prepared JPEG; PR-011, PR-012 and PR-013 boundaries are preserved; implementation remains in review, not completed and not human accepted; documentation tests, repository policy and production tests pass; no production code outside PR-010 geometry scope, real documents or personal data are added.
 
 ## 25. Non-goals
 
-No production code in this PR; no UI; no drag handles; no batch UI; no automatic boundary detection; no automatic perspective detection; no automatic deskew; no automatic crop; no multiple document regions; no document count; no image classification; no final prepared artifact publication; no JPEG encoding; no compression; no 1.90 MiB enforcement; no readability acceptance; no front/back merging; no terminal rules; no Excel; no OCR; no cloud APIs; no telemetry; no real documents; no production quality-policy activation; no Q-021 resolution; no PR-011 or later implementation.
+No production code outside PR-010 geometry scope; no UI; no drag handles; no batch UI; no automatic boundary detection; no automatic perspective detection; no automatic deskew; no automatic crop; no multiple document regions; no document count; no image classification; no final prepared artifact publication; no JPEG encoding; no compression; no 1.90 MiB enforcement; no readability acceptance; no front/back merging; no terminal rules; no Excel; no OCR; no cloud APIs; no telemetry; no real documents; no production quality-policy activation; no Q-021 resolution; no PR-011 or later implementation.
 
 ## 26. Security and privacy prohibitions
 
@@ -351,4 +351,9 @@ Do not log complete identity numbers, phones, addresses, OCR payloads, MRZ, file
 
 ## 27. Future implementation authorization boundary
 
-This contract does not authorize production implementation. Merging this PR only records a proposed contract for human review. PR-010 production implementation may be authorized only by a separate explicit product-owner decision after this contract is reviewed and merged. PR-011 AND LATER remain UNAUTHORIZED.
+The historical documentation-contract PR recorded the PR-010 geometry contract and did not itself authorize production implementation. The Product owner later accepted ADR-024 and the PR-010 contract on 2026-07-23, then explicitly authorized PR-010 production implementation from base `329dd5653a3faadd3c62387c1d900710f14b2f4e`. The current implementation remains AUTHORIZED AND IN REVIEW; NOT HUMAN ACCEPTED. PR-011 AND LATER remain UNAUTHORIZED.
+
+
+## PR-010 implementation review state
+
+Product owner accepted ADR-024 on 2026-07-23 and authorized production implementation in review from exact base `329dd5653a3faadd3c62387c1d900710f14b2f4e`. PR-011 and later remain UNAUTHORIZED. Gate 2 remains NOT ACCEPTED. M3 remains IN PROGRESS. Q-021 remains DEFERRED. Production PR-009 quality policy remains NOT ACTIVE.
