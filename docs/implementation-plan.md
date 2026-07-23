@@ -8,7 +8,7 @@
 - ADR-015 created a narrow exception for PR-001 through PR-003 repository-safety work while M0 remained open;
 - PR-003 is completed and merged through GitHub PR #4 at `ad5782045473d3ef5eb0a097cc8f6982bab821c7`;
 - M1 Safe Repository is accepted;
-- GATE-M0 and M0 are accepted; PR-004 is completed and human accepted; GATE-S1 is completed and human accepted; ADR-018 is accepted; PR #9 merged PR-S001 as a research harness; PR-S001 is ACCEPTED WITH DOCUMENTED RESIDUAL RISK RISK-S001-W11; PR-005 is COMPLETED AND HUMAN ACCEPTED through GitHub PR #15 at merge commit `2161fbbf7fb4065a5913fb6e62c207546caf5dd9`; PR-006 and PR-007 are COMPLETED AND HUMAN ACCEPTED; PR-008 is COMPLETED AND HUMAN ACCEPTED WITH DOCUMENTED RESIDUAL RISK; ADR-023 is ACCEPTED; PR-009 is IMPLEMENTED AND READY FOR HUMAN ACCEPTANCE WITH DOCUMENTED RESIDUAL LIMITATION; Q-021 is DEFERRED — NEGATIVE CALIBRATION EVIDENCE ACCEPTED, NO PRODUCTION POLICY SELECTED; no production default quality policy is active; RISK-PR009-NO-PRODUCTION-QUALITY-POLICY is open and accepted for the PR-009 infrastructure merge boundary; PR-010 and later tasks remain UNAUTHORIZED; Gate 2 is NOT ACCEPTED; M3 is IN PROGRESS;
+- GATE-M0 and M0 are accepted; PR-004 is completed and human accepted; GATE-S1 is completed and human accepted; ADR-018 is accepted; PR #9 merged PR-S001 as a research harness; PR-S001 is ACCEPTED WITH DOCUMENTED RESIDUAL RISK RISK-S001-W11; PR-005 is COMPLETED AND HUMAN ACCEPTED through GitHub PR #15 at merge commit `2161fbbf7fb4065a5913fb6e62c207546caf5dd9`; PR-006 and PR-007 are COMPLETED AND HUMAN ACCEPTED; PR-008 is COMPLETED AND HUMAN ACCEPTED WITH DOCUMENTED RESIDUAL RISK; ADR-023 is ACCEPTED; PR-009 is COMPLETED AND HUMAN ACCEPTED WITH DOCUMENTED RESIDUAL LIMITATION; Q-021 is DEFERRED — NEGATIVE CALIBRATION EVIDENCE ACCEPTED, NO PRODUCTION POLICY SELECTED; no production default quality policy is active; production policy_id is NOT ASSIGNED; production policy_version is NOT ASSIGNED; automatic quality-based document blocking is NOT ACTIVE; automatic production RETAKE_REQUIRED enforcement is NOT ACTIVE; RISK-PR009-NO-PRODUCTION-QUALITY-POLICY is open and accepted for the PR-009 infrastructure and human-acceptance boundary; PR-010 contract definition is AUTHORIZED, NOT STARTED; PR-010 production implementation and PR-011 and later remain UNAUTHORIZED; Gate 2 is NOT ACCEPTED; M3 is IN PROGRESS;
 - реальные документы не используются в Codex Web;
 - OCR начинается только после готовности ручного контура.
 
@@ -90,7 +90,7 @@ JPG/PNG/HEIC, metadata, SHA-256 and perceptual duplicate warning.
 
 ### PR-009 — Orientation and quality assessment
 
-Status: IMPLEMENTED AND READY FOR HUMAN ACCEPTANCE WITH DOCUMENTED RESIDUAL LIMITATION. Q-021 is deferred after accepted negative calibration evidence, no production default quality policy is active, and `RISK-PR009-NO-PRODUCTION-QUALITY-POLICY` blocks production activation rather than infrastructure acceptance or merge.
+Status: COMPLETED AND HUMAN ACCEPTED WITH DOCUMENTED RESIDUAL LIMITATION. Q-021 is deferred after accepted negative calibration evidence, no production default quality policy is active, production policy_id and policy_version are not assigned, automatic quality-based blocking and production RETAKE_REQUIRED enforcement are inactive, and `RISK-PR009-NO-PRODUCTION-QUALITY-POLICY` is open and accepted for the PR-009 infrastructure and human-acceptance boundary. PR-010 contract definition is authorized, not started; PR-010 production implementation and PR-011 and later remain unauthorized.
 
 EXIF, dimensions, blur/glare/contrast diagnostics.
 
@@ -291,3 +291,25 @@ Gate 2: NOT ACCEPTED.
 M3: IN PROGRESS.
 
 PR-009 infrastructure may proceed to human acceptance and merge under the residual limitation without activating a production default policy. Human acceptance and merge remain pending. PR-010 and later require a separate post-merge product-owner decision.
+## PR-009 human acceptance lifecycle state — 2026-07-22
+
+PR-009: COMPLETED AND HUMAN ACCEPTED WITH DOCUMENTED RESIDUAL LIMITATION.
+Q-021: DEFERRED — NEGATIVE CALIBRATION EVIDENCE ACCEPTED; NO PRODUCTION POLICY SELECTED.
+Production default PR-009 quality policy: NOT ACTIVE.
+Production policy_id: NOT ASSIGNED.
+Production policy_version: NOT ASSIGNED.
+Automatic PR-009 quality-based document blocking: NOT ACTIVE.
+Automatic PR-009 production RETAKE_REQUIRED enforcement: NOT ACTIVE.
+RISK-PR009-NO-PRODUCTION-QUALITY-POLICY: OPEN AND ACCEPTED FOR THE PR-009 INFRASTRUCTURE AND HUMAN-ACCEPTANCE BOUNDARY.
+PR-010 CONTRACT DEFINITION: AUTHORIZED, NOT STARTED.
+PR-010 PRODUCTION IMPLEMENTATION: UNAUTHORIZED.
+PR-011 AND LATER: UNAUTHORIZED.
+Gate 2: NOT ACCEPTED.
+M3: IN PROGRESS.
+
+GitHub PR: #24.
+Final reviewed head: `72c01662031f73985f8715d6c3c87abf7aa5c4db`.
+Merge commit: `b491226878cabfc87c484f6a4d41bc2969851273`.
+Merge date: 2026-07-22.
+
+This current PR-009-D4-backed section supersedes earlier historical lifecycle snapshots for current status only. It does not rewrite those historical records and does not authorize PR-010 production implementation or PR-011 and later work. FR-04 remains incomplete because geometry, document regions and later image-preparation work remain future scope.
