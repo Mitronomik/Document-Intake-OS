@@ -2590,6 +2590,22 @@ def test_pr010_contract_current_lifecycle_and_merge_evidence_are_section_scoped(
     assert "PR-010 AND LATER: UNAUTHORIZED" in historical
 
 
+def _assert_ordered_markers(section: str) -> None:
+    markers = (
+        "Validate the caller-supplied command",
+        "Decode the full-resolution RGB source",
+        "Render the internal RGB raster",
+        "Construct the immutable `ImageGeometryRecipe`",
+        "uow.image_geometry_recipes.add",
+        "uow.audit_events.add",
+        "uow.commit()",
+        "return `CreateImageGeometryRecipeResult`",
+    )
+    indexes = [section.index(marker) for marker in markers]
+    assert indexes == sorted(indexes), markers
+    assert section.index("uow.commit()") < section.index("return `CreateImageGeometryRecipeResult`")
+
+
 def test_pr010_task_and_adr024_contract_terms_are_exact() -> None:
     adr_path = REPO_ROOT / "docs/decisions/ADR-024-image-geometry-recipe-v1.md"
     task_path = REPO_ROOT / "docs/tasks/PR-010-geometry-tools.md"
@@ -2601,6 +2617,66 @@ def test_pr010_task_and_adr024_contract_terms_are_exact() -> None:
 
     assert "**Status:** PROPOSED" in adr
     assert "**Status:** CONTRACT PROPOSED; PRODUCTION IMPLEMENTATION NOT AUTHORIZED" in task
+    assert "## Exact PR-010 V1 contract completion" not in adr
+    assert "## Exact contract completion addendum" not in task
+
+    adr_order = _section(adr, "## Exact operation order")
+    task_order = _section(task, "## 12. Exact transformation order")
+    _assert_ordered_markers(adr_order)
+    _assert_ordered_markers(task_order)
+    assert "No application result is constructed or returned before" in adr_order
+    assert "No application result is constructed or returned before" in task_order
+
+    adr_coord = _section(adr, "## Coordinate space")
+    task_coord = _section(task, "## 7. Exact coordinate system")
+    for section in (adr_coord, task_coord):
+        for required in (
+            "integer pixel-edge coordinates",
+            "outer top-left boundary",
+            "0 <= x <= source_effective_width",
+            "0 <= y <= source_effective_height",
+            "outer bottom-right boundary",
+            "not a pixel center",
+            "full-frame quadrilateral",
+            "Preview coordinates must be converted before command construction",
+            "EXIF is applied exactly once",
+        ):
+            assert required in section, required
+        for forbidden in (
+            "top-left pixel of that effective grid",
+            "top-left of the effective pixel grid",
+        ):
+            assert forbidden not in section, forbidden
+
+    primary_sections = "\n".join(
+        (
+            _section(adr, "## Recipe immutability"),
+            _section(adr, "## Coordinate space"),
+            _section(adr, "## Manual crop representation"),
+            _section(adr, "## Output dimensions"),
+            _section(adr, "## Rendering boundary"),
+            _section(adr, "## Determinism"),
+            _section(adr, "## Persistence boundary"),
+            _section(adr, "## Service and transaction boundary"),
+            _section(adr, "## Audit boundary"),
+            _section(adr, "## Controlled errors"),
+            _section(task, "## 7. Exact coordinate system"),
+            _section(task, "## 8. Exact geometry recipe domain contract"),
+            _section(task, "## 9. Exact decoder and renderer port contracts"),
+            _section(task, "## 10. Exact application command and result DTO contracts"),
+            _section(task, "## 11. Exact service contract"),
+            _section(task, "## 12. Exact transformation order"),
+            _section(task, "## 13. Exact validation rules"),
+            _section(task, "## 14. Exact output-dimension derivation"),
+            _section(task, "## 15. Exact persistence contract"),
+            _section(task, "## 16. Proposed migration v0006 contract"),
+            _section(task, "## 17. Unit of Work and atomicity"),
+            _section(task, "## 18. Audit-event contract"),
+            _section(task, "## 19. Controlled error contract"),
+            _section(task, "## 20. Expected future implementation files"),
+        )
+    )
+
     for heading in (
         "## 1. Status and lifecycle boundary",
         "## 2. Verified implementation base rule",
@@ -2633,44 +2709,6 @@ def test_pr010_task_and_adr024_contract_terms_are_exact() -> None:
         assert heading in task, heading
 
     for required in (
-        "SOURCE_EFFECTIVE_PIXELS_V1",
-        "EXIF orientation exactly once",
-        "Original bytes",
-        "immutable",
-        "top_left`, `top_right`, `bottom_right`, `bottom_left`",
-        "append-only recipe version",
-        "v0006_image_geometry",
-        "one Unit of Work",
-        "PR-010 does not publish a final JPEG",
-        "PR-012",
-        "PR-011",
-        "PRODUCTION IMPLEMENTATION is UNAUTHORIZED",
-    ):
-        assert required in combined, required
-
-    for forbidden in (
-        "OpenCV",
-        "cloud libraries",
-        "network calls",
-        "caller-supplied arbitrary output dimensions",
-        "multiple-region workflow in PR-010",
-        "Merging this PR only records a proposed contract for human review. "
-        "PR-010 production implementation may be authorized only by a separate "
-        "explicit product-owner decision",
-    ):
-        assert forbidden in combined, forbidden
-
-
-def test_pr010_exact_symbols_and_no_vague_contract_phrases() -> None:
-    adr = (REPO_ROOT / "docs/decisions/ADR-024-image-geometry-recipe-v1.md").read_text(
-        encoding="utf-8"
-    )
-    task = (REPO_ROOT / "docs/tasks/PR-010-geometry-tools.md").read_text(encoding="utf-8")
-    adr_exact = _section(adr, "## Exact PR-010 V1 contract completion")
-    task_exact = _section(task, "## Exact contract completion addendum")
-    combined = adr_exact + "\n" + task_exact
-
-    for required in (
         "GeometryCoordinateSpace",
         'SOURCE_EFFECTIVE_PIXELS_V1 = "SOURCE_EFFECTIVE_PIXELS_V1"',
         "GeometryQuarterTurn",
@@ -2700,7 +2738,7 @@ def test_pr010_exact_symbols_and_no_vague_contract_phrases() -> None:
         'COMMIT_FAILED = "COMMIT_FAILED"',
         "pipeline_id = PILLOW_QUAD_BICUBIC",
         "pipeline_version = 1",
-        "locked Pillow version = 12.3.0",
+        "locked Pillow version is `12.3.0`",
         "GeometryPipelineVersion",
         "GeometryPoint",
         "SourceQuadrilateral",
@@ -2735,8 +2773,6 @@ def test_pr010_exact_symbols_and_no_vague_contract_phrases() -> None:
         "renderer: GeometryRendererPort",
         "storage: StoragePort",
         "unit_of_work_factory: UnitOfWorkFactory",
-        "0 <= x <= source_effective_width",
-        "0 <= y <= source_effective_height",
         "signed_twice_area",
         "signed_twice_area >= 8",
         "strictly positive",
@@ -2747,27 +2783,33 @@ def test_pr010_exact_symbols_and_no_vague_contract_phrases() -> None:
         "fill=1",
         "fillcolor=(255, 255, 255)",
         "upper-left, lower-left, lower-right, upper-right",
+        "TL, BL, BR, TR",
         "quad_data = (",
         "Image.Transpose.ROTATE_270",
         "Image.Transpose.ROTATE_180",
         "Image.Transpose.ROTATE_90",
         "AuditAction.IMAGE_GEOMETRY_RECIPE_CREATED",
         "AuditSubjectType.IMAGE_GEOMETRY_RECIPE",
-        "only then construct and return `CreateImageGeometryRecipeResult`",
-        "no result",
-        "revision 1 and superseded ID `None`",
-        "latest revision + 1",
         "RGB bytes",
         "no encoded JPEG",
-        "PR-010 PRODUCTION IMPLEMENTATION is UNAUTHORIZED",
+    ):
+        assert required in primary_sections, required
+
+    for required in (
+        "PR-010 does not publish a final JPEG",
+        "PR-012",
+        "PR-011",
+        "PRODUCTION IMPLEMENTATION is UNAUTHORIZED",
     ):
         assert required in combined, required
 
     for vague in (
+        "Return internal geometry-render result",
+        "returns an internal geometry-render result",
         "must define the exact Pillow transform mode",
         "must define the resampling mode",
         "or an equivalently controlled accepted action",
         "expected new files may include",
-        "returns an internal geometry-render result",
     ):
-        assert vague not in adr + "\n" + task, vague
+        assert vague not in combined, vague
+    assert "return" not in combined.lower().split("commit", maxsplit=1)[0]
