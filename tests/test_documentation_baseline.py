@@ -2350,6 +2350,70 @@ def test_pr009_quality_contract_is_human_accepted_with_deferred_q021_policy() ->
         assert forbidden not in adr + task, forbidden
 
 
+def test_current_pr009_lifecycle_sections_are_scoped_after_d4() -> None:
+    traceability = (REPO_ROOT / "docs/traceability-matrix.md").read_text(encoding="utf-8")
+    current_traceability = _adr_section(traceability, "## Current lifecycle state")
+    questions = (REPO_ROOT / "docs/open-questions.md").read_text(encoding="utf-8")
+    q021 = _question_section(questions, "Q-021")
+    current_q021 = _adr_section(questions, "## PR-009-D4 current lifecycle update — 2026-07-22")
+
+    for current_section in (current_traceability, q021, current_q021):
+        for required in (
+            "Q-021: DEFERRED — NEGATIVE CALIBRATION EVIDENCE ACCEPTED; "
+            "NO PRODUCTION POLICY SELECTED",
+            "Production policy_id: NOT ASSIGNED",
+            "Production policy_version: NOT ASSIGNED",
+            "Automatic PR-009 quality-based document blocking: NOT ACTIVE",
+            "Automatic PR-009 production RETAKE_REQUIRED enforcement: NOT ACTIVE",
+            "RISK-PR009-NO-PRODUCTION-QUALITY-POLICY",
+            "PR-010 CONTRACT DEFINITION: AUTHORIZED, NOT STARTED",
+            "PR-010 PRODUCTION IMPLEMENTATION: UNAUTHORIZED",
+            "PR-011 AND LATER: UNAUTHORIZED",
+        ):
+            assert required in current_section, required
+
+    assert (
+        "PR-009: COMPLETED AND HUMAN ACCEPTED WITH DOCUMENTED RESIDUAL LIMITATION"
+        in current_traceability
+    )
+    assert (
+        "RISK-PR009-NO-PRODUCTION-QUALITY-POLICY: OPEN AND ACCEPTED FOR THE "
+        "PR-009 INFRASTRUCTURE AND HUMAN-ACCEPTANCE BOUNDARY"
+    ) in current_traceability
+    assert "Gate 2: NOT ACCEPTED" in current_traceability
+    assert "M3: IN PROGRESS" in current_traceability
+    assert (
+        "next authorized work is preparation of the exact PR-010 documentation contract only"
+        in (current_traceability)
+    )
+    assert "real documents and personal data remain prohibited in Git, Codex and CI" in (
+        current_traceability
+    )
+
+    assert "**Status:** DEFERRED" in q021
+    assert "infrastructure and human-acceptance boundary" in q021
+    for required in (
+        "selection or activation of a production default quality policy",
+        "assignment of production `policy_id`",
+        "assignment of production `policy_version`",
+        "automatic quality-based blocking",
+        "automatic production `RETAKE_REQUIRED` enforcement",
+        "claim that PR-009 thresholds are calibrated for production",
+    ):
+        assert required in q021, required
+
+    for filename in ("docs/traceability-matrix.md", "docs/open-questions.md"):
+        historical = _adr_section(
+            (REPO_ROOT / filename).read_text(encoding="utf-8"),
+            "## PR-009 calibration lifecycle update — 2026-07-22",
+        )
+        assert "IMPLEMENTED AND READY FOR HUMAN ACCEPTANCE" in historical, filename
+        assert "PR-010 AND LATER: UNAUTHORIZED" in historical, filename
+        assert "PR-010 CONTRACT DEFINITION: AUTHORIZED" not in historical, filename
+        assert "COMPLETED AND HUMAN ACCEPTED" not in historical, filename
+        assert "INFRASTRUCTURE AND HUMAN-ACCEPTANCE BOUNDARY" not in historical, filename
+
+
 def test_pr009_implementation_stage_has_production_contract_symbols() -> None:
     production_files = (
         "src/document_intake/domain/image_quality.py",

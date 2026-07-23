@@ -261,7 +261,7 @@ Q-017: `DEFERRED`. PR-006 storage remains backup-neutral. Q-017 remains assigned
 **Aggregate observations:** Maximum listed validation exact was `0.411765`. Candidates with zero calibration missed RETAKE still had at least one validation missed RETAKE and between six and nine validation false RETAKE results. UNDEREXPOSED recall was zero for all listed candidate roles; BLUR_DETECTED and OVEREXPOSED were more promising; GLARE_DETECTED, LOW_CONTRAST and LOW_RESOLUTION remained insufficiently reliable.
 **Reason for deferral:** The V1 metrics and searched policies were not sufficiently reliable on the local validation set, so no production default may be activated. Future resolution requires a separate versioned metric-separability improvement, local recalibration and explicit product-owner acceptance. V1 formulas and persisted algorithm identities must not be changed silently.
 **Current gate impact:** PR-009 was later completed and human accepted through PR-009-D4 after GitHub PR #24 merged on 2026-07-22 from reviewed head `72c01662031f73985f8715d6c3c87abf7aa5c4db` at merge commit `b491226878cabfc87c484f6a4d41bc2969851273`. Q-021 no longer blocks human acceptance or merge of the explicit-policy PR-009 infrastructure. It continues to block selection or activation of a production default quality policy, assignment of production `policy_id`, assignment of production `policy_version`, automatic quality-based blocking, automatic production `RETAKE_REQUIRED` enforcement and any claim that PR-009 thresholds are calibrated for production.
-**Residual limitation:** `RISK-PR009-NO-PRODUCTION-QUALITY-POLICY` is open and accepted for the PR-009 infrastructure merge boundary. Production composition must fail closed when no accepted policy is configured, and no document may be automatically rejected, deleted, suppressed or blocked using an unaccepted PR-009 policy. Explicit synthetic policies remain allowed in tests and verifiers.
+**Residual limitation:** `RISK-PR009-NO-PRODUCTION-QUALITY-POLICY` is open and accepted for the PR-009 infrastructure and human-acceptance boundary. Production composition must fail closed when no accepted policy is configured, and no document may be automatically rejected, deleted, suppressed or blocked using an unaccepted PR-009 policy. Explicit synthetic policies remain allowed in tests and verifiers.
 **Placeholder rule:** Do not silently select final production thresholds or use real-document fixtures.
 **MPO compatibility clarification:** The 2026-07-22 product-owner decision accepts Pillow-detected MPO as JPEG with only primary frame 0 decoded, immutable original bytes and ignored secondary frames. It resolves only a JPEG input-compatibility gap and does not accept any Q-021 threshold, severity mapping, policy activation or final PR-009 human acceptance.
 
@@ -278,6 +278,24 @@ Gate 2: NOT ACCEPTED.
 M3: IN PROGRESS.
 
 Human acceptance and merge remain separate product-owner actions after review and exact-head CI. PR-010 and later remain unauthorized until a separate post-merge product-owner decision.
+
+## PR-009-D4 current lifecycle update — 2026-07-22
+
+PR-009: COMPLETED AND HUMAN ACCEPTED WITH DOCUMENTED RESIDUAL LIMITATION.
+Q-021: DEFERRED — NEGATIVE CALIBRATION EVIDENCE ACCEPTED; NO PRODUCTION POLICY SELECTED.
+Production default PR-009 quality policy: NOT ACTIVE.
+Production policy_id: NOT ASSIGNED.
+Production policy_version: NOT ASSIGNED.
+Automatic PR-009 quality-based document blocking: NOT ACTIVE.
+Automatic PR-009 production RETAKE_REQUIRED enforcement: NOT ACTIVE.
+RISK-PR009-NO-PRODUCTION-QUALITY-POLICY: OPEN AND ACCEPTED FOR THE PR-009 INFRASTRUCTURE AND HUMAN-ACCEPTANCE BOUNDARY.
+PR-010 CONTRACT DEFINITION: AUTHORIZED, NOT STARTED.
+PR-010 PRODUCTION IMPLEMENTATION: UNAUTHORIZED.
+PR-011 AND LATER: UNAUTHORIZED.
+Gate 2: NOT ACCEPTED.
+M3: IN PROGRESS.
+
+This later PR-009-D4-backed current section supersedes the historical calibration section for current status only. It does not authorize PR-010 production implementation or PR-011 and later work.
 ## PR-009 human acceptance lifecycle state — 2026-07-22
 
 PR-009: COMPLETED AND HUMAN ACCEPTED WITH DOCUMENTED RESIDUAL LIMITATION.
