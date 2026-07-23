@@ -35,6 +35,8 @@ class CreateImageGeometryRecipeCommand:
         for n in ("recipe_version_id", "source_file_id", "audit_event_id", "correlation_id"):
             if not isinstance(getattr(self, n), EntityId):
                 raise InvalidValueError(f"create_image_geometry_recipe_command.{n}: invalid_type")
+        if self.recipe_version_id == self.audit_event_id:
+            raise InvalidValueError("create_image_geometry_recipe_command.ids: not_distinct")
         if self.superseded_recipe_version_id is not None and not isinstance(
             self.superseded_recipe_version_id, EntityId
         ):

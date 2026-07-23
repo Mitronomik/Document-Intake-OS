@@ -6,17 +6,17 @@
 
 PR #26 is merged successfully. Final reviewed head: `cc79a80fcacdbde2667cae858815b30176f87555`. Merge commit: `f27647e8cdfb2f8d3e5bb13478a4df50987ca1cb`. Merge date: `2026-07-23`. Exact-head CI: `CI #129`, run ID `29972502518`, conclusion `success`. PR-009 lifecycle documentation and test corrections delivered through PR #26 are completed and human accepted.
 
-ADR-024 is PROPOSED. PR-010 CONTRACT is PROPOSED FOR HUMAN REVIEW. PR-010 PRODUCTION IMPLEMENTATION is AUTHORIZED AND IN REVIEW. PR-011 AND LATER are UNAUTHORIZED. Gate 2 is NOT ACCEPTED. M3 is IN PROGRESS. Q-021 remains DEFERRED — NEGATIVE CALIBRATION EVIDENCE ACCEPTED; NO PRODUCTION POLICY SELECTED. No production PR-009 quality policy is active; production `policy_id` and `policy_version` are NOT ASSIGNED; automatic PR-009 quality-based document blocking and production `RETAKE_REQUIRED` enforcement are NOT ACTIVE.
+ADR-024 is ACCEPTED by Product owner on 2026-07-23. PR-010 CONTRACT is ACCEPTED. PR-010 PRODUCTION IMPLEMENTATION is AUTHORIZED AND IN REVIEW; NOT HUMAN ACCEPTED. PR-011 AND LATER are UNAUTHORIZED. Gate 2 is NOT ACCEPTED. M3 is IN PROGRESS. Q-021 remains DEFERRED — NEGATIVE CALIBRATION EVIDENCE ACCEPTED; NO PRODUCTION POLICY SELECTED. No production PR-009 quality policy is active; production `policy_id` and `policy_version` are NOT ASSIGNED; automatic PR-009 quality-based document blocking and production `RETAKE_REQUIRED` enforcement are NOT ACTIVE.
 
 ## 2. Verified implementation base rule
 
-This documentation-contract PR is based on `f27647e8cdfb2f8d3e5bb13478a4df50987ca1cb`.
+The historical documentation-contract PR was based on `f27647e8cdfb2f8d3e5bb13478a4df50987ca1cb`.
 
-Future PR-010 production implementation must branch from the exact merge commit of this documentation-contract PR. Placeholder: `PR-010 implementation base = <FILL ONLY AFTER THIS CONTRACT PR MERGE COMMIT EXISTS>`. Do not invent this SHA before merge.
+The current PR-010 production implementation is based on accepted contract merge commit `329dd5653a3faadd3c62387c1d900710f14b2f4e`. This implementation is in review, not completed and not human accepted.
 
 ## 3. Goal
 
-Define an implementation-ready, deterministic, non-UI geometry recipe contract for one manually selected document area from one immutable source file, without implementing production code in this PR.
+Implement the accepted deterministic, non-UI geometry recipe contract for one manually selected document area from one immutable source file. PR-010 does not publish a final JPEG.
 
 ## 4. Exact scope
 

@@ -1403,6 +1403,8 @@ class ImageQualityAssessmentRepo(_Repo):
 
 
 class ImageGeometryRecipeRepo(_Repo):
+    _SELECT = "SELECT recipe_version_id, source_file_id, superseded_recipe_version_id, revision, coordinate_space, source_effective_width, source_effective_height, quarter_turn_clockwise, top_left_x, top_left_y, top_right_x, top_right_y, bottom_right_x, bottom_right_y, bottom_left_x, bottom_left_y, geometry_pipeline_id, geometry_pipeline_version, created_at_utc, canonical_payload FROM image_geometry_recipes"
+
     def __init__(self, uow: SqlCipherUnitOfWork) -> None:
         super().__init__(
             uow,
@@ -1415,42 +1417,62 @@ class ImageGeometryRecipeRepo(_Repo):
     def add(self, recipe: ImageGeometryRecipe) -> None:
         if not isinstance(recipe, ImageGeometryRecipe):
             raise PersistenceError(PersistenceErrorCode.PERSISTED_DATA_INVALID)
+        existing = self._list_all_validated()
+        latest = self._latest_from_validated(existing, recipe.source_file_id)
+        if latest is None:
+            if recipe.revision != 1 or recipe.superseded_recipe_version_id is not None:
+                raise PersistenceError(PersistenceErrorCode.PERSISTED_DATA_INVALID)
+        elif (
+            recipe.revision != latest.revision + 1
+            or recipe.superseded_recipe_version_id != latest.recipe_version_id
+        ):
+            raise PersistenceError(PersistenceErrorCode.PERSISTED_DATA_INVALID)
         payload = ser.image_geometry_recipe_to_json(recipe)
         self._execute(
-            "INSERT INTO image_geometry_recipes(recipe_version_id, source_file_id, superseded_recipe_version_id, revision, coordinate_space, source_effective_width, source_effective_height, quarter_turn, top_left_x, top_left_y, top_right_x, top_right_y, bottom_right_x, bottom_right_y, bottom_left_x, bottom_left_y, pipeline_id, pipeline_version, created_at_utc, canonical_payload) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+            "INSERT INTO image_geometry_recipes(recipe_version_id, source_file_id, superseded_recipe_version_id, revision, coordinate_space, source_effective_width, source_effective_height, quarter_turn_clockwise, top_left_x, top_left_y, top_right_x, top_right_y, bottom_right_x, bottom_right_y, bottom_left_x, bottom_left_y, geometry_pipeline_id, geometry_pipeline_version, created_at_utc, canonical_payload) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
             (*ser.image_geometry_recipe_columns(recipe), payload),
             duplicate_is_already_exists=True,
         )
 
     def get(self, recipe_version_id: EntityId) -> ImageGeometryRecipe | None:
-        rows = self._fetchall(
-            "SELECT recipe_version_id, source_file_id, superseded_recipe_version_id, revision, coordinate_space, source_effective_width, source_effective_height, quarter_turn, top_left_x, top_left_y, top_right_x, top_right_y, bottom_right_x, bottom_right_y, bottom_left_x, bottom_left_y, pipeline_id, pipeline_version, created_at_utc, canonical_payload FROM image_geometry_recipes WHERE recipe_version_id=?",
-            (str(recipe_version_id),),
+        return next(
+            (r for r in self._list_all_validated() if r.recipe_version_id == recipe_version_id),
+            None,
         )
-        return None if not rows else self._from_projection(rows[0])
 
     def get_latest_by_source(self, source_file_id: EntityId) -> ImageGeometryRecipe | None:
-        rows = self._fetchall(
-            "SELECT recipe_version_id, source_file_id, superseded_recipe_version_id, revision, coordinate_space, source_effective_width, source_effective_height, quarter_turn, top_left_x, top_left_y, top_right_x, top_right_y, bottom_right_x, bottom_right_y, bottom_left_x, bottom_left_y, pipeline_id, pipeline_version, created_at_utc, canonical_payload FROM image_geometry_recipes WHERE source_file_id=? ORDER BY revision DESC, created_at_utc DESC, recipe_version_id DESC LIMIT 1",
-            (str(source_file_id),),
-        )
-        return None if not rows else self._from_projection(rows[0])
+        return self._latest_from_validated(self._list_all_validated(), source_file_id)
 
     def get_by_source_revision(
         self, source_file_id: EntityId, revision: int
     ) -> ImageGeometryRecipe | None:
-        rows = self._fetchall(
-            "SELECT recipe_version_id, source_file_id, superseded_recipe_version_id, revision, coordinate_space, source_effective_width, source_effective_height, quarter_turn, top_left_x, top_left_y, top_right_x, top_right_y, bottom_right_x, bottom_right_y, bottom_left_x, bottom_left_y, pipeline_id, pipeline_version, created_at_utc, canonical_payload FROM image_geometry_recipes WHERE source_file_id=? AND revision=?",
-            (str(source_file_id), revision),
+        return next(
+            (
+                r
+                for r in self._list_all_validated()
+                if r.source_file_id == source_file_id and r.revision == revision
+            ),
+            None,
         )
-        return None if not rows else self._from_projection(rows[0])
 
     def list_by_source(self, source_file_id: EntityId) -> tuple[ImageGeometryRecipe, ...]:
+        return tuple(r for r in self._list_all_validated() if r.source_file_id == source_file_id)
+
+    def _list_all_validated(self) -> tuple[ImageGeometryRecipe, ...]:
+        rows = self._fetchall(
+            f"{self._SELECT} ORDER BY source_file_id, revision, created_at_utc, recipe_version_id"
+        )
+        recipes = tuple(self._from_projection(row) for row in rows)
+        self._validate_all_histories(recipes)
         return tuple(
-            self._from_projection(r)
-            for r in self._fetchall(
-                "SELECT recipe_version_id, source_file_id, superseded_recipe_version_id, revision, coordinate_space, source_effective_width, source_effective_height, quarter_turn, top_left_x, top_left_y, top_right_x, top_right_y, bottom_right_x, bottom_right_y, bottom_left_x, bottom_left_y, pipeline_id, pipeline_version, created_at_utc, canonical_payload FROM image_geometry_recipes WHERE source_file_id=? ORDER BY revision, created_at_utc, recipe_version_id",
-                (str(source_file_id),),
+            sorted(
+                recipes,
+                key=lambda r: (
+                    str(r.source_file_id),
+                    r.revision,
+                    r.created_at,
+                    str(r.recipe_version_id),
+                ),
             )
         )
 
@@ -1463,6 +1485,48 @@ class ImageGeometryRecipeRepo(_Repo):
         ):
             raise PersistenceError(PersistenceErrorCode.PERSISTED_DATA_INVALID)
         return entity
+
+    def _latest_from_validated(
+        self, recipes: tuple[ImageGeometryRecipe, ...], source_file_id: EntityId
+    ) -> ImageGeometryRecipe | None:
+        source_recipes = [r for r in recipes if r.source_file_id == source_file_id]
+        return (
+            None
+            if not source_recipes
+            else max(
+                source_recipes, key=lambda r: (r.revision, r.created_at, str(r.recipe_version_id))
+            )
+        )
+
+    def _validate_all_histories(self, recipes: tuple[ImageGeometryRecipe, ...]) -> None:
+        by_id: dict[EntityId, ImageGeometryRecipe] = {}
+        for recipe in recipes:
+            if recipe.recipe_version_id in by_id:
+                raise PersistenceError(PersistenceErrorCode.PERSISTED_DATA_INVALID)
+            by_id[recipe.recipe_version_id] = recipe
+        sources = sorted({r.source_file_id for r in recipes}, key=str)
+        for source_id in sources:
+            chain = sorted(
+                (r for r in recipes if r.source_file_id == source_id),
+                key=lambda r: (r.revision, r.created_at, str(r.recipe_version_id)),
+            )
+            seen_superseded: set[EntityId] = set()
+            for index, recipe in enumerate(chain, start=1):
+                if recipe.revision != index:
+                    raise PersistenceError(PersistenceErrorCode.PERSISTED_DATA_INVALID)
+                if index == 1:
+                    if recipe.superseded_recipe_version_id is not None:
+                        raise PersistenceError(PersistenceErrorCode.PERSISTED_DATA_INVALID)
+                    continue
+                previous = chain[index - 2]
+                if recipe.superseded_recipe_version_id != previous.recipe_version_id:
+                    raise PersistenceError(PersistenceErrorCode.PERSISTED_DATA_INVALID)
+                if recipe.superseded_recipe_version_id in seen_superseded:
+                    raise PersistenceError(PersistenceErrorCode.PERSISTED_DATA_INVALID)
+                seen_superseded.add(recipe.superseded_recipe_version_id)
+                superseded = by_id.get(recipe.superseded_recipe_version_id)
+                if superseded is None or superseded.source_file_id != recipe.source_file_id:
+                    raise PersistenceError(PersistenceErrorCode.PERSISTED_DATA_INVALID)
 
 
 class _UowState(Enum):

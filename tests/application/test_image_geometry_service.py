@@ -43,7 +43,7 @@ def cmd():
     )
 
 
-def test_pipeline_validation_before_uow():
+def test_source_dependent_geometry_validation_waits_for_uow():
     c = cmd()
     c = CreateImageGeometryRecipeCommand(
         c.recipe_version_id,
@@ -71,4 +71,4 @@ def test_pipeline_validation_before_uow():
         create_image_geometry_recipe(
             c, decoder=object(), renderer=object(), storage=object(), unit_of_work_factory=F()
         )
-    assert e.value.code is GeometryErrorCode.AREA_TOO_SMALL
+    assert e.value.code is GeometryErrorCode.RECIPE_PERSISTENCE_FAILED

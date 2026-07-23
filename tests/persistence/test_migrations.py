@@ -19,6 +19,9 @@ from document_intake.persistence.migrations.v0004_source_file_import import (
 from document_intake.persistence.migrations.v0005_image_quality import (
     MIGRATION as V0005_IMAGE_QUALITY,
 )
+from document_intake.persistence.migrations.v0006_image_geometry import (
+    MIGRATION as V0006_IMAGE_GEOMETRY,
+)
 
 REQUIRED_TABLES = {
     "schema_migrations",
@@ -42,6 +45,10 @@ REQUIRED_TABLES = {
     "upload_batches",
     "source_files",
     "upload_batch_source_files",
+    "image_quality_assessments",
+    "image_quality_metrics",
+    "image_quality_issues",
+    "image_geometry_recipes",
 }
 
 
@@ -71,13 +78,14 @@ def test_migration_1_creates_tables_metadata_user_version_and_application_id() -
         (V0003_MIGRATION.version, V0003_MIGRATION.name, V0003_MIGRATION.checksum),
         (V0004_MIGRATION.version, V0004_MIGRATION.name, V0004_MIGRATION.checksum),
         (V0005_IMAGE_QUALITY.version, V0005_IMAGE_QUALITY.name, V0005_IMAGE_QUALITY.checksum),
+        (V0006_IMAGE_GEOMETRY.version, V0006_IMAGE_GEOMETRY.name, V0006_IMAGE_GEOMETRY.checksum),
     ]
 
 
 def test_initialize_migrations_are_idempotent() -> None:
     connection = apply()
     database._apply_migrations(connection)
-    assert connection.execute("SELECT count(*) FROM schema_migrations").fetchone()[0] == 5
+    assert connection.execute("SELECT count(*) FROM schema_migrations").fetchone()[0] == 6
 
 
 def test_applied_prefix_validates_and_future_migration_applies(
@@ -86,7 +94,7 @@ def test_applied_prefix_validates_and_future_migration_applies(
     connection = apply()
     future_statements = ("CREATE TABLE future_projection(id INTEGER PRIMARY KEY)",)
     future = Migration(
-        6,
+        7,
         "future_projection",
         future_statements,
         migration_checksum(future_statements),
@@ -94,14 +102,22 @@ def test_applied_prefix_validates_and_future_migration_applies(
     monkeypatch.setattr(
         database,
         "MIGRATIONS",
-        (MIGRATION, V0002_MIGRATION, V0003_MIGRATION, V0004_MIGRATION, V0005_IMAGE_QUALITY, future),
+        (
+            MIGRATION,
+            V0002_MIGRATION,
+            V0003_MIGRATION,
+            V0004_MIGRATION,
+            V0005_IMAGE_QUALITY,
+            V0006_IMAGE_GEOMETRY,
+            future,
+        ),
     )
-    monkeypatch.setattr(database, "CURRENT_SCHEMA_VERSION", 6)
+    monkeypatch.setattr(database, "CURRENT_SCHEMA_VERSION", 7)
 
     database._validate_schema(connection)
     database._apply_migrations(connection)
 
-    assert connection.execute("PRAGMA user_version").fetchone()[0] == 6
+    assert connection.execute("PRAGMA user_version").fetchone()[0] == 7
     assert connection.execute(
         "SELECT version, name, checksum FROM schema_migrations ORDER BY version"
     ).fetchall() == [
@@ -110,6 +126,7 @@ def test_applied_prefix_validates_and_future_migration_applies(
         (V0003_MIGRATION.version, V0003_MIGRATION.name, V0003_MIGRATION.checksum),
         (V0004_MIGRATION.version, V0004_MIGRATION.name, V0004_MIGRATION.checksum),
         (V0005_IMAGE_QUALITY.version, V0005_IMAGE_QUALITY.name, V0005_IMAGE_QUALITY.checksum),
+        (V0006_IMAGE_GEOMETRY.version, V0006_IMAGE_GEOMETRY.name, V0006_IMAGE_GEOMETRY.checksum),
         (future.version, future.name, future.checksum),
     ]
     assert connection.execute(
@@ -122,7 +139,7 @@ def test_applied_prefix_validates_and_future_migration_applies(
     [
         lambda c: c.execute(
             "INSERT INTO schema_migrations(version, name, checksum, applied_at_utc) "
-            "VALUES (6, 'extra', 'extra', '2026-07-19T00:00:00Z')"
+            "VALUES (7, 'extra', 'extra', '2026-07-19T00:00:00Z')"
         ),
         lambda c: c.execute("UPDATE schema_migrations SET name='reordered' WHERE version=1"),
         lambda c: (
@@ -423,15 +440,15 @@ def test_v0004_literal_metadata_and_all_prior_checksums_are_frozen() -> None:
     )
 
 
-def test_empty_database_and_upgrade_from_version_3_reach_exact_schema_5() -> None:
+def test_empty_database_and_upgrade_from_version_3_reach_exact_schema_6() -> None:
     empty = apply()
-    assert empty.execute("PRAGMA user_version").fetchone()[0] == 5
+    assert empty.execute("PRAGMA user_version").fetchone()[0] == 6
     upgraded = apply_through_v0003()
     database._apply_migrations(upgraded)
-    assert upgraded.execute("PRAGMA user_version").fetchone()[0] == 5
+    assert upgraded.execute("PRAGMA user_version").fetchone()[0] == 6
     assert upgraded.execute(
         "SELECT version, name, checksum FROM schema_migrations ORDER BY version DESC LIMIT 1"
-    ).fetchone() == (5, V0005_IMAGE_QUALITY.name, V0005_IMAGE_QUALITY.checksum)
+    ).fetchone() == (6, V0006_IMAGE_GEOMETRY.name, V0006_IMAGE_GEOMETRY.checksum)
 
 
 def test_v0004_column_constraints_foreign_keys_and_indexes() -> None:
@@ -634,3 +651,36 @@ def test_ordinary_sqlite_rejects_non_sqlite_encrypted_database_bytes(tmp_path) -
     with pytest.raises(sqlite3.DatabaseError):
         connection.execute("SELECT name FROM sqlite_master").fetchall()
     connection.close()
+
+
+def test_pr010_migration_metadata_checksum_and_columns() -> None:
+    assert V0006_IMAGE_GEOMETRY.version == 6
+    assert V0006_IMAGE_GEOMETRY.name == "image_geometry_pr010"
+    assert (
+        V0006_IMAGE_GEOMETRY.checksum
+        == "ac9d5bfbe79160d880f30af6ee1ed645ab500b9be140a18b9d6498cc68eba5ec"
+    )
+    connection = apply()
+    columns = [row[1] for row in connection.execute("PRAGMA table_info(image_geometry_recipes)")]
+    assert columns == [
+        "recipe_version_id",
+        "source_file_id",
+        "superseded_recipe_version_id",
+        "revision",
+        "coordinate_space",
+        "source_effective_width",
+        "source_effective_height",
+        "quarter_turn_clockwise",
+        "top_left_x",
+        "top_left_y",
+        "top_right_x",
+        "top_right_y",
+        "bottom_right_x",
+        "bottom_right_y",
+        "bottom_left_x",
+        "bottom_left_y",
+        "geometry_pipeline_id",
+        "geometry_pipeline_version",
+        "created_at_utc",
+        "canonical_payload",
+    ]

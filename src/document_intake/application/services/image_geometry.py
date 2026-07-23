@@ -38,7 +38,7 @@ def _raise(code: GeometryErrorCode) -> NoReturn:
     raise ImageGeometryError(code) from None
 
 
-def _map_validation(exc: Exception) -> NoReturn:
+def _map_geometry_validation(exc: Exception) -> NoReturn:
     if isinstance(exc, InvalidValueError):
         for code in GeometryErrorCode:
             if code.value in str(exc):
@@ -54,16 +54,6 @@ def create_image_geometry_recipe(
     storage: StoragePort,
     unit_of_work_factory: UnitOfWorkFactory,
 ) -> CreateImageGeometryRecipeResult:
-    try:
-        # validate caller supplied command/pipeline before storage access
-        command.quadrilateral.validate_for_source(
-            command.expected_source_effective_width, command.expected_source_effective_height
-        )
-        derive_geometry_dimensions(command.quadrilateral, command.quarter_turn)
-    except ImageGeometryError:
-        raise
-    except Exception as exc:
-        _map_validation(exc)
     try:
         cm = unit_of_work_factory.unit_of_work()
         with cm as uow:
@@ -92,6 +82,13 @@ def create_image_geometry_recipe(
                 command.expected_source_effective_height,
             ):
                 _raise(GeometryErrorCode.SOURCE_DIMENSIONS_MISMATCH)
+            try:
+                command.quadrilateral.validate_for_source(
+                    media.effective_width, media.effective_height
+                )
+                derive_geometry_dimensions(command.quadrilateral, command.quarter_turn)
+            except Exception as exc:
+                _map_geometry_validation(exc)
             try:
                 rendered = renderer.render_geometry(
                     media=media,
