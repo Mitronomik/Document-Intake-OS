@@ -293,7 +293,7 @@ PR-010 AND LATER: UNAUTHORIZED.
 Gate 2: NOT ACCEPTED.
 M3: IN PROGRESS.
 
-PR-009 implements deterministic whole-frame metrics, explicit caller-provided typed policy handling, full-resolution orientation-normalized decoding, append-only persistence, audit integration, controlled service errors, synthetic tests and a cross-platform verifier. The residual limitation blocks production activation of PR-009 quality decisions, not human acceptance or merge of the explicit-policy infrastructure. Human acceptance and merge are still pending; PR-010 and later require a separate post-merge product-owner decision.
+PR-009 infrastructure may proceed to human acceptance and merge under the residual limitation without activating a production default policy. Human acceptance and merge remain pending. PR-010 and later require a separate post-merge product-owner decision.
 ## PR-009 human acceptance lifecycle state — 2026-07-22
 
 PR-009: COMPLETED AND HUMAN ACCEPTED WITH DOCUMENTED RESIDUAL LIMITATION.
@@ -304,7 +304,7 @@ Production policy_version: NOT ASSIGNED.
 Automatic PR-009 quality-based document blocking: NOT ACTIVE.
 Automatic PR-009 production RETAKE_REQUIRED enforcement: NOT ACTIVE.
 RISK-PR009-NO-PRODUCTION-QUALITY-POLICY: OPEN AND ACCEPTED FOR THE PR-009 INFRASTRUCTURE AND HUMAN-ACCEPTANCE BOUNDARY.
-ADR-024: PROPOSED. PR-010 CONTRACT: PROPOSED FOR HUMAN REVIEW.
+PR-010 CONTRACT DEFINITION: AUTHORIZED, NOT STARTED.
 PR-010 PRODUCTION IMPLEMENTATION: UNAUTHORIZED.
 PR-011 AND LATER: UNAUTHORIZED.
 Gate 2: NOT ACCEPTED.
@@ -316,3 +316,8 @@ Merge commit: `b491226878cabfc87c484f6a4d41bc2969851273`.
 Merge date: 2026-07-22.
 
 This current PR-009-D4-backed section supersedes earlier historical lifecycle snapshots for current status only. It does not rewrite those historical records and does not authorize PR-010 production implementation or PR-011 and later work. FR-04 remains incomplete because geometry, document regions and later image-preparation work remain future scope.
+## Current PR-010 geometry contract staging — 2026-07-23
+
+This current section supersedes historical lifecycle sections for current status only and does not rewrite the historical record.
+
+PR #26 merged successfully on 2026-07-23 from reviewed head `cc79a80fcacdbde2667cae858815b30176f87555` at merge commit `f27647e8cdfb2f8d3e5bb13478a4df50987ca1cb`; exact-head CI `CI #129` succeeded. PR-009 is COMPLETED AND HUMAN ACCEPTED WITH DOCUMENTED RESIDUAL LIMITATION. Q-021 is DEFERRED — NEGATIVE CALIBRATION EVIDENCE ACCEPTED; NO PRODUCTION POLICY SELECTED. Production default PR-009 quality policy is NOT ACTIVE. Production `policy_id` and `policy_version` are NOT ASSIGNED. Automatic PR-009 quality-based document blocking and production RETAKE_REQUIRED enforcement are NOT ACTIVE. `RISK-PR009-NO-PRODUCTION-QUALITY-POLICY` remains OPEN AND ACCEPTED FOR THE PR-009 INFRASTRUCTURE AND HUMAN-ACCEPTANCE BOUNDARY. ADR-024 is PROPOSED. PR-010 CONTRACT is PROPOSED FOR HUMAN REVIEW. PR-010 PRODUCTION IMPLEMENTATION is UNAUTHORIZED. PR-011 AND LATER are UNAUTHORIZED. Gate 2 is NOT ACCEPTED. M3 is IN PROGRESS.

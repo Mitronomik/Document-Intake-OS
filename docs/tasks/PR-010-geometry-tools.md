@@ -42,7 +42,7 @@ Canonical corner order is exactly `top_left`, `top_right`, `bottom_right`, `bott
 
 ## 9. Exact decoder and renderer port contracts
 
-Extend the accepted decoder boundary to decode full-resolution immutable source bytes for geometry and apply EXIF exactly once. The renderer uses Pillow, produces RGB internal raster output, strips EXIF/geolocation/comments/ICC/arbitrary metadata, and defines/test-locks exact Pillow transform mode, resampling mode and internal corner-order adaptation. Do not add OpenCV, cloud libraries, network calls or a second image stack. PR-010 does not publish a final JPEG.
+Extend the accepted decoder boundary to decode full-resolution immutable source bytes for geometry and apply EXIF exactly once. The renderer uses Pillow, produces RGB internal raster output, strips EXIF/geolocation/comments/ICC/arbitrary metadata, and uses the fixed V1 rendering contract: `Image.Transform.QUAD`, `Image.Resampling.BICUBIC`, `fill=1`, `fillcolor=(255, 255, 255)`, and TL/BL/BR/TR Pillow source order conversion. Do not add OpenCV, cloud libraries, network calls or a second image stack. PR-010 does not publish a final JPEG.
 
 ## 10. Exact application command and result DTO contracts
 
@@ -97,9 +97,9 @@ Typed controlled failures: source file not found; immutable stored object missin
 
 ## 20. Expected future implementation files
 
-Expected new files may include `src/document_intake/domain/image_geometry.py`, `src/document_intake/image_pipeline/geometry_transformer.py`, `src/document_intake/application/dto/image_geometry.py`, `src/document_intake/application/services/image_geometry.py`, `src/document_intake/persistence/repositories/image_geometry.py`, `src/document_intake/persistence/migrations/v0006_image_geometry.py` and `scripts/verify_pr010_geometry.py`.
+Expected new production files are staged as `src/document_intake/domain/image_geometry.py`, `src/document_intake/image_pipeline/geometry_transformer.py`, `src/document_intake/application/dto/image_geometry.py`, `src/document_intake/application/services/image_geometry.py`, `src/document_intake/persistence/repositories/image_geometry.py`, `src/document_intake/persistence/migrations/v0006_image_geometry.py` and `scripts/verify_pr010_geometry.py`.
 
-Expected existing integration files include `src/document_intake/application/ports/media.py`, `src/document_intake/application/ports/persistence.py`, `src/document_intake/application/ports/storage.py`, `src/document_intake/persistence/unit_of_work.py`, `src/document_intake/persistence/database.py`, `src/document_intake/persistence/repositories.py`, `src/document_intake/persistence/serialization.py`, `src/document_intake/persistence/migrations/__init__.py`, `src/document_intake/domain/enums.py`, `src/document_intake/domain/entities/audit.py`, package `__init__.py` exports and tests under `tests/application`, `tests/domain`, `tests/image_pipeline` and `tests/persistence`. This documentation-only PR creates none of those production files.
+Expected existing integration files are `src/document_intake/application/ports/media.py`, `src/document_intake/application/ports/persistence.py`, `src/document_intake/application/ports/storage.py`, `src/document_intake/persistence/unit_of_work.py`, `src/document_intake/persistence/database.py`, `src/document_intake/persistence/repositories.py`, `src/document_intake/persistence/serialization.py`, `src/document_intake/persistence/migrations/__init__.py`, `src/document_intake/domain/enums.py`, `src/document_intake/domain/entities/audit.py`, package `__init__.py` exports and tests under `tests/application`, `tests/domain`, `tests/image_pipeline` and `tests/persistence`. This documentation-only PR creates none of those production files.
 
 ## 21. Exact test plan
 
@@ -128,3 +128,239 @@ Do not log complete identity numbers, phones, addresses, OCR payloads, MRZ, file
 ## 27. Future implementation authorization boundary
 
 This contract does not authorize production implementation. Merging this PR only records a proposed contract for human review. PR-010 production implementation may be authorized only by a separate explicit product-owner decision after this contract is reviewed and merged. PR-011 AND LATER remain UNAUTHORIZED.
+
+## Exact contract completion addendum
+
+This task incorporates the exact ADR-024 V1 contract and leaves no `Exact` section to future interpretation.
+
+### Exact domain enum staging
+
+```python
+from enum import IntEnum, StrEnum
+
+
+class GeometryCoordinateSpace(StrEnum):
+    SOURCE_EFFECTIVE_PIXELS_V1 = "SOURCE_EFFECTIVE_PIXELS_V1"
+
+
+class GeometryQuarterTurn(IntEnum):
+    DEG_0 = 0
+    DEG_90 = 90
+    DEG_180 = 180
+    DEG_270 = 270
+
+
+class GeometryErrorCode(StrEnum):
+    SOURCE_FILE_NOT_FOUND = "SOURCE_FILE_NOT_FOUND"
+    ARTIFACT_NOT_FOUND = "ARTIFACT_NOT_FOUND"
+    ARTIFACT_INTEGRITY_FAILED = "ARTIFACT_INTEGRITY_FAILED"
+    DECODE_FAILED = "DECODE_FAILED"
+    SOURCE_DIMENSIONS_MISMATCH = "SOURCE_DIMENSIONS_MISMATCH"
+    POINT_OUT_OF_BOUNDS = "POINT_OUT_OF_BOUNDS"
+    DUPLICATE_POINT = "DUPLICATE_POINT"
+    NON_CLOCKWISE_QUADRILATERAL = "NON_CLOCKWISE_QUADRILATERAL"
+    SELF_INTERSECTING_QUADRILATERAL = "SELF_INTERSECTING_QUADRILATERAL"
+    NON_CONVEX_QUADRILATERAL = "NON_CONVEX_QUADRILATERAL"
+    AREA_TOO_SMALL = "AREA_TOO_SMALL"
+    OUTPUT_DIMENSIONS_TOO_SMALL = "OUTPUT_DIMENSIONS_TOO_SMALL"
+    INVALID_QUARTER_TURN = "INVALID_QUARTER_TURN"
+    INVALID_PIPELINE_VERSION = "INVALID_PIPELINE_VERSION"
+    REVISION_CONFLICT = "REVISION_CONFLICT"
+    RENDER_FAILED = "RENDER_FAILED"
+    RECIPE_PERSISTENCE_FAILED = "RECIPE_PERSISTENCE_FAILED"
+    AUDIT_PERSISTENCE_FAILED = "AUDIT_PERSISTENCE_FAILED"
+    COMMIT_FAILED = "COMMIT_FAILED"
+```
+
+`pipeline_id = PILLOW_QUAD_BICUBIC`; `pipeline_version = 1`; locked Pillow version is `12.3.0`. The command supplies `GeometryPipelineVersion` explicitly and the service validates it before storage access.
+
+### Exact dataclass staging
+
+```python
+@dataclass(frozen=True, slots=True)
+class GeometryPipelineVersion:
+    pipeline_id: str
+    version: int
+
+
+@dataclass(frozen=True, slots=True)
+class GeometryPoint:
+    x: int
+    y: int
+
+
+@dataclass(frozen=True, slots=True)
+class SourceQuadrilateral:
+    top_left: GeometryPoint
+    top_right: GeometryPoint
+    bottom_right: GeometryPoint
+    bottom_left: GeometryPoint
+
+
+@dataclass(frozen=True, slots=True)
+class ImageGeometryRecipe:
+    recipe_version_id: EntityId
+    source_file_id: EntityId
+    superseded_recipe_version_id: EntityId | None
+    revision: int
+    coordinate_space: GeometryCoordinateSpace
+    source_effective_width: int
+    source_effective_height: int
+    quarter_turn: GeometryQuarterTurn
+    quadrilateral: SourceQuadrilateral
+    pipeline: GeometryPipelineVersion
+    created_at: datetime
+
+
+@dataclass(frozen=True, slots=True)
+class DecodedGeometryMedia:
+    media_type: SourceMediaType
+    encoded_width: int
+    encoded_height: int
+    exif_orientation: int | None
+    effective_width: int
+    effective_height: int
+    rgb_pixels: bytes
+
+
+@dataclass(frozen=True, slots=True)
+class RenderedGeometryRaster:
+    width: int
+    height: int
+    rgb_pixels: bytes
+    pipeline: GeometryPipelineVersion
+
+
+@dataclass(frozen=True, slots=True)
+class CreateImageGeometryRecipeCommand:
+    recipe_version_id: EntityId
+    source_file_id: EntityId
+    superseded_recipe_version_id: EntityId | None
+    revision: int
+    expected_source_effective_width: int
+    expected_source_effective_height: int
+    quadrilateral: SourceQuadrilateral
+    quarter_turn: GeometryQuarterTurn
+    pipeline: GeometryPipelineVersion
+    created_at: datetime
+    actor: ActorRef
+    audit_event_id: EntityId
+    correlation_id: EntityId
+
+
+@dataclass(frozen=True, slots=True)
+class CreateImageGeometryRecipeResult:
+    recipe: ImageGeometryRecipe
+    rendered_width: int
+    rendered_height: int
+    pipeline: GeometryPipelineVersion
+```
+
+All IDs use existing `EntityId`; actor uses existing `ActorRef`; timestamps are timezone-aware UTC; dimensions and revision are positive; revision `1` requires `superseded_recipe_version_id is None`; revision greater than `1` requires a non-null superseded ID; `recipe_version_id != audit_event_id`; recipe/result/DTO reprs are deterministic and PII-safe. `CreateImageGeometryRecipeResult` excludes `rgb_pixels`, encoded image bytes, filename, path, hash, thumbnail, OCR, personal fields, arbitrary metadata and raw exceptions.
+
+### Exact coordinate and geometry math staging
+
+Coordinates are integer pixel-edge coordinates. Valid x range is `0 <= x <= source_effective_width`; valid y range is `0 <= y <= source_effective_height`. `(width, height)` is the outer bottom-right boundary. Full-frame quadrilateral is `(0,0), (width,0), (width,height), (0,height)`. The command includes `expected_source_effective_width` and `expected_source_effective_height`; mismatch with decoded dimensions fails with `SOURCE_DIMENSIONS_MISMATCH`.
+
+Validation order: field types; coordinate bounds; duplicate points; signed shoelace area; clockwise order in y-down coordinates; non-adjacent edge intersections; strict convexity; minimum area; output dimensions; minimum output dimensions. `signed_twice_area = Σ(x_i * y_(i+1) - y_i * x_(i+1))`; y-down clockwise requires `signed_twice_area > 0`; accepted minimum area is 4 square effective pixels, therefore `signed_twice_area >= 8`. All four consecutive-triple cross products are strictly positive. Reject `top_left → top_right` against `bottom_right → bottom_left` and `top_right → bottom_right` against `bottom_left → top_left` when non-adjacent edges intersect.
+
+Output dimensions use Euclidean distance with local Decimal `precision = 28` and `rounding = ROUND_HALF_UP`. Compute `unrounded_width = max(distance(top_left, top_right), distance(bottom_left, bottom_right))` and `unrounded_height = max(distance(top_left, bottom_left), distance(top_right, bottom_right))`; quantize each maximum once; minimum rectified dimensions are `2`; 90°/270° clockwise swap final width/height; V1 accepts no caller-supplied output dimensions.
+
+### Exact Protocol, renderer, repository and Unit of Work staging
+
+```python
+class GeometryDecoderPort(Protocol):
+    def decode_for_geometry(
+        self,
+        *,
+        content: bytes,
+    ) -> DecodedGeometryMedia: ...
+
+
+class GeometryRendererPort(Protocol):
+    def render_geometry(
+        self,
+        *,
+        media: DecodedGeometryMedia,
+        quadrilateral: SourceQuadrilateral,
+        quarter_turn: GeometryQuarterTurn,
+        pipeline: GeometryPipelineVersion,
+    ) -> RenderedGeometryRaster: ...
+
+
+class ImageGeometryRecipeRepository(Protocol):
+    def add(self, recipe: ImageGeometryRecipe) -> None: ...
+
+    def get(
+        self,
+        recipe_version_id: EntityId,
+    ) -> ImageGeometryRecipe | None: ...
+
+    def get_latest_by_source(
+        self,
+        source_file_id: EntityId,
+    ) -> ImageGeometryRecipe | None: ...
+
+    def get_by_source_revision(
+        self,
+        source_file_id: EntityId,
+        revision: int,
+    ) -> ImageGeometryRecipe | None: ...
+
+    def list_by_source(
+        self,
+        source_file_id: EntityId,
+    ) -> tuple[ImageGeometryRecipe, ...]: ...
+
+
+class UnitOfWork(Protocol):
+    ...
+    image_geometry_recipes: ImageGeometryRecipeRepository
+```
+
+Do not merge geometry decoding into the 9×8 import decoder. Do not derive RGB geometry pixels from PR-009 grayscale pixels. Repository list order is revision ascending, created-at ascending, recipe-version ID ascending. Revision-chain rule: no latest recipe requires revision 1 and superseded ID `None`; otherwise new revision equals latest revision + 1 and superseded ID equals latest recipe ID; no branching history; failure is `REVISION_CONFLICT`.
+
+The Pillow renderer uses `Image.transform`, `Image.Transform.QUAD`, `Image.Resampling.BICUBIC`, `fill=1`, `fillcolor=(255, 255, 255)`, RGB output and no metadata. Project canonical order is `TL, TR, BR, BL`; Pillow `QUAD` source order is `upper-left, lower-left, lower-right, upper-right`; conversion is:
+
+```python
+quad_data = (
+    top_left.x,
+    top_left.y,
+    bottom_left.x,
+    bottom_left.y,
+    bottom_right.x,
+    bottom_right.y,
+    top_right.x,
+    top_right.y,
+)
+```
+
+Clockwise mapping after QUAD: 0° no transpose; 90° `Image.Transpose.ROTATE_270`; 180° `Image.Transpose.ROTATE_180`; 270° `Image.Transpose.ROTATE_90`. Do not use `rotate()`, OpenCV, `LANCZOS`, `BILINEAR` or `NEAREST`.
+
+### Exact service, audit and persistence staging
+
+```python
+def create_image_geometry_recipe(
+    command: CreateImageGeometryRecipeCommand,
+    *,
+    decoder: GeometryDecoderPort,
+    renderer: GeometryRendererPort,
+    storage: StoragePort,
+    unit_of_work_factory: UnitOfWorkFactory,
+) -> CreateImageGeometryRecipeResult:
+    ...
+```
+
+Binding order: validate command/pipeline/invariants; create one Unit of Work; load source file; load stored original artifact record; read and verify immutable original through `StoragePort`; decode geometry media; compare decoded dimensions with expected dimensions; validate quadrilateral; derive pre-rotation dimensions; render internal RGB raster; validate rendered dimensions and byte length; load latest recipe; validate revision chain; construct `ImageGeometryRecipe`; add through `uow.image_geometry_recipes`; construct audit; add through `uow.audit_events`; call `uow.commit()` exactly once; exit Unit of Work; only then construct and return `CreateImageGeometryRecipeResult`. Any failure before commit returns no result, commits no recipe/audit and does not alter the original.
+
+Audit action is exactly `AuditAction.IMAGE_GEOMETRY_RECIPE_CREATED`; subject type exactly `AuditSubjectType.IMAGE_GEOMETRY_RECIPE`; subject ID `recipe_version_id`; reason code `IMAGE_GEOMETRY_RECIPE_CREATED`; non-sensitive after summary `IMAGE_GEOMETRY_RECIPE`; no coordinates, dimensions, filename, path, hashes, source bytes, rendered bytes, thumbnails, OCR, PII or raw exceptions.
+
+Future migration `v0006_image_geometry` table `image_geometry_recipes` has `recipe_version_id`, `source_file_id`, `superseded_recipe_version_id`, `revision`, `coordinate_space`, `source_effective_width`, `source_effective_height`, `quarter_turn_clockwise`, all eight quadrilateral coordinates, `geometry_pipeline_id`, `geometry_pipeline_version`, `created_at_utc`, `canonical_payload`; constraints include primary key, source-file foreign key, nullable self foreign key, unique `(source_file_id, revision)`, unique non-null `superseded_recipe_version_id`, positive revision/dimensions, exact coordinate space, exact quarter turn, exact pipeline, x/y coordinate ranges, update/delete/replace prohibition, projection/canonical-payload equality, strict controlled-value deserialization and corruption detection before filtering/return.
+
+### Exact future integration files
+
+Staged new production files: `src/document_intake/domain/image_geometry.py`; `src/document_intake/image_pipeline/geometry_transformer.py`; `src/document_intake/application/dto/image_geometry.py`; `src/document_intake/application/services/image_geometry.py`; `src/document_intake/persistence/repositories/image_geometry.py`; `src/document_intake/persistence/migrations/v0006_image_geometry.py`; `scripts/verify_pr010_geometry.py`.
+
+Staged existing integration files: `src/document_intake/application/ports/media.py`; `src/document_intake/application/ports/persistence.py`; `src/document_intake/application/ports/storage.py`; `src/document_intake/persistence/unit_of_work.py`; `src/document_intake/persistence/database.py`; `src/document_intake/persistence/repositories.py`; `src/document_intake/persistence/serialization.py`; `src/document_intake/persistence/migrations/__init__.py`; `src/document_intake/domain/enums.py`; `src/document_intake/domain/entities/audit.py`; `src/document_intake/__init__.py`; `src/document_intake/application/dto/__init__.py`; `src/document_intake/application/services/__init__.py`; `src/document_intake/image_pipeline/__init__.py`; `src/document_intake/persistence/__init__.py`; `tests/domain/test_image_geometry.py`; `tests/image_pipeline/test_geometry_transformer.py`; `tests/application/test_image_geometry_service.py`; `tests/persistence/test_image_geometry_repository.py`; `tests/test_verify_pr010_geometry.py`.
+
+PR-010 PRODUCTION IMPLEMENTATION is UNAUTHORIZED in this exact contract completion addendum.

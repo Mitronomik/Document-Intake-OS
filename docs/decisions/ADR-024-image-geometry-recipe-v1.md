@@ -35,7 +35,7 @@ Existing domain wording that coordinates refer to the original means immutable s
 6. Validate the source quadrilateral.
 7. Perspective-crop the quadrilateral into a rectangular RGB raster.
 8. Apply coarse clockwise quarter-turn rotation to the rectified raster.
-9. Return an internal geometry-render result.
+9. Render an internal geometry raster.
 10. Persist the immutable recipe and matching audit event atomically.
 
 No operation may rewrite the original. Do not apply EXIF again after step 4.
@@ -58,7 +58,7 @@ Before quarter-turn rotation, derive rectified dimensions from opposite quadrila
 
 ## Rendering boundary
 
-The contract prefers the already accepted and locked Pillow runtime. Do not add OpenCV, cloud libraries, network calls or a second image stack. The future implementation must define and test the exact Pillow transform mode, resampling mode and internal corner-order adaptation. Use RGB output. Do not preserve EXIF, geolocation, comments, ICC metadata or arbitrary source metadata in the internal rendered result. PR-010 does not publish a final JPEG. The geometry-rendered raster is an internal result for later PR-011 processing.
+The contract prefers the already accepted and locked Pillow runtime. Do not add OpenCV, cloud libraries, network calls or a second image stack. The V1 Pillow transform mode, resampling mode and internal corner-order adaptation are fixed by ADR-024: `Image.Transform.QUAD`, `Image.Resampling.BICUBIC`, and TL/BL/BR/TR Pillow source order conversion. Use RGB output. Do not preserve EXIF, geolocation, comments, ICC metadata or arbitrary source metadata in the internal rendered result. PR-010 does not publish a final JPEG. The geometry-rendered raster is an internal result for later PR-011 processing.
 
 ## Determinism
 
@@ -92,7 +92,7 @@ The service must use the accepted storage port, decoder port extension, Unit of 
 
 ## Audit boundary
 
-The future audit event must record controlled action `IMAGE_GEOMETRY_RECIPE_CREATED` or an equivalently controlled accepted action. It must be PII-safe. It may reference controlled entity IDs and recipe version metadata. It must not include filename, local path, original bytes, rendered bytes, thumbnail, full quadrilateral coordinates, arbitrary metadata, raw exception, OCR values or personal data.
+The future audit event must record exactly `AuditAction.IMAGE_GEOMETRY_RECIPE_CREATED` with subject type `AuditSubjectType.IMAGE_GEOMETRY_RECIPE`. It must be PII-safe. It may reference controlled entity IDs and recipe version metadata. It must not include filename, local path, original bytes, rendered bytes, thumbnail, full quadrilateral coordinates, arbitrary metadata, raw exception, OCR values or personal data.
 
 ## Controlled errors
 
@@ -105,3 +105,294 @@ ADR-024 does not decide automatic document detection, automatic crop, automatic 
 ## Consequences
 
 PR-010 implementation must branch from the exact merge commit of the documentation-contract PR after it exists. This ADR introduces no production source files, migrations, dependency changes, CI workflow changes, UI behavior, runtime image transformation behavior, final JPEG publication, production quality-policy activation or PR-011/PR-012/PR-013 implementation.
+
+## Exact PR-010 V1 contract completion
+
+ADR-024 binds the following V1 symbols and execution rules. These are not left for the implementation PR to choose.
+
+### Exact domain enums
+
+```python
+from enum import IntEnum, StrEnum
+
+
+class GeometryCoordinateSpace(StrEnum):
+    SOURCE_EFFECTIVE_PIXELS_V1 = "SOURCE_EFFECTIVE_PIXELS_V1"
+
+
+class GeometryQuarterTurn(IntEnum):
+    DEG_0 = 0
+    DEG_90 = 90
+    DEG_180 = 180
+    DEG_270 = 270
+
+
+class GeometryErrorCode(StrEnum):
+    SOURCE_FILE_NOT_FOUND = "SOURCE_FILE_NOT_FOUND"
+    ARTIFACT_NOT_FOUND = "ARTIFACT_NOT_FOUND"
+    ARTIFACT_INTEGRITY_FAILED = "ARTIFACT_INTEGRITY_FAILED"
+    DECODE_FAILED = "DECODE_FAILED"
+    SOURCE_DIMENSIONS_MISMATCH = "SOURCE_DIMENSIONS_MISMATCH"
+    POINT_OUT_OF_BOUNDS = "POINT_OUT_OF_BOUNDS"
+    DUPLICATE_POINT = "DUPLICATE_POINT"
+    NON_CLOCKWISE_QUADRILATERAL = "NON_CLOCKWISE_QUADRILATERAL"
+    SELF_INTERSECTING_QUADRILATERAL = "SELF_INTERSECTING_QUADRILATERAL"
+    NON_CONVEX_QUADRILATERAL = "NON_CONVEX_QUADRILATERAL"
+    AREA_TOO_SMALL = "AREA_TOO_SMALL"
+    OUTPUT_DIMENSIONS_TOO_SMALL = "OUTPUT_DIMENSIONS_TOO_SMALL"
+    INVALID_QUARTER_TURN = "INVALID_QUARTER_TURN"
+    INVALID_PIPELINE_VERSION = "INVALID_PIPELINE_VERSION"
+    REVISION_CONFLICT = "REVISION_CONFLICT"
+    RENDER_FAILED = "RENDER_FAILED"
+    RECIPE_PERSISTENCE_FAILED = "RECIPE_PERSISTENCE_FAILED"
+    AUDIT_PERSISTENCE_FAILED = "AUDIT_PERSISTENCE_FAILED"
+    COMMIT_FAILED = "COMMIT_FAILED"
+```
+
+Free-text error messages are not controlled error identity.
+
+### Exact pipeline identity and locked runtime
+
+```text
+pipeline_id = PILLOW_QUAD_BICUBIC
+pipeline_version = 1
+locked Pillow version = 12.3.0
+```
+
+`pipeline_id` accepts only `PILLOW_QUAD_BICUBIC` in V1. `pipeline_version` accepts only integer `1`. There is no hidden default pipeline. The command supplies the pipeline version explicitly. The service validates it before storage access. A future rendering algorithm or Pillow transform change requires a new pipeline version. Do not change the Pillow dependency or `uv.lock` in this PR.
+
+### Exact future dataclasses
+
+```python
+@dataclass(frozen=True, slots=True)
+class GeometryPipelineVersion:
+    pipeline_id: str
+    version: int
+
+
+@dataclass(frozen=True, slots=True)
+class GeometryPoint:
+    x: int
+    y: int
+
+
+@dataclass(frozen=True, slots=True)
+class SourceQuadrilateral:
+    top_left: GeometryPoint
+    top_right: GeometryPoint
+    bottom_right: GeometryPoint
+    bottom_left: GeometryPoint
+
+
+@dataclass(frozen=True, slots=True)
+class ImageGeometryRecipe:
+    recipe_version_id: EntityId
+    source_file_id: EntityId
+    superseded_recipe_version_id: EntityId | None
+    revision: int
+    coordinate_space: GeometryCoordinateSpace
+    source_effective_width: int
+    source_effective_height: int
+    quarter_turn: GeometryQuarterTurn
+    quadrilateral: SourceQuadrilateral
+    pipeline: GeometryPipelineVersion
+    created_at: datetime
+```
+
+Invariants: all IDs use existing `EntityId`; timestamp is timezone-aware and normalized to UTC; dimensions are positive integers; revision is positive; revision `1` requires `superseded_recipe_version_id is None`; revision greater than `1` requires a non-null superseded ID; coordinate space is exactly `SOURCE_EFFECTIVE_PIXELS_V1`; pipeline identity is exactly `PILLOW_QUAD_BICUBIC` version `1`; quarter turn is one of 0, 90, 180 or 270; recipe contains no filename, path, hash, pixels, thumbnail, OCR, PII, exception text or arbitrary metadata; `repr` is deterministic and PII-safe.
+
+### Exact coordinate semantics
+
+Coordinates are integer pixel-edge coordinates in the orientation-normalized effective raster. Origin `(0, 0)` is the outer top-left boundary of the raster. x increases right and y increases down. Valid x range is `0 <= x <= source_effective_width`. Valid y range is `0 <= y <= source_effective_height`. `(width, height)` is the outer bottom-right boundary, not a pixel center. The full-frame quadrilateral is `(0,0), (width,0), (width,height), (0,height)`. Coordinates never refer to a UI preview or compressed artifact. Preview coordinates must be converted before command creation. Original bytes are never rewritten. The command contains `expected_source_effective_width` and `expected_source_effective_height`; the service compares them with decoded dimensions and fails with `SOURCE_DIMENSIONS_MISMATCH` when they differ.
+
+### Exact quadrilateral validation math
+
+Canonical project order is `top_left`, `top_right`, `bottom_right`, `bottom_left`. Validation order is: validate field types; validate coordinate bounds; reject duplicate points; compute signed shoelace area; require clockwise order in the y-down coordinate system; reject non-adjacent edge intersections; require strict convexity; enforce minimum area; derive output dimensions; enforce minimum output dimensions.
+
+Using canonical points `p0..p3`, calculate `signed_twice_area = Σ(x_i * y_(i+1) - y_i * x_(i+1))` with index modulo four. For the y-down coordinate system, `signed_twice_area > 0` means clockwise, `signed_twice_area <= 0` is rejected, exact zero is degenerate, minimum accepted area is 4 square effective pixels, therefore `signed_twice_area >= 8`. Use integer arithmetic for cross products and shoelace calculations.
+
+For every consecutive triple, calculate the 2D cross product. All four cross products must be strictly positive in the y-down canonical clockwise order. Zero rejects collinear adjacent edges. Mixed signs reject non-convex ordering.
+
+Reject intersections between `top_left → top_right` against `bottom_right → bottom_left` and `top_right → bottom_right` against `bottom_left → top_left`. Use deterministic integer orientation tests. Adjacent edges sharing their declared endpoint are allowed.
+
+### Exact output dimensions
+
+Calculate Euclidean edge lengths: `distance(a, b) = sqrt((b.x - a.x)^2 + (b.y - a.y)^2)`. Use a local Decimal context with `precision = 28` and `rounding = ROUND_HALF_UP`; do not mutate the process-global Decimal context.
+
+Calculate `unrounded_width = max(distance(top_left, top_right), distance(bottom_left, bottom_right))` and `unrounded_height = max(distance(top_left, bottom_left), distance(top_right, bottom_right))`. Quantize each maximum exactly once to an integer using `ROUND_HALF_UP`. Do not round individual opposite edges before selecting the maximum. Both rectified dimensions must be at least `2`. For 90° and 270° clockwise quarter-turns, final result width and height are swapped. No caller-supplied output dimensions are permitted in V1.
+
+### Exact decoded geometry media contract
+
+```python
+@dataclass(frozen=True, slots=True)
+class DecodedGeometryMedia:
+    media_type: SourceMediaType
+    encoded_width: int
+    encoded_height: int
+    exif_orientation: int | None
+    effective_width: int
+    effective_height: int
+    rgb_pixels: bytes
+```
+
+Invariants: encoded/effective dimensions are positive; orientation is `None` or 1–8; effective dimension axis rules match the accepted PR-009 EXIF contract; `len(rgb_pixels) == effective_width * effective_height * 3`; pixel layout is packed row-major RGB with exactly three unsigned bytes per pixel; no metadata, filename, path, hash or exception text; EXIF orientation has already been applied exactly once; no later adapter applies EXIF again.
+
+### Exact internal render result
+
+```python
+@dataclass(frozen=True, slots=True)
+class RenderedGeometryRaster:
+    width: int
+    height: int
+    rgb_pixels: bytes
+    pipeline: GeometryPipelineVersion
+```
+
+Invariants: positive dimensions; `len(rgb_pixels) == width * height * 3`; pipeline is exactly V1; no encoded JPEG; no EXIF or arbitrary metadata; raster bytes are internal and ephemeral; raster bytes are not persisted by PR-010; raster bytes are not returned by the application result DTO.
+
+### Exact Protocol signatures
+
+```python
+class GeometryDecoderPort(Protocol):
+    def decode_for_geometry(
+        self,
+        *,
+        content: bytes,
+    ) -> DecodedGeometryMedia: ...
+```
+
+```python
+class GeometryRendererPort(Protocol):
+    def render_geometry(
+        self,
+        *,
+        media: DecodedGeometryMedia,
+        quadrilateral: SourceQuadrilateral,
+        quarter_turn: GeometryQuarterTurn,
+        pipeline: GeometryPipelineVersion,
+    ) -> RenderedGeometryRaster: ...
+```
+
+Do not merge geometry decoding into the 9×8 import decoder. Do not derive RGB geometry pixels from PR-009 grayscale pixels. The accepted Pillow decoder may implement the new port while preserving all PR-008 and PR-009 behavior.
+
+### Exact Pillow rendering contract
+
+The V1 renderer reconstructs an RGB Pillow image from packed RGB bytes; calls `Image.transform`; uses `Image.Transform.QUAD`; uses `Image.Resampling.BICUBIC`; uses `fill=1`; uses `fillcolor=(255, 255, 255)`; uses the derived pre-rotation output dimensions; emits RGB mode; and preserves no metadata.
+
+Project canonical quadrilateral is `TL, TR, BR, BL`. Pillow `QUAD` source order is `upper-left, lower-left, lower-right, upper-right`. The exact conversion is:
+
+```python
+quad_data = (
+    top_left.x,
+    top_left.y,
+    bottom_left.x,
+    bottom_left.y,
+    bottom_right.x,
+    bottom_right.y,
+    top_right.x,
+    top_right.y,
+)
+```
+
+Do not pass project canonical order directly to Pillow.
+
+Exact clockwise quarter-turn mapping after the QUAD transform: 0° clockwise uses no transpose; 90° clockwise uses `Image.Transpose.ROTATE_270`; 180° clockwise uses `Image.Transpose.ROTATE_180`; 270° clockwise uses `Image.Transpose.ROTATE_90`. Do not use arbitrary-angle `rotate()`. Do not use OpenCV. Do not use `LANCZOS`, `BILINEAR` or `NEAREST` for V1 geometry rendering. A resampling or transform-mode change requires a new geometry pipeline version.
+
+### Exact command and result DTOs
+
+```python
+@dataclass(frozen=True, slots=True)
+class CreateImageGeometryRecipeCommand:
+    recipe_version_id: EntityId
+    source_file_id: EntityId
+    superseded_recipe_version_id: EntityId | None
+    revision: int
+    expected_source_effective_width: int
+    expected_source_effective_height: int
+    quadrilateral: SourceQuadrilateral
+    quarter_turn: GeometryQuarterTurn
+    pipeline: GeometryPipelineVersion
+    created_at: datetime
+    actor: ActorRef
+    audit_event_id: EntityId
+    correlation_id: EntityId
+```
+
+Required validation: caller supplies every field; no generated UUID; no system clock; no inferred actor; no inferred correlation; no hidden pipeline default; `recipe_version_id != audit_event_id`; all timestamps UTC-normalized; expected dimensions positive; pipeline validated before storage access.
+
+```python
+@dataclass(frozen=True, slots=True)
+class CreateImageGeometryRecipeResult:
+    recipe: ImageGeometryRecipe
+    rendered_width: int
+    rendered_height: int
+    pipeline: GeometryPipelineVersion
+```
+
+The result excludes RGB bytes, encoded image bytes, filename, path, hash, thumbnail, OCR, personal fields, arbitrary metadata and raw exceptions.
+
+### Exact repository and Unit of Work contract
+
+```python
+class ImageGeometryRecipeRepository(Protocol):
+    def add(self, recipe: ImageGeometryRecipe) -> None: ...
+
+    def get(
+        self,
+        recipe_version_id: EntityId,
+    ) -> ImageGeometryRecipe | None: ...
+
+    def get_latest_by_source(
+        self,
+        source_file_id: EntityId,
+    ) -> ImageGeometryRecipe | None: ...
+
+    def get_by_source_revision(
+        self,
+        source_file_id: EntityId,
+        revision: int,
+    ) -> ImageGeometryRecipe | None: ...
+
+    def list_by_source(
+        self,
+        source_file_id: EntityId,
+    ) -> tuple[ImageGeometryRecipe, ...]: ...
+```
+
+Exact list order is revision ascending, created-at ascending, recipe-version ID ascending. Revision-chain rule: no current recipe requires revision `1` and superseded ID `None`; when a current latest recipe exists, the new revision equals latest revision + 1 and superseded ID equals latest recipe ID; otherwise fail with `REVISION_CONFLICT`. No branching history is allowed.
+
+```python
+class UnitOfWork(Protocol):
+    ...
+    image_geometry_recipes: ImageGeometryRecipeRepository
+```
+
+Do not create a standalone database connection, independent recipe repository factory or separate audit transaction.
+
+### Exact service signature and return order
+
+```python
+def create_image_geometry_recipe(
+    command: CreateImageGeometryRecipeCommand,
+    *,
+    decoder: GeometryDecoderPort,
+    renderer: GeometryRendererPort,
+    storage: StoragePort,
+    unit_of_work_factory: UnitOfWorkFactory,
+) -> CreateImageGeometryRecipeResult:
+    ...
+```
+
+Binding order: validate command, pipeline and primitive/domain invariants; create exactly one Unit of Work; load source file; load stored original artifact record; read and verify immutable original through `StoragePort`; decode geometry media; compare decoded dimensions with command expected dimensions; validate quadrilateral; derive pre-rotation dimensions; render internal RGB raster; validate rendered dimensions and byte length; load current latest recipe for the source; validate revision and superseded-recipe chain; construct immutable `ImageGeometryRecipe`; add recipe through `uow.image_geometry_recipes`; construct exact PII-safe audit event; add audit through `uow.audit_events`; call `uow.commit()` exactly once; exit the Unit of Work successfully; only then construct and return `CreateImageGeometryRecipeResult`. Do not document or implement a return before persistence. Any failure before successful commit returns no result, commits no recipe, commits no audit event and does not alter the original.
+
+### Exact audit contract
+
+The exact future audit action is `AuditAction.IMAGE_GEOMETRY_RECIPE_CREATED`. The exact future subject type is `AuditSubjectType.IMAGE_GEOMETRY_RECIPE`. The subject ID is `recipe_version_id`. The reason code is `IMAGE_GEOMETRY_RECIPE_CREATED`. The non-sensitive after summary is `IMAGE_GEOMETRY_RECIPE`. Do not use `or an equivalent action`. The audit event must not contain coordinates, dimensions, filename, path, hashes, source bytes, rendered bytes, thumbnails, OCR, PII or raw exceptions.
+
+### Exact persistence proposal
+
+Migration staging remains `v0006_image_geometry`; do not create it in this PR. The future table is `image_geometry_recipes` with columns `recipe_version_id`, `source_file_id`, `superseded_recipe_version_id`, `revision`, `coordinate_space`, `source_effective_width`, `source_effective_height`, `quarter_turn_clockwise`, all eight quadrilateral coordinates, `geometry_pipeline_id`, `geometry_pipeline_version`, `created_at_utc` and `canonical_payload`.
+
+Required constraints: primary key on recipe version ID; source-file foreign key; nullable self foreign key; unique `(source_file_id, revision)`; unique non-null `superseded_recipe_version_id`; positive revision and dimensions; coordinate space exactly `SOURCE_EFFECTIVE_PIXELS_V1`; quarter turn exactly 0/90/180/270; pipeline exactly `PILLOW_QUAD_BICUBIC`, version 1; x coordinates in `0..source_effective_width`; y coordinates in `0..source_effective_height`; update prohibited; delete prohibited; replace prohibited; projection/canonical-payload equality; strict controlled-value deserialization; corruption detected before filtering or returning results. Frozen migrations v0001 through v0005 remain unchanged.
+
+PR-010 PRODUCTION IMPLEMENTATION is UNAUTHORIZED in this exact V1 contract completion.

@@ -65,7 +65,13 @@ This correction does not accept Q-021, activate a production default quality pol
 - [ ] Gate 2: NOT ACCEPTED; M3: IN PROGRESS.
 - [x] Gate 1: COMPLETED AND HUMAN ACCEPTED; M2: COMPLETED AND HUMAN ACCEPTED;
 - [x] Q-010: ACCEPTED;
-- [ ] Q-017 remains DEFERRED; the sensitive-data/private-contour gate remains open; real documents and personal data remain prohibited in Git, Codex and CI.
+- [ ] Q-017 remains DEFERRED;
+- [ ] Q-009 remains DEFERRED;
+- [ ] RISK-PR008-W11-SMOKE remains deferred to installer, pilot or final release acceptance;
+- [ ] RISK-PR005-RAWKEY-PRAGMA remains accepted only for the PR-005 development boundary and remains open for installer, pilot and production release;
+- [ ] Real documents and personal data remain prohibited in Git, Codex and CI;
+- [ ] SENSITIVE-DATA / PRIVATE-CONTOUR GATE — OPEN;
+- [x] REPOSITORY PRIVACY BOUNDARY — ACCEPTED FOR NON-SENSITIVE CODE; the sensitive-data/private-contour gate remains open; real documents and personal data remain prohibited in Git, Codex and CI.
 
 ## In review / unauthorized
 
@@ -95,6 +101,12 @@ Q-021 remains deferred. No production PR-009 quality policy is active, productio
 
 Q-009: DEFERRED. PR-006 implements no retention, deletion or secure-deletion policy.
 
+
+## Current PR-010 geometry contract staging — 2026-07-23
+
+This current section supersedes historical lifecycle sections for current status only and does not rewrite the historical record.
+
+PR #26 merged successfully on 2026-07-23 from reviewed head `cc79a80fcacdbde2667cae858815b30176f87555` at merge commit `f27647e8cdfb2f8d3e5bb13478a4df50987ca1cb`; exact-head CI `CI #129` succeeded. PR-009 is COMPLETED AND HUMAN ACCEPTED WITH DOCUMENTED RESIDUAL LIMITATION. Q-021 is DEFERRED — NEGATIVE CALIBRATION EVIDENCE ACCEPTED; NO PRODUCTION POLICY SELECTED. Production default PR-009 quality policy is NOT ACTIVE. Production `policy_id` and `policy_version` are NOT ASSIGNED. Automatic PR-009 quality-based document blocking and production RETAKE_REQUIRED enforcement are NOT ACTIVE. `RISK-PR009-NO-PRODUCTION-QUALITY-POLICY` remains OPEN AND ACCEPTED FOR THE PR-009 INFRASTRUCTURE AND HUMAN-ACCEPTANCE BOUNDARY. ADR-024 is PROPOSED. PR-010 CONTRACT is PROPOSED FOR HUMAN REVIEW. PR-010 PRODUCTION IMPLEMENTATION is UNAUTHORIZED. PR-011 AND LATER are UNAUTHORIZED. Gate 2 is NOT ACCEPTED. M3 is IN PROGRESS.
 
 ## Historical lifecycle snapshot after PR-006 acceptance
 

@@ -2376,34 +2376,49 @@ def test_pr009_quality_contract_is_human_accepted_with_deferred_q021_policy() ->
 def test_current_pr009_lifecycle_sections_are_scoped_after_d4() -> None:
     traceability = (REPO_ROOT / "docs/traceability-matrix.md").read_text(encoding="utf-8")
     current_traceability = _adr_section(traceability, "## Current lifecycle state")
+    current_pr010_traceability = _adr_section(
+        traceability, "## Current PR-010 geometry contract staging — 2026-07-23"
+    )
     questions = (REPO_ROOT / "docs/open-questions.md").read_text(encoding="utf-8")
     q021 = _bounded_question_section(questions, "Q-021")
+    current_q021 = _adr_section(
+        questions, "## PR-009 human acceptance lifecycle state — 2026-07-22"
+    )
+
     assert "## PR-009-D4 current lifecycle update — 2026-07-22" not in questions
     assert questions.count("## PR-009 human acceptance lifecycle state — 2026-07-22") == 1
 
-    for current_section in (current_traceability,):
-        for required in (
-            "PR-009: COMPLETED AND HUMAN ACCEPTED WITH DOCUMENTED RESIDUAL LIMITATION",
-            "Q-021: DEFERRED — NEGATIVE CALIBRATION EVIDENCE ACCEPTED; "
-            "NO PRODUCTION POLICY SELECTED",
-            "Production default PR-009 quality policy: NOT ACTIVE",
-            "Production policy_id: NOT ASSIGNED",
-            "Production policy_version: NOT ASSIGNED",
-            "Automatic PR-009 quality-based document blocking: NOT ACTIVE",
-            "Automatic PR-009 production RETAKE_REQUIRED enforcement: NOT ACTIVE",
-            "RISK-PR009-NO-PRODUCTION-QUALITY-POLICY: OPEN AND ACCEPTED FOR THE "
-            "PR-009 INFRASTRUCTURE AND HUMAN-ACCEPTANCE BOUNDARY",
-            "PR-010 CONTRACT: PROPOSED FOR HUMAN REVIEW",
-            "PR-010 PRODUCTION IMPLEMENTATION: UNAUTHORIZED",
-            "PR-011 AND LATER: UNAUTHORIZED",
-            "Gate 2: NOT ACCEPTED",
-            "M3: IN PROGRESS",
-        ):
-            assert required in current_section, required
+    for required in (
+        "PR-009: COMPLETED AND HUMAN ACCEPTED WITH DOCUMENTED RESIDUAL LIMITATION",
+        "Q-021: DEFERRED — NEGATIVE CALIBRATION EVIDENCE ACCEPTED; NO PRODUCTION POLICY SELECTED",
+        "Production default PR-009 quality policy: NOT ACTIVE",
+        "Production policy_id: NOT ASSIGNED",
+        "Production policy_version: NOT ASSIGNED",
+        "Automatic PR-009 quality-based document blocking: NOT ACTIVE",
+        "Automatic PR-009 production RETAKE_REQUIRED enforcement: NOT ACTIVE",
+        "RISK-PR009-NO-PRODUCTION-QUALITY-POLICY: OPEN AND ACCEPTED FOR THE "
+        "PR-009 INFRASTRUCTURE AND HUMAN-ACCEPTANCE BOUNDARY",
+        "PR-010 CONTRACT DEFINITION: AUTHORIZED, NOT STARTED",
+        "PR-010 PRODUCTION IMPLEMENTATION: UNAUTHORIZED",
+        "PR-011 AND LATER: UNAUTHORIZED",
+        "Gate 2: NOT ACCEPTED",
+        "M3: IN PROGRESS",
+    ):
+        assert required in current_q021, required
+
+    for required in (
+        "ADR-024 is PROPOSED",
+        "PR-010 CONTRACT is PROPOSED FOR HUMAN REVIEW",
+        "PR-010 PRODUCTION IMPLEMENTATION is UNAUTHORIZED",
+        "PR-011 AND LATER are UNAUTHORIZED",
+        "Gate 2 is NOT ACCEPTED",
+        "M3 is IN PROGRESS",
+    ):
+        assert required in current_pr010_traceability, required
 
     assert (
         "next authorized work is preparation of the exact PR-010 documentation contract only"
-        in current_traceability
+        in (current_traceability)
     )
     assert "real documents and personal data remain prohibited in Git, Codex and CI" in (
         current_traceability
@@ -2425,15 +2440,14 @@ def test_current_pr009_lifecycle_sections_are_scoped_after_d4() -> None:
         assert required in q021, required
 
     for forbidden in (
-        "## PR-009 human acceptance lifecycle state — 2026-07-22",
+        "ADR-024: PROPOSED",
         "PR-010 CONTRACT: PROPOSED FOR HUMAN REVIEW",
-        "PR-011 AND LATER: UNAUTHORIZED",
-        "Gate 2: NOT ACCEPTED",
-        "M3: IN PROGRESS",
+        "PR-010 CONTRACT is PROPOSED FOR HUMAN REVIEW",
     ):
+        assert forbidden not in current_q021, forbidden
         assert forbidden not in q021, forbidden
 
-    for filename in ("docs/open-questions.md",):
+    for filename in ("docs/traceability-matrix.md", "docs/open-questions.md"):
         historical = _adr_section(
             (REPO_ROOT / filename).read_text(encoding="utf-8"),
             "## PR-009 calibration lifecycle update — 2026-07-22",
@@ -2645,3 +2659,115 @@ def test_pr010_task_and_adr024_contract_terms_are_exact() -> None:
         "explicit product-owner decision",
     ):
         assert forbidden in combined, forbidden
+
+
+def test_pr010_exact_symbols_and_no_vague_contract_phrases() -> None:
+    adr = (REPO_ROOT / "docs/decisions/ADR-024-image-geometry-recipe-v1.md").read_text(
+        encoding="utf-8"
+    )
+    task = (REPO_ROOT / "docs/tasks/PR-010-geometry-tools.md").read_text(encoding="utf-8")
+    adr_exact = _section(adr, "## Exact PR-010 V1 contract completion")
+    task_exact = _section(task, "## Exact contract completion addendum")
+    combined = adr_exact + "\n" + task_exact
+
+    for required in (
+        "GeometryCoordinateSpace",
+        'SOURCE_EFFECTIVE_PIXELS_V1 = "SOURCE_EFFECTIVE_PIXELS_V1"',
+        "GeometryQuarterTurn",
+        "DEG_0 = 0",
+        "DEG_90 = 90",
+        "DEG_180 = 180",
+        "DEG_270 = 270",
+        "GeometryErrorCode",
+        'SOURCE_FILE_NOT_FOUND = "SOURCE_FILE_NOT_FOUND"',
+        'ARTIFACT_NOT_FOUND = "ARTIFACT_NOT_FOUND"',
+        'ARTIFACT_INTEGRITY_FAILED = "ARTIFACT_INTEGRITY_FAILED"',
+        'DECODE_FAILED = "DECODE_FAILED"',
+        'SOURCE_DIMENSIONS_MISMATCH = "SOURCE_DIMENSIONS_MISMATCH"',
+        'POINT_OUT_OF_BOUNDS = "POINT_OUT_OF_BOUNDS"',
+        'DUPLICATE_POINT = "DUPLICATE_POINT"',
+        'NON_CLOCKWISE_QUADRILATERAL = "NON_CLOCKWISE_QUADRILATERAL"',
+        'SELF_INTERSECTING_QUADRILATERAL = "SELF_INTERSECTING_QUADRILATERAL"',
+        'NON_CONVEX_QUADRILATERAL = "NON_CONVEX_QUADRILATERAL"',
+        'AREA_TOO_SMALL = "AREA_TOO_SMALL"',
+        'OUTPUT_DIMENSIONS_TOO_SMALL = "OUTPUT_DIMENSIONS_TOO_SMALL"',
+        'INVALID_QUARTER_TURN = "INVALID_QUARTER_TURN"',
+        'INVALID_PIPELINE_VERSION = "INVALID_PIPELINE_VERSION"',
+        'REVISION_CONFLICT = "REVISION_CONFLICT"',
+        'RENDER_FAILED = "RENDER_FAILED"',
+        'RECIPE_PERSISTENCE_FAILED = "RECIPE_PERSISTENCE_FAILED"',
+        'AUDIT_PERSISTENCE_FAILED = "AUDIT_PERSISTENCE_FAILED"',
+        'COMMIT_FAILED = "COMMIT_FAILED"',
+        "pipeline_id = PILLOW_QUAD_BICUBIC",
+        "pipeline_version = 1",
+        "locked Pillow version = 12.3.0",
+        "GeometryPipelineVersion",
+        "GeometryPoint",
+        "SourceQuadrilateral",
+        "ImageGeometryRecipe",
+        "DecodedGeometryMedia",
+        "RenderedGeometryRaster",
+        "CreateImageGeometryRecipeCommand",
+        "CreateImageGeometryRecipeResult",
+        "recipe_version_id: EntityId",
+        "source_file_id: EntityId",
+        "superseded_recipe_version_id: EntityId | None",
+        "expected_source_effective_width: int",
+        "expected_source_effective_height: int",
+        "actor: ActorRef",
+        "audit_event_id: EntityId",
+        "correlation_id: EntityId",
+        "media_type: SourceMediaType",
+        "rgb_pixels: bytes",
+        "GeometryDecoderPort",
+        "decode_for_geometry",
+        "GeometryRendererPort",
+        "render_geometry",
+        "ImageGeometryRecipeRepository",
+        "def add(self, recipe: ImageGeometryRecipe) -> None",
+        "def get(",
+        "def get_latest_by_source(",
+        "def get_by_source_revision(",
+        "def list_by_source(",
+        "image_geometry_recipes: ImageGeometryRecipeRepository",
+        "create_image_geometry_recipe",
+        "decoder: GeometryDecoderPort",
+        "renderer: GeometryRendererPort",
+        "storage: StoragePort",
+        "unit_of_work_factory: UnitOfWorkFactory",
+        "0 <= x <= source_effective_width",
+        "0 <= y <= source_effective_height",
+        "signed_twice_area",
+        "signed_twice_area >= 8",
+        "strictly positive",
+        "precision = 28",
+        "ROUND_HALF_UP",
+        "Image.Transform.QUAD",
+        "Image.Resampling.BICUBIC",
+        "fill=1",
+        "fillcolor=(255, 255, 255)",
+        "upper-left, lower-left, lower-right, upper-right",
+        "quad_data = (",
+        "Image.Transpose.ROTATE_270",
+        "Image.Transpose.ROTATE_180",
+        "Image.Transpose.ROTATE_90",
+        "AuditAction.IMAGE_GEOMETRY_RECIPE_CREATED",
+        "AuditSubjectType.IMAGE_GEOMETRY_RECIPE",
+        "only then construct and return `CreateImageGeometryRecipeResult`",
+        "no result",
+        "revision 1 and superseded ID `None`",
+        "latest revision + 1",
+        "RGB bytes",
+        "no encoded JPEG",
+        "PR-010 PRODUCTION IMPLEMENTATION is UNAUTHORIZED",
+    ):
+        assert required in combined, required
+
+    for vague in (
+        "must define the exact Pillow transform mode",
+        "must define the resampling mode",
+        "or an equivalently controlled accepted action",
+        "expected new files may include",
+        "returns an internal geometry-render result",
+    ):
+        assert vague not in adr + "\n" + task, vague
