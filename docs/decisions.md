@@ -852,9 +852,9 @@ This decision authorizes preparation of the exact PR-010 documentation contract 
 
 ## ADR-024 — Deterministic image geometry recipe v1
 
-**Status:** PROPOSED
+**Status:** ACCEPTED
 
-ADR-024 proposes the exact PR-010 Geometry Tools contract. PR-010 CONTRACT is PROPOSED FOR HUMAN REVIEW; PR-010 PRODUCTION IMPLEMENTATION is UNAUTHORIZED; PR-011 AND LATER are UNAUTHORIZED. The proposal binds `SOURCE_EFFECTIVE_PIXELS_V1`, EXIF orientation exactly once, immutable originals, canonical corner order, append-only recipe versions, `v0006_image_geometry` staging, one Unit of Work, no production JPEG, PR-011 compression boundary, PR-012 multiple-document boundary, and preservation of Q-021 deferred production-policy state.
+ADR-024 is ACCEPTED by Product owner on 2026-07-23 at accepted contract merge commit `329dd5653a3faadd3c62387c1d900710f14b2f4e`. PR-010 CONTRACT is ACCEPTED. PR-010 production implementation is AUTHORIZED AND IN REVIEW; NOT HUMAN ACCEPTED. PR-011 AND LATER are UNAUTHORIZED. The accepted contract binds `SOURCE_EFFECTIVE_PIXELS_V1`, EXIF orientation exactly once, immutable originals, canonical corner order, append-only recipe versions, `v0006_image_geometry` staging, one Unit of Work, no production JPEG, PR-011 compression boundary, PR-012 multiple-document boundary, and preservation of Q-021 deferred production-policy state.
 
 
 ## PR-010 geometry implementation review — 2026-07-23

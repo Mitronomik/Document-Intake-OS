@@ -335,15 +335,15 @@ The future verifier and tests must use generated synthetic raster data only. No 
 
 ## 23. Manual verification
 
-Future local manual verification uses a generated synthetic image only. It verifies visible corner mapping, crop boundaries, perspective rectification, clockwise rotation, output dimensions, unchanged original checksum, no original overwrite, recipe persistence, audit insertion, deterministic rerun and controlled invalid-geometry failure. Manual verification in this contract PR is documentation only; no real-photo or Windows 11 pilot occurred.
+Local manual verification uses a generated synthetic image only. It verifies visible corner mapping, crop boundaries, perspective rectification, clockwise rotation, output dimensions, unchanged original checksum, no original overwrite, recipe persistence, audit insertion, deterministic rerun and controlled invalid-geometry failure. No real-photo or Windows 11 pilot acceptance is part of PR-010.
 
 ## 24. Acceptance criteria
 
-Accept only when coordinate space is unambiguous; EXIF is applied exactly once; originals remain immutable; transformation order is fixed; recipe versions are append-only; persistence and audit are atomic; PR-010 does not publish a final JPEG is produced; PR-011, PR-012 and PR-013 boundaries are preserved; PR-010 production implementation remains unauthorized; documentation tests and repository policy pass; no production code, real documents or personal data are added.
+Accept this implementation review only when coordinate space is unambiguous; EXIF is applied exactly once; originals remain immutable; transformation order is fixed; recipe versions are append-only; persistence and audit are atomic; PR-010 does not encode, persist or publish a final prepared JPEG; PR-011, PR-012 and PR-013 boundaries are preserved; implementation remains in review, not completed and not human accepted; documentation tests, repository policy and production tests pass; no production code outside PR-010 geometry scope, real documents or personal data are added.
 
 ## 25. Non-goals
 
-No production code in this PR; no UI; no drag handles; no batch UI; no automatic boundary detection; no automatic perspective detection; no automatic deskew; no automatic crop; no multiple document regions; no document count; no image classification; no final prepared artifact publication; no JPEG encoding; no compression; no 1.90 MiB enforcement; no readability acceptance; no front/back merging; no terminal rules; no Excel; no OCR; no cloud APIs; no telemetry; no real documents; no production quality-policy activation; no Q-021 resolution; no PR-011 or later implementation.
+No production code outside PR-010 geometry scope; no UI; no drag handles; no batch UI; no automatic boundary detection; no automatic perspective detection; no automatic deskew; no automatic crop; no multiple document regions; no document count; no image classification; no final prepared artifact publication; no JPEG encoding; no compression; no 1.90 MiB enforcement; no readability acceptance; no front/back merging; no terminal rules; no Excel; no OCR; no cloud APIs; no telemetry; no real documents; no production quality-policy activation; no Q-021 resolution; no PR-011 or later implementation.
 
 ## 26. Security and privacy prohibitions
 
@@ -351,7 +351,7 @@ Do not log complete identity numbers, phones, addresses, OCR payloads, MRZ, file
 
 ## 27. Future implementation authorization boundary
 
-This contract does not authorize production implementation. Merging this PR only records a proposed contract for human review. PR-010 production implementation may be authorized only by a separate explicit product-owner decision after this contract is reviewed and merged. PR-011 AND LATER remain UNAUTHORIZED.
+The historical documentation-contract PR recorded the PR-010 geometry contract and did not itself authorize production implementation. The Product owner later accepted ADR-024 and the PR-010 contract on 2026-07-23, then explicitly authorized PR-010 production implementation from base `329dd5653a3faadd3c62387c1d900710f14b2f4e`. The current implementation remains AUTHORIZED AND IN REVIEW; NOT HUMAN ACCEPTED. PR-011 AND LATER remain UNAUTHORIZED.
 
 
 ## PR-010 implementation review state

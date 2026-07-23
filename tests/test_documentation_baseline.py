@@ -1994,7 +1994,7 @@ def test_pr009_quality_contract_is_human_accepted_with_deferred_q021_policy() ->
         "Q-021: `DEFERRED — NEGATIVE CALIBRATION EVIDENCE ACCEPTED; NO PRODUCTION POLICY SELECTED`",
         "RISK-PR009-NO-PRODUCTION-QUALITY-POLICY",
         "PR-010 AND LATER: `UNAUTHORIZED`",
-        "PR-010 CONTRACT: PROPOSED FOR HUMAN REVIEW",
+        "PR-010 CONTRACT is PROPOSED FOR HUMAN REVIEW",
         "PR-010 PRODUCTION IMPLEMENTATION: UNAUTHORIZED",
         "PR-011 AND LATER: UNAUTHORIZED",
         "Gate 2: `NOT ACCEPTED`",
@@ -2416,9 +2416,8 @@ def test_current_pr009_lifecycle_sections_are_scoped_after_d4() -> None:
     ):
         assert required in current_pr010_traceability, required
 
-    assert (
-        "next authorized work is preparation of the exact PR-010 documentation contract only"
-        in (current_traceability)
+    assert "next authorized work is review of the PR-010 production implementation" in (
+        current_traceability
     )
     assert "real documents and personal data remain prohibited in Git, Codex and CI" in (
         current_traceability

@@ -61,6 +61,7 @@ from document_intake.persistence.migrations.v0002_stored_artifacts import MIGRAT
 from document_intake.persistence.migrations.v0003_audit_events import MIGRATION as V0003
 from document_intake.persistence.migrations.v0004_source_file_import import MIGRATION as V0004
 from document_intake.persistence.migrations.v0005_image_quality import MIGRATION as V0005
+from document_intake.persistence.migrations.v0006_image_geometry import MIGRATION as V0006
 from document_intake.storage.filesystem import ImmutableFilesystemStorage
 
 _CHECKS = (
@@ -74,7 +75,7 @@ _CHECKS = (
     "privacy",
 )
 _SUCCESS_LINES = (
-    "PR009_VERIFY schema_version=5",
+    "PR009_VERIFY schema_version=6",
     *(f"PR009_VERIFY {name}=PASS" for name in _CHECKS),
     "PR009_VERIFY result=PASS",
 )
@@ -85,6 +86,7 @@ _EXPECTED_MIGRATION_CHECKSUMS = (
     "e01d441c2572ca484cf5227d94f57a3cb62fa8e6e3e223eefc6852b81f6eb3c1",
     "a826d5bc07ba73e6d54fd25e9df8afb42028261040b7981bdd157caf26b1f7c6",
     "6d020d1acfbce3fcb7168e935617f2ae008a32bea7def1f37de84e36e9e2224f",
+    "ac9d5bfbe79160d880f30af6ee1ed645ab500b9be140a18b9d6498cc68eba5ec",
 )
 _EXPECTED_IMPORT_GRAYSCALE = (
     b'%&))\x1b\x00\x00\x00\x00"!\x1f\x1e!*4;;$!\x19\x174p\xaa\xd1\xd2HB5/J'
@@ -345,7 +347,7 @@ def _unsupported_code() -> str | None:
 
 
 def _render(statuses: Mapping[str, bool]) -> tuple[str, ...]:
-    passed = CURRENT_SCHEMA_VERSION == 5 and all(statuses[name] for name in _CHECKS)
+    passed = CURRENT_SCHEMA_VERSION == 6 and all(statuses[name] for name in _CHECKS)
     return (
         f"PR009_VERIFY schema_version={CURRENT_SCHEMA_VERSION}",
         *(f"PR009_VERIFY {name}={'PASS' if statuses[name] else 'FAIL'}" for name in _CHECKS),
@@ -364,7 +366,7 @@ def _has_allowlisted_shape(lines: tuple[str, ...]) -> bool:
         return lines == ("PR009_VERIFY result=FAIL",) or lines in tuple(
             (f"PR009_VERIFY result=INCONCLUSIVE code={code}",) for code in _INCONCLUSIVE_CODES
         )
-    if len(lines) != len(_CHECKS) + 2 or lines[0] != "PR009_VERIFY schema_version=5":
+    if len(lines) != len(_CHECKS) + 2 or lines[0] != "PR009_VERIFY schema_version=6":
         return False
     for name, line in zip(_CHECKS, lines[1:-1], strict=True):
         if line not in {f"PR009_VERIFY {name}=PASS", f"PR009_VERIFY {name}=FAIL"}:
@@ -562,11 +564,12 @@ def _run_supported() -> _Run:
         storage = ImmutableFilesystemStorage(storage_root, _StorageKeyProvider())
         decoder = PillowMediaDecoder()
         statuses["migration_v0005"] = (
-            CURRENT_SCHEMA_VERSION == 5
-            and MIGRATIONS == (V0001, V0002, V0003, V0004, V0005)
+            CURRENT_SCHEMA_VERSION == 6
+            and MIGRATIONS == (V0001, V0002, V0003, V0004, V0005, V0006)
             and tuple(migration.checksum for migration in MIGRATIONS)
             == _EXPECTED_MIGRATION_CHECKSUMS
-            and V0005.checksum == _EXPECTED_MIGRATION_CHECKSUMS[-1]
+            and V0005.checksum == _EXPECTED_MIGRATION_CHECKSUMS[4]
+            and V0006.checksum == _EXPECTED_MIGRATION_CHECKSUMS[-1]
         )
 
         batch_id = _eid(100)
