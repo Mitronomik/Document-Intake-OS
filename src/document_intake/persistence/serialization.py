@@ -1409,3 +1409,102 @@ def image_geometry_recipe_columns(o: ImageGeometryRecipe) -> tuple[Any, ...]:
         o.pipeline.version,
         utc_iso(o.created_at),
     )
+
+
+def prepared_image_artifact_to_json(o: PreparedImageArtifact) -> str:
+    return _json_dumps(
+        {
+            "id": str(o.id),
+            "source_file_id": str(o.source_file_id),
+            "geometry_recipe_version_id": str(o.geometry_recipe_version_id),
+            "stored_artifact_id": str(o.stored_artifact_id),
+            "pipeline_id": o.pipeline_id,
+            "pipeline_version": o.pipeline_version,
+            "output_contract_id": o.output_contract_id,
+            "output_contract_version": o.output_contract_version,
+            "media_type": o.media_type.value,
+            "color_space": o.color_space.value,
+            "width": o.width,
+            "height": o.height,
+            "byte_size": o.byte_size,
+            "sha256": o.sha256.value,
+            "jpeg_quality": o.jpeg_quality,
+            "resize_percent": o.resize_percent,
+            "created_at": utc_iso(o.created_at),
+            "created_by": {"actor_id": str(o.created_by.actor_id), "kind": o.created_by.kind.value},
+        }
+    )
+
+
+@persisted_data_boundary
+def prepared_image_artifact_from_json(payload: str) -> PreparedImageArtifact:
+    d = _require_keys(
+        json.loads(payload),
+        {
+            "id",
+            "source_file_id",
+            "geometry_recipe_version_id",
+            "stored_artifact_id",
+            "pipeline_id",
+            "pipeline_version",
+            "output_contract_id",
+            "output_contract_version",
+            "media_type",
+            "color_space",
+            "width",
+            "height",
+            "byte_size",
+            "sha256",
+            "jpeg_quality",
+            "resize_percent",
+            "created_at",
+            "created_by",
+        },
+    )
+    actor = _require_keys(d["created_by"], {"actor_id", "kind"})
+    return PreparedImageArtifact(
+        EntityId.parse(_require_str(d["id"])),
+        EntityId.parse(_require_str(d["source_file_id"])),
+        EntityId.parse(_require_str(d["geometry_recipe_version_id"])),
+        EntityId.parse(_require_str(d["stored_artifact_id"])),
+        _require_str(d["pipeline_id"]),
+        _require_int(d["pipeline_version"]),
+        _require_str(d["output_contract_id"]),
+        _require_int(d["output_contract_version"]),
+        PreparedMediaType(_require_str(d["media_type"])),
+        ColorSpace(_require_str(d["color_space"])),
+        _require_int(d["width"]),
+        _require_int(d["height"]),
+        _require_int(d["byte_size"]),
+        Sha256Digest(_require_str(d["sha256"])),
+        _require_int(d["jpeg_quality"]),
+        _require_int(d["resize_percent"]),
+        parse_datetime(_require_str(d["created_at"])),
+        ActorRef(
+            EntityId.parse(_require_str(actor["actor_id"])), ActorKind(_require_str(actor["kind"]))
+        ),
+    )
+
+
+def prepared_image_artifact_columns(o: PreparedImageArtifact) -> tuple[Any, ...]:
+    return (
+        str(o.id),
+        str(o.source_file_id),
+        str(o.geometry_recipe_version_id),
+        str(o.stored_artifact_id),
+        o.pipeline_id,
+        o.pipeline_version,
+        o.output_contract_id,
+        o.output_contract_version,
+        o.media_type.value,
+        o.color_space.value,
+        o.width,
+        o.height,
+        o.byte_size,
+        o.sha256.value,
+        o.jpeg_quality,
+        o.resize_percent,
+        utc_iso(o.created_at),
+        str(o.created_by.actor_id),
+        o.created_by.kind.value,
+    )

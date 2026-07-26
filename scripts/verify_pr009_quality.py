@@ -75,7 +75,7 @@ _CHECKS = (
     "privacy",
 )
 _SUCCESS_LINES = (
-    "PR009_VERIFY schema_version=6",
+    "PR009_VERIFY schema_version=7",
     *(f"PR009_VERIFY {name}=PASS" for name in _CHECKS),
     "PR009_VERIFY result=PASS",
 )
@@ -347,7 +347,7 @@ def _unsupported_code() -> str | None:
 
 
 def _render(statuses: Mapping[str, bool]) -> tuple[str, ...]:
-    passed = CURRENT_SCHEMA_VERSION == 6 and all(statuses[name] for name in _CHECKS)
+    passed = CURRENT_SCHEMA_VERSION == 7 and all(statuses[name] for name in _CHECKS)
     return (
         f"PR009_VERIFY schema_version={CURRENT_SCHEMA_VERSION}",
         *(f"PR009_VERIFY {name}={'PASS' if statuses[name] else 'FAIL'}" for name in _CHECKS),
@@ -366,7 +366,7 @@ def _has_allowlisted_shape(lines: tuple[str, ...]) -> bool:
         return lines == ("PR009_VERIFY result=FAIL",) or lines in tuple(
             (f"PR009_VERIFY result=INCONCLUSIVE code={code}",) for code in _INCONCLUSIVE_CODES
         )
-    if len(lines) != len(_CHECKS) + 2 or lines[0] != "PR009_VERIFY schema_version=6":
+    if len(lines) != len(_CHECKS) + 2 or lines[0] != "PR009_VERIFY schema_version=7":
         return False
     for name, line in zip(_CHECKS, lines[1:-1], strict=True):
         if line not in {f"PR009_VERIFY {name}=PASS", f"PR009_VERIFY {name}=FAIL"}:
@@ -564,7 +564,7 @@ def _run_supported() -> _Run:
         storage = ImmutableFilesystemStorage(storage_root, _StorageKeyProvider())
         decoder = PillowMediaDecoder()
         statuses["migration_v0005"] = (
-            CURRENT_SCHEMA_VERSION == 6
+            CURRENT_SCHEMA_VERSION == 7
             and MIGRATIONS == (V0001, V0002, V0003, V0004, V0005, V0006)
             and tuple(migration.checksum for migration in MIGRATIONS)
             == _EXPECTED_MIGRATION_CHECKSUMS

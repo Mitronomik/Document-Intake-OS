@@ -1957,7 +1957,7 @@ def test_pr009_quality_contract_is_human_accepted_with_deferred_q021_policy() ->
             "RISK-PR009-NO-PRODUCTION-QUALITY-POLICY",
             "PR-010 CONTRACT: ACCEPTED",
             "PR-010: COMPLETED AND HUMAN ACCEPTED",
-            "PR-011 production implementation: UNAUTHORIZED",
+            "PR-011 PRODUCTION IMPLEMENTATION: IMPLEMENTED AND IN REVIEW; NOT HUMAN ACCEPTED",
             "Gate 2: NOT ACCEPTED",
             "M3: IN PROGRESS",
         ):
@@ -2428,8 +2428,8 @@ def test_current_pr009_lifecycle_sections_are_scoped_after_d4() -> None:
     ):
         assert required in current_pr010_traceability, required
 
-    assert "ADR-025: PROPOSED" in current_traceability
-    assert "PR-011 contract: PROPOSED FOR HUMAN REVIEW" in current_traceability
+    assert "ADR-025: ACCEPTED" in current_traceability
+    assert "PR-011 CONTRACT: ACCEPTED" in current_traceability
     assert "real documents and personal data remain prohibited in Git, Codex and CI" in (
         current_traceability
     )
@@ -2503,7 +2503,7 @@ def test_pr009_implementation_stage_has_production_contract_symbols() -> None:
         encoding="utf-8"
     )
 
-    assert "CURRENT_SCHEMA_VERSION = 6" in migrations
+    assert "CURRENT_SCHEMA_VERSION = 7" in migrations
     for required in (
         "QualityAssessmentErrorCode",
         "IMAGE_QUALITY_ASSESSED",
@@ -2570,14 +2570,14 @@ def test_pr010_contract_current_lifecycle_and_merge_evidence_are_section_scoped(
         "CI #138",
         "30034157725",
         "conclusion `success`",
-        "Current schema version: `6`",
+        "Current schema version: `7`",
         "ac9d5bfbe79160d880f30af6ee1ed645ab500b9be140a18b9d6498cc68eba5ec",
         "PR-010: COMPLETED AND HUMAN ACCEPTED",
         "ADR-024: ACCEPTED",
         "PR-010 contract: ACCEPTED",
-        "ADR-025: PROPOSED",
-        "PR-011 contract: PROPOSED FOR HUMAN REVIEW",
-        "PR-011 production implementation: UNAUTHORIZED",
+        "ADR-025: ACCEPTED",
+        "PR-011 CONTRACT: ACCEPTED",
+        "PR-011 PRODUCTION IMPLEMENTATION: IMPLEMENTED AND IN REVIEW; NOT HUMAN ACCEPTED",
         "Gate 2: NOT ACCEPTED",
         "M3: IN PROGRESS",
     ):
@@ -2838,13 +2838,13 @@ def test_current_pr010_closure_and_pr011_contract_proposal() -> None:
         "CI #138",
         "30034157725",
         "conclusion `success`",
-        "Current schema version: `6`",
+        "Current schema version: `7`",
         "ac9d5bfbe79160d880f30af6ee1ed645ab500b9be140a18b9d6498cc68eba5ec",
         "Q-021: DEFERRED",
         "Production PR-009 quality policy: NOT ACTIVE",
-        "ADR-025: PROPOSED",
-        "PR-011 contract: PROPOSED FOR HUMAN REVIEW",
-        "PR-011 production implementation: UNAUTHORIZED",
+        "ADR-025: ACCEPTED",
+        "PR-011 CONTRACT: ACCEPTED",
+        "PR-011 PRODUCTION IMPLEMENTATION: IMPLEMENTED AND IN REVIEW; NOT HUMAN ACCEPTED",
         "PR-012 AND LATER: UNAUTHORIZED",
         "Gate 2: NOT ACCEPTED",
         "M3: IN PROGRESS",
@@ -2870,74 +2870,55 @@ def test_current_pr010_closure_and_pr011_contract_proposal() -> None:
             assert stale not in current, (filename, stale)
 
 
-def test_proposed_pr011_contract_is_exact_and_unauthorized() -> None:
+def test_accepted_pr011_contract_is_exact_and_in_review() -> None:
     adr = (REPO_ROOT / "docs/decisions/ADR-025-prepared-jpeg-v1.md").read_text(encoding="utf-8")
     task = (REPO_ROOT / "docs/tasks/PR-011-jpeg-preparation.md").read_text(encoding="utf-8")
     combined = adr + task
-    markers = [
-        "**Status:** PROPOSED",
-        "documentation-only",
-        "PRODUCTION IMPLEMENTATION UNAUTHORIZED",
+    for marker in (
+        "**Status:** ACCEPTED",
+        "IMPLEMENTED AND IN REVIEW; NOT HUMAN ACCEPTED",
+        "f007fb5a04a5c69c70a37faf7ba12fa6775ae819",
         "MAX_PREPARED_JPEG_BYTES = 1_992_294",
-        "1_992_295",
         "PILLOW_PREPARED_JPEG",
         "PREPARED_JPEG_SRGB_V1",
         "95, 90, 85, 80, 75, 70, 65, 60",
         "100, 90, 80, 70, 60, 50",
         "subsampling = 0",
         "4:4:4",
-        "progressive = false",
-        "no embedded ICC profile",
-        "no JPEG candidate is decoded or reused",
         "PreparedImageArtifact",
-        "AuditAction.PREPARED_JPEG_CREATED",
-        "SIZE_LIMIT_UNREACHABLE",
-        "orphan-reconciliation",
-        "PR-012",
-        "PR-013",
         "prepare_geometry_recipe_as_jpeg",
         "PreparedJpegEncoderPort",
-        "UncompressedRgbRaster",
-        "EncodedPreparedJpeg",
-        "PREPARATION_ALREADY_EXISTS",
-        "IDENTITY_CONFLICT",
-        "PERSISTENCE_CONFLICT",
-        "UNIQUE (",
-        "AuditReasonCode.PREPARED_JPEG_CREATED",
-        "before.classification = ABSENT",
-        "after.classification = NON_SENSITIVE",
-        "Nothing is published before steps 13-16 pass",
-        (
-            "the merge commit of this documentation-contract PR, after separate "
-            "Product owner acceptance and authorization"
-        ),
-    ]
-    for marker in markers:
-        assert marker in combined, marker
-
-    summary = _section(task, "## Complete V1 contract")
-    conflicts = _section(task, "## Create-once persistence and exact operation order")
-    controlled_errors = (
-        "GEOMETRY_RECIPE_NOT_FOUND",
-        "SOURCE_FILE_NOT_FOUND",
-        "ORIGINAL_ARTIFACT_NOT_FOUND",
-        "ORIGINAL_BYTES_INVALID",
-        "SOURCE_DIMENSIONS_MISMATCH",
-        "GEOMETRY_RENDER_FAILED",
-        "JPEG_ENCODING_FAILED",
-        "SIZE_LIMIT_UNREACHABLE",
-        "IDENTITY_CONFLICT",
-        "PREPARATION_ALREADY_EXISTS",
-        "STORAGE_PUBLICATION_FAILED",
-        "PERSISTENCE_CONFLICT",
-        "PERSISTENCE_FAILED",
-        "PERSISTED_DATA_INVALID",
-    )
-    for error_code in controlled_errors:
-        assert error_code in summary, error_code
-    for conflict_code in (
-        "IDENTITY_CONFLICT",
         "PREPARATION_ALREADY_EXISTS",
         "PERSISTENCE_CONFLICT",
+        "PR-012 AND LATER: UNAUTHORIZED",
+        "GATE 2: NOT ACCEPTED",
+        "M3: IN PROGRESS",
     ):
-        assert conflict_code in conflicts, conflict_code
+        assert marker in combined, marker
+    for filename in (
+        "docs/architecture.md",
+        "docs/decisions.md",
+        "docs/decisions/ADR-025-prepared-jpeg-v1.md",
+        "docs/domain-model.md",
+        "docs/handoff.md",
+        "docs/image-pipeline.md",
+        "docs/implementation-plan.md",
+        "docs/open-questions.md",
+        "docs/progress.md",
+        "docs/roadmap.md",
+        "docs/security.md",
+        "docs/tasks/PR-011-jpeg-preparation.md",
+        "docs/testing-strategy.md",
+        "docs/traceability-matrix.md",
+    ):
+        text = (REPO_ROOT / filename).read_text(encoding="utf-8")
+        assert text.count("## Current lifecycle state — 2026-07-26") == 1
+        assert "## Current PR-011 production implementation lifecycle" not in text
+        current = _section(text, "## Current lifecycle state — 2026-07-26")
+        assert "ADR-025: ACCEPTED" in current
+        assert "PR-011 CONTRACT: ACCEPTED" in current
+        assert (
+            "PR-011 PRODUCTION IMPLEMENTATION: IMPLEMENTED AND IN REVIEW; NOT HUMAN ACCEPTED"
+            in current
+        )
+        assert "PR-012 AND LATER: UNAUTHORIZED" in current

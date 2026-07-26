@@ -1529,6 +1529,90 @@ class ImageGeometryRecipeRepo(_Repo):
                     raise PersistenceError(PersistenceErrorCode.PERSISTED_DATA_INVALID)
 
 
+class PreparedImageArtifactRepo(_Repo):
+    _SELECT = "SELECT prepared_artifact_id,source_file_id,geometry_recipe_version_id,stored_artifact_id,pipeline_id,pipeline_version,output_contract_id,output_contract_version,media_type,color_space,width,height,byte_size,sha256,jpeg_quality,resize_percent,created_at_utc,created_by_id,created_by_kind,canonical_payload FROM prepared_image_artifacts"
+
+    def __init__(self, uow: SqlCipherUnitOfWork) -> None:
+        super().__init__(
+            uow,
+            "prepared_image_artifacts",
+            ser.prepared_image_artifact_to_json,
+            ser.prepared_image_artifact_from_json,
+            lambda x: str(x.id),
+        )
+
+    def add(self, artifact: PreparedImageArtifact) -> None:
+        if not isinstance(artifact, PreparedImageArtifact):
+            raise PersistenceError(PersistenceErrorCode.PERSISTED_DATA_INVALID)
+        self._execute(
+            "INSERT INTO prepared_image_artifacts(prepared_artifact_id,source_file_id,geometry_recipe_version_id,stored_artifact_id,pipeline_id,pipeline_version,output_contract_id,output_contract_version,media_type,color_space,width,height,byte_size,sha256,jpeg_quality,resize_percent,created_at_utc,created_by_id,created_by_kind,canonical_payload) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+            (
+                *ser.prepared_image_artifact_columns(artifact),
+                ser.prepared_image_artifact_to_json(artifact),
+            ),
+            duplicate_is_already_exists=True,
+        )
+
+    def _all(self) -> tuple[PreparedImageArtifact, ...]:
+        rows = self._fetchall(f"{self._SELECT} ORDER BY created_at_utc,prepared_artifact_id")
+        return tuple(self._from_projection(row) for row in rows)
+
+    def _from_projection(self, row: tuple[Any, ...]) -> PreparedImageArtifact:
+        entity = self._deserialize(row[19])
+        if (
+            not isinstance(entity, PreparedImageArtifact)
+            or ser.prepared_image_artifact_columns(entity) != tuple(row[:19])
+            or ser.prepared_image_artifact_to_json(entity) != row[19]
+        ):
+            raise PersistenceError(PersistenceErrorCode.PERSISTED_DATA_INVALID)
+        return entity
+
+    def get(self, prepared_artifact_id: EntityId) -> PreparedImageArtifact | None:
+        return next((item for item in self._all() if item.id == prepared_artifact_id), None)
+
+    def get_by_natural_key(
+        self,
+        geometry_recipe_version_id: EntityId,
+        pipeline_id: str,
+        pipeline_version: int,
+        output_contract_id: str,
+        output_contract_version: int,
+    ) -> PreparedImageArtifact | None:
+        return next(
+            (
+                item
+                for item in self._all()
+                if (
+                    item.geometry_recipe_version_id,
+                    item.pipeline_id,
+                    item.pipeline_version,
+                    item.output_contract_id,
+                    item.output_contract_version,
+                )
+                == (
+                    geometry_recipe_version_id,
+                    pipeline_id,
+                    pipeline_version,
+                    output_contract_id,
+                    output_contract_version,
+                )
+            ),
+            None,
+        )
+
+    def list_by_source(self, source_file_id: EntityId) -> tuple[PreparedImageArtifact, ...]:
+        return tuple(item for item in self._all() if item.source_file_id == source_file_id)
+
+    def list_by_geometry_recipe(
+        self, geometry_recipe_version_id: EntityId
+    ) -> tuple[PreparedImageArtifact, ...]:
+        return tuple(
+            item
+            for item in self._all()
+            if item.geometry_recipe_version_id == geometry_recipe_version_id
+        )
+
+
 class _UowState(Enum):
     NEW = auto()
     ACTIVE = auto()
@@ -1558,6 +1642,7 @@ class SqlCipherUnitOfWork:
         self._source_files: SourceFileRepo | None = None
         self._image_quality_assessments: ImageQualityAssessmentRepo | None = None
         self._image_geometry_recipes: ImageGeometryRecipeRepo | None = None
+        self._prepared_image_artifacts: PreparedImageArtifactRepo | None = None
 
     def __repr__(self) -> str:
         return "SqlCipherUnitOfWork(<redacted>)"
@@ -1636,6 +1721,10 @@ class SqlCipherUnitOfWork:
     def image_geometry_recipes(self) -> ImageGeometryRecipeRepo:
         return self._repository(self._image_geometry_recipes)
 
+    @property
+    def prepared_image_artifacts(self) -> PreparedImageArtifactRepo:
+        return self._repository(self._prepared_image_artifacts)
+
     def _construct_repositories(self) -> None:
         self._persons = PersonRepo(self)
         self._identity_documents = IdentityRepo(self)
@@ -1652,6 +1741,7 @@ class SqlCipherUnitOfWork:
         self._source_files = SourceFileRepo(self)
         self._image_quality_assessments = ImageQualityAssessmentRepo(self)
         self._image_geometry_recipes = ImageGeometryRecipeRepo(self)
+        self._prepared_image_artifacts = PreparedImageArtifactRepo(self)
 
     def _invalidate(self) -> None:
         connection = self._conn
