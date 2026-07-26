@@ -72,7 +72,7 @@ _EXPECTED_MIGRATION_CHECKSUMS = (
     "a826d5bc07ba73e6d54fd25e9df8afb42028261040b7981bdd157caf26b1f7c6",
     "6d020d1acfbce3fcb7168e935617f2ae008a32bea7def1f37de84e36e9e2224f",
     "ac9d5bfbe79160d880f30af6ee1ed645ab500b9be140a18b9d6498cc68eba5ec",
-    "097f3201a69a141fcd4b1f3f4c8edb23e30bcab850640e9a5f74e36bc8df60a2",
+    "afad8ccc6de4ef81d73f137cbffa5a45fec1fdbb6940eabb0507cc9d6580a4a7",
 )
 _FIXTURE = Path(__file__).parents[1] / "tests" / "fixtures" / "synthetic" / "pr008_color_grid.heic"
 _NOW = datetime(2026, 7, 20, 12, 0, tzinfo=UTC)

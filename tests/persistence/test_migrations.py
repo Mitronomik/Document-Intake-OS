@@ -690,3 +690,65 @@ def test_pr010_migration_metadata_checksum_and_columns() -> None:
         "created_at_utc",
         "canonical_payload",
     ]
+
+
+def test_v0007_populated_v6_rebuild_preserves_rows_and_foreign_keys() -> None:
+    connection = conn()
+    connection.execute("PRAGMA foreign_keys=ON")
+    for migration in database.MIGRATIONS[:6]:
+        database._apply_one_migration(connection, migration)
+    insert_batch(connection)
+    insert_artifact(connection)
+    connection.execute(
+        "INSERT INTO source_files VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)", source_values()
+    )
+    connection.execute(
+        "INSERT INTO upload_batch_source_files VALUES (?,?,?)",
+        ("00000000-0000-0000-0000-000000000001", 0, "00000000-0000-0000-0000-000000000001"),
+    )
+    before = connection.execute("SELECT * FROM stored_artifacts").fetchall()
+    database._apply_one_migration(connection, V0007_PREPARED_JPEG)
+    assert connection.execute("PRAGMA user_version").fetchone()[0] == 7
+    assert connection.execute("SELECT * FROM stored_artifacts").fetchall() == before
+    assert connection.execute("PRAGMA foreign_keys").fetchone()[0] == 1
+    assert connection.execute("PRAGMA foreign_key_check").fetchall() == []
+    assert connection.execute("PRAGMA integrity_check").fetchone()[0] == "ok"
+    parents = {row[2] for row in connection.execute("PRAGMA foreign_key_list(source_files)")}
+    assert "stored_artifacts" in parents
+    assert not ({"stored_artifacts_v0007_new"} & parents)
+
+
+def test_migrations_forbid_internal_schema_edits() -> None:
+    prohibited = (
+        "writable_schema",
+        "update sqlite_schema",
+        "update sqlite_master",
+        "pragma schema_version",
+    )
+    for migration in database.MIGRATIONS:
+        text = "\n".join(migration.statements).lower()
+        assert not any(marker in text for marker in prohibited)
+
+
+def test_table_rebuild_mode_is_checksum_protected_and_restores_foreign_keys_on_failure() -> None:
+    from document_intake.persistence.migrations.model import Migration, migration_checksum
+
+    statements = ("CREATE TABLE temporary_rebuild(id INTEGER)", "SELECT * FROM missing_table")
+    checksum = migration_checksum(statements, foreign_key_mode="DISABLED_DURING_TABLE_REBUILD")
+    assert checksum != migration_checksum(statements)
+    migration = Migration(
+        1, "failing_rebuild", statements, checksum, "DISABLED_DURING_TABLE_REBUILD"
+    )
+    connection = conn()
+    connection.execute("PRAGMA foreign_keys=ON")
+    with pytest.raises(PersistenceError) as exc:
+        database._apply_one_migration(connection, migration)
+    assert exc.value.code is PersistenceErrorCode.MIGRATION_FAILED
+    assert connection.execute("PRAGMA foreign_keys").fetchone()[0] == 1
+    assert connection.execute("PRAGMA user_version").fetchone()[0] == 0
+    assert (
+        connection.execute(
+            "SELECT name FROM sqlite_master WHERE name='temporary_rebuild'"
+        ).fetchone()
+        is None
+    )

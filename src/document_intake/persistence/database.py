@@ -24,6 +24,7 @@ from document_intake.persistence.migrations import (
     APPLICATION_ID,
     CURRENT_SCHEMA_VERSION,
     MIGRATIONS,
+    Migration,
 )
 
 Connection = Any
@@ -188,31 +189,64 @@ def _validate_schema(conn: Connection) -> None:
         raise PersistenceError(PersistenceErrorCode.SCHEMA_HISTORY_INVALID) from None
 
 
+def _apply_one_migration(conn: Connection, migration: Migration) -> None:
+    disabled = migration.foreign_key_mode == "DISABLED_DURING_TABLE_REBUILD"
+    try:
+        if bool(conn.in_transaction):
+            raise PersistenceError(PersistenceErrorCode.MIGRATION_FAILED)
+        if disabled:
+            if int(_fetch_one(conn, "PRAGMA foreign_keys")) != 1:
+                raise PersistenceError(PersistenceErrorCode.MIGRATION_FAILED)
+            conn.execute("PRAGMA foreign_keys = OFF")
+            if int(_fetch_one(conn, "PRAGMA foreign_keys")) != 0:
+                raise PersistenceError(PersistenceErrorCode.MIGRATION_FAILED)
+        conn.execute("BEGIN IMMEDIATE")
+        if migration.version == 1:
+            conn.execute(f"PRAGMA application_id = {APPLICATION_ID}")
+        for statement in migration.statements:
+            conn.execute(statement)
+        if disabled and conn.execute("PRAGMA foreign_key_check").fetchall():
+            raise PersistenceError(PersistenceErrorCode.MIGRATION_FAILED)
+        conn.execute(
+            "INSERT INTO schema_migrations(version, name, checksum, applied_at_utc) VALUES (?, ?, ?, strftime('%Y-%m-%dT%H:%M:%fZ','now'))",
+            (migration.version, migration.name, migration.checksum),
+        )
+        conn.execute(f"PRAGMA user_version = {migration.version}")
+        conn.execute("COMMIT")
+        if disabled:
+            conn.execute("PRAGMA foreign_keys = ON")
+            if int(_fetch_one(conn, "PRAGMA foreign_keys")) != 1:
+                raise PersistenceError(PersistenceErrorCode.MIGRATION_FAILED)
+            if conn.execute("PRAGMA foreign_key_check").fetchall():
+                raise PersistenceError(PersistenceErrorCode.MIGRATION_FAILED)
+    except Exception:
+        if bool(getattr(conn, "in_transaction", False)):
+            try:
+                conn.execute("ROLLBACK")
+            except Exception:
+                pass
+        if disabled:
+            try:
+                conn.execute("PRAGMA foreign_keys = ON")
+                if int(_fetch_one(conn, "PRAGMA foreign_keys")) != 1:
+                    raise RuntimeError
+            except Exception:
+                raise PersistenceError(PersistenceErrorCode.MIGRATION_FAILED) from None
+        raise PersistenceError(PersistenceErrorCode.MIGRATION_FAILED) from None
+
+
 def _apply_migrations(conn: Connection) -> None:
+    if int(_fetch_one(conn, "PRAGMA foreign_keys")) != 1:
+        conn.execute("PRAGMA foreign_keys = ON")
+    if int(_fetch_one(conn, "PRAGMA foreign_keys")) != 1:
+        raise PersistenceError(PersistenceErrorCode.MIGRATION_FAILED)
     _validate_schema(conn)
     current = int(_fetch_one(conn, "PRAGMA user_version"))
     for migration in MIGRATIONS[current:]:
         if migration.version != current + 1:
             raise PersistenceError(PersistenceErrorCode.SCHEMA_HISTORY_INVALID)
-        try:
-            conn.execute("BEGIN IMMEDIATE")
-            if migration.version == 1:
-                conn.execute(f"PRAGMA application_id = {APPLICATION_ID}")
-            for statement in migration.statements:
-                conn.execute(statement)
-            conn.execute(
-                "INSERT INTO schema_migrations(version, name, checksum, applied_at_utc) VALUES (?, ?, ?, strftime('%Y-%m-%dT%H:%M:%fZ','now'))",
-                (migration.version, migration.name, migration.checksum),
-            )
-            conn.execute(f"PRAGMA user_version = {migration.version}")
-            conn.execute("COMMIT")
-            current = migration.version
-        except Exception:
-            try:
-                conn.execute("ROLLBACK")
-            except Exception:
-                pass
-            raise PersistenceError(PersistenceErrorCode.MIGRATION_FAILED) from None
+        _apply_one_migration(conn, migration)
+        current = migration.version
     _validate_schema(conn)
 
 

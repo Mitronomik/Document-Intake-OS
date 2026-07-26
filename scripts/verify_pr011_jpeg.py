@@ -43,14 +43,18 @@ from document_intake.domain.prepared_jpeg import (
 from document_intake.domain.value_objects import ActorRef, EntityId
 from document_intake.domain.value_objects.imports import BatchNumber
 from document_intake.image_pipeline.geometry_transformer import PillowGeometryTransformer
-from document_intake.image_pipeline.jpeg_preparer import PillowPreparedJpegEncoder
+from document_intake.image_pipeline.jpeg_preparer import (
+    PillowPreparedJpegEncoder,
+    _encode_prepared_jpeg_internal,
+    _iter_candidate_attempts,
+)
 from document_intake.image_pipeline.media_decoder import PillowMediaDecoder
 from document_intake.persistence import CURRENT_SCHEMA_VERSION, EncryptedDatabase
 from document_intake.persistence.errors import PersistenceError, PersistenceErrorCode
 from document_intake.persistence.migrations.v0007_prepared_jpeg import MIGRATION
 from document_intake.storage.filesystem import ImmutableFilesystemStorage
 
-_CHECKSUM = "097f3201a69a141fcd4b1f3f4c8edb23e30bcab850640e9a5f74e36bc8df60a2"
+_CHECKSUM = "afad8ccc6de4ef81d73f137cbffa5a45fec1fdbb6940eabb0507cc9d6580a4a7"
 _NOW = datetime(2026, 7, 26, 12, tzinfo=UTC)
 _LABELS = (
     "schema_version=7",
@@ -193,13 +197,40 @@ def _run_production(root: Path) -> tuple[str, ...]:
     )
     if len(imported.imported) != 1:
         raise RuntimeError from None
+    recipe_command = _recipe_command(5, 2, 6)
     create_image_geometry_recipe(
-        _recipe_command(5, 2, 6),
+        recipe_command,
         decoder=decoder,
         renderer=renderer,
         storage=storage,
         unit_of_work_factory=factory,
     )
+    media = decoder.decode_for_geometry(content=original)
+    rendered = renderer.render_geometry(
+        media=media,
+        quadrilateral=recipe_command.quadrilateral,
+        quarter_turn=recipe_command.quarter_turn,
+        pipeline=recipe_command.pipeline,
+    )
+    render_raster = UncompressedRgbRaster(rendered.width, rendered.height, rendered.rgb_pixels)
+    observed: list[Any] = []
+    deterministic_first = _encode_prepared_jpeg_internal(
+        render_raster, pipeline=PreparedJpegPipelineVersion(), attempt_observer=observed.append
+    )
+    deterministic_second = PillowPreparedJpegEncoder().encode_prepared_jpeg(
+        render_raster, pipeline=PreparedJpegPipelineVersion()
+    )
+    plan = _iter_candidate_attempts(render_raster)
+    if not observed or tuple(observed) != plan[: len(observed)]:
+        raise RuntimeError from None
+    selected = observed[-1]
+    if (
+        deterministic_first.resize_percent,
+        deterministic_first.jpeg_quality,
+        deterministic_first.width,
+        deterministic_first.height,
+    ) != (selected.resize_percent, selected.jpeg_quality, selected.width, selected.height):
+        raise RuntimeError from None
     command = PrepareJpegCommand(_id(7), _id(8), _id(5), _id(9), _NOW, _actor(), _id(10))
     result = prepare_geometry_recipe_as_jpeg(
         command,
@@ -225,14 +256,6 @@ def _run_production(root: Path) -> tuple[str, ...]:
         ):
             raise RuntimeError from None
     content = storage.read_bytes(expected=stored)
-    first = encoder.encode_prepared_jpeg(
-        UncompressedRgbRaster(
-            result.artifact.width,
-            result.artifact.height,
-            Image.open(BytesIO(content)).convert("RGB").tobytes(),
-        ),
-        pipeline=PreparedJpegPipelineVersion(),
-    )
     with Image.open(BytesIO(content)) as image:
         image.load()
         if (
@@ -255,15 +278,7 @@ def _run_production(root: Path) -> tuple[str, ...]:
             "size_limit=PASS",
         )
     )
-    if (
-        first.jpeg_bytes
-        != encoder.encode_prepared_jpeg(
-            UncompressedRgbRaster(
-                first.width, first.height, Image.open(BytesIO(content)).convert("RGB").tobytes()
-            ),
-            pipeline=PreparedJpegPipelineVersion(),
-        ).jpeg_bytes
-    ):
+    if deterministic_first != deterministic_second or content != deterministic_first.jpeg_bytes:
         raise RuntimeError from None
     statuses.extend(("deterministic=PASS", "persistence=PASS", "audit=PASS"))
     try:
@@ -314,8 +329,46 @@ def _run_production(root: Path) -> tuple[str, ...]:
         report = storage.reconcile(expected=uow.stored_artifacts.list_all())
     if not report.orphan:
         raise RuntimeError from None
-    statuses.extend(("rollback=PASS", "privacy=PASS", "result=PASS"))
+    statuses.append("rollback=PASS")
     return tuple(statuses)
+
+
+_GENERIC_FORBIDDEN = (
+    ".db",
+    ".jpg",
+    ".jpeg",
+    ".png",
+    "\\",
+    "/",
+    "SELECT",
+    "INSERT",
+    "UPDATE",
+    "DELETE",
+    "Traceback",
+    "Exception",
+    "sha256=",
+    "key=",
+    "quality=",
+    "resize=",
+    "width=",
+    "height=",
+)
+
+
+def _render_success(
+    statuses: tuple[str, ...], forbidden_values: tuple[str, ...]
+) -> tuple[str, ...]:
+    expected_statuses = _LABELS[:-2]
+    if statuses != expected_statuses:
+        raise RuntimeError from None
+    lines = tuple(f"PR011_VERIFY {status}" for status in (*statuses, "privacy=PASS", "result=PASS"))
+    allowed = tuple(f"PR011_VERIFY {status}" for status in _LABELS)
+    if lines != allowed:
+        raise RuntimeError from None
+    joined = "\n".join(lines)
+    if any(marker and marker in joined for marker in (*_GENERIC_FORBIDDEN, *forbidden_values)):
+        raise RuntimeError from None
+    return lines
 
 
 def main() -> int:
@@ -328,15 +381,17 @@ def main() -> int:
     root = Path(tempfile.mkdtemp(prefix="pr011-"))
     try:
         statuses = _run_production(root)
-        if statuses != _LABELS:
-            raise RuntimeError from None
+        lines = _render_success(
+            statuses,
+            (str(root), "source.png", "state.db", "storage", (b"D" * 32).hex(), (b"S" * 32).hex()),
+        )
     except Exception:
         print("PR011_VERIFY result=FAIL")
         return 1
     finally:
         shutil.rmtree(root, ignore_errors=True)
-    for status in statuses:
-        print(f"PR011_VERIFY {status}")
+    for line in lines:
+        print(line)
     return 0
 
 

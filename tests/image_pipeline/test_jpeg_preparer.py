@@ -98,3 +98,45 @@ def test_encoded_result_rejects_inconsistent_metadata() -> None:
             PREPARED_JPEG_OUTPUT_CONTRACT_ID,
             1,
         )
+
+
+def test_candidate_plan_is_exact_quality_before_scale_and_guarded() -> None:
+    from document_intake.image_pipeline.jpeg_preparer import _iter_candidate_attempts
+
+    large = UncompressedRgbRaster(2400, 2400, b"\0" * (2400 * 2400 * 3))
+    plan = _iter_candidate_attempts(large)
+    assert [(a.resize_percent, a.jpeg_quality) for a in plan] == [
+        (scale, quality)
+        for scale in (100, 90, 80, 70, 60, 50)
+        for quality in (95, 90, 85, 80, 75, 70, 65, 60)
+    ]
+    assert [(a.width, a.height) for a in plan[::8]] == [
+        (2400, 2400),
+        (2160, 2160),
+        (1920, 1920),
+        (1680, 1680),
+        (1440, 1440),
+        (1200, 1200),
+    ]
+    small = UncompressedRgbRaster(5, 5, b"\0" * 75)
+    assert {a.resize_percent for a in _iter_candidate_attempts(small)} == {100}
+
+
+def test_attempt_observer_matches_selected_first_candidate() -> None:
+    from document_intake.image_pipeline.jpeg_preparer import (
+        _encode_prepared_jpeg_internal,
+        _iter_candidate_attempts,
+    )
+
+    raster = UncompressedRgbRaster(96, 64, b"\0" * (96 * 64 * 3))
+    observed = []
+    result = _encode_prepared_jpeg_internal(
+        raster, pipeline=PreparedJpegPipelineVersion(), attempt_observer=observed.append
+    )
+    assert observed == list(_iter_candidate_attempts(raster)[:1])
+    assert (result.resize_percent, result.jpeg_quality, result.width, result.height) == (
+        observed[-1].resize_percent,
+        observed[-1].jpeg_quality,
+        observed[-1].width,
+        observed[-1].height,
+    )

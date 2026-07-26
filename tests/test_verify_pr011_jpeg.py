@@ -29,7 +29,11 @@ def test_missing_windows_dependency_is_inconclusive(monkeypatch, capsys):  # typ
 
 def test_real_components_produce_every_status(monkeypatch, tmp_path):  # type: ignore[no-untyped-def]
     monkeypatch.setattr(database, "_open_connection", _sqlite)
-    assert verifier._run_production(tmp_path) == verifier._LABELS
+    statuses = verifier._run_production(tmp_path)
+    assert statuses == verifier._LABELS[:-2]
+    assert verifier._render_success(statuses, ()) == tuple(
+        f"PR011_VERIFY {item}" for item in verifier._LABELS
+    )
 
 
 def test_failure_is_sanitized(monkeypatch, capsys):  # type: ignore[no-untyped-def]
@@ -42,3 +46,10 @@ def test_failure_is_sanitized(monkeypatch, capsys):  # type: ignore[no-untyped-d
     )
     assert verifier.main() == 1
     assert capsys.readouterr().out == "PR011_VERIFY result=FAIL\n"
+
+
+def test_privacy_forbidden_marker_blocks_success() -> None:
+    import pytest
+
+    with pytest.raises(RuntimeError):
+        verifier._render_success(verifier._LABELS[:-2], ("PR011_VERIFY",))
