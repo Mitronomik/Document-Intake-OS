@@ -62,6 +62,7 @@ from document_intake.persistence.migrations.v0003_audit_events import MIGRATION 
 from document_intake.persistence.migrations.v0004_source_file_import import MIGRATION as V0004
 from document_intake.persistence.migrations.v0005_image_quality import MIGRATION as V0005
 from document_intake.persistence.migrations.v0006_image_geometry import MIGRATION as V0006
+from document_intake.persistence.migrations.v0007_prepared_jpeg import MIGRATION as V0007
 from document_intake.storage.filesystem import ImmutableFilesystemStorage
 
 _EXPECTED_MIGRATION_CHECKSUMS = (
@@ -71,6 +72,7 @@ _EXPECTED_MIGRATION_CHECKSUMS = (
     "a826d5bc07ba73e6d54fd25e9df8afb42028261040b7981bdd157caf26b1f7c6",
     "6d020d1acfbce3fcb7168e935617f2ae008a32bea7def1f37de84e36e9e2224f",
     "ac9d5bfbe79160d880f30af6ee1ed645ab500b9be140a18b9d6498cc68eba5ec",
+    "097f3201a69a141fcd4b1f3f4c8edb23e30bcab850640e9a5f74e36bc8df60a2",
 )
 _FIXTURE = Path(__file__).parents[1] / "tests" / "fixtures" / "synthetic" / "pr008_color_grid.heic"
 _NOW = datetime(2026, 7, 20, 12, 0, tzinfo=UTC)
@@ -357,9 +359,9 @@ def _migration_chain_valid(
     current_schema_version: int,
     migrations: tuple[Migration, ...],
 ) -> bool:
-    expected = (V0001, V0002, V0003, V0004, V0005, V0006)
+    expected = (V0001, V0002, V0003, V0004, V0005, V0006, V0007)
     return (
-        current_schema_version == 6
+        current_schema_version == 7
         and migrations == expected
         and tuple(migration.checksum for migration in migrations) == _EXPECTED_MIGRATION_CHECKSUMS
     )

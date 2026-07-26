@@ -62,6 +62,7 @@ from document_intake.persistence.migrations.v0003_audit_events import MIGRATION 
 from document_intake.persistence.migrations.v0004_source_file_import import MIGRATION as V0004
 from document_intake.persistence.migrations.v0005_image_quality import MIGRATION as V0005
 from document_intake.persistence.migrations.v0006_image_geometry import MIGRATION as V0006
+from document_intake.persistence.migrations.v0007_prepared_jpeg import MIGRATION as V0007
 from document_intake.storage.filesystem import ImmutableFilesystemStorage
 
 _CHECKS = (
@@ -87,6 +88,7 @@ _EXPECTED_MIGRATION_CHECKSUMS = (
     "a826d5bc07ba73e6d54fd25e9df8afb42028261040b7981bdd157caf26b1f7c6",
     "6d020d1acfbce3fcb7168e935617f2ae008a32bea7def1f37de84e36e9e2224f",
     "ac9d5bfbe79160d880f30af6ee1ed645ab500b9be140a18b9d6498cc68eba5ec",
+    "097f3201a69a141fcd4b1f3f4c8edb23e30bcab850640e9a5f74e36bc8df60a2",
 )
 _EXPECTED_IMPORT_GRAYSCALE = (
     b'%&))\x1b\x00\x00\x00\x00"!\x1f\x1e!*4;;$!\x19\x174p\xaa\xd1\xd2HB5/J'
@@ -565,11 +567,12 @@ def _run_supported() -> _Run:
         decoder = PillowMediaDecoder()
         statuses["migration_v0005"] = (
             CURRENT_SCHEMA_VERSION == 7
-            and MIGRATIONS == (V0001, V0002, V0003, V0004, V0005, V0006)
+            and MIGRATIONS == (V0001, V0002, V0003, V0004, V0005, V0006, V0007)
             and tuple(migration.checksum for migration in MIGRATIONS)
             == _EXPECTED_MIGRATION_CHECKSUMS
             and V0005.checksum == _EXPECTED_MIGRATION_CHECKSUMS[4]
-            and V0006.checksum == _EXPECTED_MIGRATION_CHECKSUMS[-1]
+            and V0006.checksum == _EXPECTED_MIGRATION_CHECKSUMS[5]
+            and V0007.checksum == _EXPECTED_MIGRATION_CHECKSUMS[6]
         )
 
         batch_id = _eid(100)

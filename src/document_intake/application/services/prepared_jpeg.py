@@ -23,7 +23,7 @@ from document_intake.domain.enums import (
     ColorSpace,
     PreparedMediaType,
 )
-from document_intake.domain.image_geometry import ImageGeometryRecipe
+from document_intake.domain.image_geometry import ImageGeometryRecipe, derive_geometry_dimensions
 from document_intake.domain.prepared_jpeg import (
     PREPARED_JPEG_OUTPUT_CONTRACT_ID,
     PREPARED_JPEG_OUTPUT_CONTRACT_VERSION,
@@ -104,8 +104,15 @@ def prepare_geometry_recipe_as_jpeg(
                 quarter_turn=recipe.quarter_turn,
                 pipeline=recipe.pipeline,
             )
+            expected_width, expected_height = derive_geometry_dimensions(
+                recipe.quadrilateral, recipe.quarter_turn
+            )
             if (
-                rendered.pipeline != recipe.pipeline
+                rendered.width != expected_width
+                or rendered.height != expected_height
+                or rendered.width < 1
+                or rendered.height < 1
+                or rendered.pipeline != recipe.pipeline
                 or len(rendered.rgb_pixels) != rendered.width * rendered.height * 3
             ):
                 _raise(PreparedJpegErrorCode.GEOMETRY_RENDER_FAILED)

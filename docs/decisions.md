@@ -883,9 +883,9 @@ PR-011 is implemented in review on the accepted exact base; PR-012 and PR-013 re
 
 ### ADR-025 — Deterministic prepared JPEG v1
 
-Status: `PROPOSED`. Documentation-only; PR-011 production implementation remains `UNAUTHORIZED`. See [ADR-025](decisions/ADR-025-prepared-jpeg-v1.md) and [PR-011 task](tasks/PR-011-jpeg-preparation.md).
+Status: `ACCEPTED`. PR-011 contract is accepted and production implementation is implemented and in review, not human accepted. PR-012 and later remain unauthorized. See [ADR-025](decisions/ADR-025-prepared-jpeg-v1.md) and [PR-011 task](tasks/PR-011-jpeg-preparation.md).
 
 Real documents and personal data remain prohibited in Git, Codex and CI.
 
 
-Product owner authorization date: 2026-07-26. Accepted contract and implementation base: `f007fb5a04a5c69c70a37faf7ba12fa6775ae819`. Current schema version: `7`. Final v0007 checksum: `62c38c1a64fa620a04d6bb0536ad7ed5ffede376b8293b555330611ca45c84ca`. ADR-025: ACCEPTED. PR-011 CONTRACT: ACCEPTED. PR-011 PRODUCTION IMPLEMENTATION: IMPLEMENTED AND IN REVIEW; NOT HUMAN ACCEPTED. PR-012 AND LATER: UNAUTHORIZED. Q-021: DEFERRED. PRODUCTION PR-009 QUALITY POLICY: NOT ACTIVE. PRODUCTION `policy_id`: NOT ASSIGNED. PRODUCTION `policy_version`: NOT ASSIGNED. AUTOMATIC PR-009 QUALITY BLOCKING: NOT ACTIVE. AUTOMATIC PRODUCTION `RETAKE_REQUIRED`: NOT ACTIVE. GATE 2: NOT ACCEPTED. M3: IN PROGRESS. Real documents and personal data remain prohibited in Git, Codex and CI.
+Product owner authorization date: 2026-07-26. Accepted contract and implementation base: `f007fb5a04a5c69c70a37faf7ba12fa6775ae819`. Current schema version: `7`. Final v0007 checksum: `097f3201a69a141fcd4b1f3f4c8edb23e30bcab850640e9a5f74e36bc8df60a2`. ADR-025: ACCEPTED. PR-011 CONTRACT: ACCEPTED. PR-011 PRODUCTION IMPLEMENTATION: IMPLEMENTED AND IN REVIEW; NOT HUMAN ACCEPTED. PR-012 AND LATER: UNAUTHORIZED. Q-021: DEFERRED. PRODUCTION PR-009 QUALITY POLICY: NOT ACTIVE. PRODUCTION `policy_id`: NOT ASSIGNED. PRODUCTION `policy_version`: NOT ASSIGNED. AUTOMATIC PR-009 QUALITY BLOCKING: NOT ACTIVE. AUTOMATIC PRODUCTION `RETAKE_REQUIRED`: NOT ACTIVE. GATE 2: NOT ACCEPTED. M3: IN PROGRESS. Real documents and personal data remain prohibited in Git, Codex and CI.

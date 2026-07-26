@@ -2922,3 +2922,26 @@ def test_accepted_pr011_contract_is_exact_and_in_review() -> None:
             in current
         )
         assert "PR-012 AND LATER: UNAUTHORIZED" in current
+
+
+def test_pr011_task_describes_implemented_production_evidence() -> None:
+    task = (REPO_ROOT / "docs/tasks/PR-011-jpeg-preparation.md").read_text(encoding="utf-8")
+    for heading in (
+        "## Implemented production modules",
+        "## Implemented application service",
+        "## Implemented persistence and migration",
+        "## Implemented Windows production verifier",
+        "## Verification requirements",
+        "## Remaining non-goals",
+        "## Human-acceptance boundary",
+    ):
+        assert heading in task
+    for stale in (
+        "## Future tests",
+        "## Future verifier",
+        "future v0007",
+        "future use case",
+        "not added to CI by this documentation PR",
+        "No production code",
+    ):
+        assert stale not in task
