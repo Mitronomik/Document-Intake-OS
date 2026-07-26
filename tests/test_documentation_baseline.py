@@ -2906,7 +2906,7 @@ def test_proposed_pr011_contract_is_exact_and_unauthorized() -> None:
         "AuditReasonCode.PREPARED_JPEG_CREATED",
         "before.classification = ABSENT",
         "after.classification = NON_SENSITIVE",
-        "Nothing is published before steps 13–16 pass",
+        "Nothing is published before steps 13-16 pass",
         (
             "the merge commit of this documentation-contract PR, after separate "
             "Product owner acceptance and authorization"
@@ -2914,3 +2914,30 @@ def test_proposed_pr011_contract_is_exact_and_unauthorized() -> None:
     ]
     for marker in markers:
         assert marker in combined, marker
+
+    summary = _section(task, "## Complete V1 contract")
+    conflicts = _section(task, "## Create-once persistence and exact operation order")
+    controlled_errors = (
+        "GEOMETRY_RECIPE_NOT_FOUND",
+        "SOURCE_FILE_NOT_FOUND",
+        "ORIGINAL_ARTIFACT_NOT_FOUND",
+        "ORIGINAL_BYTES_INVALID",
+        "SOURCE_DIMENSIONS_MISMATCH",
+        "GEOMETRY_RENDER_FAILED",
+        "JPEG_ENCODING_FAILED",
+        "SIZE_LIMIT_UNREACHABLE",
+        "IDENTITY_CONFLICT",
+        "PREPARATION_ALREADY_EXISTS",
+        "STORAGE_PUBLICATION_FAILED",
+        "PERSISTENCE_CONFLICT",
+        "PERSISTENCE_FAILED",
+        "PERSISTED_DATA_INVALID",
+    )
+    for error_code in controlled_errors:
+        assert error_code in summary, error_code
+    for conflict_code in (
+        "IDENTITY_CONFLICT",
+        "PREPARATION_ALREADY_EXISTS",
+        "PERSISTENCE_CONFLICT",
+    ):
+        assert conflict_code in conflicts, conflict_code
