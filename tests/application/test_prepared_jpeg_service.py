@@ -88,3 +88,52 @@ def test_duplicate_caller_ids_are_rejected_by_command() -> None:
             ActorRef(eid(9), ActorKind.SYSTEM),
             eid(5),
         )
+
+
+@pytest.mark.parametrize(
+    ("prepared", "stored", "audit"),
+    [(1, 1, 4), (1, 2, 1), (1, 2, 2)],
+    ids=("prepared-equals-stored", "prepared-equals-audit", "stored-equals-audit"),
+)
+def test_every_caller_record_identity_collision_is_rejected_before_ports(
+    prepared: int, stored: int, audit: int
+) -> None:
+    with pytest.raises(InvalidValueError) as exc:
+        PrepareJpegCommand(
+            eid(prepared),
+            eid(stored),
+            eid(3),
+            eid(audit),
+            datetime(2026, 7, 26, tzinfo=UTC),
+            ActorRef(eid(9), ActorKind.SYSTEM),
+            eid(5),
+        )
+    assert str(exc.value) == "prepare_jpeg_command.id: identity_conflict"
+    assert exc.value.__cause__ is None
+
+
+@pytest.mark.parametrize(
+    ("field", "value"),
+    [
+        ("prepared_at", datetime(2026, 7, 26)),
+        ("actor", object()),
+        ("correlation_id", object()),
+    ],
+)
+def test_invalid_command_boundary_is_rejected_without_opening_any_port(
+    field: str, value: object
+) -> None:
+    values = {
+        "prepared_artifact_id": eid(1),
+        "stored_artifact_id": eid(2),
+        "geometry_recipe_version_id": eid(3),
+        "audit_event_id": eid(4),
+        "prepared_at": datetime(2026, 7, 26, tzinfo=UTC),
+        "actor": ActorRef(eid(9), ActorKind.SYSTEM),
+        "correlation_id": eid(5),
+    }
+    values[field] = value
+    with pytest.raises(InvalidValueError) as exc:
+        PrepareJpegCommand(**values)  # type: ignore[arg-type]
+    assert exc.value.__cause__ is None
+    assert "private" not in repr(exc.value).lower()

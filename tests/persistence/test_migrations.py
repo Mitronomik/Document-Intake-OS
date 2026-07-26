@@ -752,3 +752,65 @@ def test_table_rebuild_mode_is_checksum_protected_and_restores_foreign_keys_on_f
         ).fetchone()
         is None
     )
+
+
+class _FailAfterRealStatement:
+    def __init__(self, connection: sqlite3.Connection, marker: str) -> None:
+        self._connection = connection
+        self._marker = marker.lower()
+        self.failed = False
+
+    @property
+    def in_transaction(self) -> bool:
+        return self._connection.in_transaction
+
+    def execute(self, statement: str, parameters=()):  # type: ignore[no-untyped-def]
+        cursor = self._connection.execute(statement, parameters)
+        if not self.failed and self._marker in " ".join(statement.lower().split()):
+            self.failed = True
+            raise sqlite3.OperationalError("synthetic migration interruption")
+        return cursor
+
+    def rollback(self) -> None:
+        self._connection.rollback()
+
+    def commit(self) -> None:
+        self._connection.commit()
+
+
+@pytest.mark.parametrize(
+    "marker",
+    [
+        "insert into audit_events select * from audit_events_v0006",
+        "insert into stored_artifacts_v0007_new",
+    ],
+    ids=("after-audit-copy", "after-stored-artifact-copy"),
+)
+def test_actual_v0007_mid_migration_failure_is_atomic_and_retryable(marker: str) -> None:
+    connection = conn()
+    connection.execute("PRAGMA foreign_keys=ON")
+    for migration in database.MIGRATIONS[:6]:
+        database._apply_one_migration(connection, migration)
+    insert_batch(connection)
+    insert_artifact(connection)
+    connection.execute(
+        "INSERT INTO source_files VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)", source_values()
+    )
+    before = connection.execute("SELECT * FROM stored_artifacts").fetchall()
+    wrapped = _FailAfterRealStatement(connection, marker)
+    with pytest.raises(PersistenceError) as exc:
+        database._apply_one_migration(wrapped, V0007_PREPARED_JPEG)  # type: ignore[arg-type]
+    assert exc.value.code is PersistenceErrorCode.MIGRATION_FAILED
+    assert wrapped.failed
+    assert connection.execute("PRAGMA user_version").fetchone()[0] == 6
+    assert connection.execute("SELECT count(*) FROM schema_migrations").fetchone()[0] == 6
+    assert connection.execute("SELECT * FROM stored_artifacts").fetchall() == before
+    names = {row[0] for row in connection.execute("SELECT name FROM sqlite_master")}
+    assert "stored_artifacts_v0007_new" not in names
+    assert "prepared_image_artifacts" not in names
+    assert connection.execute("PRAGMA foreign_keys").fetchone()[0] == 1
+    assert connection.execute("PRAGMA foreign_key_check").fetchall() == []
+    assert connection.execute("PRAGMA integrity_check").fetchone()[0] == "ok"
+    database._apply_one_migration(connection, V0007_PREPARED_JPEG)
+    assert connection.execute("PRAGMA user_version").fetchone()[0] == 7
+    assert connection.execute("SELECT * FROM stored_artifacts").fetchall() == before
