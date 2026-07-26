@@ -11,7 +11,7 @@ PR-009 remains COMPLETED AND HUMAN ACCEPTED WITH DOCUMENTED RESIDUAL LIMITATION.
 
 ## Decision
 
-ADR-024 is ACCEPTED by Product owner on 2026-07-23. It defines the exact deterministic image geometry recipe v1 contract accepted through merge commit `329dd5653a3faadd3c62387c1d900710f14b2f4e`. PR-010 CONTRACT is ACCEPTED. PR-010 PRODUCTION IMPLEMENTATION is AUTHORIZED AND IN REVIEW; NOT HUMAN ACCEPTED. PR-011 AND LATER are UNAUTHORIZED.
+ADR-024 is ACCEPTED by Product owner on 2026-07-23. It defines the exact deterministic image geometry recipe v1 contract accepted through merge commit `329dd5653a3faadd3c62387c1d900710f14b2f4e`. PR-010 CONTRACT is ACCEPTED. PR-010 is COMPLETED AND HUMAN ACCEPTED through GitHub PR #28. PR-011 AND LATER are UNAUTHORIZED.
 
 ## Geometry scope
 

@@ -434,7 +434,7 @@ PR-009 production code is acceptable only when ADR-023 is accepted or explicitly
 No image modification, correction, enhancement, crop, perspective correction, segmentation, document detection/count, OCR, UI, automatic rejection/deletion, prepared JPEG generation, PR-010+ work, final calibrated threshold claim or real-document fixtures.
 
 
-## PR-009 calibration lifecycle update — 2026-07-22
+## Historical lifecycle snapshot — PR-009 calibration lifecycle update — 2026-07-22
 
 ADR-023: ACCEPTED.
 PR-009: IMPLEMENTED AND READY FOR HUMAN ACCEPTANCE WITH DOCUMENTED RESIDUAL LIMITATION.
