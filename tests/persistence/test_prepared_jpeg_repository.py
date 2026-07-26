@@ -1,3 +1,4 @@
+import inspect
 import sqlite3
 
 import pytest
@@ -133,3 +134,12 @@ def test_database_immutability_rejects_every_mutation(real_repo, statement: str)
     with pytest.raises(sqlite3.IntegrityError):
         connection.execute(sql, (str(value.id),))
     assert repo.get(value.id) == value
+
+
+def test_public_queries_are_sql_scoped_and_deterministically_ordered() -> None:
+    source = inspect.getsource(PreparedImageArtifactRepo)
+    assert "def _all" not in source
+    assert '"prepared_artifact_id=?"' in source
+    assert '"source_file_id=?"' in source
+    assert '"geometry_recipe_version_id=?"' in source
+    assert "ORDER BY created_at_utc,prepared_artifact_id" in source

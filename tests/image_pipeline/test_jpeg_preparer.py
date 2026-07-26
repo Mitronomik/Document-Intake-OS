@@ -423,3 +423,41 @@ def test_resize_failure_is_sanitized_before_scaled_attempt_is_observed(monkeypat
     assert exc.value.code is PreparedJpegErrorCode.JPEG_ENCODING_FAILED
     assert exc.value.__cause__ is None
     assert len(observed) == 8
+
+
+def test_scaled_candidates_are_resized_directly_from_the_original(monkeypatch) -> None:  # type: ignore[no-untyped-def]
+    from document_intake.image_pipeline import jpeg_preparer
+
+    original_resize = jpeg_preparer.Image.Image.resize
+    resize_calls: list[tuple[int, tuple[int, int], object, int]] = []
+    encoded_images: list[int] = []
+
+    def tracked_resize(self, size, resample=None, box=None, reducing_gap=None):  # type: ignore[no-untyped-def]
+        result = original_resize(self, size, resample, box, reducing_gap)
+        resize_calls.append((id(self), size, resample, id(result)))
+        return result
+
+    monkeypatch.setattr(jpeg_preparer.Image.Image, "resize", tracked_resize)
+    calls = 0
+
+    def candidate(image: Image.Image, quality: int) -> bytes:
+        nonlocal calls
+        calls += 1
+        encoded_images.append(id(image))
+        data = _jpeg_for(image, quality)
+        size = MAX_PREPARED_JPEG_BYTES if calls == 17 else MAX_PREPARED_JPEG_BYTES + 1
+        return data + b"\0" * (size - len(data))
+
+    jpeg_preparer._encode_prepared_jpeg_internal(
+        UncompressedRgbRaster(2400, 2400, b"\0" * (2400 * 2400 * 3)),
+        pipeline=PreparedJpegPipelineVersion(),
+        candidate_encoder=candidate,
+    )
+    assert len(resize_calls) == 2
+    assert resize_calls[0][0] == resize_calls[1][0]
+    assert resize_calls[0][1] == (2160, 2160)
+    assert resize_calls[1][1] == (1920, 1920)
+    assert all(call[2] == Image.Resampling.LANCZOS for call in resize_calls)
+    assert resize_calls[0][3] != resize_calls[1][3]
+    assert encoded_images[8] == resize_calls[0][3]
+    assert encoded_images[16] == resize_calls[1][3]

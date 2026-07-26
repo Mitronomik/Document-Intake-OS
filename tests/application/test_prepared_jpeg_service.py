@@ -137,3 +137,40 @@ def test_invalid_command_boundary_is_rejected_without_opening_any_port(
         PrepareJpegCommand(**values)  # type: ignore[arg-type]
     assert exc.value.__cause__ is None
     assert "private" not in repr(exc.value).lower()
+
+
+def test_loaded_source_identity_mismatch_is_persistence_failed_before_storage() -> None:
+    recipe = SimpleNamespace(source_file_id=eid(20))
+    source = SimpleNamespace(id=eid(21))
+
+    class Values:
+        def __init__(self, value: object) -> None:
+            self.value = value
+
+        def get(self, entity_id: object) -> object:
+            return self.value
+
+    class ReadUow:
+        image_geometry_recipes = Values(recipe)
+        source_files = Values(source)
+        stored_artifacts = Values(None)
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args):
+            return False
+
+    factory = SimpleNamespace(unit_of_work=lambda: ReadUow())
+    storage = SimpleNamespace(read_bytes=lambda **kwargs: pytest.fail("storage accessed"))
+    with pytest.raises(PreparedJpegError) as exc:
+        prepare_geometry_recipe_as_jpeg(
+            command(),
+            decoder=object(),
+            renderer=object(),
+            encoder=object(),
+            storage=storage,
+            unit_of_work_factory=factory,
+        )  # type: ignore[arg-type]
+    assert exc.value.code is PreparedJpegErrorCode.PERSISTENCE_FAILED
+    assert exc.value.__cause__ is None

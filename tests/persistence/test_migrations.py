@@ -814,3 +814,33 @@ def test_actual_v0007_mid_migration_failure_is_atomic_and_retryable(marker: str)
     database._apply_one_migration(connection, V0007_PREPARED_JPEG)
     assert connection.execute("PRAGMA user_version").fetchone()[0] == 7
     assert connection.execute("SELECT * FROM stored_artifacts").fetchall() == before
+
+
+def test_file_backed_v6_to_v7_migration_survives_real_close_and_reopen(tmp_path) -> None:  # type: ignore[no-untyped-def]
+    path = tmp_path / "migration-reopen.sqlite"
+    first = sqlite3.connect(path, isolation_level=None)
+    first.execute("PRAGMA foreign_keys=ON")
+    for migration in database.MIGRATIONS[:6]:
+        database._apply_one_migration(first, migration)
+    insert_batch(first)
+    insert_artifact(first)
+    first.execute(
+        "INSERT INTO source_files VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)", source_values()
+    )
+    expected = first.execute("SELECT * FROM stored_artifacts").fetchall()
+    first.close()
+
+    second = sqlite3.connect(path, isolation_level=None)
+    second.execute("PRAGMA foreign_keys=ON")
+    database._apply_one_migration(second, V0007_PREPARED_JPEG)
+    second.close()
+
+    third = sqlite3.connect(path, isolation_level=None)
+    third.execute("PRAGMA foreign_keys=ON")
+    assert third.execute("PRAGMA user_version").fetchone()[0] == 7
+    assert third.execute("SELECT * FROM stored_artifacts").fetchall() == expected
+    assert third.execute("SELECT count(*) FROM schema_migrations").fetchone()[0] == 7
+    assert third.execute("PRAGMA foreign_keys").fetchone()[0] == 1
+    assert third.execute("PRAGMA foreign_key_check").fetchall() == []
+    assert third.execute("PRAGMA integrity_check").fetchone()[0] == "ok"
+    third.close()

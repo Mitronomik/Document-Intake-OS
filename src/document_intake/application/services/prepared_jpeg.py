@@ -57,6 +57,8 @@ def _load(
         _raise(PreparedJpegErrorCode.PERSISTENCE_FAILED)
     if source is None:
         _raise(PreparedJpegErrorCode.SOURCE_FILE_NOT_FOUND)
+    if source.id != recipe.source_file_id:
+        _raise(PreparedJpegErrorCode.PERSISTENCE_FAILED)
     try:
         original = uow.stored_artifacts.get(source.original_artifact_id)
     except Exception:

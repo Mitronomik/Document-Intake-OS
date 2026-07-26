@@ -186,3 +186,18 @@ def test_actual_windows_pr007_audit_verifier_sanitized_output() -> None:
     assert not result.stderr
     assert "SYNTH_FORBIDDEN_MARKER" not in result.stdout
     assert "sqlite3.OperationalError" not in result.stdout
+
+
+def test_actual_windows_sqlcipher_schema_v7_reopens_with_clean_integrity(tmp_path: Path) -> None:
+    path = tmp_path / "v7-reopen.db"
+    key = b"r" * 32
+    EncryptedDatabase(path, Provider(key)).initialize()
+    reopened = EncryptedDatabase(path, Provider(key))
+    reopened.initialize()
+    with reopened.unit_of_work() as uow:
+        connection = uow._connection()
+        assert connection.execute("PRAGMA user_version").fetchone()[0] == 7
+        assert connection.execute("SELECT count(*) FROM schema_migrations").fetchone()[0] == 7
+        assert connection.execute("PRAGMA cipher_integrity_check").fetchall() == []
+        assert connection.execute("PRAGMA foreign_keys").fetchone()[0] == 1
+        assert connection.execute("PRAGMA foreign_key_check").fetchall() == []

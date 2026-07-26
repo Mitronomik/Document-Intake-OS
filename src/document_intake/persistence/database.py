@@ -1587,8 +1587,11 @@ class PreparedImageArtifactRepo(_Repo):
             duplicate_is_already_exists=True,
         )
 
-    def _all(self) -> tuple[PreparedImageArtifact, ...]:
-        rows = self._fetchall(f"{self._SELECT} ORDER BY created_at_utc,prepared_artifact_id")
+    def _scoped(self, where: str, parameters: tuple[Any, ...]) -> tuple[PreparedImageArtifact, ...]:
+        rows = self._fetchall(
+            f"{self._SELECT} WHERE {where} ORDER BY created_at_utc,prepared_artifact_id",
+            parameters,
+        )
         return tuple(self._from_projection(row) for row in rows)
 
     def _from_projection(self, row: tuple[Any, ...]) -> PreparedImageArtifact:
@@ -1602,7 +1605,10 @@ class PreparedImageArtifactRepo(_Repo):
         return entity
 
     def get(self, prepared_artifact_id: EntityId) -> PreparedImageArtifact | None:
-        return next((item for item in self._all() if item.id == prepared_artifact_id), None)
+        rows = self._scoped("prepared_artifact_id=?", (str(prepared_artifact_id),))
+        if len(rows) > 1:
+            raise PersistenceError(PersistenceErrorCode.PERSISTED_DATA_INVALID)
+        return None if not rows else rows[0]
 
     def get_by_natural_key(
         self,
@@ -1612,39 +1618,28 @@ class PreparedImageArtifactRepo(_Repo):
         output_contract_id: str,
         output_contract_version: int,
     ) -> PreparedImageArtifact | None:
-        return next(
+        rows = self._scoped(
+            "geometry_recipe_version_id=? AND pipeline_id=? AND pipeline_version=? "
+            "AND output_contract_id=? AND output_contract_version=?",
             (
-                item
-                for item in self._all()
-                if (
-                    item.geometry_recipe_version_id,
-                    item.pipeline_id,
-                    item.pipeline_version,
-                    item.output_contract_id,
-                    item.output_contract_version,
-                )
-                == (
-                    geometry_recipe_version_id,
-                    pipeline_id,
-                    pipeline_version,
-                    output_contract_id,
-                    output_contract_version,
-                )
+                str(geometry_recipe_version_id),
+                pipeline_id,
+                pipeline_version,
+                output_contract_id,
+                output_contract_version,
             ),
-            None,
         )
+        if len(rows) > 1:
+            raise PersistenceError(PersistenceErrorCode.PERSISTED_DATA_INVALID)
+        return None if not rows else rows[0]
 
     def list_by_source(self, source_file_id: EntityId) -> tuple[PreparedImageArtifact, ...]:
-        return tuple(item for item in self._all() if item.source_file_id == source_file_id)
+        return self._scoped("source_file_id=?", (str(source_file_id),))
 
     def list_by_geometry_recipe(
         self, geometry_recipe_version_id: EntityId
     ) -> tuple[PreparedImageArtifact, ...]:
-        return tuple(
-            item
-            for item in self._all()
-            if item.geometry_recipe_version_id == geometry_recipe_version_id
-        )
+        return self._scoped("geometry_recipe_version_id=?", (str(geometry_recipe_version_id),))
 
 
 class _UowState(Enum):
