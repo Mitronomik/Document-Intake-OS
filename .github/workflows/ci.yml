@@ -34,6 +34,8 @@ jobs:
           python-version-file: ".python-version"
       - name: Repository policy
         run: python scripts/check_repository_policy.py
+      - name: PR-011 acceptance inventory
+        run: python scripts/check_pr011_acceptance.py --inventory
       - name: Install Qt runtime libraries on Linux
         if: runner.os == 'Linux'
         run: |
@@ -52,6 +54,7 @@ jobs:
           uv run mypy
           src
           scripts/check_repository_policy.py
+          scripts/check_pr011_acceptance.py
           scripts/verify_pr006_storage.py
           scripts/verify_pr007_audit.py
           scripts/verify_pr008_import.py

@@ -181,11 +181,27 @@ Audit, stored-artifact metadata and prepared artifact commit atomically in the w
 
 ## Implemented persistence and migration
 
-The proposal transitions schema 6 to 7 without modifying v0001–v0006 or assigning a checksum here. It enforces immutable rows; UPDATE/DELETE/REPLACE rejection; positive dimensions/size; `byte_size <= 1_992_294`; allowed quality/resize sequences; fixed JPEG/SRGB and pipeline/output identities; foreign keys; canonical payload/projection equality; deterministic ordering; and the unique natural key above. Reads validate every canonical payload and projection before filtering or returning.
+The proposal transitions schema 6 to 7 without modifying v0001–v0006 or assigning a checksum here. It enforces immutable rows; UPDATE/DELETE/REPLACE rejection; positive dimensions/size; `byte_size <= 1_992_294`; allowed quality/resize sequences; fixed JPEG/SRGB and pipeline/output identities; foreign keys; canonical payload/projection equality; deterministic ordering; and the unique natural key above. Each public repository method must constrain its SQL query to the requested scope. Every row returned by that scoped SQL query must be fully deserialized and projection-validated before any result is returned. Corruption inside the query result set fails closed. Corruption outside the query result set must not poison an unrelated query.
 
-## Additional future tests
+## Required acceptance evidence before PR-011 human acceptance
 
-Tests must prove recipe service rejection of caller raster bytes; valid-only RGB raster input; PR-013-compatible encoder reuse; no persistence/storage/audit in the encoder; create-once natural key; duplicate-ID and existing-key preflight before publication; late-race controlled orphan reconciliation; exact audit fields; and artifact/audit atomicity.
+The following required workstreams are currently incomplete and are not optional future improvements:
+
+1. application-service scenario matrix;
+2. exact service sequencing and publication-exactly-once;
+3. real service rollback and orphan reconciliation;
+4. production Unit of Work repository tests;
+5. repository commit, rollback and close containment;
+6. duplicate ID, stored-reference and natural-key constraints;
+7. canonical-payload corruption matrix;
+8. projected-column mismatch matrix;
+9. scoped corruption behavior;
+10. complete populated schema-v6 migration fixture;
+11. production SQLite multi-reopen migration;
+12. Windows SQLCipher v6-to-v7 migration and reopen;
+13. prepared-artifact commit, close, reopen and read;
+14. controlled-error privacy matrix;
+15. final exact-head acceptance audit.
 
 ## Current lifecycle state — 2026-07-26
 
@@ -195,3 +211,17 @@ Product owner authorization date: 2026-07-26. Accepted contract and implementati
 ## Human-acceptance boundary
 
 PR-011 remains implemented and in review, not human accepted. Exact-head Ubuntu and Windows CI, including the production Windows verifier, must succeed before human acceptance. PR-012 and later remain unauthorized; Gate 2 is not accepted; M3 remains in progress.
+## PR-011 acceptance-control status
+
+This normative acceptance status supersedes broader implementation wording for current readiness only; dated historical snapshots remain historical.
+
+- PR-011 PRODUCTION CODE: IMPLEMENTED IN REVIEW
+- PR-011 ACCEPTANCE EVIDENCE: INCOMPLETE
+- PR-011 HUMAN ACCEPTANCE: BLOCKED
+- PR-012 AND LATER: UNAUTHORIZED
+- Q-021: DEFERRED
+- PRODUCTION PR-009 QUALITY POLICY: NOT ACTIVE
+- GATE 2: NOT ACCEPTED
+- M3: IN PROGRESS
+
+CI success proves the checked implementation and tests pass; it does not prove that every acceptance-manifest entry exists.

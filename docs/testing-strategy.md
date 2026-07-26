@@ -231,3 +231,22 @@ Real documents and personal data remain prohibited in Git, Codex and CI.
 
 
 Product owner authorization date: 2026-07-26. Accepted contract and implementation base: `f007fb5a04a5c69c70a37faf7ba12fa6775ae819`. Current schema version: `7`. Final v0007 checksum: `afad8ccc6de4ef81d73f137cbffa5a45fec1fdbb6940eabb0507cc9d6580a4a7`. V0007 uses a checksum-protected `DISABLED_DURING_TABLE_REBUILD` execution mode, a transactional populated-table copy, foreign-key checks before and after restoration, and no internal SQLite schema edits. Candidate evidence uses the production attempt generator and observer; determinism reuses the same PR-010 RGB render; verifier privacy uses an exact allowlist and runtime forbidden-value checks. ADR-025: ACCEPTED. PR-011 CONTRACT: ACCEPTED. PR-011 PRODUCTION IMPLEMENTATION: IMPLEMENTED AND IN REVIEW; NOT HUMAN ACCEPTED. PR-012 AND LATER: UNAUTHORIZED. Q-021: DEFERRED. PRODUCTION PR-009 QUALITY POLICY: NOT ACTIVE. PRODUCTION `policy_id`: NOT ASSIGNED. PRODUCTION `policy_version`: NOT ASSIGNED. AUTOMATIC PR-009 QUALITY BLOCKING: NOT ACTIVE. AUTOMATIC PRODUCTION `RETAKE_REQUIRED`: NOT ACTIVE. GATE 2: NOT ACCEPTED. M3: IN PROGRESS. Real documents and personal data remain prohibited in Git, Codex and CI.
+## PR-011 acceptance-control status
+
+This normative acceptance status supersedes broader implementation wording for current readiness only; dated historical snapshots remain historical.
+
+- PR-011 PRODUCTION CODE: IMPLEMENTED IN REVIEW
+- PR-011 ACCEPTANCE EVIDENCE: INCOMPLETE
+- PR-011 HUMAN ACCEPTANCE: BLOCKED
+- PR-012 AND LATER: UNAUTHORIZED
+- Q-021: DEFERRED
+- PRODUCTION PR-009 QUALITY POLICY: NOT ACTIVE
+- GATE 2: NOT ACCEPTED
+- M3: IN PROGRESS
+
+CI success proves the checked implementation and tests pass; it does not prove that every acceptance-manifest entry exists.
+
+
+### PR-011 scoped repository acceptance rule
+
+Each public repository method must constrain its SQL query to the requested scope. Every row returned by that scoped SQL query must be fully deserialized and projection-validated before any result is returned. Corruption inside the query result set fails closed. Corruption outside the query result set must not poison an unrelated query.

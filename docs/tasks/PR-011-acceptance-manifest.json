@@ -1,0 +1,579 @@
+{
+  "schema_version": 1,
+  "pr": 30,
+  "contract": "PR-011",
+  "implementation_base": "f007fb5a04a5c69c70a37faf7ba12fa6775ae819",
+  "current_status": "BLOCKED",
+  "entries": [
+    {
+      "id": "PR011-SVC-001",
+      "workstream": "application_service",
+      "requirement": "read-UoW repository failure mappings",
+      "status": "pending",
+      "platform": "cross_platform",
+      "test_selectors": [],
+      "evidence_files": [],
+      "notes": "Required focused acceptance evidence remains pending."
+    },
+    {
+      "id": "PR011-SVC-002",
+      "workstream": "application_service",
+      "requirement": "missing and invalid read state",
+      "status": "pending",
+      "platform": "cross_platform",
+      "test_selectors": [],
+      "evidence_files": [],
+      "notes": "Required focused acceptance evidence remains pending."
+    },
+    {
+      "id": "PR011-SVC-003",
+      "workstream": "application_service",
+      "requirement": "source identity mismatch before storage",
+      "status": "pending",
+      "platform": "cross_platform",
+      "test_selectors": [],
+      "evidence_files": [],
+      "notes": "Required focused acceptance evidence remains pending."
+    },
+    {
+      "id": "PR011-SVC-004",
+      "workstream": "application_service",
+      "requirement": "storage and decoder failure matrix",
+      "status": "pending",
+      "platform": "cross_platform",
+      "test_selectors": [],
+      "evidence_files": [],
+      "notes": "Required focused acceptance evidence remains pending."
+    },
+    {
+      "id": "PR011-SVC-005",
+      "workstream": "application_service",
+      "requirement": "renderer failure matrix",
+      "status": "pending",
+      "platform": "cross_platform",
+      "test_selectors": [],
+      "evidence_files": [],
+      "notes": "Required focused acceptance evidence remains pending."
+    },
+    {
+      "id": "PR011-SVC-006",
+      "workstream": "application_service",
+      "requirement": "encoder controlled and unexpected failure matrix",
+      "status": "pending",
+      "platform": "cross_platform",
+      "test_selectors": [],
+      "evidence_files": [],
+      "notes": "Required focused acceptance evidence remains pending."
+    },
+    {
+      "id": "PR011-SVC-007",
+      "workstream": "application_service",
+      "requirement": "write-UoW authoritative revalidation",
+      "status": "pending",
+      "platform": "cross_platform",
+      "test_selectors": [],
+      "evidence_files": [],
+      "notes": "Required focused acceptance evidence remains pending."
+    },
+    {
+      "id": "PR011-SVC-008",
+      "workstream": "application_service",
+      "requirement": "caller ID preflight matrix",
+      "status": "pending",
+      "platform": "cross_platform",
+      "test_selectors": [],
+      "evidence_files": [],
+      "notes": "Required focused acceptance evidence remains pending."
+    },
+    {
+      "id": "PR011-SVC-009",
+      "workstream": "application_service",
+      "requirement": "natural-key preflight",
+      "status": "pending",
+      "platform": "cross_platform",
+      "test_selectors": [],
+      "evidence_files": [],
+      "notes": "Required focused acceptance evidence remains pending."
+    },
+    {
+      "id": "PR011-SVC-010",
+      "workstream": "application_service",
+      "requirement": "exact successful operation sequence",
+      "status": "pending",
+      "platform": "cross_platform",
+      "test_selectors": [],
+      "evidence_files": [],
+      "notes": "Required focused acceptance evidence remains pending."
+    },
+    {
+      "id": "PR011-SVC-011",
+      "workstream": "application_service",
+      "requirement": "selected JPEG publication exactly once",
+      "status": "pending",
+      "platform": "cross_platform",
+      "test_selectors": [],
+      "evidence_files": [],
+      "notes": "Required focused acceptance evidence remains pending."
+    },
+    {
+      "id": "PR011-SVC-012",
+      "workstream": "application_service",
+      "requirement": "returned storage-record mismatch matrix",
+      "status": "pending",
+      "platform": "cross_platform",
+      "test_selectors": [],
+      "evidence_files": [],
+      "notes": "Required focused acceptance evidence remains pending."
+    },
+    {
+      "id": "PR011-SVC-013",
+      "workstream": "application_service",
+      "requirement": "repository add and pre-commit failure matrix",
+      "status": "pending",
+      "platform": "cross_platform",
+      "test_selectors": [],
+      "evidence_files": [],
+      "notes": "Required focused acceptance evidence remains pending."
+    },
+    {
+      "id": "PR011-SVC-014",
+      "workstream": "application_service",
+      "requirement": "late database uniqueness race matrix",
+      "status": "pending",
+      "platform": "cross_platform",
+      "test_selectors": [],
+      "evidence_files": [],
+      "notes": "Required focused acceptance evidence remains pending."
+    },
+    {
+      "id": "PR011-SVC-015",
+      "workstream": "application_service",
+      "requirement": "real rollback after publication and before commit",
+      "status": "pending",
+      "platform": "cross_platform",
+      "test_selectors": [],
+      "evidence_files": [],
+      "notes": "Required focused acceptance evidence remains pending."
+    },
+    {
+      "id": "PR011-SVC-016",
+      "workstream": "application_service",
+      "requirement": "real orphan reconciliation",
+      "status": "pending",
+      "platform": "cross_platform",
+      "test_selectors": [],
+      "evidence_files": [],
+      "notes": "Required focused acceptance evidence remains pending."
+    },
+    {
+      "id": "PR011-SVC-017",
+      "workstream": "application_service",
+      "requirement": "controlled-error privacy matrix",
+      "status": "pending",
+      "platform": "cross_platform",
+      "test_selectors": [],
+      "evidence_files": [],
+      "notes": "Required focused acceptance evidence remains pending."
+    },
+    {
+      "id": "PR011-REP-001",
+      "workstream": "repository",
+      "requirement": "production EncryptedDatabase.unit_of_work() fixture",
+      "status": "pending",
+      "platform": "cross_platform",
+      "test_selectors": [],
+      "evidence_files": [],
+      "notes": "Required focused acceptance evidence remains pending."
+    },
+    {
+      "id": "PR011-REP-002",
+      "workstream": "repository",
+      "requirement": "foreign keys enabled for every repository test UoW",
+      "status": "pending",
+      "platform": "cross_platform",
+      "test_selectors": [],
+      "evidence_files": [],
+      "notes": "Required focused acceptance evidence remains pending."
+    },
+    {
+      "id": "PR011-REP-003",
+      "workstream": "repository",
+      "requirement": "add without commit rolls back",
+      "status": "pending",
+      "platform": "cross_platform",
+      "test_selectors": [],
+      "evidence_files": [],
+      "notes": "Required focused acceptance evidence remains pending."
+    },
+    {
+      "id": "PR011-REP-004",
+      "workstream": "repository",
+      "requirement": "add with commit survives reopen",
+      "status": "pending",
+      "platform": "cross_platform",
+      "test_selectors": [],
+      "evidence_files": [],
+      "notes": "Required focused acceptance evidence remains pending."
+    },
+    {
+      "id": "PR011-REP-005",
+      "workstream": "repository",
+      "requirement": "exception before commit rolls back",
+      "status": "pending",
+      "platform": "cross_platform",
+      "test_selectors": [],
+      "evidence_files": [],
+      "notes": "Required focused acceptance evidence remains pending."
+    },
+    {
+      "id": "PR011-REP-006",
+      "workstream": "repository",
+      "requirement": "duplicate prepared-artifact ID",
+      "status": "pending",
+      "platform": "cross_platform",
+      "test_selectors": [],
+      "evidence_files": [],
+      "notes": "Required focused acceptance evidence remains pending."
+    },
+    {
+      "id": "PR011-REP-007",
+      "workstream": "repository",
+      "requirement": "duplicate stored-artifact reference",
+      "status": "pending",
+      "platform": "cross_platform",
+      "test_selectors": [],
+      "evidence_files": [],
+      "notes": "Required focused acceptance evidence remains pending."
+    },
+    {
+      "id": "PR011-REP-008",
+      "workstream": "repository",
+      "requirement": "duplicate natural key",
+      "status": "pending",
+      "platform": "cross_platform",
+      "test_selectors": [],
+      "evidence_files": [],
+      "notes": "Required focused acceptance evidence remains pending."
+    },
+    {
+      "id": "PR011-REP-009",
+      "workstream": "repository",
+      "requirement": "deterministic list ordering",
+      "status": "pending",
+      "platform": "cross_platform",
+      "test_selectors": [],
+      "evidence_files": [],
+      "notes": "Required focused acceptance evidence remains pending."
+    },
+    {
+      "id": "PR011-REP-010",
+      "workstream": "repository",
+      "requirement": "immutable update/delete/replace rejection",
+      "status": "pending",
+      "platform": "cross_platform",
+      "test_selectors": [],
+      "evidence_files": [],
+      "notes": "Required focused acceptance evidence remains pending."
+    },
+    {
+      "id": "PR011-REP-011",
+      "workstream": "repository",
+      "requirement": "production Unit of Work close containment",
+      "status": "pending",
+      "platform": "cross_platform",
+      "test_selectors": [],
+      "evidence_files": [],
+      "notes": "Required focused acceptance evidence remains pending."
+    },
+    {
+      "id": "PR011-REP-012",
+      "workstream": "repository",
+      "requirement": "scoped ID query corruption behavior",
+      "status": "pending",
+      "platform": "cross_platform",
+      "test_selectors": [],
+      "evidence_files": [],
+      "notes": "Required focused acceptance evidence remains pending."
+    },
+    {
+      "id": "PR011-REP-013",
+      "workstream": "repository",
+      "requirement": "scoped natural-key corruption behavior",
+      "status": "pending",
+      "platform": "cross_platform",
+      "test_selectors": [],
+      "evidence_files": [],
+      "notes": "Required focused acceptance evidence remains pending."
+    },
+    {
+      "id": "PR011-REP-014",
+      "workstream": "repository",
+      "requirement": "scoped source-list corruption behavior",
+      "status": "pending",
+      "platform": "cross_platform",
+      "test_selectors": [],
+      "evidence_files": [],
+      "notes": "Required focused acceptance evidence remains pending."
+    },
+    {
+      "id": "PR011-REP-015",
+      "workstream": "repository",
+      "requirement": "scoped geometry-list corruption behavior",
+      "status": "pending",
+      "platform": "cross_platform",
+      "test_selectors": [],
+      "evidence_files": [],
+      "notes": "Required focused acceptance evidence remains pending."
+    },
+    {
+      "id": "PR011-REP-016",
+      "workstream": "repository",
+      "requirement": "canonical-payload corruption matrix",
+      "status": "pending",
+      "platform": "cross_platform",
+      "test_selectors": [],
+      "evidence_files": [],
+      "notes": "Required focused acceptance evidence remains pending."
+    },
+    {
+      "id": "PR011-REP-017",
+      "workstream": "repository",
+      "requirement": "projected-column mismatch matrix",
+      "status": "pending",
+      "platform": "cross_platform",
+      "test_selectors": [],
+      "evidence_files": [],
+      "notes": "Required focused acceptance evidence remains pending."
+    },
+    {
+      "id": "PR011-ENC-001",
+      "workstream": "encoder",
+      "requirement": "every resize derived directly from the original uncompressed raster",
+      "status": "pending",
+      "platform": "cross_platform",
+      "test_selectors": [],
+      "evidence_files": [],
+      "notes": "Required focused acceptance evidence remains pending."
+    },
+    {
+      "id": "PR011-ENC-002",
+      "workstream": "encoder",
+      "requirement": "complete 48-attempt ordering",
+      "status": "pending",
+      "platform": "cross_platform",
+      "test_selectors": [],
+      "evidence_files": [],
+      "notes": "Required focused acceptance evidence remains pending."
+    },
+    {
+      "id": "PR011-ENC-003",
+      "workstream": "encoder",
+      "requirement": "exact byte ceiling and ceiling-plus-one behavior",
+      "status": "pending",
+      "platform": "cross_platform",
+      "test_selectors": [],
+      "evidence_files": [],
+      "notes": "Required focused acceptance evidence remains pending."
+    },
+    {
+      "id": "PR011-ENC-004",
+      "workstream": "encoder",
+      "requirement": "structural JPEG contract",
+      "status": "pending",
+      "platform": "cross_platform",
+      "test_selectors": [],
+      "evidence_files": [],
+      "notes": "Required focused acceptance evidence remains pending."
+    },
+    {
+      "id": "PR011-ENC-005",
+      "workstream": "encoder",
+      "requirement": "no intermediate candidate publication",
+      "status": "pending",
+      "platform": "cross_platform",
+      "test_selectors": [],
+      "evidence_files": [],
+      "notes": "Required focused acceptance evidence remains pending."
+    },
+    {
+      "id": "PR011-MIG-001",
+      "workstream": "migration",
+      "requirement": "complete populated schema-v6 fixture",
+      "status": "pending",
+      "platform": "cross_platform",
+      "test_selectors": [],
+      "evidence_files": [],
+      "notes": "Required focused acceptance evidence remains pending."
+    },
+    {
+      "id": "PR011-MIG-002",
+      "workstream": "migration",
+      "requirement": "all populated v6 rows survive v0007",
+      "status": "pending",
+      "platform": "cross_platform",
+      "test_selectors": [],
+      "evidence_files": [],
+      "notes": "Required focused acceptance evidence remains pending."
+    },
+    {
+      "id": "PR011-MIG-003",
+      "workstream": "migration",
+      "requirement": "migration history and exact checksum",
+      "status": "pending",
+      "platform": "cross_platform",
+      "test_selectors": [],
+      "evidence_files": [],
+      "notes": "Required focused acceptance evidence remains pending."
+    },
+    {
+      "id": "PR011-MIG-004",
+      "workstream": "migration",
+      "requirement": "foreign-key and integrity validation",
+      "status": "pending",
+      "platform": "cross_platform",
+      "test_selectors": [],
+      "evidence_files": [],
+      "notes": "Required focused acceptance evidence remains pending."
+    },
+    {
+      "id": "PR011-MIG-005",
+      "workstream": "migration",
+      "requirement": "actual v0007 rollback and retry",
+      "status": "pending",
+      "platform": "cross_platform",
+      "test_selectors": [],
+      "evidence_files": [],
+      "notes": "Required focused acceptance evidence remains pending."
+    },
+    {
+      "id": "PR011-MIG-006",
+      "workstream": "migration",
+      "requirement": "production SQLite close/reopen v6-to-v7",
+      "status": "pending",
+      "platform": "cross_platform",
+      "test_selectors": [],
+      "evidence_files": [],
+      "notes": "Required focused acceptance evidence remains pending."
+    },
+    {
+      "id": "PR011-MIG-007",
+      "workstream": "migration",
+      "requirement": "prepared artifact commit/reopen/read after migration",
+      "status": "pending",
+      "platform": "cross_platform",
+      "test_selectors": [],
+      "evidence_files": [],
+      "notes": "Required focused acceptance evidence remains pending."
+    },
+    {
+      "id": "PR011-WIN-001",
+      "workstream": "migration",
+      "requirement": "production Windows SQLCipher populated v6 creation",
+      "status": "pending",
+      "platform": "windows",
+      "test_selectors": [],
+      "evidence_files": [],
+      "notes": "Required focused acceptance evidence remains pending."
+    },
+    {
+      "id": "PR011-WIN-002",
+      "workstream": "migration",
+      "requirement": "production Windows SQLCipher v6-to-v7 migration",
+      "status": "pending",
+      "platform": "windows",
+      "test_selectors": [],
+      "evidence_files": [],
+      "notes": "Required focused acceptance evidence remains pending."
+    },
+    {
+      "id": "PR011-WIN-003",
+      "workstream": "migration",
+      "requirement": "Windows cipher and foreign-key integrity after reopen",
+      "status": "pending",
+      "platform": "windows",
+      "test_selectors": [],
+      "evidence_files": [],
+      "notes": "Required focused acceptance evidence remains pending."
+    },
+    {
+      "id": "PR011-WIN-004",
+      "workstream": "migration",
+      "requirement": "Windows prepared artifact commit/reopen/read",
+      "status": "pending",
+      "platform": "windows",
+      "test_selectors": [],
+      "evidence_files": [],
+      "notes": "Required focused acceptance evidence remains pending."
+    },
+    {
+      "id": "PR011-FIN-001",
+      "workstream": "final_acceptance",
+      "requirement": "PR body reflects exact current evidence",
+      "status": "pending",
+      "platform": "documentation",
+      "test_selectors": [],
+      "evidence_files": [],
+      "notes": "Required focused acceptance evidence remains pending."
+    },
+    {
+      "id": "PR011-FIN-002",
+      "workstream": "final_acceptance",
+      "requirement": "full Ubuntu and Windows pytest",
+      "status": "pending",
+      "platform": "cross_platform",
+      "test_selectors": [],
+      "evidence_files": [],
+      "notes": "Required focused acceptance evidence remains pending."
+    },
+    {
+      "id": "PR011-FIN-003",
+      "workstream": "final_acceptance",
+      "requirement": "Ubuntu and Windows builds",
+      "status": "pending",
+      "platform": "cross_platform",
+      "test_selectors": [],
+      "evidence_files": [],
+      "notes": "Required focused acceptance evidence remains pending."
+    },
+    {
+      "id": "PR011-FIN-004",
+      "workstream": "final_acceptance",
+      "requirement": "Windows PR-011 verifier",
+      "status": "pending",
+      "platform": "cross_platform",
+      "test_selectors": [],
+      "evidence_files": [],
+      "notes": "Required focused acceptance evidence remains pending."
+    },
+    {
+      "id": "PR011-FIN-005",
+      "workstream": "final_acceptance",
+      "requirement": "exact-head CI success",
+      "status": "pending",
+      "platform": "cross_platform",
+      "test_selectors": [],
+      "evidence_files": [],
+      "notes": "Required focused acceptance evidence remains pending."
+    },
+    {
+      "id": "PR011-FIN-006",
+      "workstream": "final_acceptance",
+      "requirement": "independent acceptance audit",
+      "status": "pending",
+      "platform": "cross_platform",
+      "test_selectors": [],
+      "evidence_files": [],
+      "notes": "Required focused acceptance evidence remains pending."
+    },
+    {
+      "id": "PR011-FIN-007",
+      "workstream": "final_acceptance",
+      "requirement": "no pending manifest entries",
+      "status": "pending",
+      "platform": "cross_platform",
+      "test_selectors": [],
+      "evidence_files": [],
+      "notes": "Required focused acceptance evidence remains pending."
+    }
+  ]
+}
