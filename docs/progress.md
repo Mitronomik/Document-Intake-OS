@@ -210,3 +210,18 @@ Lifecycle authorization exact status: PR-011 AND LATER: UNAUTHORIZED.
 ## PR-010 geometry implementation review — 2026-07-23
 
 ADR-024 is ACCEPTED by Product owner. PR-010 production implementation is AUTHORIZED AND IN REVIEW from base `329dd5653a3faadd3c62387c1d900710f14b2f4e`. PR-011 and later remain UNAUTHORIZED; Gate 2 remains NOT ACCEPTED; M3 remains IN PROGRESS; Q-021 remains DEFERRED; production PR-009 quality policy is NOT ACTIVE. PR-010 adds deterministic offline geometry recipe creation only and does not publish prepared JPEGs.
+
+
+## Current lifecycle after PR-010 acceptance — 2026-07-26
+
+This current section supersedes earlier lifecycle snapshots for current status only and does not rewrite the historical record.
+
+PR-005: COMPLETED AND HUMAN ACCEPTED. PR-006: COMPLETED AND HUMAN ACCEPTED. PR-007: COMPLETED AND HUMAN ACCEPTED. PR-008: COMPLETED AND HUMAN ACCEPTED WITH DOCUMENTED RESIDUAL RISK. PR-009: COMPLETED AND HUMAN ACCEPTED WITH DOCUMENTED RESIDUAL LIMITATION. PR-010: COMPLETED AND HUMAN ACCEPTED.
+
+PR-010 evidence: GitHub PR #28; final reviewed head `8b6a3cf69d697807a20e763605b4601104844f04`; merge commit `99cdcaebe25551a24062e4e356ff47e868ac8f6a`; exact-head workflow `CI #138`; workflow run ID `30034157725`; conclusion `success`. Ubuntu and Windows full pytest, Ubuntu and Windows `uv build`, and Windows PR-006 through PR-010 verifiers passed. Current schema version: `6`. Frozen v0006 checksum: `ac9d5bfbe79160d880f30af6ee1ed645ab500b9be140a18b9d6498cc68eba5ec`.
+
+The accepted PR-010 boundary is immutable originals; EXIF orientation applied exactly once; deterministic source-effective coordinate space; manual quadrilateral geometry; perspective transformation; clockwise quarter-turn rotation; deterministic output dimensions; append-only geometry-recipe revisions; canonical persistence validation; atomic geometry-recipe and audit persistence; no final prepared JPEG publication; and no PR-011 or later behavior. PR-010 alone does not complete manual JPEG preparation because PR-011, PR-012 and PR-013 remain incomplete.
+
+Q-021: DEFERRED — NEGATIVE CALIBRATION EVIDENCE ACCEPTED; NO PRODUCTION POLICY SELECTED. Production PR-009 quality policy: NOT ACTIVE. Production `policy_id`: NOT ASSIGNED. Production `policy_version`: NOT ASSIGNED. Automatic PR-009 quality blocking: NOT ACTIVE. Automatic production `RETAKE_REQUIRED`: NOT ACTIVE. ADR-025: PROPOSED. PR-011 contract: PROPOSED FOR HUMAN REVIEW. PR-011 production implementation: UNAUTHORIZED. PR-012 AND LATER: UNAUTHORIZED. Gate 2: NOT ACCEPTED. M3: IN PROGRESS.
+
+Merging this documentation-only proposal does not authorize implementation. A later explicit Product owner decision must accept ADR-025 and the PR-011 contract, authorize production implementation, and identify this documentation PR's merge commit as the exact implementation base. The roadmap/pipeline ordering is reconciled by PR-011 defining a reusable one-raster primitive, PR-012 supplying confirmed recipes per region, and PR-013 retaining merge-before-final-compression while reusing the same encoder semantics. See `docs/decisions/ADR-025-prepared-jpeg-v1.md` and `docs/tasks/PR-011-jpeg-preparation.md`.

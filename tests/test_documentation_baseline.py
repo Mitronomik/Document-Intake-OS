@@ -2615,9 +2615,7 @@ def test_pr010_task_and_adr024_contract_terms_are_exact() -> None:
     combined = adr + "\n" + task
 
     assert "**Status:** ACCEPTED" in adr
-    assert (
-        "**Status:** CONTRACT ACCEPTED; PRODUCTION IMPLEMENTATION AUTHORIZED AND IN REVIEW" in task
-    )
+    assert "**Status:** COMPLETED AND HUMAN ACCEPTED" in task
     assert "## Exact PR-010 V1 contract completion" not in adr
     assert "## Exact contract completion addendum" not in task
 
@@ -2814,3 +2812,80 @@ def test_pr010_task_and_adr024_contract_terms_are_exact() -> None:
     ):
         assert vague not in combined, vague
     assert "return" not in combined.lower().split("commit", maxsplit=1)[0]
+
+
+def test_current_pr010_closure_and_pr011_contract_proposal() -> None:
+    current_heading = "## Current lifecycle after PR-010 acceptance — 2026-07-26"
+    current_files = [
+        "docs/progress.md",
+        "docs/roadmap.md",
+        "docs/implementation-plan.md",
+        "docs/handoff.md",
+        "docs/decisions.md",
+        "docs/traceability-matrix.md",
+        "docs/image-pipeline.md",
+        "docs/testing-strategy.md",
+        "docs/domain-model.md",
+        "docs/architecture.md",
+        "docs/security.md",
+        "docs/open-questions.md",
+    ]
+    required = [
+        "PR-010: COMPLETED AND HUMAN ACCEPTED",
+        "GitHub PR #28",
+        "8b6a3cf69d697807a20e763605b4601104844f04",
+        "99cdcaebe25551a24062e4e356ff47e868ac8f6a",
+        "CI #138",
+        "30034157725",
+        "conclusion `success`",
+        "Current schema version: `6`",
+        "ac9d5bfbe79160d880f30af6ee1ed645ab500b9be140a18b9d6498cc68eba5ec",
+        "Q-021: DEFERRED",
+        "Production PR-009 quality policy: NOT ACTIVE",
+        "ADR-025: PROPOSED",
+        "PR-011 contract: PROPOSED FOR HUMAN REVIEW",
+        "PR-011 production implementation: UNAUTHORIZED",
+        "PR-012 AND LATER: UNAUTHORIZED",
+        "Gate 2: NOT ACCEPTED",
+        "M3: IN PROGRESS",
+    ]
+    for filename in current_files:
+        text = (REPO_ROOT / filename).read_text(encoding="utf-8")
+        current = text[text.rindex(current_heading) :]
+        for marker in required:
+            assert marker in current, (filename, marker)
+        assert "PR-010 PRODUCTION IMPLEMENTATION: AUTHORIZED AND IN REVIEW" not in current
+
+
+def test_proposed_pr011_contract_is_exact_and_unauthorized() -> None:
+    adr = (REPO_ROOT / "docs/decisions/ADR-025-prepared-jpeg-v1.md").read_text(encoding="utf-8")
+    task = (REPO_ROOT / "docs/tasks/PR-011-jpeg-preparation.md").read_text(encoding="utf-8")
+    combined = adr + task
+    markers = [
+        "**Status:** PROPOSED",
+        "documentation-only",
+        "PRODUCTION IMPLEMENTATION UNAUTHORIZED",
+        "MAX_PREPARED_JPEG_BYTES = 1_992_294",
+        "1_992_295",
+        "PILLOW_PREPARED_JPEG",
+        "PREPARED_JPEG_SRGB_V1",
+        "95, 90, 85, 80, 75, 70, 65, 60",
+        "100, 90, 80, 70, 60, 50",
+        "subsampling = 0",
+        "4:4:4",
+        "progressive = false",
+        "no embedded ICC profile",
+        "no JPEG candidate is decoded or reused",
+        "PreparedImageArtifact",
+        "AuditAction.PREPARED_JPEG_CREATED",
+        "SIZE_LIMIT_UNREACHABLE",
+        "orphan-reconciliation",
+        "PR-012",
+        "PR-013",
+        (
+            "the merge commit of this documentation-contract PR, after separate "
+            "Product owner acceptance and authorization"
+        ),
+    ]
+    for marker in markers:
+        assert marker in combined, marker
