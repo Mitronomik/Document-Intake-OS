@@ -260,3 +260,166 @@ def test_oversized_candidate_advances_and_later_exact_ceiling_is_selected() -> N
     assert len(observed) == 2
     assert result.jpeg_quality == observed[-1].jpeg_quality == 90
     assert result.byte_size == MAX_PREPARED_JPEG_BYTES
+
+
+def _encoded_image_bytes(image: Image.Image, *, format: str = "JPEG", **options: object) -> bytes:
+    output = BytesIO()
+    image.save(output, format=format, **options)
+    return output.getvalue()
+
+
+@pytest.mark.parametrize(
+    "candidate",
+    [
+        pytest.param(
+            lambda: _encoded_image_bytes(Image.new("RGB", (8, 8)), format="PNG"), id="png"
+        ),
+        pytest.param(lambda: _encoded_image_bytes(Image.new("L", (8, 8))), id="grayscale"),
+        pytest.param(lambda: _encoded_image_bytes(Image.new("CMYK", (8, 8))), id="cmyk"),
+        pytest.param(lambda: _encoded_image_bytes(Image.new("RGB", (9, 8))), id="wrong-dimensions"),
+        pytest.param(
+            lambda: _encoded_image_bytes(Image.new("RGB", (8, 8)), exif=b"Exif\0\0synthetic"),
+            id="exif",
+        ),
+        pytest.param(
+            lambda: _encoded_image_bytes(Image.new("RGB", (8, 8)), icc_profile=b"synthetic"),
+            id="icc",
+        ),
+        pytest.param(
+            lambda: _encoded_image_bytes(Image.new("RGB", (8, 8)), progressive=True),
+            id="progressive",
+        ),
+        pytest.param(
+            lambda: _encoded_image_bytes(Image.new("RGB", (8, 8)), subsampling=2),
+            id="non-444",
+        ),
+    ],
+)
+def test_invalid_generated_jpeg_structure_stops_after_first_attempt(candidate) -> None:  # type: ignore[no-untyped-def]
+    from document_intake.domain.prepared_jpeg import PreparedJpegError, PreparedJpegErrorCode
+    from document_intake.image_pipeline.jpeg_preparer import _encode_prepared_jpeg_internal
+
+    observed = []
+    raster = UncompressedRgbRaster(8, 8, b"\0" * (8 * 8 * 3))
+    with pytest.raises(PreparedJpegError) as exc:
+        _encode_prepared_jpeg_internal(
+            raster,
+            pipeline=PreparedJpegPipelineVersion(),
+            attempt_observer=observed.append,
+            candidate_encoder=lambda image, quality: candidate(),
+        )
+    assert exc.value.code is PreparedJpegErrorCode.JPEG_ENCODING_FAILED
+    assert exc.value.__cause__ is None
+    assert len(observed) == 1
+
+
+def test_image_frombytes_failure_is_sanitized_and_starts_no_attempt(monkeypatch) -> None:  # type: ignore[no-untyped-def]
+    from document_intake.domain.prepared_jpeg import PreparedJpegError, PreparedJpegErrorCode
+    from document_intake.image_pipeline import jpeg_preparer
+
+    monkeypatch.setattr(
+        jpeg_preparer.Image,
+        "frombytes",
+        lambda *args, **kwargs: (_ for _ in ()).throw(OSError("private-source.jpg")),
+    )
+    observed = []
+    with pytest.raises(PreparedJpegError) as exc:
+        jpeg_preparer._encode_prepared_jpeg_internal(
+            UncompressedRgbRaster(8, 8, b"\0" * 192),
+            pipeline=PreparedJpegPipelineVersion(),
+            attempt_observer=observed.append,
+        )
+    assert exc.value.code is PreparedJpegErrorCode.JPEG_ENCODING_FAILED
+    assert exc.value.__cause__ is None
+    assert "private-source" not in repr(exc.value)
+    assert observed == []
+
+
+def test_candidate_save_failure_is_sanitized_and_stops_search() -> None:
+    from document_intake.domain.prepared_jpeg import PreparedJpegError, PreparedJpegErrorCode
+    from document_intake.image_pipeline.jpeg_preparer import _encode_prepared_jpeg_internal
+
+    observed = []
+    with pytest.raises(PreparedJpegError) as exc:
+        _encode_prepared_jpeg_internal(
+            UncompressedRgbRaster(8, 8, b"\0" * 192),
+            pipeline=PreparedJpegPipelineVersion(),
+            attempt_observer=observed.append,
+            candidate_encoder=lambda image, quality: (_ for _ in ()).throw(
+                OSError("private-output.jpg")
+            ),
+        )
+    assert exc.value.code is PreparedJpegErrorCode.JPEG_ENCODING_FAILED
+    assert exc.value.__cause__ is None
+    assert len(observed) == 1
+
+
+@pytest.mark.parametrize("metadata_key", ["xmp", "XML:com.adobe.xmp", "iptc", "comment"])
+def test_unreliable_metadata_markers_are_structural_failures(
+    monkeypatch, metadata_key: str
+) -> None:  # type: ignore[no-untyped-def]
+    from document_intake.domain.prepared_jpeg import PreparedJpegError, PreparedJpegErrorCode
+    from document_intake.image_pipeline import jpeg_preparer
+
+    class Decoded:
+        format = "JPEG"
+        mode = "RGB"
+        size = (8, 8)
+
+        def __init__(self) -> None:
+            self.info = {metadata_key: b"synthetic"}
+
+        def __enter__(self):  # type: ignore[no-untyped-def]
+            return self
+
+        def __exit__(self, *args):  # type: ignore[no-untyped-def]
+            return False
+
+        def load(self) -> None:
+            return None
+
+        def getexif(self) -> dict[object, object]:
+            return {}
+
+    monkeypatch.setattr(jpeg_preparer.Image, "open", lambda stream: Decoded())
+    monkeypatch.setattr(jpeg_preparer.JpegImagePlugin, "get_sampling", lambda image: 0)
+    observed = []
+    with pytest.raises(PreparedJpegError) as exc:
+        jpeg_preparer._encode_prepared_jpeg_internal(
+            UncompressedRgbRaster(8, 8, b"\0" * 192),
+            pipeline=PreparedJpegPipelineVersion(),
+            attempt_observer=observed.append,
+            candidate_encoder=lambda image, quality: b"synthetic",
+        )
+    assert exc.value.code is PreparedJpegErrorCode.JPEG_ENCODING_FAILED
+    assert exc.value.__cause__ is None
+    assert len(observed) == 1
+
+
+def test_resize_failure_is_sanitized_before_scaled_attempt_is_observed(monkeypatch) -> None:  # type: ignore[no-untyped-def]
+    from document_intake.domain.prepared_jpeg import PreparedJpegError, PreparedJpegErrorCode
+    from document_intake.image_pipeline import jpeg_preparer
+
+    original_resize = jpeg_preparer.Image.Image.resize
+
+    def fail_resize(self, size, resample=None, box=None, reducing_gap=None):  # type: ignore[no-untyped-def]
+        raise OSError("private-resize-dimensions")
+
+    monkeypatch.setattr(jpeg_preparer.Image.Image, "resize", fail_resize)
+    observed = []
+
+    def oversized(image: Image.Image, quality: int) -> bytes:
+        data = _jpeg_for(image, quality)
+        return data + b"\0" * (MAX_PREPARED_JPEG_BYTES + 1 - len(data))
+
+    with pytest.raises(PreparedJpegError) as exc:
+        jpeg_preparer._encode_prepared_jpeg_internal(
+            UncompressedRgbRaster(2400, 2400, b"\0" * (2400 * 2400 * 3)),
+            pipeline=PreparedJpegPipelineVersion(),
+            attempt_observer=observed.append,
+            candidate_encoder=oversized,
+        )
+    assert original_resize is not fail_resize
+    assert exc.value.code is PreparedJpegErrorCode.JPEG_ENCODING_FAILED
+    assert exc.value.__cause__ is None
+    assert len(observed) == 8
