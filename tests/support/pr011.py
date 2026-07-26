@@ -1,29 +1,46 @@
-"""Small deterministic, synthetic-only scaffolding for future PR-011 evidence tests."""
+"""Typed synthetic-only scaffolding for sequential PR-011 evidence workstreams."""
+# ruff: noqa: F403, F405
 
 from __future__ import annotations
 
 import sqlite3
 from dataclasses import dataclass
 from datetime import UTC, datetime
+from decimal import Decimal
 from pathlib import Path
 from typing import Any
 from uuid import UUID
 
-from document_intake.domain.enums import ActorKind, ColorSpace, PreparedMediaType
-from document_intake.domain.prepared_jpeg import (
-    PREPARED_JPEG_OUTPUT_CONTRACT_ID,
-    PREPARED_JPEG_PIPELINE_ID,
-    PreparedImageArtifact,
+from document_intake.application.dto.storage import StoredArtifactRecord
+from document_intake.domain.entities.audit import AuditEvent
+from document_intake.domain.entities.imports import SourceFile, UploadBatch
+from document_intake.domain.enums import *
+from document_intake.domain.image_geometry import *
+from document_intake.domain.image_quality import *
+from document_intake.domain.prepared_jpeg import *
+from document_intake.domain.value_objects import (
+    ActorRef,
+    AuditReasonCode,
+    EntityId,
 )
-from document_intake.domain.value_objects import ActorRef, EntityId, Sha256Digest
+from document_intake.domain.value_objects import (
+    Sha256Digest as DomainDigest,
+)
+from document_intake.domain.value_objects.imports import (
+    BatchNumber,
+    PerceptualHash,
+    Sha256Digest,
+    SourceBasename,
+)
 from document_intake.persistence import database
+from document_intake.persistence.database import SqlCipherUnitOfWork
 from document_intake.persistence.migrations import MIGRATIONS
 
-STAMP = datetime(2026, 7, 26, 12, 0, tzinfo=UTC)
+STAMP = datetime(2026, 7, 26, 12, tzinfo=UTC)
 
 
-def entity_id(number: int) -> EntityId:
-    return EntityId(UUID(int=number))
+def entity_id(n: int) -> EntityId:
+    return EntityId(UUID(int=n))
 
 
 def actor() -> ActorRef:
@@ -34,7 +51,172 @@ def correlation_id() -> EntityId:
     return entity_id(91)
 
 
-def prepared_artifact() -> PreparedImageArtifact:
+def valid_upload_batch() -> UploadBatch:
+    return UploadBatch(
+        entity_id(10), BatchNumber("BATCH-10"), STAMP, actor(), UploadBatchStatus.NEW, ()
+    )
+
+
+def valid_original_stored_artifact() -> StoredArtifactRecord:
+    return StoredArtifactRecord(
+        entity_id(11), ArtifactKind.ORIGINAL, 1, 12, "a" * 64, "b" * 64, 1, 1, STAMP
+    )
+
+
+def valid_source_file() -> SourceFile:
+    return SourceFile(
+        entity_id(20),
+        entity_id(10),
+        entity_id(11),
+        SourceBasename("synthetic.jpg"),
+        SourceMediaType.JPEG,
+        12,
+        Sha256Digest("a" * 64),
+        PerceptualHash("DHASH64", 1, 64, "0" * 16),
+        32,
+        24,
+        None,
+        STAMP,
+        actor(),
+    )
+
+
+def valid_audit_event() -> AuditEvent:
+    return AuditEvent(
+        entity_id(50),
+        STAMP,
+        actor(),
+        AuditAction.ARTIFACT_REGISTERED,
+        AuditSubjectType.STORED_ARTIFACT,
+        entity_id(11),
+        reason_code=AuditReasonCode("SYSTEM_ACTION"),
+        correlation_id=correlation_id(),
+    )
+
+
+def valid_quality_audit_event() -> AuditEvent:
+    return AuditEvent(
+        entity_id(51),
+        STAMP,
+        actor(),
+        AuditAction.IMAGE_QUALITY_ASSESSED,
+        AuditSubjectType.IMAGE_QUALITY_ASSESSMENT,
+        entity_id(24),
+        reason_code=AuditReasonCode("IMAGE_QUALITY_ASSESSED"),
+        correlation_id=correlation_id(),
+    )
+
+
+def valid_geometry_audit_event() -> AuditEvent:
+    return AuditEvent(
+        entity_id(52),
+        STAMP,
+        actor(),
+        AuditAction.IMAGE_GEOMETRY_RECIPE_CREATED,
+        AuditSubjectType.IMAGE_GEOMETRY_RECIPE,
+        entity_id(30),
+        reason_code=AuditReasonCode("IMAGE_GEOMETRY_RECIPE_CREATED"),
+        correlation_id=correlation_id(),
+    )
+
+
+def _metric(c: QualityMetricCode, v: str) -> ImageQualityMetric:
+    alg = {
+        QualityMetricCode.SHORT_SIDE_PIXELS: "RESOLUTION_V1",
+        QualityMetricCode.LONG_SIDE_PIXELS: "RESOLUTION_V1",
+        QualityMetricCode.LAPLACIAN_VARIANCE: "BLUR_LAPLACIAN_V1",
+        QualityMetricCode.LUMINANCE_STANDARD_DEVIATION: "CONTRAST_STDDEV_V1",
+        QualityMetricCode.HIGHLIGHT_CLIPPED_FRACTION: "GLARE_CLIPPED_FRACTION_V1",
+        QualityMetricCode.SHADOW_CLIPPED_FRACTION: "EXPOSURE_CLIPPED_FRACTION_V1",
+        QualityMetricCode.BRIGHT_CLIPPED_FRACTION: "EXPOSURE_CLIPPED_FRACTION_V1",
+    }[c]
+    unit = {
+        QualityMetricCode.SHORT_SIDE_PIXELS: QualityMetricUnit.PIXELS,
+        QualityMetricCode.LONG_SIDE_PIXELS: QualityMetricUnit.PIXELS,
+        QualityMetricCode.LAPLACIAN_VARIANCE: QualityMetricUnit.VARIANCE,
+        QualityMetricCode.LUMINANCE_STANDARD_DEVIATION: QualityMetricUnit.LUMA_LEVEL,
+        QualityMetricCode.HIGHLIGHT_CLIPPED_FRACTION: QualityMetricUnit.FRACTION,
+        QualityMetricCode.SHADOW_CLIPPED_FRACTION: QualityMetricUnit.FRACTION,
+        QualityMetricCode.BRIGHT_CLIPPED_FRACTION: QualityMetricUnit.FRACTION,
+    }[c]
+    return ImageQualityMetric(c, alg, 1, Decimal(v), unit)
+
+
+def valid_quality_metrics() -> tuple[ImageQualityMetric, ...]:
+    return (
+        _metric(QualityMetricCode.SHORT_SIDE_PIXELS, "24"),
+        _metric(QualityMetricCode.LONG_SIDE_PIXELS, "32"),
+        _metric(QualityMetricCode.LAPLACIAN_VARIANCE, "1.000000"),
+        _metric(QualityMetricCode.LUMINANCE_STANDARD_DEVIATION, "1.000000"),
+        _metric(QualityMetricCode.HIGHLIGHT_CLIPPED_FRACTION, "0.50000000"),
+        _metric(QualityMetricCode.SHADOW_CLIPPED_FRACTION, "0.50000000"),
+        _metric(QualityMetricCode.BRIGHT_CLIPPED_FRACTION, "0.50000000"),
+    )
+
+
+def valid_quality_issue() -> ImageQualityIssue:
+    return ImageQualityIssue(QualityIssueCode.LOW_RESOLUTION, QualityIssueSeverity.WARNING)
+
+
+def _policy() -> ImageQualityPolicy:
+    return ImageQualityPolicy(
+        QualityPolicyVersion("TEST_PR009", 1),
+        24,
+        32,
+        Decimal("1"),
+        Decimal("1"),
+        200,
+        Decimal(".5"),
+        10,
+        Decimal(".5"),
+        240,
+        Decimal(".5"),
+        tuple(ImageQualitySeverityRule(c, QualityIssueSeverity.WARNING) for c in QualityIssueCode),
+    )
+
+
+def valid_quality_assessment() -> ImageQualityAssessment:
+    return ImageQualityAssessment(
+        entity_id(24),
+        entity_id(20),
+        STAMP,
+        _policy(),
+        QualityAssessmentStatus.GOOD,
+        32,
+        24,
+        None,
+        32,
+        24,
+        valid_quality_metrics(),
+        (),
+    )
+
+
+def valid_geometry_recipe() -> ImageGeometryRecipe:
+    return ImageGeometryRecipe(
+        entity_id(30),
+        entity_id(20),
+        None,
+        1,
+        GeometryCoordinateSpace.SOURCE_EFFECTIVE_PIXELS_V1,
+        32,
+        24,
+        GeometryQuarterTurn.DEG_0,
+        SourceQuadrilateral(
+            GeometryPoint(0, 0), GeometryPoint(32, 0), GeometryPoint(32, 24), GeometryPoint(0, 24)
+        ),
+        GeometryPipelineVersion("PILLOW_QUAD_BICUBIC", 1),
+        STAMP,
+    )
+
+
+def valid_prepared_stored_artifact() -> StoredArtifactRecord:
+    return StoredArtifactRecord(
+        entity_id(41), ArtifactKind.PREPARED_JPEG, 1, 64, "c" * 64, "d" * 64, 1, 1, STAMP
+    )
+
+
+def valid_prepared_artifact() -> PreparedImageArtifact:
     return PreparedImageArtifact(
         entity_id(40),
         entity_id(20),
@@ -49,7 +231,7 @@ def prepared_artifact() -> PreparedImageArtifact:
         8,
         8,
         64,
-        Sha256Digest("a" * 64),
+        DomainDigest("c" * 64),
         95,
         100,
         STAMP,
@@ -57,99 +239,86 @@ def prepared_artifact() -> PreparedImageArtifact:
     )
 
 
-def synthetic_row(kind: str, number: int) -> dict[str, object]:
-    """Return explicit non-production placeholder input for a later domain builder."""
-    return {"kind": kind, "id": entity_id(number), "created_at": STAMP}
+prepared_artifact = valid_prepared_artifact
 
 
-def valid_upload_batch() -> dict[str, object]:
-    return synthetic_row("upload_batch", 10)
-
-
-def valid_original_stored_artifact() -> dict[str, object]:
-    return synthetic_row("original_stored_artifact", 11)
-
-
-def valid_source_file() -> dict[str, object]:
-    return synthetic_row("source_file", 20)
-
-
-def valid_upload_source_association() -> dict[str, object]:
-    return synthetic_row("upload_source_association", 21)
-
-
-def valid_historical_audit_event() -> dict[str, object]:
-    return synthetic_row("historical_audit_event", 22)
-
-
-def valid_quality_audit_event() -> dict[str, object]:
-    return synthetic_row("quality_audit_event", 23)
-
-
-def valid_quality_assessment() -> dict[str, object]:
-    return synthetic_row("quality_assessment", 24)
-
-
-def valid_quality_metrics() -> dict[str, object]:
-    return synthetic_row("quality_metrics", 25)
-
-
-def valid_quality_issue() -> dict[str, object]:
-    return synthetic_row("quality_issue", 26)
-
-
-def valid_geometry_audit_event() -> dict[str, object]:
-    return synthetic_row("geometry_audit_event", 27)
-
-
-def valid_geometry_recipe() -> dict[str, object]:
-    return synthetic_row("geometry_recipe", 30)
-
-
-def valid_prepared_stored_artifact() -> dict[str, object]:
-    return synthetic_row("prepared_stored_artifact", 41)
-
-
-@dataclass(frozen=True, slots=True)
-class V6Snapshot:
-    rows_by_table: dict[str, tuple[tuple[object, ...], ...]]
+class Provider:
+    def get_database_key(self) -> bytes:
+        return b"k" * 32
 
 
 def open_sqlite(path: Path, provider: object | None = None) -> sqlite3.Connection:
     del provider
-    connection = sqlite3.connect(path, isolation_level=None)
-    connection.execute("PRAGMA foreign_keys=ON")
-    return connection
+    c = sqlite3.connect(path, isolation_level=None)
+    c.execute("PRAGMA foreign_keys=ON")
+    return c
 
 
-def assert_foreign_keys(connection: sqlite3.Connection) -> None:
-    assert connection.execute("PRAGMA foreign_keys").fetchone() == (1,)
+def assert_foreign_keys(c: sqlite3.Connection) -> None:
+    assert c.execute("PRAGMA foreign_keys").fetchone() == (1,)
 
 
-def build_schema_v6(connection: sqlite3.Connection) -> V6Snapshot:
-    connection.execute("PRAGMA foreign_keys=ON")
-    for migration in MIGRATIONS[:6]:
-        database._apply_one_migration(connection, migration)
-    tables = ("schema_migrations",)
-    return V6Snapshot(
-        {table: tuple(connection.execute(f"SELECT * FROM {table}").fetchall()) for table in tables}
-    )
+@dataclass(frozen=True, slots=True)
+class PopulatedV6Fixture:
+    path: Path
+    batch: UploadBatch
+    original: StoredArtifactRecord
+    source: SourceFile
+    audits: tuple[AuditEvent, ...]
+    assessment: ImageQualityAssessment
+    recipe: ImageGeometryRecipe
+
+
+def build_populated_schema_v6(path: Path, monkeypatch: Any) -> PopulatedV6Fixture:
+    c = open_sqlite(path)
+    for m in MIGRATIONS[:6]:
+        database._apply_one_migration(c, m)
+    c.close()
+    monkeypatch.setattr(database, "_open_connection", open_sqlite)
+    monkeypatch.setattr(database, "CURRENT_SCHEMA_VERSION", 6)
+    batch = valid_upload_batch()
+    source = valid_source_file()
+    original = valid_original_stored_artifact()
+    assessment = valid_quality_assessment()
+    recipe = valid_geometry_recipe()
+    audits = (valid_audit_event(), valid_quality_audit_event(), valid_geometry_audit_event())
+    with SqlCipherUnitOfWork(path, Provider()) as u:
+        u.upload_batches.add(batch)
+        u.stored_artifacts.add(original)
+        u.source_files.add(source)
+        u.upload_batches.update(batch.append_source_file_id(source.id))
+        u.image_quality_assessments.add(assessment)
+        u.image_geometry_recipes.add(recipe)
+        for a in audits:
+            u.audit_events.add(a)
+        u.commit()
+    return PopulatedV6Fixture(path, batch, original, source, audits, assessment, recipe)
 
 
 class CommitFailureUow:
-    def __init__(self, delegated: Any) -> None:
+    def __init__(self, delegated: Any):
         self.delegated = delegated
+        self.entered = None
+        self.commit_attempts = 0
 
-    def commit(self) -> None:
+    def __enter__(self):
+        self.entered = self.delegated.__enter__()
+        return self
+
+    def __exit__(self, *args):
+        return self.delegated.__exit__(*args)
+
+    def commit(self):
+        self.commit_attempts += 1
         raise RuntimeError("SYNTHETIC_COMMIT_FAILURE")
 
     def __getattr__(self, name: str) -> Any:
-        return getattr(self.delegated, name)
+        return getattr(self.entered if self.entered is not None else self.delegated, name)
 
 
 @dataclass(slots=True)
 class CallRecorder:
     calls: list[str]
 
-    def record(self, value: str) -> None:
-        self.calls.append(value)
+    def record(self, v: str) -> None:
+        self.calls.append(v)

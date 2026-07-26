@@ -1,7 +1,7 @@
 # Progress
 
 **Обновлено:** 2026-07-26
-**Статус:** PR-005, PR-006, PR-007 and PR-010: COMPLETED AND HUMAN ACCEPTED; PR-008: COMPLETED AND HUMAN ACCEPTED WITH DOCUMENTED RESIDUAL RISK; PR-009: COMPLETED AND HUMAN ACCEPTED WITH DOCUMENTED RESIDUAL LIMITATION; ADR-024 and PR-010 contract: ACCEPTED; Q-021: DEFERRED; production PR-009 policy and automatic blocking: NOT ACTIVE; ADR-025: PROPOSED; PR-011 contract: PROPOSED FOR HUMAN REVIEW; PR-011 production implementation and PR-012+: UNAUTHORIZED; Gate 2: NOT ACCEPTED; M3: IN PROGRESS
+**Статус:** PR-010: COMPLETED AND HUMAN ACCEPTED; ADR-025: ACCEPTED; PR-011 CONTRACT: ACCEPTED; PR-011 PRODUCTION CODE: IMPLEMENTED IN REVIEW; PR-011 ACCEPTANCE EVIDENCE: INCOMPLETE; PR-011 HUMAN ACCEPTANCE: BLOCKED; PR-012 AND LATER: UNAUTHORIZED; Q-021: DEFERRED; PRODUCTION PR-009 QUALITY POLICY: NOT ACTIVE; Gate 2: NOT ACCEPTED; M3: IN PROGRESS
 
 ## Завершено
 
@@ -74,7 +74,7 @@ PR-S001/PR-S001-F1/PR-S001-F2/PR-S001-F3/PR-S001-F4 use fictional synthetic data
 
 ## Следующий безопасный шаг
 
-Review ADR-025 and the proposed PR-011 contract. Do not implement PR-011 yet. After this documentation PR merges, a separate Product owner decision must accept ADR-025 and the contract, authorize implementation, and identify this documentation PR merge commit as the exact implementation base.
+Harden the PR-011 acceptance foundation, then execute the remaining PR-011 evidence workstreams sequentially. Do not begin PR-012.
 
 ## Historical lifecycle snapshot — Current PR-010 geometry contract staging — 2026-07-23
 

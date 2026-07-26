@@ -2582,8 +2582,10 @@ def test_pr010_contract_current_lifecycle_and_merge_evidence_are_section_scoped(
         "M3: IN PROGRESS",
     ):
         assert required in current, required
-    assert "Review ADR-025" in next_step
-    assert "Do not implement PR-011 yet" in next_step
+    assert (
+        "Harden the PR-011 acceptance foundation, then execute the remaining PR-011 "
+        "evidence workstreams sequentially. Do not begin PR-012." in next_step
+    )
     assert "PR-009: IMPLEMENTED AND IN REVIEW; NOT HUMAN ACCEPTED" in historical
     assert "Q-021: OPEN — REQUIRES PRODUCT-OWNER ACCEPTANCE" in historical
     assert "PR-010 AND LATER: UNAUTHORIZED" in historical

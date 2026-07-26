@@ -1,103 +1,181 @@
 from __future__ import annotations
 
-import copy
 import json
-from pathlib import Path
 
 import pytest
 from scripts import check_pr011_acceptance as checker
 
 
-def manifest() -> dict[str, object]:
+def manifest():
     return json.loads(checker.MANIFEST.read_text())
 
 
-def write_test(root: Path) -> str:
-    path = root / "tests/test_evidence.py"
-    path.parent.mkdir(parents=True)
-    path.write_text("def test_evidence():\n    pass\n")
-    return "tests/test_evidence.py::test_evidence"
+def entry(data, i):
+    return next(e for e in data["entries"] if e["id"] == i)
 
 
-def test_valid_blocked_inventory_with_pending_entries(tmp_path: Path) -> None:
-    report = checker.validate(manifest(), tmp_path, require_complete=False)
-    assert not report.errors and report.pending
+def path_for(i):
+    if "-SVC-" in i:
+        return "tests/application/test_prepared_jpeg_service.py"
+    if "-REP-" in i:
+        return "tests/persistence/test_prepared_jpeg_repository.py"
+    if "-ENC-" in i:
+        return "tests/image_pipeline/test_jpeg_preparer.py"
+    if "-MIG-" in i:
+        return "tests/persistence/test_migrations.py"
+    return "tests/persistence/test_windows_sqlcipher_integration.py"
+
+
+def add_test(root, i, body="assert 1 == 1"):
+    path = path_for(i)
+    p = root / path
+    p.parent.mkdir(parents=True, exist_ok=True)
+    name = "test_" + i.lower().replace("-", "_") + "_evidence"
+    with p.open("a") as f:
+        f.write(f"\ndef {name}():\n    {body}\n")
+    return f"{path}::{name}", path
+
+
+def implement(data, root, i, body="assert 1 == 1"):
+    e = entry(data, i)
+    if e["evidence_type"] == "pytest":
+        s, p = add_test(root, i, body)
+        e.update(status="implemented", test_selectors=[s], evidence_files=[p])
+    else:
+        ref = {
+            "pr_metadata": "github:pr:30:body",
+            "ci": "github:ci:1:2:" + "a" * 40 + ":success",
+            "independent_audit": "audit:docs/audit.md#result",
+        }[e["evidence_type"]]
+        e.update(status="implemented", evidence_refs=[ref])
+
+
+def test_schema_v2_and_exact_ids():
+    d = manifest()
+    assert d["schema_version"] == 2
+    assert {e["id"] for e in d["entries"]} == checker.REQUIRED_IDS
+    assert len(d["entries"]) == 57
 
 
 @pytest.mark.parametrize(
-    ("mutation", "code"),
+    ("field", "value", "code"),
     [
-        (lambda d: d["entries"].pop(), "REQUIRED_ID_MISSING"),
-        (lambda d: d["entries"].append(copy.deepcopy(d["entries"][0])), "DUPLICATE_ID"),
-        (
-            lambda d: d["entries"].__setitem__(0, {**d["entries"][0], "id": "PR011-UNKNOWN-001"}),
-            "UNKNOWN_ID",
-        ),
-        (lambda d: d["entries"][0].__setitem__("status", "waived"), "INVALID_STATUS"),
+        ("schema_version", 1, "MANIFEST_INVALID"),
+        ("stage", "bad", "INVALID_STAGE"),
+        ("evidence_type", "bad", "INVALID_EVIDENCE_TYPE"),
     ],
 )
-def test_manifest_identity_and_status_failures(mutation, code: str, tmp_path: Path) -> None:  # type: ignore[no-untyped-def]
-    data = manifest()
-    mutation(data)
-    assert code in checker.validate(data, tmp_path, require_complete=False).errors
+def test_contract_rejections(tmp_path, field, value, code):
+    d = manifest()
+    (d if field == "schema_version" else d["entries"][0])[field] = value
+    assert code in checker.validate(d, tmp_path).errors
 
 
-def test_missing_evidence_file_and_selector(tmp_path: Path) -> None:
-    data = manifest()
-    entry = data["entries"][0]
-    entry.update(
+def test_pytest_requires_files_selector_id_and_allowed_path(tmp_path):
+    d = manifest()
+    e = d["entries"][0]
+    e["status"] = "implemented"
+    r = checker.validate(d, tmp_path)
+    assert "TEST_SELECTOR_MISSING" in r.errors
+    s, p = add_test(tmp_path, e["id"])
+    e.update(test_selectors=[s.replace("svc_001", "svc_999")], evidence_files=[p])
+    assert "TEST_SELECTOR_MISSING" in checker.validate(d, tmp_path).errors
+    e["test_selectors"] = [s]
+    e["evidence_files"] = ["tests/test_evidence.py"]
+    assert "EVIDENCE_PATH_INVALID" in checker.validate(d, tmp_path).errors
+
+
+def test_selector_cannot_satisfy_two_ids(tmp_path):
+    d = manifest()
+    implement(d, tmp_path, "PR011-SVC-001")
+    e = entry(d, "PR011-SVC-002")
+    e.update(
         status="implemented",
-        evidence_files=["missing"],
-        test_selectors=["tests/missing.py::test_x"],
+        test_selectors=entry(d, "PR011-SVC-001")["test_selectors"],
+        evidence_files=entry(d, "PR011-SVC-001")["evidence_files"],
     )
-    report = checker.validate(data, tmp_path, require_complete=False)
-    assert "EVIDENCE_FILE_MISSING" in report.errors
-    assert "TEST_SELECTOR_MISSING" in report.errors
+    assert "DUPLICATE_EVIDENCE_SELECTOR" in checker.validate(d, tmp_path).errors
+
+
+@pytest.mark.parametrize("body", ["pass", "...", '"doc"', "assert True", "return None"])
+def test_trivial_evidence_rejected(tmp_path, body):
+    d = manifest()
+    implement(d, tmp_path, "PR011-SVC-001", body)
+    assert "TRIVIAL_TEST_EVIDENCE" in checker.validate(d, tmp_path).errors
+
+
+def test_nontrivial_id_named_test_is_accepted(tmp_path):
+    d = manifest()
+    implement(d, tmp_path, "PR011-SVC-001")
+    assert checker.validate(d, tmp_path).errors == ()
+
+
+def test_non_pytest_reference_rules(tmp_path):
+    d = manifest()
+    e = entry(d, "PR011-FIN-002")
+    e.update(status="implemented", test_selectors=["x"])
+    assert {"UNEXPECTED_TEST_SELECTOR", "EVIDENCE_REF_MISSING"} <= set(
+        checker.validate(d, tmp_path).errors
+    )
+    e.update(test_selectors=[], evidence_refs=["bad"])
+    assert "EVIDENCE_REF_INVALID" in checker.validate(d, tmp_path).errors
 
 
 @pytest.mark.parametrize(
-    ("content", "code"),
+    ("i", "ref"),
     [
-        ("class _Uow: pass", "FORBIDDEN_ARTIFICIAL_UOW"),
-        ("PRAGMA foreign_keys=OFF", "FOREIGN_KEYS_DISABLED"),
-        ("inspect.getsource(PreparedImageArtifactRepo)", "SOURCE_INSPECTION_ONLY"),
+        ("PR011-FIN-001", "github:pr:30:body"),
+        ("PR011-FIN-002", "github:ci:1:2:" + "a" * 40 + ":success"),
+        ("PR011-FIN-006", "audit:docs/audit.md#result"),
     ],
 )
-def test_scoped_guardrails_detect_existing_anti_patterns(
-    tmp_path: Path, content: str, code: str
-) -> None:
-    path = tmp_path / "tests/persistence/test_prepared_jpeg_repository.py"
-    path.parent.mkdir(parents=True)
-    path.write_text(content)
-    assert code in checker.guardrail_codes(tmp_path)
+def test_reference_syntax(tmp_path, i, ref):
+    d = manifest()
+    e = entry(d, i)
+    e.update(status="implemented", evidence_refs=[ref])
+    assert checker.validate(d, tmp_path).errors == ()
 
 
-def test_require_complete_fails_pending() -> None:
-    report = checker.validate(manifest(), checker.ROOT, require_complete=True)
-    assert "PENDING_EVIDENCE" in report.errors
+def test_stage_gates_are_cumulative_and_guardrails_are_scoped(tmp_path):
+    d = manifest()
+    repo = tmp_path / "tests/persistence/test_prepared_jpeg_repository.py"
+    repo.parent.mkdir(parents=True)
+    repo.write_text(
+        "class _Uow: pass\nPRAGMA foreign_keys=OFF\ninspect.getsource(PreparedImageArtifactRepo)"
+    )
+    assert (
+        "PENDING_EVIDENCE"
+        in checker.validate(d, tmp_path, required_stage="application_service").errors
+    )
+    assert (
+        "FORBIDDEN_ARTIFICIAL_UOW"
+        not in checker.validate(d, tmp_path, required_stage="application_service").errors
+    )
+    assert (
+        "FORBIDDEN_ARTIFICIAL_UOW"
+        in checker.validate(d, tmp_path, required_stage="repository_core").errors
+    )
+    assert (
+        "SOURCE_INSPECTION_ONLY"
+        in checker.validate(d, tmp_path, required_stage="repository_corruption").errors
+    )
+    assert "PENDING_EVIDENCE" in checker.validate(d, tmp_path, required_stage="migration").errors
+    assert "PENDING_EVIDENCE" in checker.validate(d, tmp_path, required_stage="final").errors
 
 
-def test_complete_synthetic_manifest_passes(tmp_path: Path) -> None:
-    selector = write_test(tmp_path)
-    data = manifest()
-    data["current_status"] = "READY_FOR_HUMAN_REVIEW"
-    for entry in data["entries"]:
-        entry.update(
-            status="implemented",
-            test_selectors=[selector],
-            evidence_files=["tests/test_evidence.py"],
-        )
-    assert checker.validate(data, tmp_path, require_complete=True).errors == ()
+def test_complete_manifest_uses_unique_nontrivial_evidence(tmp_path):
+    d = manifest()
+    d["current_status"] = "READY_FOR_HUMAN_REVIEW"
+    for e in d["entries"]:
+        implement(d, tmp_path, e["id"])
+    assert checker.validate(d, tmp_path, require_complete=True).errors == ()
 
 
-def test_invalid_json_is_sanitized(
-    tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
-) -> None:
-    bad = tmp_path / "manifest.json"
-    bad.write_text("{private path")
-    monkeypatch.setattr(checker, "MANIFEST", bad)
+def test_invalid_json_output_is_private(tmp_path, capsys, monkeypatch):
+    p = tmp_path / "x"
+    p.write_text("{private")
+    monkeypatch.setattr(checker, "MANIFEST", p)
     monkeypatch.setattr(checker, "ROOT", tmp_path)
     assert checker.main(["--inventory"]) == 1
-    output = capsys.readouterr()
-    assert "MANIFEST_INVALID" in output.out
-    assert "private" not in output.out and output.err == ""
+    o = capsys.readouterr()
+    assert "private" not in o.out and not o.err
