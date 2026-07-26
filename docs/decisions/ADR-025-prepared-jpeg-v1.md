@@ -1,6 +1,6 @@
 # ADR-025 — Deterministic prepared JPEG v1
 
-**Status:** PROPOSED
+**Status:** ACCEPTED
 
 ## Decision status and authorization boundary
 
@@ -79,3 +79,11 @@ The encoder is deterministic and replayable; application creation is create-once
 ## Roadmap/pipeline ordering resolution
 
 The product pipeline retains “merge before final compression.” PR-012 supplies confirmed recipes per region. PR-013 composes confirmed uncompressed RGB rasters into one controlled `UncompressedRgbRaster`, then calls `PreparedJpegEncoderPort` directly—not the recipe service. It cannot bypass or change settings, sequences, metadata rules or byte limit. Gate 2 remains blocked until PR-011, PR-012 and PR-013 are accepted and local real-photo evidence exists outside Git, Codex and CI.
+
+## Current PR-011 production implementation lifecycle — 2026-07-26
+
+This current section supersedes earlier lifecycle snapshots for current status only and preserves their historical record. Product owner authorization date: 2026-07-26. Accepted contract merge commit: `f007fb5a04a5c69c70a37faf7ba12fa6775ae819`.
+
+ADR-025: ACCEPTED. PR-011 CONTRACT: ACCEPTED. PR-011 PRODUCTION IMPLEMENTATION: IMPLEMENTED AND IN REVIEW; NOT HUMAN ACCEPTED. PR-012 AND LATER: UNAUTHORIZED. Q-021: DEFERRED. PRODUCTION PR-009 QUALITY POLICY: NOT ACTIVE. PRODUCTION `policy_id`: NOT ASSIGNED. PRODUCTION `policy_version`: NOT ASSIGNED. AUTOMATIC PR-009 QUALITY BLOCKING: NOT ACTIVE. AUTOMATIC PRODUCTION `RETAKE_REQUIRED`: NOT ACTIVE. GATE 2: NOT ACCEPTED. M3: IN PROGRESS.
+
+PR-011 adds the separated pure Pillow encoder and immutable prepared-image contract, schema version 7 (`v0007_prepared_jpeg`, checksum `76a97779acdd5545ca846227389648ed2c9c75825c389f59ab5ec49c36bfadc6`), synthetic tests, sanitized verifier entry point and CI integration. Fixed settings are baseline non-progressive optimized JPEG, 4:4:4, quality 95/90/85/80/75/70/65/60 before scale 100/90/80/70/60/50, with the exact 1,992,294-byte ceiling. The natural key is `(geometry_recipe_version_id, pipeline_id, pipeline_version, output_contract_id, output_contract_version)`. PR-012 region orchestration and PR-013 side merge remain separate and unauthorized.
