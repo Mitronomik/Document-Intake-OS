@@ -72,3 +72,117 @@ PR011_VERIFY result=PASS
 ## Non-goals
 
 No production code, migration/checksum, dependency/lock/workflow change, encoding, resizing, metadata stripping, persistence, audit enum, verifier, region orchestration, side merge, UI, OCR, Excel, terminal adapter, PR-009 policy activation, Q-021 resolution, installer, network/cloud/telemetry, fixture/binary, real document, or personal data is included.
+
+## Recipe application service and reusable encoder
+
+The future use case `prepare_geometry_recipe_as_jpeg` accepts one immutable `geometry_recipe_version_id` plus caller `prepared_artifact_id`, `stored_artifact_id`, `audit_event_id`, `prepared_at`, `actor` and `correlation_id`. It loads and replays PR-010 geometry, constructs a fresh `UncompressedRgbRaster`, calls `PreparedJpegEncoderPort`, then publishes and persists. It rejects caller bytes/paths/settings, unconfirmed geometry, multiple recipes/sides, and composed rasters. PR-013 never calls this recipe service with composition output.
+
+```python
+@dataclass(frozen=True, slots=True)
+class UncompressedRgbRaster:
+    width: int
+    height: int
+    rgb_pixels: bytes
+
+class PreparedJpegEncoderPort(Protocol):
+    def encode_prepared_jpeg(
+        self,
+        raster: UncompressedRgbRaster,
+        *,
+        pipeline: PreparedJpegPipelineVersion,
+    ) -> EncodedPreparedJpeg: ...
+
+@dataclass(frozen=True, slots=True)
+class EncodedPreparedJpeg:
+    jpeg_bytes: bytes
+    width: int
+    height: int
+    byte_size: int
+    sha256: Sha256Digest
+    jpeg_quality: int
+    resize_percent: int
+    pipeline_id: str
+    pipeline_version: int
+    output_contract_id: str
+    output_contract_version: int
+```
+
+Raster dimensions are positive, `len(rgb_pixels) == width * height * 3`, and mode is exactly RGB. It contains no encoded JPEG, path, filename, document/source ID, OCR or PII. The encoder has no database, filesystem publication or audit access and returns one in-memory selected candidate with controlled metadata. `EncodedPreparedJpeg` is internal, not an application DTO; raw bytes never enter UI, logs, audit or repository interfaces. PR-013 can compose confirmed uncompressed rasters into this type and call the same port directly, but cannot change any fixed V1 setting, sequence, metadata rule or byte limit.
+
+## Create-once persistence and exact operation order
+
+Exactly one artifact exists for natural key `(geometry_recipe_version_id, pipeline_id, pipeline_version, output_contract_id, output_contract_version)`, enforced by the exact future unique constraint:
+
+```text
+UNIQUE (
+    geometry_recipe_version_id,
+    pipeline_id,
+    pipeline_version,
+    output_contract_id,
+    output_contract_version
+)
+```
+
+There is no latest row, update-in-place or revision chain. Another artifact requires a changed versioned identity. Encoding is replayable, while creation is create-once: an existing key fails with `PREPARATION_ALREADY_EXISTS`, without returning the existing entity, ignoring IDs or creating duplicates.
+
+Exact application order:
+
+1. validate source-independent command invariants;
+2. validate caller record IDs are pairwise distinct;
+3. open a read Unit of Work;
+4. load and validate recipe, source file and original stored-artifact metadata;
+5. close the read Unit of Work without commit;
+6. read and verify immutable original bytes;
+7. replay accepted PR-010 geometry;
+8. construct one fresh `UncompressedRgbRaster`;
+9. call `PreparedJpegEncoderPort`;
+10. calculate and validate selected-candidate metadata;
+11. open one write Unit of Work;
+12. re-read and revalidate authoritative references;
+13. verify `prepared_artifact_id` does not exist;
+14. verify `stored_artifact_id` does not exist;
+15. verify `audit_event_id` does not exist;
+16. verify the natural preparation key does not exist;
+17. publish the JPEG exactly once to encrypted immutable storage;
+18. add stored-artifact metadata;
+19. add `PreparedImageArtifact`;
+20. add the audit event;
+21. commit exactly once;
+22. exit the Unit of Work;
+23. construct and return the application result.
+
+Nothing is published before steps 13–16 pass and no intermediate candidate is published. Primary keys, stored/audit IDs and natural key remain database-enforced. A late uniqueness race rolls back database changes, preserves valid records, leaves the new encrypted object unreferenced for read-only orphan reconciliation, performs no adoption/deletion, and returns privacy-safe `PERSISTENCE_CONFLICT`.
+
+`IDENTITY_CONFLICT` means a caller record ID already exists before publication. `PREPARATION_ALREADY_EXISTS` means the natural key exists before publication. `PERSISTENCE_CONFLICT` means a late uniqueness race after publication and before commit. Raw SQL is never exposed.
+
+## Exact audit event
+
+Future enums are `AuditAction.PREPARED_JPEG_CREATED`, `AuditSubjectType.PREPARED_IMAGE_ARTIFACT`, and `AuditReasonCode.PREPARED_JPEG_CREATED`.
+
+```text
+event_id = command.audit_event_id
+action = PREPARED_JPEG_CREATED
+subject_type = PREPARED_IMAGE_ARTIFACT
+subject_id = command.prepared_artifact_id
+actor = command.actor
+occurred_at = command.prepared_at
+field_key = None
+before.classification = ABSENT
+before.display_value = None
+before.was_present = false
+after.classification = NON_SENSITIVE
+after.display_value = PREPARED_JPEG
+after.was_present = true
+reason_code = PREPARED_JPEG_CREATED
+correlation_id = command.correlation_id
+```
+
+Audit, stored-artifact metadata and prepared artifact commit atomically in the write Unit of Work; none commits without the others. Audit excludes filename, path, bytes, source/output checksum, quality, resize, dimensions, byte size, coordinates, document identifiers, OCR, PII and raw exceptions. Controlled metrics remain on the immutable artifact.
+
+## Future v0007 persistence correction
+
+The proposal transitions schema 6 to 7 without modifying v0001–v0006 or assigning a checksum here. It enforces immutable rows; UPDATE/DELETE/REPLACE rejection; positive dimensions/size; `byte_size <= 1_992_294`; allowed quality/resize sequences; fixed JPEG/SRGB and pipeline/output identities; foreign keys; canonical payload/projection equality; deterministic ordering; and the unique natural key above. Reads validate every canonical payload and projection before filtering or returning.
+
+## Additional future tests
+
+Tests must prove recipe service rejection of caller raster bytes; valid-only RGB raster input; PR-013-compatible encoder reuse; no persistence/storage/audit in the encoder; create-once natural key; duplicate-ID and existing-key preflight before publication; late-race controlled orphan reconciliation; exact audit fields; and artifact/audit atomicity.

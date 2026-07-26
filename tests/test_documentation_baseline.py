@@ -53,7 +53,9 @@ REQUIRED_DOCUMENTS = (
     "docs/tasks/PR-009-orientation-quality-assessment.md",
     "docs/decisions/ADR-023-image-quality-assessment-v1.md",
     "docs/decisions/ADR-024-image-geometry-recipe-v1.md",
+    "docs/decisions/ADR-025-prepared-jpeg-v1.md",
     "docs/tasks/PR-010-geometry-tools.md",
+    "docs/tasks/PR-011-jpeg-preparation.md",
 )
 
 CANONICAL_SOURCE_ORDER = (
@@ -403,7 +405,7 @@ def test_lifecycle_state_records_pr005_accepted_state() -> None:
     assert "PR-S001-F3 is the current correction" not in progress
     assert "**Обновлено:** 2026-07-17" not in progress
     assert "**Обновлено:** 2026-07-18" not in progress
-    assert "**Обновлено:** 2026-07-23" in progress
+    assert "**Обновлено:** 2026-07-26" in progress
     assert "- [x] GATE-S1: COMPLETED AND HUMAN ACCEPTED;" in progress
     assert "- [x] ADR-018: ACCEPTED;" in progress
     assert "- [x] Q-010: ACCEPTED;" in progress
@@ -1890,9 +1892,9 @@ def test_pr009_quality_contract_is_human_accepted_with_deferred_q021_policy() ->
     )
     task_header = task.split("\n## Implementation base rule", maxsplit=1)[0]
     roadmap = (REPO_ROOT / "docs/roadmap.md").read_text(encoding="utf-8")
-    current_m3 = _adr_section(roadmap, "## M3 — Manual image workflow")
+    current_m3 = _adr_section(roadmap, "## Current lifecycle state — 2026-07-26")
     handoff = (REPO_ROOT / "docs/handoff.md").read_text(encoding="utf-8")
-    current_handoff = _adr_section(handoff, "## Current lifecycle state")
+    current_handoff = _adr_section(handoff, "## Current lifecycle state — 2026-07-26")
     questions = (REPO_ROOT / "docs/open-questions.md").read_text(encoding="utf-8")
     q007 = _question_section(questions, "Q-007")
     q021 = _question_section(questions, "Q-021")
@@ -1954,21 +1956,21 @@ def test_pr009_quality_contract_is_human_accepted_with_deferred_q021_policy() ->
             "NO PRODUCTION POLICY SELECTED",
             "RISK-PR009-NO-PRODUCTION-QUALITY-POLICY",
             "PR-010 CONTRACT: ACCEPTED",
-            "PR-010 PRODUCTION IMPLEMENTATION: AUTHORIZED AND IN REVIEW",
-            "PR-011 AND LATER: UNAUTHORIZED",
+            "PR-010: COMPLETED AND HUMAN ACCEPTED",
+            "PR-011 production implementation: UNAUTHORIZED",
             "Gate 2: NOT ACCEPTED",
             "M3: IN PROGRESS",
         ):
             assert required in current_section, required
 
-    assert "Production default quality policy: NOT ACTIVE" in current_m3
-    assert "Production default PR-009 quality policy: NOT ACTIVE" in current_handoff
+    assert "Production PR-009 quality policy: NOT ACTIVE" in current_m3
+    assert "Production PR-009 quality policy: NOT ACTIVE" in current_handoff
     for current_section in (current_m3, current_handoff):
         for required in (
-            "Production policy_id: NOT ASSIGNED",
-            "Production policy_version: NOT ASSIGNED",
-            "Automatic PR-009 quality-based document blocking: NOT ACTIVE",
-            "Automatic PR-009 production RETAKE_REQUIRED enforcement: NOT ACTIVE",
+            "Production `policy_id`: NOT ASSIGNED",
+            "Production `policy_version`: NOT ASSIGNED",
+            "Automatic PR-009 quality blocking: NOT ACTIVE",
+            "Automatic production `RETAKE_REQUIRED`: NOT ACTIVE",
         ):
             assert required in current_section, required
 
@@ -2004,7 +2006,9 @@ def test_pr009_quality_contract_is_human_accepted_with_deferred_q021_policy() ->
 
     decisions = (REPO_ROOT / "docs/decisions.md").read_text(encoding="utf-8")
     historical_implementation = _adr_section(
-        decisions, "## Historical PR-009 implementation lifecycle update — 2026-07-21"
+        decisions,
+        "## Historical lifecycle snapshot — Historical PR-009 implementation "
+        "lifecycle update — 2026-07-21",
     )
     assert "PR-009: IMPLEMENTED AND IN REVIEW; NOT HUMAN ACCEPTED" in historical_implementation
     assert "PR-010 AND LATER: UNAUTHORIZED" in historical_implementation
@@ -2056,7 +2060,7 @@ def test_pr009_quality_contract_is_human_accepted_with_deferred_q021_policy() ->
     for filename in historical_calibration_files:
         section = _adr_section(
             (REPO_ROOT / filename).read_text(encoding="utf-8"),
-            "## PR-009 calibration lifecycle update — 2026-07-22",
+            "## Historical lifecycle snapshot — PR-009 calibration lifecycle update — 2026-07-22",
         )
         assert "IMPLEMENTED AND READY FOR HUMAN ACCEPTANCE" in section, filename
         assert "WITH DOCUMENTED RESIDUAL LIMITATION" in section, filename
@@ -2375,18 +2379,26 @@ def test_pr009_quality_contract_is_human_accepted_with_deferred_q021_policy() ->
 
 def test_current_pr009_lifecycle_sections_are_scoped_after_d4() -> None:
     traceability = (REPO_ROOT / "docs/traceability-matrix.md").read_text(encoding="utf-8")
-    current_traceability = _adr_section(traceability, "## Current lifecycle state")
+    current_traceability = _adr_section(traceability, "## Current lifecycle state — 2026-07-26")
     current_pr010_traceability = _adr_section(
-        traceability, "## Current PR-010 geometry contract staging — 2026-07-23"
+        traceability,
+        "## Historical lifecycle snapshot — Current PR-010 geometry contract staging — 2026-07-23",
     )
     questions = (REPO_ROOT / "docs/open-questions.md").read_text(encoding="utf-8")
     q021 = _bounded_question_section(questions, "Q-021")
     current_q021 = _adr_section(
-        questions, "## PR-009 human acceptance lifecycle state — 2026-07-22"
+        questions,
+        "## Historical lifecycle snapshot — PR-009 human acceptance lifecycle state — 2026-07-22",
     )
 
     assert "## PR-009-D4 current lifecycle update — 2026-07-22" not in questions
-    assert questions.count("## PR-009 human acceptance lifecycle state — 2026-07-22") == 1
+    assert (
+        questions.count(
+            "## Historical lifecycle snapshot — PR-009 human acceptance "
+            "lifecycle state — 2026-07-22"
+        )
+        == 1
+    )
 
     for required in (
         "PR-009: COMPLETED AND HUMAN ACCEPTED WITH DOCUMENTED RESIDUAL LIMITATION",
@@ -2416,9 +2428,8 @@ def test_current_pr009_lifecycle_sections_are_scoped_after_d4() -> None:
     ):
         assert required in current_pr010_traceability, required
 
-    assert "next authorized work is review of the PR-010 production implementation" in (
-        current_traceability
-    )
+    assert "ADR-025: PROPOSED" in current_traceability
+    assert "PR-011 contract: PROPOSED FOR HUMAN REVIEW" in current_traceability
     assert "real documents and personal data remain prohibited in Git, Codex and CI" in (
         current_traceability
     )
@@ -2449,7 +2460,7 @@ def test_current_pr009_lifecycle_sections_are_scoped_after_d4() -> None:
     for filename in ("docs/traceability-matrix.md", "docs/open-questions.md"):
         historical = _adr_section(
             (REPO_ROOT / filename).read_text(encoding="utf-8"),
-            "## PR-009 calibration lifecycle update — 2026-07-22",
+            "## Historical lifecycle snapshot — PR-009 calibration lifecycle update — 2026-07-22",
         )
         assert "IMPLEMENTED AND READY FOR HUMAN ACCEPTANCE" in historical, filename
         assert "PR-010 AND LATER: UNAUTHORIZED" in historical, filename
@@ -2545,45 +2556,34 @@ def _section(markdown: str, heading: str) -> str:
 
 def test_pr010_contract_current_lifecycle_and_merge_evidence_are_section_scoped() -> None:
     progress = (REPO_ROOT / "docs/progress.md").read_text(encoding="utf-8")
-    current = _section(progress, "## Current lifecycle state")
+    current = _section(progress, "## Current lifecycle state — 2026-07-26")
     next_step = _section(progress, "## Следующий безопасный шаг")
-    historical = _section(progress, "## PR-009 implementation lifecycle update — 2026-07-21")
+    historical = _section(
+        progress,
+        "## Historical lifecycle snapshot — PR-009 implementation lifecycle update — 2026-07-21",
+    )
 
     for required in (
-        "PR #26",
-        "cc79a80fcacdbde2667cae858815b30176f87555",
-        "f27647e8cdfb2f8d3e5bb13478a4df50987ca1cb",
-        "2026-07-23",
-        "CI #129",
-        "29972502518",
-        "PR-009: COMPLETED AND HUMAN ACCEPTED WITH DOCUMENTED RESIDUAL LIMITATION",
-        "Q-021: DEFERRED — NEGATIVE CALIBRATION EVIDENCE ACCEPTED; NO PRODUCTION POLICY SELECTED",
-        "Production default PR-009 quality policy: NOT ACTIVE",
-        "Production policy_id: NOT ASSIGNED",
-        "Production policy_version: NOT ASSIGNED",
-        "Automatic PR-009 quality-based document blocking: NOT ACTIVE",
-        "Automatic PR-009 production RETAKE_REQUIRED enforcement: NOT ACTIVE",
-        "RISK-PR009-NO-PRODUCTION-QUALITY-POLICY: OPEN AND ACCEPTED",
+        "GitHub PR #28",
+        "8b6a3cf69d697807a20e763605b4601104844f04",
+        "99cdcaebe25551a24062e4e356ff47e868ac8f6a",
+        "CI #138",
+        "30034157725",
+        "conclusion `success`",
+        "Current schema version: `6`",
+        "ac9d5bfbe79160d880f30af6ee1ed645ab500b9be140a18b9d6498cc68eba5ec",
+        "PR-010: COMPLETED AND HUMAN ACCEPTED",
         "ADR-024: ACCEPTED",
-        "PR-010 CONTRACT: ACCEPTED",
-        "PR-010 PRODUCTION IMPLEMENTATION: AUTHORIZED AND IN REVIEW",
-        "PR-011 AND LATER: UNAUTHORIZED",
+        "PR-010 contract: ACCEPTED",
+        "ADR-025: PROPOSED",
+        "PR-011 contract: PROPOSED FOR HUMAN REVIEW",
+        "PR-011 production implementation: UNAUTHORIZED",
         "Gate 2: NOT ACCEPTED",
         "M3: IN PROGRESS",
     ):
         assert required in current, required
-
-    for stale in (
-        "PR-009: IMPLEMENTED AND IN REVIEW",
-        "Q-021: OPEN — REQUIRES PRODUCT-OWNER ACCEPTANCE",
-        "Final PR-009 human acceptance: BLOCKED UNTIL Q-021 IS ACCEPTED",
-        "PR-010 PRODUCTION IMPLEMENTATION: UNAUTHORIZED",
-        "Gate 2: ACCEPTED",
-        "M3: COMPLETED",
-    ):
-        assert stale not in current, stale
-        assert stale not in next_step, stale
-
+    assert "Review ADR-025" in next_step
+    assert "Do not implement PR-011 yet" in next_step
     assert "PR-009: IMPLEMENTED AND IN REVIEW; NOT HUMAN ACCEPTED" in historical
     assert "Q-021: OPEN — REQUIRES PRODUCT-OWNER ACCEPTANCE" in historical
     assert "PR-010 AND LATER: UNAUTHORIZED" in historical
@@ -2798,7 +2798,7 @@ def test_pr010_task_and_adr024_contract_terms_are_exact() -> None:
         "PR-010 does not publish a final JPEG",
         "PR-012",
         "PR-011",
-        "PRODUCTION IMPLEMENTATION is AUTHORIZED AND IN REVIEW",
+        "Historical accepted PR-010 implementation contract",
     ):
         assert required in combined, required
 
@@ -2815,7 +2815,7 @@ def test_pr010_task_and_adr024_contract_terms_are_exact() -> None:
 
 
 def test_current_pr010_closure_and_pr011_contract_proposal() -> None:
-    current_heading = "## Current lifecycle after PR-010 acceptance — 2026-07-26"
+    current_heading = "## Current lifecycle state — 2026-07-26"
     current_files = [
         "docs/progress.md",
         "docs/roadmap.md",
@@ -2851,10 +2851,23 @@ def test_current_pr010_closure_and_pr011_contract_proposal() -> None:
     ]
     for filename in current_files:
         text = (REPO_ROOT / filename).read_text(encoding="utf-8")
-        current = text[text.rindex(current_heading) :]
+        assert text.count(current_heading) == 1, filename
+        current = _section(text, current_heading)
         for marker in required:
             assert marker in current, (filename, marker)
-        assert "PR-010 PRODUCTION IMPLEMENTATION: AUTHORIZED AND IN REVIEW" not in current
+        for stale in (
+            "PR-010 PRODUCTION IMPLEMENTATION: AUTHORIZED AND IN REVIEW",
+            "PR-010 production implementation is AUTHORIZED AND IN REVIEW",
+            "PR-010 remains authorized and in review",
+            "PR-010: NOT HUMAN ACCEPTED",
+            "next authorized work is review of the PR-010 production implementation",
+            "next safe task is review of the PR-010 production implementation",
+            "Review this documentation-only PR-010 contract proposal",
+            "ADR-024: PROPOSED",
+            "PR-010 CONTRACT: PROPOSED FOR HUMAN REVIEW",
+            "PR-010 PRODUCTION IMPLEMENTATION: UNAUTHORIZED",
+        ):
+            assert stale not in current, (filename, stale)
 
 
 def test_proposed_pr011_contract_is_exact_and_unauthorized() -> None:
@@ -2882,6 +2895,18 @@ def test_proposed_pr011_contract_is_exact_and_unauthorized() -> None:
         "orphan-reconciliation",
         "PR-012",
         "PR-013",
+        "prepare_geometry_recipe_as_jpeg",
+        "PreparedJpegEncoderPort",
+        "UncompressedRgbRaster",
+        "EncodedPreparedJpeg",
+        "PREPARATION_ALREADY_EXISTS",
+        "IDENTITY_CONFLICT",
+        "PERSISTENCE_CONFLICT",
+        "UNIQUE (",
+        "AuditReasonCode.PREPARED_JPEG_CREATED",
+        "before.classification = ABSENT",
+        "after.classification = NON_SENSITIVE",
+        "Nothing is published before steps 13–16 pass",
         (
             "the merge commit of this documentation-contract PR, after separate "
             "Product owner acceptance and authorization"

@@ -6,13 +6,17 @@
 
 PR #26 is merged successfully. Final reviewed head: `cc79a80fcacdbde2667cae858815b30176f87555`. Merge commit: `f27647e8cdfb2f8d3e5bb13478a4df50987ca1cb`. Merge date: `2026-07-23`. Exact-head CI: `CI #129`, run ID `29972502518`, conclusion `success`. PR-009 lifecycle documentation and test corrections delivered through PR #26 are completed and human accepted.
 
-ADR-024 is ACCEPTED by Product owner on 2026-07-23. PR-010 CONTRACT is ACCEPTED. PR-010 PRODUCTION IMPLEMENTATION is AUTHORIZED AND IN REVIEW; NOT HUMAN ACCEPTED. PR-011 AND LATER are UNAUTHORIZED. Gate 2 is NOT ACCEPTED. M3 is IN PROGRESS. Q-021 remains DEFERRED — NEGATIVE CALIBRATION EVIDENCE ACCEPTED; NO PRODUCTION POLICY SELECTED. No production PR-009 quality policy is active; production `policy_id` and `policy_version` are NOT ASSIGNED; automatic PR-009 quality-based document blocking and production `RETAKE_REQUIRED` enforcement are NOT ACTIVE.
+ADR-024 and the PR-010 contract are ACCEPTED. PR-010 is COMPLETED AND HUMAN ACCEPTED through GitHub PR #28. PR-011 AND LATER are UNAUTHORIZED. Gate 2 is NOT ACCEPTED. M3 is IN PROGRESS. Q-021 remains DEFERRED — NEGATIVE CALIBRATION EVIDENCE ACCEPTED; NO PRODUCTION POLICY SELECTED. No production PR-009 quality policy is active; production `policy_id` and `policy_version` are NOT ASSIGNED; automatic PR-009 quality-based document blocking and production `RETAKE_REQUIRED` enforcement are NOT ACTIVE.
 
 ## 2. Verified implementation base rule
 
 The historical documentation-contract PR was based on `f27647e8cdfb2f8d3e5bb13478a4df50987ca1cb`.
 
-The current PR-010 production implementation is based on accepted contract merge commit `329dd5653a3faadd3c62387c1d900710f14b2f4e`. This implementation is in review, not completed and not human accepted.
+The current PR-010 production implementation is based on accepted contract merge commit `329dd5653a3faadd3c62387c1d900710f14b2f4e`. That implementation subsequently completed and was human accepted through GitHub PR #28.
+
+## Historical accepted PR-010 implementation contract
+
+The numbered sections below preserve the accepted pre-implementation contract as historical evidence; future tense and implementation-review language describe that historical stage and are not current instructions.
 
 ## 3. Goal
 
@@ -354,12 +358,12 @@ Do not log complete identity numbers, phones, addresses, OCR payloads, MRZ, file
 The historical documentation-contract PR recorded the PR-010 geometry contract and did not itself authorize production implementation. The Product owner later accepted ADR-024 and the PR-010 contract on 2026-07-23, then explicitly authorized PR-010 production implementation from base `329dd5653a3faadd3c62387c1d900710f14b2f4e`. The current implementation remains AUTHORIZED AND IN REVIEW; NOT HUMAN ACCEPTED. PR-011 AND LATER remain UNAUTHORIZED.
 
 
-## PR-010 implementation review state
+## Historical lifecycle snapshot — PR-010 implementation review state
 
 Product owner accepted ADR-024 on 2026-07-23 and authorized production implementation in review from exact base `329dd5653a3faadd3c62387c1d900710f14b2f4e`. PR-011 and later remain UNAUTHORIZED. Gate 2 remains NOT ACCEPTED. M3 remains IN PROGRESS. Q-021 remains DEFERRED. Production PR-009 quality policy remains NOT ACTIVE.
 
 
-## PR-010 completion and human acceptance — 2026-07-26
+## Current PR-010 completion and human acceptance — 2026-07-26
 
 This current section supersedes earlier lifecycle snapshots for current status only and does not rewrite the historical record.
 
