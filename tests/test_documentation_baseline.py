@@ -2600,6 +2600,24 @@ def test_pr010_contract_current_lifecycle_and_merge_evidence_are_section_scoped(
     assert "PR-010 AND LATER: UNAUTHORIZED" in historical
 
 
+def test_pr011_top_status_matches_ready_for_human_review_boundary() -> None:
+    progress = (REPO_ROOT / "docs/progress.md").read_text(encoding="utf-8")
+    top_status = next(line for line in progress.splitlines() if line.startswith("**Статус:**"))
+    for required in (
+        "PR-011 ACCEPTANCE EVIDENCE: COMPLETE",
+        "PR-011 LIFECYCLE: READY_FOR_HUMAN_REVIEW",
+        "PR-011 HUMAN ACCEPTANCE: PENDING",
+        "PR-011 MERGE: NOT AUTHORIZED",
+        "PR-012 AND LATER: UNAUTHORIZED",
+    ):
+        assert required in top_status
+    assert "PR-011 ACCEPTANCE EVIDENCE: INCOMPLETE" not in top_status
+    assert "PR-011 HUMAN ACCEPTANCE: COMPLETED" not in top_status
+    next_step = _section(progress, "## Следующий безопасный шаг")
+    assert "all seven manifest stages and all 57 entries are implemented" in next_step
+    assert "`READY_FOR_HUMAN_REVIEW`, not human accepted" in next_step
+
+
 def test_pr011_independent_audit_preserves_final_acceptance_boundary() -> None:
     audit = (REPO_ROOT / "docs/decisions/PR-011-D1-independent-acceptance-audit.md").read_text(
         encoding="utf-8"
