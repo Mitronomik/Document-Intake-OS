@@ -2585,10 +2585,10 @@ def test_pr010_contract_current_lifecycle_and_merge_evidence_are_section_scoped(
     ):
         assert required in current, required
     assert (
-        "PR-011 application-service and repository-core acceptance evidence is complete: 28 of 57 "
-        "manifest entries are implemented and 29 remain pending. Execute the repository-corruption "
-        "evidence stage next. Encoder and later stages remain blocked; do not begin PR-012. "
-        "PR-011 human "
+        "PR-011 application-service and repository-core functional evidence is complete: 28 of 57 "
+        "manifest entries are implemented and 29 remain pending. Repository-core Windows SQLCipher "
+        "platform proof is pending. Do not begin repository-corruption, encoder or later stages. "
+        "Do not begin PR-012. PR-011 human "
         "acceptance remains blocked." in next_step
     )
     assert "PR-009: IMPLEMENTED AND IN REVIEW; NOT HUMAN ACCEPTED" in historical

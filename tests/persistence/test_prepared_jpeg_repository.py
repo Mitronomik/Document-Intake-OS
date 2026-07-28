@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import inspect
 import sqlite3
+import sys
 from collections.abc import Iterator
 from contextlib import contextmanager
 from dataclasses import dataclass, replace
@@ -47,13 +48,16 @@ class RepositoryEnvironment:
     database: EncryptedDatabase
     path: Path
     recipes: tuple[object, object, object]
+    production_sqlcipher: bool
 
 
 @pytest.fixture
 def repository_environment(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> RepositoryEnvironment:
-    monkeypatch.setattr(database, "_open_connection", sqlite_connection)
+    production_sqlcipher = sys.platform == "win32"
+    if not production_sqlcipher:
+        monkeypatch.setattr(database, "_open_connection", sqlite_connection)
     path = tmp_path / "repository-core.db"
     encrypted = EncryptedDatabase(path, Provider())
     encrypted.initialize()
@@ -83,7 +87,7 @@ def repository_environment(
         for recipe in (first, second, third):
             unit.image_geometry_recipes.add(recipe)
         unit.commit()
-    return RepositoryEnvironment(encrypted, path, (first, second, third))
+    return RepositoryEnvironment(encrypted, path, (first, second, third), production_sqlcipher)
 
 
 def assert_foreign_keys(unit: SqlCipherUnitOfWork) -> None:
@@ -165,6 +169,16 @@ def test_pr011_rep_001_production_encrypted_database_unit_of_work_fixture(
     candidate = repository_environment.database.unit_of_work()
     assert type(candidate) is SqlCipherUnitOfWork
     with candidate as unit:
+        connection = unit._connection()
+        if repository_environment.production_sqlcipher:
+            cipher_version = connection.execute("PRAGMA cipher_version").fetchone()
+            assert cipher_version is not None
+            assert isinstance(cipher_version[0], str)
+            assert cipher_version[0].strip()
+        else:
+            assert sys.platform != "win32"
+            assert database._open_connection is sqlite_connection
+            assert connection.execute("PRAGMA cipher_version").fetchone() is None
         assert unit.prepared_image_artifacts.get(entity_id(400)) is None
         assert_integrity(unit)
 
