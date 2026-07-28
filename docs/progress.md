@@ -74,7 +74,7 @@ PR-S001/PR-S001-F1/PR-S001-F2/PR-S001-F3/PR-S001-F4 use fictional synthetic data
 
 ## Следующий безопасный шаг
 
-PR-011 application-service acceptance evidence is complete: 17 of 57 manifest entries are implemented and 40 remain pending. Execute the repository-core evidence stage next. Repository-corruption and later stages remain blocked; do not begin PR-012. PR-011 human acceptance remains blocked.
+PR-011 application-service and repository-core acceptance evidence is complete: 28 of 57 manifest entries are implemented and 29 remain pending. Execute the repository-corruption evidence stage next. Encoder and later stages remain blocked; do not begin PR-012. PR-011 human acceptance remains blocked.
 
 ## Historical lifecycle snapshot — Current PR-010 geometry contract staging — 2026-07-23
 
