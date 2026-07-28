@@ -147,12 +147,15 @@ PR-012 creates and confirms region identities and geometry recipes. It neither c
 
 ## Decision and authorization
 
-This model and its migration are proposals for human review, not accepted architecture or implementation permission.
+The Product owner accepted this model and authorized the PR-012 production implementation for
+review. Human acceptance and merge authorization remain separate and have not been granted.
 
 ```text
-ADR-026: PROPOSED
-PR-012 CONTRACT: PROPOSED FOR HUMAN REVIEW
-PR-012 PRODUCTION IMPLEMENTATION: UNAUTHORIZED
+ADR-026: ACCEPTED
+PR-012 CONTRACT: ACCEPTED
+PR-012 PRODUCTION IMPLEMENTATION: AUTHORIZED AND IN REVIEW
+PR-012 HUMAN ACCEPTANCE: NOT GRANTED
+PR-012 MERGE: NOT AUTHORIZED
 PR-013 AND LATER: UNAUTHORIZED
 GATE 2: NOT ACCEPTED
 M3: IN PROGRESS

@@ -3078,12 +3078,12 @@ def test_pr011_d3_records_exact_accepted_evidence_and_boundaries() -> None:
     assert "PR-013 and later remain unauthorized" in boundary
 
 
-def test_adr026_proposed_region_model_is_exact() -> None:
+def test_adr026_accepted_region_model_is_exact() -> None:
     adr = (REPO_ROOT / "docs/decisions/ADR-026-document-regions-v1.md").read_text(encoding="utf-8")
     assert "ACCEPTED" in _section(adr, "## Status")
     for marker in (
-        "PR-012 CONTRACT: PROPOSED FOR HUMAN REVIEW",
-        "PR-012 PRODUCTION IMPLEMENTATION: UNAUTHORIZED",
+        "PR-012 CONTRACT: ACCEPTED",
+        "PR-012 PRODUCTION IMPLEMENTATION: AUTHORIZED AND IN REVIEW",
         "UNIQUE(source_file_id, revision)",
         "minimum confirmed regions = 1",
         "maximum confirmed regions = 2",
@@ -3291,27 +3291,36 @@ def test_pr012_controlled_error_semantics_are_frozen() -> None:
     )
 
 
-def test_pr012_correction_preserves_proposed_authorization_boundaries() -> None:
-    for filename in (
-        "docs/decisions/ADR-026-document-regions-v1.md",
-        "docs/tasks/PR-012-multiple-documents-per-image.md",
+def test_pr012_current_status_sections_are_consistent() -> None:
+    adr = (REPO_ROOT / "docs/decisions/ADR-026-document-regions-v1.md").read_text(encoding="utf-8")
+    task = (REPO_ROOT / "docs/tasks/PR-012-multiple-documents-per-image.md").read_text(
+        encoding="utf-8"
+    )
+    adr_status = _section(adr, "## Status")
+    boundary = _section(adr, "## Decision and authorization")
+    task_status = _section(task, "## Status")
+    assert "ACCEPTED" in adr_status
+    for marker in (
+        "PR-012 CONTRACT: ACCEPTED",
+        "PR-012 PRODUCTION IMPLEMENTATION: AUTHORIZED AND IN REVIEW",
     ):
-        text = (REPO_ROOT / filename).read_text(encoding="utf-8")
-        boundary = (
-            _section(text, "## Decision and authorization")
-            if "ADR-026" in filename
-            else _section(text, "## Authorization boundary")
-        )
+        assert marker in adr_status
+    for section in (boundary, task_status):
         for marker in (
-            "ADR-026: PROPOSED",
-            "PR-012 CONTRACT: PROPOSED FOR HUMAN REVIEW",
-            "PR-012 PRODUCTION IMPLEMENTATION: UNAUTHORIZED",
-            "PR-013 AND LATER: UNAUTHORIZED",
-            "GATE 2: NOT ACCEPTED",
-            "M3: IN PROGRESS",
-            "Q-021: DEFERRED",
-            "PRODUCTION PR-009 QUALITY POLICY: NOT ACTIVE",
-            "AUTOMATIC PR-009 QUALITY BLOCKING: NOT ACTIVE",
-            "AUTOMATIC PRODUCTION RETAKE_REQUIRED: NOT ACTIVE",
+            "ADR-026: ACCEPTED",
+            "PR-012 CONTRACT: ACCEPTED",
+            "PR-012 PRODUCTION IMPLEMENTATION: AUTHORIZED AND IN REVIEW",
         ):
-            assert marker in boundary, (filename, marker)
+            assert marker in section
+    for marker in (
+        "PR-012 HUMAN ACCEPTANCE: NOT GRANTED",
+        "PR-012 MERGE: NOT AUTHORIZED",
+        "PR-013 AND LATER: UNAUTHORIZED",
+        "GATE 2: NOT ACCEPTED",
+        "M3: IN PROGRESS",
+        "Q-021: DEFERRED",
+        "PRODUCTION PR-009 QUALITY POLICY: NOT ACTIVE",
+        "AUTOMATIC PR-009 QUALITY BLOCKING: NOT ACTIVE",
+        "AUTOMATIC PRODUCTION RETAKE_REQUIRED: NOT ACTIVE",
+    ):
+        assert marker in boundary

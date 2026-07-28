@@ -54,6 +54,25 @@ def add_source_and_recipe(c: sqlite3.Connection, payload_change=None) -> str:
     return raw
 
 
+def assert_v0008_rolled_back(
+    c: sqlite3.Connection, original_geometry: tuple[tuple[object, ...], ...]
+) -> None:
+    assert c.execute("PRAGMA user_version").fetchone() == (7,)
+    assert c.execute("SELECT 1 FROM schema_migrations WHERE version=8").fetchone() is None
+    assert c.execute(
+        "SELECT version,name,checksum FROM schema_migrations ORDER BY version"
+    ).fetchall() == [(m.version, m.name, m.checksum) for m in MIGRATIONS[:7]]
+    assert tuple(c.execute("SELECT * FROM image_geometry_recipes ORDER BY revision")) == (
+        original_geometry
+    )
+    names = {row[0] for row in c.execute("SELECT name FROM sqlite_master")}
+    assert "document_region_set_versions" not in names
+    assert "document_region_set_members" not in names
+    assert "image_geometry_recipes_v0008_new" not in names
+    assert not {name for name in names if "v0008" in name}
+    assert c.execute("PRAGMA foreign_key_check").fetchall() == []
+
+
 def test_empty_and_populated_schema7_migrate_deterministically() -> None:
     empty = schema7()
     database._apply_one_migration(empty, MIGRATIONS[7])
@@ -95,28 +114,12 @@ def test_empty_and_populated_schema7_migrate_deterministically() -> None:
 )
 def test_invalid_legacy_payload_rolls_back(change) -> None:
     c = schema7()
-    original = add_source_and_recipe(c, change)
+    add_source_and_recipe(c, change)
+    original = tuple(c.execute("SELECT * FROM image_geometry_recipes ORDER BY revision"))
     with pytest.raises(PersistenceError) as error:
         database._apply_one_migration(c, MIGRATIONS[7])
     assert error.value.code is PersistenceErrorCode.MIGRATION_FAILED
-    assert c.execute("PRAGMA user_version").fetchone() == (7,)
-    assert c.execute("SELECT canonical_payload FROM image_geometry_recipes").fetchone() == (
-        original,
-    )
-    assert c.execute("SELECT 1 FROM schema_migrations WHERE version=8").fetchone() is None
-    assert (
-        c.execute(
-            "SELECT 1 FROM sqlite_master WHERE name='document_region_set_versions'"
-        ).fetchone()
-        is None
-    )
-    assert (
-        c.execute(
-            "SELECT name FROM sqlite_master WHERE name='image_geometry_recipes_v0008_new'"
-        ).fetchone()
-        is None
-    )
-    assert c.execute("PRAGMA foreign_key_check").fetchall() == []
+    assert_v0008_rolled_back(c, original)
 
 
 def test_malformed_legacy_json_fully_rolls_back() -> None:
@@ -124,19 +127,11 @@ def test_malformed_legacy_json_fully_rolls_back() -> None:
     add_source_and_recipe(c)
     c.execute("DROP TRIGGER image_geometry_recipes_no_update")
     c.execute("UPDATE image_geometry_recipes SET canonical_payload='{'")
+    original = tuple(c.execute("SELECT * FROM image_geometry_recipes ORDER BY revision"))
     with pytest.raises(PersistenceError) as error:
         database._apply_one_migration(c, MIGRATIONS[7])
     assert error.value.code is PersistenceErrorCode.MIGRATION_FAILED
-    assert c.execute("PRAGMA user_version").fetchone() == (7,)
-    assert c.execute("SELECT canonical_payload FROM image_geometry_recipes").fetchone() == ("{",)
-    assert c.execute("SELECT 1 FROM schema_migrations WHERE version=8").fetchone() is None
-    assert (
-        c.execute(
-            "SELECT 1 FROM sqlite_master WHERE name='document_region_set_versions'"
-        ).fetchone()
-        is None
-    )
-    assert c.execute("PRAGMA foreign_key_check").fetchall() == []
+    assert_v0008_rolled_back(c, original)
 
 
 def test_historical_checksums_are_unchanged() -> None:
