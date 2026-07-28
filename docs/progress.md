@@ -74,7 +74,7 @@ PR-S001/PR-S001-F1/PR-S001-F2/PR-S001-F3/PR-S001-F4 use fictional synthetic data
 
 ## Следующий безопасный шаг
 
-PR-011 application-service, repository-core, repository-corruption and encoder evidence is complete. 39 of 57 manifest entries are implemented and 18 remain pending. Execute the migration evidence stage next. Windows and final stages remain blocked; do not begin PR-012. PR-011 human acceptance remains blocked.
+PR-011 application-service, repository-core, repository-corruption, encoder and migration evidence is complete. 46 of 57 manifest entries are implemented and 11 remain pending. Windows SQLCipher evidence is the next safe stage. Final evidence remains blocked; do not begin PR-012. PR-011 human acceptance remains blocked.
 
 ## Historical lifecycle snapshot — Current PR-010 geometry contract staging — 2026-07-23
 

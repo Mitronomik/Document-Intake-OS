@@ -673,91 +673,119 @@
       "stage": "migration",
       "workstream": "migration",
       "requirement": "complete populated schema-v6 fixture",
-      "status": "pending",
+      "status": "implemented",
       "platform": "cross_platform",
       "evidence_type": "pytest",
-      "test_selectors": [],
-      "evidence_files": [],
+      "test_selectors": [
+        "tests/persistence/test_pr011_migration_acceptance.py::test_pr011_mig_001_complete_populated_schema_v6_fixture"
+      ],
+      "evidence_files": [
+        "tests/persistence/test_pr011_migration_acceptance.py"
+      ],
       "evidence_refs": [],
-      "notes": "Required focused acceptance evidence remains pending."
+      "notes": "Executable file-backed migration evidence uses deterministic fictional entities only."
     },
     {
       "id": "PR011-MIG-002",
       "stage": "migration",
       "workstream": "migration",
       "requirement": "all populated v6 rows survive v0007",
-      "status": "pending",
+      "status": "implemented",
       "platform": "cross_platform",
       "evidence_type": "pytest",
-      "test_selectors": [],
-      "evidence_files": [],
+      "test_selectors": [
+        "tests/persistence/test_pr011_migration_acceptance.py::test_pr011_mig_002_all_populated_v6_rows_survive_v0007"
+      ],
+      "evidence_files": [
+        "tests/persistence/test_pr011_migration_acceptance.py"
+      ],
       "evidence_refs": [],
-      "notes": "Required focused acceptance evidence remains pending."
+      "notes": "Executable file-backed migration evidence uses deterministic fictional entities only."
     },
     {
       "id": "PR011-MIG-003",
       "stage": "migration",
       "workstream": "migration",
       "requirement": "migration history and exact checksum",
-      "status": "pending",
+      "status": "implemented",
       "platform": "cross_platform",
       "evidence_type": "pytest",
-      "test_selectors": [],
-      "evidence_files": [],
+      "test_selectors": [
+        "tests/persistence/test_pr011_migration_acceptance.py::test_pr011_mig_003_migration_history_and_exact_checksum"
+      ],
+      "evidence_files": [
+        "tests/persistence/test_pr011_migration_acceptance.py"
+      ],
       "evidence_refs": [],
-      "notes": "Required focused acceptance evidence remains pending."
+      "notes": "Executable file-backed migration evidence uses deterministic fictional entities only."
     },
     {
       "id": "PR011-MIG-004",
       "stage": "migration",
       "workstream": "migration",
       "requirement": "foreign-key and integrity validation",
-      "status": "pending",
+      "status": "implemented",
       "platform": "cross_platform",
       "evidence_type": "pytest",
-      "test_selectors": [],
-      "evidence_files": [],
+      "test_selectors": [
+        "tests/persistence/test_pr011_migration_acceptance.py::test_pr011_mig_004_foreign_key_and_integrity_validation"
+      ],
+      "evidence_files": [
+        "tests/persistence/test_pr011_migration_acceptance.py"
+      ],
       "evidence_refs": [],
-      "notes": "Required focused acceptance evidence remains pending."
+      "notes": "Executable file-backed migration evidence uses deterministic fictional entities only."
     },
     {
       "id": "PR011-MIG-005",
       "stage": "migration",
       "workstream": "migration",
       "requirement": "actual v0007 rollback and retry",
-      "status": "pending",
+      "status": "implemented",
       "platform": "cross_platform",
       "evidence_type": "pytest",
-      "test_selectors": [],
-      "evidence_files": [],
+      "test_selectors": [
+        "tests/persistence/test_pr011_migration_acceptance.py::test_pr011_mig_005_actual_v0007_rollback_and_retry"
+      ],
+      "evidence_files": [
+        "tests/persistence/test_pr011_migration_acceptance.py"
+      ],
       "evidence_refs": [],
-      "notes": "Required focused acceptance evidence remains pending."
+      "notes": "Executable file-backed migration evidence uses deterministic fictional entities only."
     },
     {
       "id": "PR011-MIG-006",
       "stage": "migration",
       "workstream": "migration",
       "requirement": "production SQLite close/reopen v6-to-v7",
-      "status": "pending",
+      "status": "implemented",
       "platform": "cross_platform",
       "evidence_type": "pytest",
-      "test_selectors": [],
-      "evidence_files": [],
+      "test_selectors": [
+        "tests/persistence/test_pr011_migration_acceptance.py::test_pr011_mig_006_production_sqlite_close_reopen_v6_to_v7"
+      ],
+      "evidence_files": [
+        "tests/persistence/test_pr011_migration_acceptance.py"
+      ],
       "evidence_refs": [],
-      "notes": "Required focused acceptance evidence remains pending."
+      "notes": "Executable file-backed migration evidence uses deterministic fictional entities only."
     },
     {
       "id": "PR011-MIG-007",
       "stage": "migration",
       "workstream": "migration",
       "requirement": "prepared artifact commit/reopen/read after migration",
-      "status": "pending",
+      "status": "implemented",
       "platform": "cross_platform",
       "evidence_type": "pytest",
-      "test_selectors": [],
-      "evidence_files": [],
+      "test_selectors": [
+        "tests/persistence/test_pr011_migration_acceptance.py::test_pr011_mig_007_prepared_artifact_commit_reopen_read_after_migration"
+      ],
+      "evidence_files": [
+        "tests/persistence/test_pr011_migration_acceptance.py"
+      ],
       "evidence_refs": [],
-      "notes": "Required focused acceptance evidence remains pending."
+      "notes": "Executable file-backed migration evidence uses deterministic fictional entities only."
     },
     {
       "id": "PR011-WIN-001",

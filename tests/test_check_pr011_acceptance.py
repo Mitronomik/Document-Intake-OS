@@ -59,7 +59,7 @@ def test_schema_v2_and_exact_ids():
     assert d["schema_version"] == 2
     assert {e["id"] for e in d["entries"]} == checker.REQUIRED_IDS
     assert len(d["entries"]) == 57
-    assert sum(e["status"] == "implemented" for e in d["entries"]) == 39
+    assert sum(e["status"] == "implemented" for e in d["entries"]) == 46
 
 
 def test_canonical_stage_membership_counts():
