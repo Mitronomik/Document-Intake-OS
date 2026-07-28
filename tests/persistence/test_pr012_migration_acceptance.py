@@ -8,7 +8,7 @@ from document_intake.persistence import database, geometry_serialization
 from document_intake.persistence.errors import PersistenceError, PersistenceErrorCode
 from document_intake.persistence.migrations import MIGRATIONS
 from tests.persistence.test_migrations import insert_artifact, insert_batch, source_values
-from tests.support.pr011 import valid_geometry_recipe
+from tests.support.pr011 import entity_id, valid_geometry_recipe
 
 
 def schema7() -> sqlite3.Connection:
@@ -69,21 +69,74 @@ def test_empty_and_populated_schema7_migrate_deterministically() -> None:
 
 
 @pytest.mark.parametrize(
-    "change", [lambda p: p.pop("pipeline"), lambda p: p.__setitem__("revision", 2)]
+    "change",
+    [
+        pytest.param(lambda p: p.pop("pipeline"), id="missing-field"),
+        pytest.param(lambda p: p.__setitem__("unexpected", True), id="extra-field"),
+        pytest.param(lambda p: p.__setitem__("revision", 2), id="revision-mismatch"),
+        pytest.param(
+            lambda p: p.__setitem__("source_file_id", str(entity_id(99))),
+            id="source-mismatch",
+        ),
+        pytest.param(
+            lambda p: p.__setitem__("coordinate_space", "UNSUPPORTED"),
+            id="invalid-enum",
+        ),
+        pytest.param(lambda p: p.__setitem__("created_at", "not-a-time"), id="invalid-time"),
+        pytest.param(
+            lambda p: p["pipeline"].__setitem__("version", 2),
+            id="invalid-pipeline",
+        ),
+        pytest.param(
+            lambda p: p.__setitem__("source_effective_width", None),
+            id="required-null",
+        ),
+    ],
 )
 def test_invalid_legacy_payload_rolls_back(change) -> None:
     c = schema7()
-    add_source_and_recipe(c, change)
+    original = add_source_and_recipe(c, change)
     with pytest.raises(PersistenceError) as error:
         database._apply_one_migration(c, MIGRATIONS[7])
     assert error.value.code is PersistenceErrorCode.MIGRATION_FAILED
     assert c.execute("PRAGMA user_version").fetchone() == (7,)
+    assert c.execute("SELECT canonical_payload FROM image_geometry_recipes").fetchone() == (
+        original,
+    )
+    assert c.execute("SELECT 1 FROM schema_migrations WHERE version=8").fetchone() is None
+    assert (
+        c.execute(
+            "SELECT 1 FROM sqlite_master WHERE name='document_region_set_versions'"
+        ).fetchone()
+        is None
+    )
     assert (
         c.execute(
             "SELECT name FROM sqlite_master WHERE name='image_geometry_recipes_v0008_new'"
         ).fetchone()
         is None
     )
+    assert c.execute("PRAGMA foreign_key_check").fetchall() == []
+
+
+def test_malformed_legacy_json_fully_rolls_back() -> None:
+    c = schema7()
+    add_source_and_recipe(c)
+    c.execute("DROP TRIGGER image_geometry_recipes_no_update")
+    c.execute("UPDATE image_geometry_recipes SET canonical_payload='{'")
+    with pytest.raises(PersistenceError) as error:
+        database._apply_one_migration(c, MIGRATIONS[7])
+    assert error.value.code is PersistenceErrorCode.MIGRATION_FAILED
+    assert c.execute("PRAGMA user_version").fetchone() == (7,)
+    assert c.execute("SELECT canonical_payload FROM image_geometry_recipes").fetchone() == ("{",)
+    assert c.execute("SELECT 1 FROM schema_migrations WHERE version=8").fetchone() is None
+    assert (
+        c.execute(
+            "SELECT 1 FROM sqlite_master WHERE name='document_region_set_versions'"
+        ).fetchone()
+        is None
+    )
+    assert c.execute("PRAGMA foreign_key_check").fetchall() == []
 
 
 def test_historical_checksums_are_unchanged() -> None:

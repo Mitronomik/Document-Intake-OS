@@ -14,7 +14,7 @@ from document_intake.application.services.document_regions import (
     confirm_document_regions,
 )
 from document_intake.domain.document_regions import DocumentRegionErrorCode
-from document_intake.domain.enums import SourceMediaType
+from document_intake.domain.enums import AuditAction, AuditSubjectType, SourceMediaType
 from document_intake.domain.image_geometry import derive_geometry_dimensions
 from document_intake.persistence.errors import PersistenceError, PersistenceErrorCode
 from tests.support.pr011 import (
@@ -29,7 +29,17 @@ from tests.support.pr011 import (
 
 class Repo:
     def __init__(self, items=()):
-        self.items = {self._key(item): item for item in items}
+        self.committed = {self._key(item): item for item in items}
+        self.pending = {}
+        self.get_calls = []
+        self.get_latest_by_region_calls = []
+        self.get_latest_by_source_calls = []
+        self.list_by_source_calls = []
+        self.add_calls = []
+
+    @property
+    def items(self):
+        return self.committed | self.pending
 
     @staticmethod
     def _key(item):
@@ -46,9 +56,11 @@ class Repo:
         return None
 
     def get(self, key):
+        self.get_calls.append(key)
         return self.items.get(key)
 
     def get_latest_by_region(self, source, region):
+        self.get_latest_by_region_calls.append((source, region))
         scoped = [
             item
             for item in self.items.values()
@@ -58,16 +70,29 @@ class Repo:
         return max(scoped, key=lambda item: item.revision) if scoped else None
 
     def list_by_source(self, source):
+        self.list_by_source_calls.append(source)
         return tuple(
             item for item in self.items.values() if getattr(item, "source_file_id", None) == source
         )
 
     def get_latest_by_source(self, source):
+        self.get_latest_by_source_calls.append(source)
         scoped = self.list_by_source(source)
         return max(scoped, key=lambda item: item.revision) if scoped else None
 
     def add(self, item):
-        self.items[self._key(item)] = item
+        self.add_calls.append(item)
+        key = self._key(item)
+        if key in self.items:
+            raise PersistenceError(PersistenceErrorCode.ENTITY_ALREADY_EXISTS)
+        self.pending[key] = item
+
+    def commit(self):
+        self.committed.update(self.pending)
+        self.pending.clear()
+
+    def rollback(self):
+        self.pending.clear()
 
 
 class Uow:
@@ -78,15 +103,38 @@ class Uow:
         self.document_region_sets = Repo()
         self.audit_events = Repo()
         self.commits = 0
+        self.rollbacks = 0
+        self.enters = 0
+        self.exits = 0
 
     def __enter__(self):
+        self.enters += 1
         return self
 
-    def __exit__(self, *args):
+    def __exit__(self, exc_type, *_args):
+        self.exits += 1
+        if exc_type is not None:
+            self.rollback()
         return False
 
     def commit(self):
+        for repository in self._repositories():
+            repository.commit()
         self.commits += 1
+
+    def rollback(self):
+        for repository in self._repositories():
+            repository.rollback()
+        self.rollbacks += 1
+
+    def _repositories(self):
+        return (
+            self.source_files,
+            self.stored_artifacts,
+            self.image_geometry_recipes,
+            self.document_region_sets,
+            self.audit_events,
+        )
 
 
 class Factory:
@@ -250,8 +298,17 @@ def test_one_entirely_new_region_creates_root_recipe_and_atomic_set() -> None:
     assert tuple(member.order_index for member in result.region_set.members) == (1,)
     assert calls == ["storage.read", "decode", "render"]
     assert len(write.image_geometry_recipes.items) == 1
+    assert write.image_geometry_recipes.add_calls == [recipe]
     assert len(write.document_region_sets.items) == 1
-    assert len(write.audit_events.items) == 2
+    assert write.document_region_sets.add_calls == [result.region_set]
+    assert [event.action_code for event in write.audit_events.add_calls] == [
+        AuditAction.IMAGE_GEOMETRY_RECIPE_CREATED,
+        AuditAction.DOCUMENT_REGION_SET_CONFIRMED,
+    ]
+    assert [event.subject_id for event in write.audit_events.add_calls] == [
+        recipe_id,
+        value.region_set_version_id,
+    ]
     assert read.commits == 0 and write.commits == 1
 
 
@@ -290,8 +347,18 @@ def test_two_entirely_new_regions_create_independent_ordered_lineages() -> None:
         second_id,
     )
     assert len(write.image_geometry_recipes.items) == 2
+    assert write.image_geometry_recipes.add_calls == [first, second]
     assert len(write.document_region_sets.items) == 1
-    assert len(write.audit_events.items) == 3
+    assert [event.action_code for event in write.audit_events.add_calls] == [
+        AuditAction.IMAGE_GEOMETRY_RECIPE_CREATED,
+        AuditAction.IMAGE_GEOMETRY_RECIPE_CREATED,
+        AuditAction.DOCUMENT_REGION_SET_CONFIRMED,
+    ]
+    assert [event.subject_type for event in write.audit_events.add_calls] == [
+        AuditSubjectType.IMAGE_GEOMETRY_RECIPE,
+        AuditSubjectType.IMAGE_GEOMETRY_RECIPE,
+        AuditSubjectType.DOCUMENT_REGION_SET,
+    ]
     assert read.commits == 0 and write.commits == 1
     assert calls.count("render") == 2
 
@@ -323,6 +390,7 @@ def test_existing_plus_new_inserts_only_new_recipe_in_command_order() -> None:
     result, _ = run(value, factory)
     assert result.selected_recipes[0] is existing
     assert result.selected_recipes[1].region_id == new_id
+    assert write.image_geometry_recipes.add_calls == [result.selected_recipes[1]]
     assert tuple(write.image_geometry_recipes.items.values()) == (
         existing,
         result.selected_recipes[1],
@@ -362,6 +430,7 @@ def test_revision_preserves_lineage_and_exact_predecessor() -> None:
     assert revised.revision == 2
     assert revised.region_id == root.region_id
     assert revised.superseded_recipe_version_id == root.recipe_version_id
+    assert write.image_geometry_recipes.add_calls == [revised]
     assert write.image_geometry_recipes.get(root.recipe_version_id) == root
     assert result.region_set.members[0].geometry_recipe_version_id == revision_id
     assert write.document_region_sets.get(previous.region_set.region_set_version_id) is not None
@@ -411,7 +480,11 @@ def test_order_only_revision_reverses_members_without_geometry_or_recipe_audits(
         first.region_id,
     )
     assert len(write.image_geometry_recipes.items) == 2
-    assert len(write.audit_events.items) == 1
+    assert write.image_geometry_recipes.add_calls == []
+    assert [event.action_code for event in write.audit_events.add_calls] == [
+        AuditAction.DOCUMENT_REGION_SET_CONFIRMED
+    ]
+    assert write.audit_events.add_calls[0].subject_id == reordered.region_set_version_id
     assert write.document_region_sets.get(previous.region_set.region_set_version_id) is not None
 
 
@@ -459,14 +532,19 @@ def test_factory_failure_is_controlled_and_private() -> None:
 def test_commit_failure_maps_commit_failed() -> None:
     recipe = valid_geometry_recipe()
     factory = Factory(recipe)
+    write = factory.units[1]
 
     def broken():
         raise RuntimeError("private")
 
-    factory.units[1].commit = broken
+    write.commit = broken
     with pytest.raises(DocumentRegionsError) as error:
         run(command(recipe), factory)
     assert error.value.code is DocumentRegionErrorCode.COMMIT_FAILED
+    assert write.commits == 0
+    assert write.rollbacks == 1
+    assert write.document_region_sets.pending == {}
+    assert write.audit_events.pending == {}
 
 
 def test_source_change_during_write_fails_closed() -> None:
@@ -489,3 +567,33 @@ def test_late_uniqueness_race_is_controlled() -> None:
     with pytest.raises(DocumentRegionsError) as error:
         run(command(recipe), factory)
     assert error.value.code is DocumentRegionErrorCode.PERSISTENCE_CONFLICT
+
+
+def test_audit_failure_rolls_back_pending_region_set() -> None:
+    recipe = valid_geometry_recipe()
+    factory = Factory(recipe)
+    write = factory.units[1]
+
+    def fail_audit(_item):
+        raise PersistenceError(PersistenceErrorCode.PERSISTENCE_UNEXPECTED)
+
+    write.audit_events.add = fail_audit
+    with pytest.raises(DocumentRegionsError) as error:
+        run(command(recipe), factory)
+    assert error.value.code is DocumentRegionErrorCode.PERSISTENCE_FAILED
+    assert write.commits == 0
+    assert write.rollbacks == 1
+    assert write.document_region_sets.pending == {}
+    assert write.document_region_sets.committed == {}
+    assert write.audit_events.committed == {}
+
+
+def test_fake_repository_rejects_duplicate_immutable_add() -> None:
+    recipe = valid_geometry_recipe()
+    repository = Repo((recipe,))
+    with pytest.raises(PersistenceError) as error:
+        repository.add(recipe)
+    assert error.value.code is PersistenceErrorCode.ENTITY_ALREADY_EXISTS
+    assert repository.add_calls == [recipe]
+    assert repository.committed == {recipe.recipe_version_id: recipe}
+    assert repository.pending == {}
