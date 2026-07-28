@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-import inspect
+import json
 import sqlite3
 import sys
 from collections.abc import Iterator
@@ -413,8 +413,293 @@ def test_prepared_artifact_repository_surface_remains_create_once() -> None:
     assert not hasattr(PreparedImageArtifactRepo, "replace")
 
 
-def test_public_queries_remain_sql_scoped_until_corruption_stage() -> None:
-    from document_intake.persistence.database import PreparedImageArtifactRepo
+_UPDATE_TRIGGER = (
+    "CREATE TRIGGER prepared_image_artifacts_no_update "
+    "BEFORE UPDATE ON prepared_image_artifacts BEGIN "
+    "SELECT RAISE(ABORT,'prepared_image_artifacts immutable'); END"
+)
 
-    source = inspect.getsource(PreparedImageArtifactRepo)
-    assert "ORDER BY created_at_utc,prepared_artifact_id" in source
+
+def inject_corruption(
+    environment: RepositoryEnvironment,
+    artifact_id: EntityId,
+    column: str,
+    value: object,
+) -> None:
+    connection = database._open_connection(environment.path, Provider())
+    try:
+        connection.execute("BEGIN IMMEDIATE")
+        connection.execute("DROP TRIGGER prepared_image_artifacts_no_update")
+        connection.execute("PRAGMA ignore_check_constraints = ON")
+        connection.execute(
+            f"UPDATE prepared_image_artifacts SET {column}=? WHERE prepared_artifact_id=?",
+            (value, str(artifact_id)),
+        )
+        connection.execute(_UPDATE_TRIGGER)
+        connection.execute("COMMIT")
+        assert connection.execute(
+            "SELECT count(*) FROM sqlite_master WHERE type='trigger' "
+            "AND name='prepared_image_artifacts_no_update'"
+        ).fetchone() == (1,)
+    except Exception:
+        if connection.in_transaction:
+            connection.execute("ROLLBACK")
+        raise
+    finally:
+        connection.close()
+
+
+def committed_pair(
+    environment: RepositoryEnvironment,
+) -> tuple[PreparedImageArtifact, PreparedImageArtifact]:
+    first = prepared(510, environment.recipes[0].recipe_version_id, entity_id(511))
+    second = prepared(
+        520, environment.recipes[1].recipe_version_id, entity_id(521), created_offset=1
+    )
+    with production_uow(environment) as unit:
+        add_complete(unit, first, stored_number=511, audit_number=512)
+        add_complete(unit, second, stored_number=521, audit_number=522)
+        unit.commit()
+    return first, second
+
+
+def assert_corruption_error(action: object) -> None:
+    with pytest.raises(PersistenceError) as caught:
+        action()  # type: ignore[operator]
+    assert caught.value.code is PersistenceErrorCode.PERSISTED_DATA_INVALID
+    rendered = f"{caught.value!s} {caught.value!r}"
+    assert rendered == (
+        "ERR_PERSISTED_DATA_INVALID PersistenceError(code=ERR_PERSISTED_DATA_INVALID)"
+    )
+
+
+def test_pr011_rep_012_scoped_id_query_corruption_behavior(
+    repository_environment: RepositoryEnvironment,
+) -> None:
+    target, unrelated = committed_pair(repository_environment)
+    inject_corruption(repository_environment, unrelated.id, "canonical_payload", "not-json")
+    with production_uow(repository_environment) as unit:
+        assert unit.prepared_image_artifacts.get(target.id) == target
+        assert_corruption_error(lambda: unit.prepared_image_artifacts.get(unrelated.id))
+
+
+def natural_query(unit: SqlCipherUnitOfWork, artifact: PreparedImageArtifact) -> object:
+    return unit.prepared_image_artifacts.get_by_natural_key(
+        artifact.geometry_recipe_version_id,
+        artifact.pipeline_id,
+        artifact.pipeline_version,
+        artifact.output_contract_id,
+        artifact.output_contract_version,
+    )
+
+
+def test_pr011_rep_013_scoped_natural_key_corruption_behavior(
+    repository_environment: RepositoryEnvironment,
+) -> None:
+    target, unrelated = committed_pair(repository_environment)
+    inject_corruption(repository_environment, unrelated.id, "canonical_payload", "not-json")
+    with production_uow(repository_environment) as unit:
+        assert natural_query(unit, target) == target
+        assert_corruption_error(lambda: natural_query(unit, unrelated))
+
+
+def add_alternate_source(
+    environment: RepositoryEnvironment,
+) -> tuple[object, object, StoredArtifactRecord]:
+    original = replace(
+        valid_original_stored_artifact(),
+        artifact_id=entity_id(601),
+        plaintext_sha256="e" * 64,
+        ciphertext_sha256="f" * 64,
+    )
+    source = replace(
+        valid_source_file(),
+        id=entity_id(602),
+        original_artifact_id=original.artifact_id,
+        sha256=type(valid_source_file().sha256)(original.plaintext_sha256),
+    )
+    recipe = replace(
+        valid_geometry_recipe(),
+        recipe_version_id=entity_id(603),
+        source_file_id=source.id,
+    )
+    extra_stored = replace(valid_prepared_stored_artifact(), artifact_id=entity_id(604))
+    with production_uow(environment) as unit:
+        batch = unit.upload_batches.get(valid_upload_batch().id)
+        assert batch is not None
+        unit.stored_artifacts.add(original)
+        unit.source_files.add(source)
+        unit.upload_batches.update(batch.append_source_file_id(source.id))
+        unit.image_geometry_recipes.add(recipe)
+        unit.stored_artifacts.add(extra_stored)
+        unit.commit()
+    return source, recipe, extra_stored
+
+
+def test_pr011_rep_014_scoped_source_list_corruption_behavior(
+    repository_environment: RepositoryEnvironment,
+) -> None:
+    source, recipe, _ = add_alternate_source(repository_environment)
+    target = prepared(610, repository_environment.recipes[0].recipe_version_id, entity_id(611))
+    unrelated = replace(
+        prepared(620, recipe.recipe_version_id, entity_id(621), created_offset=1),
+        source_file_id=source.id,
+    )
+    with production_uow(repository_environment) as unit:
+        add_complete(unit, target, stored_number=611, audit_number=612)
+        add_complete(unit, unrelated, stored_number=621, audit_number=622)
+        unit.commit()
+    inject_corruption(repository_environment, unrelated.id, "canonical_payload", "not-json")
+    with production_uow(repository_environment) as unit:
+        assert unit.prepared_image_artifacts.list_by_source(target.source_file_id) == (target,)
+        assert_corruption_error(
+            lambda: unit.prepared_image_artifacts.list_by_source(unrelated.source_file_id)
+        )
+
+
+def test_pr011_rep_015_scoped_geometry_list_corruption_behavior(
+    repository_environment: RepositoryEnvironment,
+) -> None:
+    target, unrelated = committed_pair(repository_environment)
+    inject_corruption(repository_environment, unrelated.id, "canonical_payload", "not-json")
+    with production_uow(repository_environment) as unit:
+        assert unit.prepared_image_artifacts.list_by_geometry_recipe(
+            target.geometry_recipe_version_id
+        ) == (target,)
+        assert_corruption_error(
+            lambda: unit.prepared_image_artifacts.list_by_geometry_recipe(
+                unrelated.geometry_recipe_version_id
+            )
+        )
+
+
+_PAYLOAD_CASES = (
+    "malformed_json",
+    "missing_field",
+    "extra_field",
+    "invalid_prepared_uuid",
+    "invalid_source_uuid",
+    "invalid_recipe_uuid",
+    "invalid_stored_uuid",
+    "boolean_integer",
+    "pipeline_version",
+    "contract_version",
+    "media_type",
+    "color_space",
+    "zero_width",
+    "negative_height",
+    "byte_size",
+    "sha256",
+    "jpeg_quality",
+    "resize_percent",
+    "malformed_datetime",
+    "naive_datetime",
+    "actor_kind",
+    "identity_mismatch",
+)
+
+
+def corrupted_payload(artifact: PreparedImageArtifact, case: str) -> str:
+    from document_intake.persistence import serialization
+
+    if case == "malformed_json":
+        return "not-json"
+    payload = json.loads(serialization.prepared_image_artifact_to_json(artifact))
+    if case == "missing_field":
+        payload.pop("width")
+    elif case == "extra_field":
+        payload["unexpected"] = True
+    else:
+        path, value = {
+            "invalid_prepared_uuid": (("id",), "invalid"),
+            "invalid_source_uuid": (("source_file_id",), "invalid"),
+            "invalid_recipe_uuid": (("geometry_recipe_version_id",), "invalid"),
+            "invalid_stored_uuid": (("stored_artifact_id",), "invalid"),
+            "boolean_integer": (("width",), True),
+            "pipeline_version": (("pipeline_version",), 2),
+            "contract_version": (("output_contract_version",), 2),
+            "media_type": (("media_type",), "PNG"),
+            "color_space": (("color_space",), "RGB"),
+            "zero_width": (("width",), 0),
+            "negative_height": (("height",), -1),
+            "byte_size": (("byte_size",), 0),
+            "sha256": (("sha256",), "bad"),
+            "jpeg_quality": (("jpeg_quality",), 94),
+            "resize_percent": (("resize_percent",), 99),
+            "malformed_datetime": (("created_at",), "bad"),
+            "naive_datetime": (("created_at",), "2026-07-26T12:00:00"),
+            "actor_kind": (("created_by", "kind"), "INVALID"),
+            "identity_mismatch": (("id",), str(entity_id(999))),
+        }[case]
+        if len(path) == 1:
+            payload[path[0]] = value
+        else:
+            payload[path[0]][path[1]] = value
+    return json.dumps(payload, sort_keys=True, separators=(",", ":"))
+
+
+@pytest.mark.parametrize("case", _PAYLOAD_CASES)
+def test_pr011_rep_016_canonical_payload_corruption_matrix(
+    repository_environment: RepositoryEnvironment, case: str
+) -> None:
+    artifact = commit_first(repository_environment)
+    payload = corrupted_payload(artifact, case)
+    inject_corruption(repository_environment, artifact.id, "canonical_payload", payload)
+    with production_uow(repository_environment) as unit:
+        assert_corruption_error(lambda: unit.prepared_image_artifacts.get(artifact.id))
+
+
+_PROJECTED_COLUMNS = (
+    "prepared_artifact_id",
+    "source_file_id",
+    "geometry_recipe_version_id",
+    "stored_artifact_id",
+    "pipeline_id",
+    "pipeline_version",
+    "output_contract_id",
+    "output_contract_version",
+    "media_type",
+    "color_space",
+    "width",
+    "height",
+    "byte_size",
+    "sha256",
+    "jpeg_quality",
+    "resize_percent",
+    "created_at_utc",
+    "created_by_id",
+    "created_by_kind",
+)
+
+
+@pytest.mark.parametrize("column", _PROJECTED_COLUMNS)
+def test_pr011_rep_017_projected_column_mismatch_matrix(
+    repository_environment: RepositoryEnvironment, column: str
+) -> None:
+    source, _, extra_stored = add_alternate_source(repository_environment)
+    artifact = commit_first(repository_environment)
+    value = {
+        "prepared_artifact_id": str(entity_id(901)),
+        "source_file_id": str(source.id),
+        "geometry_recipe_version_id": str(repository_environment.recipes[1].recipe_version_id),
+        "stored_artifact_id": str(extra_stored.artifact_id),
+        "pipeline_id": "OTHER",
+        "pipeline_version": 2,
+        "output_contract_id": "OTHER",
+        "output_contract_version": 2,
+        "media_type": "PNG",
+        "color_space": "RGB",
+        "width": artifact.width + 1,
+        "height": artifact.height + 1,
+        "byte_size": artifact.byte_size + 1,
+        "sha256": "d" * 64,
+        "jpeg_quality": 94,
+        "resize_percent": 99,
+        "created_at_utc": "2026-07-26T12:00:01Z",
+        "created_by_id": str(entity_id(998)),
+        "created_by_kind": "ADMIN",
+    }[column]
+    inject_corruption(repository_environment, artifact.id, column, value)
+    selected_id = entity_id(901) if column == "prepared_artifact_id" else artifact.id
+    with production_uow(repository_environment) as unit:
+        assert_corruption_error(lambda: unit.prepared_image_artifacts.get(selected_id))

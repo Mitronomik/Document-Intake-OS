@@ -486,78 +486,102 @@
       "stage": "repository_corruption",
       "workstream": "repository",
       "requirement": "scoped ID query corruption behavior",
-      "status": "pending",
+      "status": "implemented",
       "platform": "cross_platform",
       "evidence_type": "pytest",
-      "test_selectors": [],
-      "evidence_files": [],
+      "test_selectors": [
+        "tests/persistence/test_prepared_jpeg_repository.py::test_pr011_rep_012_scoped_id_query_corruption_behavior"
+      ],
+      "evidence_files": [
+        "tests/persistence/test_prepared_jpeg_repository.py"
+      ],
       "evidence_refs": [],
-      "notes": "Required focused acceptance evidence remains pending."
+      "notes": "File-backed production repository evidence injects deterministic synthetic corruption and verifies scoped fail-closed reads."
     },
     {
       "id": "PR011-REP-013",
       "stage": "repository_corruption",
       "workstream": "repository",
       "requirement": "scoped natural-key corruption behavior",
-      "status": "pending",
+      "status": "implemented",
       "platform": "cross_platform",
       "evidence_type": "pytest",
-      "test_selectors": [],
-      "evidence_files": [],
+      "test_selectors": [
+        "tests/persistence/test_prepared_jpeg_repository.py::test_pr011_rep_013_scoped_natural_key_corruption_behavior"
+      ],
+      "evidence_files": [
+        "tests/persistence/test_prepared_jpeg_repository.py"
+      ],
       "evidence_refs": [],
-      "notes": "Required focused acceptance evidence remains pending."
+      "notes": "File-backed production repository evidence injects deterministic synthetic corruption and verifies scoped fail-closed reads."
     },
     {
       "id": "PR011-REP-014",
       "stage": "repository_corruption",
       "workstream": "repository",
       "requirement": "scoped source-list corruption behavior",
-      "status": "pending",
+      "status": "implemented",
       "platform": "cross_platform",
       "evidence_type": "pytest",
-      "test_selectors": [],
-      "evidence_files": [],
+      "test_selectors": [
+        "tests/persistence/test_prepared_jpeg_repository.py::test_pr011_rep_014_scoped_source_list_corruption_behavior"
+      ],
+      "evidence_files": [
+        "tests/persistence/test_prepared_jpeg_repository.py"
+      ],
       "evidence_refs": [],
-      "notes": "Required focused acceptance evidence remains pending."
+      "notes": "File-backed production repository evidence injects deterministic synthetic corruption and verifies scoped fail-closed reads."
     },
     {
       "id": "PR011-REP-015",
       "stage": "repository_corruption",
       "workstream": "repository",
       "requirement": "scoped geometry-list corruption behavior",
-      "status": "pending",
+      "status": "implemented",
       "platform": "cross_platform",
       "evidence_type": "pytest",
-      "test_selectors": [],
-      "evidence_files": [],
+      "test_selectors": [
+        "tests/persistence/test_prepared_jpeg_repository.py::test_pr011_rep_015_scoped_geometry_list_corruption_behavior"
+      ],
+      "evidence_files": [
+        "tests/persistence/test_prepared_jpeg_repository.py"
+      ],
       "evidence_refs": [],
-      "notes": "Required focused acceptance evidence remains pending."
+      "notes": "File-backed production repository evidence injects deterministic synthetic corruption and verifies scoped fail-closed reads."
     },
     {
       "id": "PR011-REP-016",
       "stage": "repository_corruption",
       "workstream": "repository",
       "requirement": "canonical-payload corruption matrix",
-      "status": "pending",
+      "status": "implemented",
       "platform": "cross_platform",
       "evidence_type": "pytest",
-      "test_selectors": [],
-      "evidence_files": [],
+      "test_selectors": [
+        "tests/persistence/test_prepared_jpeg_repository.py::test_pr011_rep_016_canonical_payload_corruption_matrix"
+      ],
+      "evidence_files": [
+        "tests/persistence/test_prepared_jpeg_repository.py"
+      ],
       "evidence_refs": [],
-      "notes": "Required focused acceptance evidence remains pending."
+      "notes": "File-backed production repository evidence injects deterministic synthetic corruption and verifies scoped fail-closed reads."
     },
     {
       "id": "PR011-REP-017",
       "stage": "repository_corruption",
       "workstream": "repository",
       "requirement": "projected-column mismatch matrix",
-      "status": "pending",
+      "status": "implemented",
       "platform": "cross_platform",
       "evidence_type": "pytest",
-      "test_selectors": [],
-      "evidence_files": [],
+      "test_selectors": [
+        "tests/persistence/test_prepared_jpeg_repository.py::test_pr011_rep_017_projected_column_mismatch_matrix"
+      ],
+      "evidence_files": [
+        "tests/persistence/test_prepared_jpeg_repository.py"
+      ],
       "evidence_refs": [],
-      "notes": "Required focused acceptance evidence remains pending."
+      "notes": "File-backed production repository evidence injects deterministic synthetic corruption and verifies scoped fail-closed reads."
     },
     {
       "id": "PR011-ENC-001",
