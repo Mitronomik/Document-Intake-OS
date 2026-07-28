@@ -792,52 +792,68 @@
       "stage": "windows",
       "workstream": "migration",
       "requirement": "production Windows SQLCipher populated v6 creation",
-      "status": "pending",
+      "status": "implemented",
       "platform": "windows",
       "evidence_type": "pytest",
-      "test_selectors": [],
-      "evidence_files": [],
+      "test_selectors": [
+        "tests/persistence/test_windows_sqlcipher_integration.py::test_pr011_win_001_production_windows_sqlcipher_populated_v6_creation"
+      ],
+      "evidence_files": [
+        "tests/persistence/test_windows_sqlcipher_integration.py"
+      ],
       "evidence_refs": [],
-      "notes": "Required focused acceptance evidence remains pending."
+      "notes": "Production Windows SQLCipher evidence uses deterministic fictional entities and privacy-safe assertions."
     },
     {
       "id": "PR011-WIN-002",
       "stage": "windows",
       "workstream": "migration",
       "requirement": "production Windows SQLCipher v6-to-v7 migration",
-      "status": "pending",
+      "status": "implemented",
       "platform": "windows",
       "evidence_type": "pytest",
-      "test_selectors": [],
-      "evidence_files": [],
+      "test_selectors": [
+        "tests/persistence/test_windows_sqlcipher_integration.py::test_pr011_win_002_production_windows_sqlcipher_v6_to_v7_migration"
+      ],
+      "evidence_files": [
+        "tests/persistence/test_windows_sqlcipher_integration.py"
+      ],
       "evidence_refs": [],
-      "notes": "Required focused acceptance evidence remains pending."
+      "notes": "Production Windows SQLCipher evidence uses deterministic fictional entities and privacy-safe assertions."
     },
     {
       "id": "PR011-WIN-003",
       "stage": "windows",
       "workstream": "migration",
       "requirement": "Windows cipher and foreign-key integrity after reopen",
-      "status": "pending",
+      "status": "implemented",
       "platform": "windows",
       "evidence_type": "pytest",
-      "test_selectors": [],
-      "evidence_files": [],
+      "test_selectors": [
+        "tests/persistence/test_windows_sqlcipher_integration.py::test_pr011_win_003_windows_cipher_and_foreign_key_integrity_after_reopen"
+      ],
+      "evidence_files": [
+        "tests/persistence/test_windows_sqlcipher_integration.py"
+      ],
       "evidence_refs": [],
-      "notes": "Required focused acceptance evidence remains pending."
+      "notes": "Production Windows SQLCipher evidence uses deterministic fictional entities and privacy-safe assertions."
     },
     {
       "id": "PR011-WIN-004",
       "stage": "windows",
       "workstream": "migration",
       "requirement": "Windows prepared artifact commit/reopen/read",
-      "status": "pending",
+      "status": "implemented",
       "platform": "windows",
       "evidence_type": "pytest",
-      "test_selectors": [],
-      "evidence_files": [],
+      "test_selectors": [
+        "tests/persistence/test_windows_sqlcipher_integration.py::test_pr011_win_004_windows_prepared_artifact_commit_reopen_read"
+      ],
+      "evidence_files": [
+        "tests/persistence/test_windows_sqlcipher_integration.py"
+      ],
       "evidence_refs": [],
-      "notes": "Required focused acceptance evidence remains pending."
+      "notes": "Production Windows SQLCipher evidence uses deterministic fictional entities and privacy-safe assertions."
     },
     {
       "id": "PR011-FIN-001",
