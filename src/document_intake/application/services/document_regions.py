@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import NoReturn
 
 from document_intake.application.dto.document_regions import (
     ConfirmDocumentRegionsCommand,
@@ -19,15 +18,24 @@ from document_intake.application.ports.media import (
 )
 from document_intake.application.ports.persistence import UnitOfWork, UnitOfWorkFactory
 from document_intake.application.ports.storage import StoragePort
+from document_intake.application.services.document_region_persistence import (
+    DocumentRegionsError,
+)
+from document_intake.application.services.document_region_persistence import (
+    fail as _fail,
+)
+from document_intake.application.services.document_region_persistence import (
+    map_controlled_failure as _map_controlled_failure,
+)
+from document_intake.application.services.document_region_persistence import (
+    persist_confirmation as _persist_confirmation,
+)
 from document_intake.application.services.image_geometry import ImageGeometryError
 from document_intake.domain.document_regions import (
     DocumentRegionErrorCode,
-    DocumentRegionSetMember,
     DocumentRegionSetVersion,
 )
 from document_intake.domain.entities import SourceFile
-from document_intake.domain.entities.audit import AuditEvent
-from document_intake.domain.enums import AuditAction, AuditSubjectType, AuditValueClassification
 from document_intake.domain.image_geometry import (
     GeometryCoordinateSpace,
     GeometryErrorCode,
@@ -35,18 +43,8 @@ from document_intake.domain.image_geometry import (
     ImageGeometryRecipe,
     derive_geometry_dimensions,
 )
-from document_intake.domain.value_objects import AuditReasonCode, AuditValueSummary, EntityId
-from document_intake.persistence.errors import PersistenceError, PersistenceErrorCode
-
-
-class DocumentRegionsError(Exception):
-    def __init__(self, code: DocumentRegionErrorCode) -> None:
-        self.code = code
-        super().__init__(code.value)
-
-
-def _fail(code: DocumentRegionErrorCode) -> NoReturn:
-    raise DocumentRegionsError(code) from None
+from document_intake.domain.value_objects import EntityId
+from document_intake.persistence.errors import PersistenceError
 
 
 @dataclass(frozen=True, slots=True)
@@ -295,79 +293,6 @@ def _revalidate_recipe(
         _fail(DocumentRegionErrorCode.REGION_REVISION_CONFLICT)
 
 
-def _recipe_audit(
-    command: ConfirmDocumentRegionsCommand, selection: NewRecipeRevision
-) -> AuditEvent:
-    return AuditEvent(
-        selection.recipe_audit_event_id,
-        command.confirmed_at,
-        command.actor,
-        AuditAction.IMAGE_GEOMETRY_RECIPE_CREATED,
-        AuditSubjectType.IMAGE_GEOMETRY_RECIPE,
-        selection.recipe_version_id,
-        None,
-        AuditValueSummary(AuditValueClassification.ABSENT, None, False),
-        AuditValueSummary(AuditValueClassification.NON_SENSITIVE, "IMAGE_GEOMETRY_RECIPE", True),
-        AuditReasonCode("IMAGE_GEOMETRY_RECIPE_CREATED"),
-        command.correlation_id,
-    )
-
-
-def _set_audit(command: ConfirmDocumentRegionsCommand) -> AuditEvent:
-    return AuditEvent(
-        command.region_set_audit_event_id,
-        command.confirmed_at,
-        command.actor,
-        AuditAction.DOCUMENT_REGION_SET_CONFIRMED,
-        AuditSubjectType.DOCUMENT_REGION_SET,
-        command.region_set_version_id,
-        None,
-        AuditValueSummary(AuditValueClassification.ABSENT, None, False),
-        AuditValueSummary(AuditValueClassification.NON_SENSITIVE, "DOCUMENT_REGION_SET", True),
-        AuditReasonCode("DOCUMENT_REGION_SET_CONFIRMED"),
-        command.correlation_id,
-    )
-
-
-def _persist_confirmation(
-    command: ConfirmDocumentRegionsCommand, context: _ReadContext, uow: UnitOfWork
-) -> DocumentRegionSetVersion:
-    region_set = DocumentRegionSetVersion(
-        command.region_set_version_id,
-        command.source_file_id,
-        command.superseded_region_set_version_id,
-        command.set_revision,
-        tuple(
-            DocumentRegionSetMember(member.order_index, member.region_id, recipe.recipe_version_id)
-            for member, recipe in zip(command.members, context.selected, strict=True)
-        ),
-        command.confirmed_at,
-        command.actor,
-    )
-    try:
-        for member, recipe in zip(command.members, context.selected, strict=True):
-            if isinstance(member.recipe_selection, NewRecipeRevision):
-                uow.image_geometry_recipes.add(recipe)
-                uow.audit_events.add(_recipe_audit(command, member.recipe_selection))
-        uow.document_region_sets.add(region_set)
-        uow.audit_events.add(_set_audit(command))
-    except PersistenceError as error:
-        _map_controlled_failure(error, late=True)
-    return region_set
-
-
-def _map_controlled_failure(error: PersistenceError, *, late: bool = False) -> NoReturn:
-    if error.code is PersistenceErrorCode.PERSISTED_DATA_INVALID:
-        _fail(DocumentRegionErrorCode.PERSISTED_DATA_INVALID)
-    if error.code is PersistenceErrorCode.ENTITY_ALREADY_EXISTS:
-        _fail(
-            DocumentRegionErrorCode.PERSISTENCE_CONFLICT
-            if late
-            else DocumentRegionErrorCode.IDENTITY_CONFLICT
-        )
-    _fail(DocumentRegionErrorCode.PERSISTENCE_FAILED)
-
-
 def confirm_document_regions(
     command: ConfirmDocumentRegionsCommand,
     *,
@@ -378,22 +303,32 @@ def confirm_document_regions(
 ) -> ConfirmDocumentRegionsResult:
     _validate_command(command)
     try:
-        with unit_of_work_factory.unit_of_work() as read_uow:
+        read_cm = unit_of_work_factory.unit_of_work()
+        with read_cm as read_uow:
             source, stored, previous = _load_read_context(command, read_uow)
             selected = _resolve_recipe_selections(command, source, read_uow)
             _validate_complete_selected_set(selected)
+    except (DocumentRegionsError, ImageGeometryError):
+        raise
     except PersistenceError as error:
         _map_controlled_failure(error)
+    except Exception:
+        _fail(DocumentRegionErrorCode.PERSISTENCE_FAILED)
     context = _ReadContext(source, stored, previous, selected)
     _render_selected_set(context, decoder, renderer, storage)
     try:
-        with unit_of_work_factory.unit_of_work() as write_uow:
+        write_cm = unit_of_work_factory.unit_of_work()
+        with write_cm as write_uow:
             _revalidate_write_context(command, context, write_uow)
-            region_set = _persist_confirmation(command, context, write_uow)
+            region_set = _persist_confirmation(command, context.selected, write_uow)
             try:
                 write_uow.commit()
             except Exception:
                 _fail(DocumentRegionErrorCode.COMMIT_FAILED)
+    except DocumentRegionsError:
+        raise
     except PersistenceError as error:
         _map_controlled_failure(error, late=True)
+    except Exception:
+        _fail(DocumentRegionErrorCode.PERSISTENCE_FAILED)
     return ConfirmDocumentRegionsResult(region_set, selected)

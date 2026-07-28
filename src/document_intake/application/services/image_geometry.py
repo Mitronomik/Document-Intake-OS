@@ -9,7 +9,7 @@ from document_intake.application.dto.image_geometry import (
     CreateImageGeometryRecipeResult,
 )
 from document_intake.application.ports.media import GeometryDecoderPort, GeometryRendererPort
-from document_intake.application.ports.persistence import UnitOfWorkFactory
+from document_intake.application.ports.persistence import UnitOfWork, UnitOfWorkFactory
 from document_intake.application.ports.storage import StoragePort
 from document_intake.domain.entities.audit import AuditEvent
 from document_intake.domain.enums import AuditAction, AuditSubjectType, AuditValueClassification
@@ -47,18 +47,18 @@ def _map_geometry_validation(exc: Exception) -> NoReturn:
 
 
 def _region_id_for_recipe(
-    command: CreateImageGeometryRecipeCommand, latest: ImageGeometryRecipe | None
+    command: CreateImageGeometryRecipeCommand, predecessor: ImageGeometryRecipe | None
 ) -> EntityId:
-    if latest is None:
+    if predecessor is None:
         return command.recipe_version_id
-    return latest.region_id
+    return predecessor.region_id
 
 
 def _build_recipe(
     command: CreateImageGeometryRecipeCommand,
     width: int,
     height: int,
-    latest: ImageGeometryRecipe | None,
+    predecessor: ImageGeometryRecipe | None,
 ) -> ImageGeometryRecipe:
     return ImageGeometryRecipe(
         command.recipe_version_id,
@@ -72,8 +72,30 @@ def _build_recipe(
         command.quadrilateral,
         command.pipeline,
         command.created_at,
-        _region_id_for_recipe(command, latest),
+        _region_id_for_recipe(command, predecessor),
     )
+
+
+def _resolve_predecessor(
+    command: CreateImageGeometryRecipeCommand, uow: UnitOfWork
+) -> ImageGeometryRecipe | None:
+    repository = uow.image_geometry_recipes
+    if command.revision == 1:
+        if command.superseded_recipe_version_id is not None or repository.list_by_source(
+            command.source_file_id
+        ):
+            _raise(GeometryErrorCode.REVISION_CONFLICT)
+        return None
+    predecessor_id = command.superseded_recipe_version_id
+    if predecessor_id is None:
+        _raise(GeometryErrorCode.REVISION_CONFLICT)
+    predecessor = repository.get(predecessor_id)
+    if predecessor is None or predecessor.source_file_id != command.source_file_id:
+        _raise(GeometryErrorCode.REVISION_CONFLICT)
+    latest = repository.get_latest_by_region(command.source_file_id, predecessor.region_id)
+    if latest != predecessor or command.revision != predecessor.revision + 1:
+        _raise(GeometryErrorCode.REVISION_CONFLICT)
+    return predecessor
 
 
 def create_image_geometry_recipe(
@@ -141,18 +163,14 @@ def create_image_geometry_recipe(
             except Exception:
                 _raise(GeometryErrorCode.RENDER_FAILED)
             try:
-                latest = uow.image_geometry_recipes.get_latest_by_source(command.source_file_id)
+                predecessor = _resolve_predecessor(command, uow)
+            except ImageGeometryError:
+                raise
             except Exception:
                 _raise(GeometryErrorCode.RECIPE_PERSISTENCE_FAILED)
-            if latest is None:
-                if command.revision != 1 or command.superseded_recipe_version_id is not None:
-                    _raise(GeometryErrorCode.REVISION_CONFLICT)
-            elif (
-                command.revision != latest.revision + 1
-                or command.superseded_recipe_version_id != latest.recipe_version_id
-            ):
-                _raise(GeometryErrorCode.REVISION_CONFLICT)
-            recipe = _build_recipe(command, media.effective_width, media.effective_height, latest)
+            recipe = _build_recipe(
+                command, media.effective_width, media.effective_height, predecessor
+            )
             try:
                 uow.image_geometry_recipes.add(recipe)
             except Exception:

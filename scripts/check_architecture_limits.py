@@ -14,22 +14,34 @@ CONFIG = ROOT / "config" / "architecture_limits.json"
 SymbolNode = ast.ClassDef | ast.FunctionDef | ast.AsyncFunctionDef
 
 
+class ArchitectureInputError(Exception):
+    """Controlled failure while reading the accepted baseline."""
+
+
 def _tracked(commit: str | None = None) -> tuple[str, ...]:
     command = (
         ["git", "ls-tree", "-r", "--name-only", commit, "src/document_intake"]
         if commit
         else ["git", "ls-files", "src/document_intake"]
     )
-    return tuple(
-        p
-        for p in subprocess.check_output(command, cwd=ROOT, text=True).splitlines()
-        if p.endswith(".py")
-    )
+    try:
+        output = subprocess.check_output(command, cwd=ROOT, text=True, stderr=subprocess.DEVNULL)
+    except (OSError, subprocess.CalledProcessError):
+        raise ArchitectureInputError from None
+    return tuple(p for p in output.splitlines() if p.endswith(".py"))
 
 
 def _source(path: str, commit: str | None = None) -> str:
     if commit:
-        return subprocess.check_output(["git", "show", f"{commit}:{path}"], cwd=ROOT, text=True)
+        try:
+            return subprocess.check_output(
+                ["git", "show", f"{commit}:{path}"],
+                cwd=ROOT,
+                text=True,
+                stderr=subprocess.DEVNULL,
+            )
+        except (OSError, subprocess.CalledProcessError):
+            raise ArchitectureInputError from None
     return (ROOT / path).read_text(encoding="utf-8")
 
 
@@ -65,7 +77,9 @@ def _complexity(node: ast.AST) -> int:
     return value
 
 
-def _violations(path: str, text: str, config: dict[str, Any]) -> list[tuple[str, int]]:
+def _violations(
+    path: str, text: str, config: dict[str, Any], *, base_text: str = ""
+) -> list[tuple[str, int]]:
     limits = config["limits"]
     legacy = config["legacy"].get(path, {})
     result = []
@@ -91,9 +105,6 @@ def _violations(path: str, text: str, config: dict[str, Any]) -> list[tuple[str,
             maximum_complexity = item.get("complexity", limits["complexity"])
             if score > maximum_complexity:
                 result.append(("COMPLEXITY", score))
-    base_text = (
-        _source(path, config["base_commit"]) if path in _tracked(config["base_commit"]) else ""
-    )
     result.extend(_responsibility_violations(path, text, base_text, tree, lines))
     return result
 
@@ -104,13 +115,17 @@ def _responsibility_violations(
     result: list[tuple[str, int]] = []
     if "import *" in text and "import *" not in base_text:
         result.append(("WILDCARD_IMPORT", 0))
-    if (
-        any(
-            "# noqa" in line and not line.lstrip().startswith(("def ", "class "))
-            for line in text.splitlines()
-        )
-        and "# noqa" not in base_text
-    ):
+    suppressions = tuple(
+        line.strip()
+        for line in text.splitlines()
+        if line.strip().startswith("# ruff: noqa") or line.strip().startswith("# noqa")
+    )
+    base_suppressions = tuple(
+        line.strip()
+        for line in base_text.splitlines()
+        if line.strip().startswith("# ruff: noqa") or line.strip().startswith("# noqa")
+    )
+    if any(item not in base_suppressions for item in suppressions):
         result.append(("FILE_NOQA", 0))
     if path.endswith("persistence/database.py"):
         base_classes = {
@@ -169,12 +184,21 @@ def _expected_legacy(config: dict[str, Any]) -> dict[str, Any]:
 
 def main() -> int:
     config = json.loads(CONFIG.read_text(encoding="utf-8"))
-    if config["legacy"] != _expected_legacy(config):
+    try:
+        baseline_paths = _tracked(config["base_commit"])
+        baseline = {path: _source(path, config["base_commit"]) for path in baseline_paths}
+        expected_legacy = _expected_legacy(config)
+    except ArchitectureInputError:
+        print("config/architecture_limits.json BASE_UNAVAILABLE 0")
+        return 1
+    if config["legacy"] != expected_legacy:
         print("config/architecture_limits.json BASELINE_INCREASE 0")
         return 1
     errors = []
     for path in _tracked():
-        for rule, count in _violations(path, _source(path), config):
+        for rule, count in _violations(
+            path, _source(path), config, base_text=baseline.get(path, "")
+        ):
             errors.append(f"{path} {rule} {count}")
     if errors:
         print("\n".join(sorted(errors)))
