@@ -24,6 +24,7 @@ from document_intake.persistence.migrations import (
     APPLICATION_ID,
     CURRENT_SCHEMA_VERSION,
     MIGRATIONS,
+    Migration,
 )
 
 Connection = Any
@@ -188,31 +189,64 @@ def _validate_schema(conn: Connection) -> None:
         raise PersistenceError(PersistenceErrorCode.SCHEMA_HISTORY_INVALID) from None
 
 
+def _apply_one_migration(conn: Connection, migration: Migration) -> None:
+    disabled = migration.foreign_key_mode == "DISABLED_DURING_TABLE_REBUILD"
+    try:
+        if bool(conn.in_transaction):
+            raise PersistenceError(PersistenceErrorCode.MIGRATION_FAILED)
+        if disabled:
+            if int(_fetch_one(conn, "PRAGMA foreign_keys")) != 1:
+                raise PersistenceError(PersistenceErrorCode.MIGRATION_FAILED)
+            conn.execute("PRAGMA foreign_keys = OFF")
+            if int(_fetch_one(conn, "PRAGMA foreign_keys")) != 0:
+                raise PersistenceError(PersistenceErrorCode.MIGRATION_FAILED)
+        conn.execute("BEGIN IMMEDIATE")
+        if migration.version == 1:
+            conn.execute(f"PRAGMA application_id = {APPLICATION_ID}")
+        for statement in migration.statements:
+            conn.execute(statement)
+        if disabled and conn.execute("PRAGMA foreign_key_check").fetchall():
+            raise PersistenceError(PersistenceErrorCode.MIGRATION_FAILED)
+        conn.execute(
+            "INSERT INTO schema_migrations(version, name, checksum, applied_at_utc) VALUES (?, ?, ?, strftime('%Y-%m-%dT%H:%M:%fZ','now'))",
+            (migration.version, migration.name, migration.checksum),
+        )
+        conn.execute(f"PRAGMA user_version = {migration.version}")
+        conn.execute("COMMIT")
+        if disabled:
+            conn.execute("PRAGMA foreign_keys = ON")
+            if int(_fetch_one(conn, "PRAGMA foreign_keys")) != 1:
+                raise PersistenceError(PersistenceErrorCode.MIGRATION_FAILED)
+            if conn.execute("PRAGMA foreign_key_check").fetchall():
+                raise PersistenceError(PersistenceErrorCode.MIGRATION_FAILED)
+    except Exception:
+        if bool(getattr(conn, "in_transaction", False)):
+            try:
+                conn.execute("ROLLBACK")
+            except Exception:
+                pass
+        if disabled:
+            try:
+                conn.execute("PRAGMA foreign_keys = ON")
+                if int(_fetch_one(conn, "PRAGMA foreign_keys")) != 1:
+                    raise RuntimeError
+            except Exception:
+                raise PersistenceError(PersistenceErrorCode.MIGRATION_FAILED) from None
+        raise PersistenceError(PersistenceErrorCode.MIGRATION_FAILED) from None
+
+
 def _apply_migrations(conn: Connection) -> None:
+    if int(_fetch_one(conn, "PRAGMA foreign_keys")) != 1:
+        conn.execute("PRAGMA foreign_keys = ON")
+    if int(_fetch_one(conn, "PRAGMA foreign_keys")) != 1:
+        raise PersistenceError(PersistenceErrorCode.MIGRATION_FAILED)
     _validate_schema(conn)
     current = int(_fetch_one(conn, "PRAGMA user_version"))
     for migration in MIGRATIONS[current:]:
         if migration.version != current + 1:
             raise PersistenceError(PersistenceErrorCode.SCHEMA_HISTORY_INVALID)
-        try:
-            conn.execute("BEGIN IMMEDIATE")
-            if migration.version == 1:
-                conn.execute(f"PRAGMA application_id = {APPLICATION_ID}")
-            for statement in migration.statements:
-                conn.execute(statement)
-            conn.execute(
-                "INSERT INTO schema_migrations(version, name, checksum, applied_at_utc) VALUES (?, ?, ?, strftime('%Y-%m-%dT%H:%M:%fZ','now'))",
-                (migration.version, migration.name, migration.checksum),
-            )
-            conn.execute(f"PRAGMA user_version = {migration.version}")
-            conn.execute("COMMIT")
-            current = migration.version
-        except Exception:
-            try:
-                conn.execute("ROLLBACK")
-            except Exception:
-                pass
-            raise PersistenceError(PersistenceErrorCode.MIGRATION_FAILED) from None
+        _apply_one_migration(conn, migration)
+        current = migration.version
     _validate_schema(conn)
 
 
@@ -1529,6 +1563,85 @@ class ImageGeometryRecipeRepo(_Repo):
                     raise PersistenceError(PersistenceErrorCode.PERSISTED_DATA_INVALID)
 
 
+class PreparedImageArtifactRepo(_Repo):
+    _SELECT = "SELECT prepared_artifact_id,source_file_id,geometry_recipe_version_id,stored_artifact_id,pipeline_id,pipeline_version,output_contract_id,output_contract_version,media_type,color_space,width,height,byte_size,sha256,jpeg_quality,resize_percent,created_at_utc,created_by_id,created_by_kind,canonical_payload FROM prepared_image_artifacts"
+
+    def __init__(self, uow: SqlCipherUnitOfWork) -> None:
+        super().__init__(
+            uow,
+            "prepared_image_artifacts",
+            ser.prepared_image_artifact_to_json,
+            ser.prepared_image_artifact_from_json,
+            lambda x: str(x.id),
+        )
+
+    def add(self, artifact: PreparedImageArtifact) -> None:
+        if not isinstance(artifact, PreparedImageArtifact):
+            raise PersistenceError(PersistenceErrorCode.PERSISTED_DATA_INVALID)
+        self._execute(
+            "INSERT INTO prepared_image_artifacts(prepared_artifact_id,source_file_id,geometry_recipe_version_id,stored_artifact_id,pipeline_id,pipeline_version,output_contract_id,output_contract_version,media_type,color_space,width,height,byte_size,sha256,jpeg_quality,resize_percent,created_at_utc,created_by_id,created_by_kind,canonical_payload) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+            (
+                *ser.prepared_image_artifact_columns(artifact),
+                ser.prepared_image_artifact_to_json(artifact),
+            ),
+            duplicate_is_already_exists=True,
+        )
+
+    def _scoped(self, where: str, parameters: tuple[Any, ...]) -> tuple[PreparedImageArtifact, ...]:
+        rows = self._fetchall(
+            f"{self._SELECT} WHERE {where} ORDER BY created_at_utc,prepared_artifact_id",
+            parameters,
+        )
+        return tuple(self._from_projection(row) for row in rows)
+
+    def _from_projection(self, row: tuple[Any, ...]) -> PreparedImageArtifact:
+        entity = self._deserialize(row[19])
+        if (
+            not isinstance(entity, PreparedImageArtifact)
+            or ser.prepared_image_artifact_columns(entity) != tuple(row[:19])
+            or ser.prepared_image_artifact_to_json(entity) != row[19]
+        ):
+            raise PersistenceError(PersistenceErrorCode.PERSISTED_DATA_INVALID)
+        return entity
+
+    def get(self, prepared_artifact_id: EntityId) -> PreparedImageArtifact | None:
+        rows = self._scoped("prepared_artifact_id=?", (str(prepared_artifact_id),))
+        if len(rows) > 1:
+            raise PersistenceError(PersistenceErrorCode.PERSISTED_DATA_INVALID)
+        return None if not rows else rows[0]
+
+    def get_by_natural_key(
+        self,
+        geometry_recipe_version_id: EntityId,
+        pipeline_id: str,
+        pipeline_version: int,
+        output_contract_id: str,
+        output_contract_version: int,
+    ) -> PreparedImageArtifact | None:
+        rows = self._scoped(
+            "geometry_recipe_version_id=? AND pipeline_id=? AND pipeline_version=? "
+            "AND output_contract_id=? AND output_contract_version=?",
+            (
+                str(geometry_recipe_version_id),
+                pipeline_id,
+                pipeline_version,
+                output_contract_id,
+                output_contract_version,
+            ),
+        )
+        if len(rows) > 1:
+            raise PersistenceError(PersistenceErrorCode.PERSISTED_DATA_INVALID)
+        return None if not rows else rows[0]
+
+    def list_by_source(self, source_file_id: EntityId) -> tuple[PreparedImageArtifact, ...]:
+        return self._scoped("source_file_id=?", (str(source_file_id),))
+
+    def list_by_geometry_recipe(
+        self, geometry_recipe_version_id: EntityId
+    ) -> tuple[PreparedImageArtifact, ...]:
+        return self._scoped("geometry_recipe_version_id=?", (str(geometry_recipe_version_id),))
+
+
 class _UowState(Enum):
     NEW = auto()
     ACTIVE = auto()
@@ -1558,6 +1671,7 @@ class SqlCipherUnitOfWork:
         self._source_files: SourceFileRepo | None = None
         self._image_quality_assessments: ImageQualityAssessmentRepo | None = None
         self._image_geometry_recipes: ImageGeometryRecipeRepo | None = None
+        self._prepared_image_artifacts: PreparedImageArtifactRepo | None = None
 
     def __repr__(self) -> str:
         return "SqlCipherUnitOfWork(<redacted>)"
@@ -1636,6 +1750,10 @@ class SqlCipherUnitOfWork:
     def image_geometry_recipes(self) -> ImageGeometryRecipeRepo:
         return self._repository(self._image_geometry_recipes)
 
+    @property
+    def prepared_image_artifacts(self) -> PreparedImageArtifactRepo:
+        return self._repository(self._prepared_image_artifacts)
+
     def _construct_repositories(self) -> None:
         self._persons = PersonRepo(self)
         self._identity_documents = IdentityRepo(self)
@@ -1652,6 +1770,7 @@ class SqlCipherUnitOfWork:
         self._source_files = SourceFileRepo(self)
         self._image_quality_assessments = ImageQualityAssessmentRepo(self)
         self._image_geometry_recipes = ImageGeometryRecipeRepo(self)
+        self._prepared_image_artifacts = PreparedImageArtifactRepo(self)
 
     def _invalidate(self) -> None:
         connection = self._conn

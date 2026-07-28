@@ -1,0 +1,964 @@
+{
+  "schema_version": 2,
+  "pr": 30,
+  "contract": "PR-011",
+  "implementation_base": "f007fb5a04a5c69c70a37faf7ba12fa6775ae819",
+  "current_status": "READY_FOR_HUMAN_REVIEW",
+  "entries": [
+    {
+      "id": "PR011-SVC-001",
+      "stage": "application_service",
+      "workstream": "application_service",
+      "requirement": "read-UoW repository failure mappings",
+      "status": "implemented",
+      "platform": "cross_platform",
+      "evidence_type": "pytest",
+      "test_selectors": [
+        "tests/application/test_prepared_jpeg_service_acceptance.py::test_pr011_svc_001_read_uow_repository_failure_mappings"
+      ],
+      "evidence_files": [
+        "tests/application/test_prepared_jpeg_service_acceptance.py"
+      ],
+      "evidence_refs": [],
+      "notes": "Deterministic synthetic application-service evidence exercises the required boundary without personal data."
+    },
+    {
+      "id": "PR011-SVC-002",
+      "stage": "application_service",
+      "workstream": "application_service",
+      "requirement": "missing and invalid read state",
+      "status": "implemented",
+      "platform": "cross_platform",
+      "evidence_type": "pytest",
+      "test_selectors": [
+        "tests/application/test_prepared_jpeg_service_acceptance.py::test_pr011_svc_002_missing_and_invalid_read_state"
+      ],
+      "evidence_files": [
+        "tests/application/test_prepared_jpeg_service_acceptance.py"
+      ],
+      "evidence_refs": [],
+      "notes": "Deterministic synthetic application-service evidence exercises the required boundary without personal data."
+    },
+    {
+      "id": "PR011-SVC-003",
+      "stage": "application_service",
+      "workstream": "application_service",
+      "requirement": "source identity mismatch before storage",
+      "status": "implemented",
+      "platform": "cross_platform",
+      "evidence_type": "pytest",
+      "test_selectors": [
+        "tests/application/test_prepared_jpeg_service_acceptance.py::test_pr011_svc_003_source_identity_mismatch_before_storage"
+      ],
+      "evidence_files": [
+        "tests/application/test_prepared_jpeg_service_acceptance.py"
+      ],
+      "evidence_refs": [],
+      "notes": "Deterministic synthetic application-service evidence exercises the required boundary without personal data."
+    },
+    {
+      "id": "PR011-SVC-004",
+      "stage": "application_service",
+      "workstream": "application_service",
+      "requirement": "storage and decoder failure matrix",
+      "status": "implemented",
+      "platform": "cross_platform",
+      "evidence_type": "pytest",
+      "test_selectors": [
+        "tests/application/test_prepared_jpeg_service_acceptance.py::test_pr011_svc_004_storage_and_decoder_failure_matrix"
+      ],
+      "evidence_files": [
+        "tests/application/test_prepared_jpeg_service_acceptance.py"
+      ],
+      "evidence_refs": [],
+      "notes": "Deterministic synthetic application-service evidence exercises the required boundary without personal data."
+    },
+    {
+      "id": "PR011-SVC-005",
+      "stage": "application_service",
+      "workstream": "application_service",
+      "requirement": "renderer failure matrix",
+      "status": "implemented",
+      "platform": "cross_platform",
+      "evidence_type": "pytest",
+      "test_selectors": [
+        "tests/application/test_prepared_jpeg_service_acceptance.py::test_pr011_svc_005_renderer_failure_matrix"
+      ],
+      "evidence_files": [
+        "tests/application/test_prepared_jpeg_service_acceptance.py"
+      ],
+      "evidence_refs": [],
+      "notes": "Deterministic synthetic application-service evidence exercises the required boundary without personal data."
+    },
+    {
+      "id": "PR011-SVC-006",
+      "stage": "application_service",
+      "workstream": "application_service",
+      "requirement": "encoder controlled and unexpected failure matrix",
+      "status": "implemented",
+      "platform": "cross_platform",
+      "evidence_type": "pytest",
+      "test_selectors": [
+        "tests/application/test_prepared_jpeg_service_acceptance.py::test_pr011_svc_006_encoder_controlled_and_unexpected_failure_matrix"
+      ],
+      "evidence_files": [
+        "tests/application/test_prepared_jpeg_service_acceptance.py"
+      ],
+      "evidence_refs": [],
+      "notes": "Deterministic synthetic application-service evidence exercises the required boundary without personal data."
+    },
+    {
+      "id": "PR011-SVC-007",
+      "stage": "application_service",
+      "workstream": "application_service",
+      "requirement": "write-UoW authoritative revalidation",
+      "status": "implemented",
+      "platform": "cross_platform",
+      "evidence_type": "pytest",
+      "test_selectors": [
+        "tests/application/test_prepared_jpeg_service_acceptance.py::test_pr011_svc_007_write_uow_authoritative_revalidation"
+      ],
+      "evidence_files": [
+        "tests/application/test_prepared_jpeg_service_acceptance.py"
+      ],
+      "evidence_refs": [],
+      "notes": "Deterministic synthetic application-service evidence exercises the required boundary without personal data."
+    },
+    {
+      "id": "PR011-SVC-008",
+      "stage": "application_service",
+      "workstream": "application_service",
+      "requirement": "caller ID preflight matrix",
+      "status": "implemented",
+      "platform": "cross_platform",
+      "evidence_type": "pytest",
+      "test_selectors": [
+        "tests/application/test_prepared_jpeg_service_acceptance.py::test_pr011_svc_008_caller_id_preflight_matrix"
+      ],
+      "evidence_files": [
+        "tests/application/test_prepared_jpeg_service_acceptance.py"
+      ],
+      "evidence_refs": [],
+      "notes": "Deterministic synthetic application-service evidence exercises the required boundary without personal data."
+    },
+    {
+      "id": "PR011-SVC-009",
+      "stage": "application_service",
+      "workstream": "application_service",
+      "requirement": "natural-key preflight",
+      "status": "implemented",
+      "platform": "cross_platform",
+      "evidence_type": "pytest",
+      "test_selectors": [
+        "tests/application/test_prepared_jpeg_service_acceptance.py::test_pr011_svc_009_natural_key_preflight"
+      ],
+      "evidence_files": [
+        "tests/application/test_prepared_jpeg_service_acceptance.py"
+      ],
+      "evidence_refs": [],
+      "notes": "Deterministic synthetic application-service evidence exercises the required boundary without personal data."
+    },
+    {
+      "id": "PR011-SVC-010",
+      "stage": "application_service",
+      "workstream": "application_service",
+      "requirement": "exact successful operation sequence",
+      "status": "implemented",
+      "platform": "cross_platform",
+      "evidence_type": "pytest",
+      "test_selectors": [
+        "tests/application/test_prepared_jpeg_service_acceptance.py::test_pr011_svc_010_exact_successful_operation_sequence"
+      ],
+      "evidence_files": [
+        "tests/application/test_prepared_jpeg_service_acceptance.py"
+      ],
+      "evidence_refs": [],
+      "notes": "Deterministic synthetic application-service evidence exercises the required boundary without personal data."
+    },
+    {
+      "id": "PR011-SVC-011",
+      "stage": "application_service",
+      "workstream": "application_service",
+      "requirement": "selected JPEG publication exactly once",
+      "status": "implemented",
+      "platform": "cross_platform",
+      "evidence_type": "pytest",
+      "test_selectors": [
+        "tests/application/test_prepared_jpeg_service_acceptance.py::test_pr011_svc_011_selected_jpeg_publication_exactly_once"
+      ],
+      "evidence_files": [
+        "tests/application/test_prepared_jpeg_service_acceptance.py"
+      ],
+      "evidence_refs": [],
+      "notes": "Deterministic synthetic application-service evidence exercises the required boundary without personal data."
+    },
+    {
+      "id": "PR011-SVC-012",
+      "stage": "application_service",
+      "workstream": "application_service",
+      "requirement": "returned storage-record mismatch matrix",
+      "status": "implemented",
+      "platform": "cross_platform",
+      "evidence_type": "pytest",
+      "test_selectors": [
+        "tests/application/test_prepared_jpeg_service_acceptance.py::test_pr011_svc_012_returned_storage_record_mismatch_matrix"
+      ],
+      "evidence_files": [
+        "tests/application/test_prepared_jpeg_service_acceptance.py"
+      ],
+      "evidence_refs": [],
+      "notes": "Deterministic synthetic application-service evidence exercises the required boundary without personal data."
+    },
+    {
+      "id": "PR011-SVC-013",
+      "stage": "application_service",
+      "workstream": "application_service",
+      "requirement": "repository add and pre-commit failure matrix",
+      "status": "implemented",
+      "platform": "cross_platform",
+      "evidence_type": "pytest",
+      "test_selectors": [
+        "tests/application/test_prepared_jpeg_service_acceptance.py::test_pr011_svc_013_repository_add_and_precommit_failure_matrix"
+      ],
+      "evidence_files": [
+        "tests/application/test_prepared_jpeg_service_acceptance.py"
+      ],
+      "evidence_refs": [],
+      "notes": "Deterministic synthetic application-service evidence exercises the required boundary without personal data."
+    },
+    {
+      "id": "PR011-SVC-014",
+      "stage": "application_service",
+      "workstream": "application_service",
+      "requirement": "late database uniqueness race matrix",
+      "status": "implemented",
+      "platform": "cross_platform",
+      "evidence_type": "pytest",
+      "test_selectors": [
+        "tests/application/test_prepared_jpeg_service_acceptance.py::test_pr011_svc_014_late_database_uniqueness_race_matrix"
+      ],
+      "evidence_files": [
+        "tests/application/test_prepared_jpeg_service_acceptance.py"
+      ],
+      "evidence_refs": [],
+      "notes": "Deterministic synthetic application-service evidence exercises the required boundary without personal data."
+    },
+    {
+      "id": "PR011-SVC-015",
+      "stage": "application_service",
+      "workstream": "application_service",
+      "requirement": "real rollback after publication and before commit",
+      "status": "implemented",
+      "platform": "cross_platform",
+      "evidence_type": "pytest",
+      "test_selectors": [
+        "tests/application/test_prepared_jpeg_service_acceptance.py::test_pr011_svc_015_real_rollback_after_publication_before_commit"
+      ],
+      "evidence_files": [
+        "tests/application/test_prepared_jpeg_service_acceptance.py"
+      ],
+      "evidence_refs": [],
+      "notes": "Deterministic synthetic application-service evidence exercises the required boundary without personal data."
+    },
+    {
+      "id": "PR011-SVC-016",
+      "stage": "application_service",
+      "workstream": "application_service",
+      "requirement": "real orphan reconciliation",
+      "status": "implemented",
+      "platform": "cross_platform",
+      "evidence_type": "pytest",
+      "test_selectors": [
+        "tests/application/test_prepared_jpeg_service_acceptance.py::test_pr011_svc_016_real_orphan_reconciliation"
+      ],
+      "evidence_files": [
+        "tests/application/test_prepared_jpeg_service_acceptance.py"
+      ],
+      "evidence_refs": [],
+      "notes": "Deterministic synthetic application-service evidence exercises the required boundary without personal data."
+    },
+    {
+      "id": "PR011-SVC-017",
+      "stage": "application_service",
+      "workstream": "application_service",
+      "requirement": "controlled-error privacy matrix",
+      "status": "implemented",
+      "platform": "cross_platform",
+      "evidence_type": "pytest",
+      "test_selectors": [
+        "tests/application/test_prepared_jpeg_service_acceptance.py::test_pr011_svc_017_controlled_error_privacy_matrix"
+      ],
+      "evidence_files": [
+        "tests/application/test_prepared_jpeg_service_acceptance.py"
+      ],
+      "evidence_refs": [],
+      "notes": "Deterministic synthetic application-service evidence exercises the required boundary without personal data."
+    },
+    {
+      "id": "PR011-REP-001",
+      "stage": "repository_core",
+      "workstream": "repository",
+      "requirement": "production EncryptedDatabase.unit_of_work() fixture",
+      "status": "implemented",
+      "platform": "cross_platform",
+      "evidence_type": "pytest",
+      "test_selectors": [
+        "tests/persistence/test_prepared_jpeg_repository.py::test_pr011_rep_001_production_encrypted_database_unit_of_work_fixture"
+      ],
+      "evidence_files": [
+        "tests/persistence/test_prepared_jpeg_repository.py"
+      ],
+      "evidence_refs": [],
+      "notes": "File-backed production EncryptedDatabase and SqlCipherUnitOfWork evidence uses deterministic synthetic entities."
+    },
+    {
+      "id": "PR011-REP-002",
+      "stage": "repository_core",
+      "workstream": "repository",
+      "requirement": "foreign keys enabled for every repository test UoW",
+      "status": "implemented",
+      "platform": "cross_platform",
+      "evidence_type": "pytest",
+      "test_selectors": [
+        "tests/persistence/test_prepared_jpeg_repository.py::test_pr011_rep_002_foreign_keys_enabled_for_every_repository_uow"
+      ],
+      "evidence_files": [
+        "tests/persistence/test_prepared_jpeg_repository.py"
+      ],
+      "evidence_refs": [],
+      "notes": "File-backed production EncryptedDatabase and SqlCipherUnitOfWork evidence uses deterministic synthetic entities."
+    },
+    {
+      "id": "PR011-REP-003",
+      "stage": "repository_core",
+      "workstream": "repository",
+      "requirement": "add without commit rolls back",
+      "status": "implemented",
+      "platform": "cross_platform",
+      "evidence_type": "pytest",
+      "test_selectors": [
+        "tests/persistence/test_prepared_jpeg_repository.py::test_pr011_rep_003_add_without_commit_rolls_back"
+      ],
+      "evidence_files": [
+        "tests/persistence/test_prepared_jpeg_repository.py"
+      ],
+      "evidence_refs": [],
+      "notes": "File-backed production EncryptedDatabase and SqlCipherUnitOfWork evidence uses deterministic synthetic entities."
+    },
+    {
+      "id": "PR011-REP-004",
+      "stage": "repository_core",
+      "workstream": "repository",
+      "requirement": "add with commit survives reopen",
+      "status": "implemented",
+      "platform": "cross_platform",
+      "evidence_type": "pytest",
+      "test_selectors": [
+        "tests/persistence/test_prepared_jpeg_repository.py::test_pr011_rep_004_add_with_commit_survives_independent_reopen"
+      ],
+      "evidence_files": [
+        "tests/persistence/test_prepared_jpeg_repository.py"
+      ],
+      "evidence_refs": [],
+      "notes": "File-backed production EncryptedDatabase and SqlCipherUnitOfWork evidence uses deterministic synthetic entities."
+    },
+    {
+      "id": "PR011-REP-005",
+      "stage": "repository_core",
+      "workstream": "repository",
+      "requirement": "exception before commit rolls back",
+      "status": "implemented",
+      "platform": "cross_platform",
+      "evidence_type": "pytest",
+      "test_selectors": [
+        "tests/persistence/test_prepared_jpeg_repository.py::test_pr011_rep_005_exception_before_commit_rolls_back"
+      ],
+      "evidence_files": [
+        "tests/persistence/test_prepared_jpeg_repository.py"
+      ],
+      "evidence_refs": [],
+      "notes": "File-backed production EncryptedDatabase and SqlCipherUnitOfWork evidence uses deterministic synthetic entities."
+    },
+    {
+      "id": "PR011-REP-006",
+      "stage": "repository_core",
+      "workstream": "repository",
+      "requirement": "duplicate prepared-artifact ID",
+      "status": "implemented",
+      "platform": "cross_platform",
+      "evidence_type": "pytest",
+      "test_selectors": [
+        "tests/persistence/test_prepared_jpeg_repository.py::test_pr011_rep_006_duplicate_prepared_artifact_id_preserves_first"
+      ],
+      "evidence_files": [
+        "tests/persistence/test_prepared_jpeg_repository.py"
+      ],
+      "evidence_refs": [],
+      "notes": "File-backed production EncryptedDatabase and SqlCipherUnitOfWork evidence uses deterministic synthetic entities."
+    },
+    {
+      "id": "PR011-REP-007",
+      "stage": "repository_core",
+      "workstream": "repository",
+      "requirement": "duplicate stored-artifact reference",
+      "status": "implemented",
+      "platform": "cross_platform",
+      "evidence_type": "pytest",
+      "test_selectors": [
+        "tests/persistence/test_prepared_jpeg_repository.py::test_pr011_rep_007_duplicate_stored_artifact_reference_preserves_first"
+      ],
+      "evidence_files": [
+        "tests/persistence/test_prepared_jpeg_repository.py"
+      ],
+      "evidence_refs": [],
+      "notes": "File-backed production EncryptedDatabase and SqlCipherUnitOfWork evidence uses deterministic synthetic entities."
+    },
+    {
+      "id": "PR011-REP-008",
+      "stage": "repository_core",
+      "workstream": "repository",
+      "requirement": "duplicate natural key",
+      "status": "implemented",
+      "platform": "cross_platform",
+      "evidence_type": "pytest",
+      "test_selectors": [
+        "tests/persistence/test_prepared_jpeg_repository.py::test_pr011_rep_008_duplicate_natural_key_preserves_first"
+      ],
+      "evidence_files": [
+        "tests/persistence/test_prepared_jpeg_repository.py"
+      ],
+      "evidence_refs": [],
+      "notes": "File-backed production EncryptedDatabase and SqlCipherUnitOfWork evidence uses deterministic synthetic entities."
+    },
+    {
+      "id": "PR011-REP-009",
+      "stage": "repository_core",
+      "workstream": "repository",
+      "requirement": "deterministic list ordering",
+      "status": "implemented",
+      "platform": "cross_platform",
+      "evidence_type": "pytest",
+      "test_selectors": [
+        "tests/persistence/test_prepared_jpeg_repository.py::test_pr011_rep_009_deterministic_list_ordering"
+      ],
+      "evidence_files": [
+        "tests/persistence/test_prepared_jpeg_repository.py"
+      ],
+      "evidence_refs": [],
+      "notes": "File-backed production EncryptedDatabase and SqlCipherUnitOfWork evidence uses deterministic synthetic entities."
+    },
+    {
+      "id": "PR011-REP-010",
+      "stage": "repository_core",
+      "workstream": "repository",
+      "requirement": "immutable update/delete/replace rejection",
+      "status": "implemented",
+      "platform": "cross_platform",
+      "evidence_type": "pytest",
+      "test_selectors": [
+        "tests/persistence/test_prepared_jpeg_repository.py::test_pr011_rep_010_immutable_update_delete_replace_rejected"
+      ],
+      "evidence_files": [
+        "tests/persistence/test_prepared_jpeg_repository.py"
+      ],
+      "evidence_refs": [],
+      "notes": "File-backed production EncryptedDatabase and SqlCipherUnitOfWork evidence uses deterministic synthetic entities."
+    },
+    {
+      "id": "PR011-REP-011",
+      "stage": "repository_core",
+      "workstream": "repository",
+      "requirement": "production Unit of Work close containment",
+      "status": "implemented",
+      "platform": "cross_platform",
+      "evidence_type": "pytest",
+      "test_selectors": [
+        "tests/persistence/test_prepared_jpeg_repository.py::test_pr011_rep_011_production_uow_close_containment"
+      ],
+      "evidence_files": [
+        "tests/persistence/test_prepared_jpeg_repository.py"
+      ],
+      "evidence_refs": [],
+      "notes": "File-backed production EncryptedDatabase and SqlCipherUnitOfWork evidence uses deterministic synthetic entities."
+    },
+    {
+      "id": "PR011-REP-012",
+      "stage": "repository_corruption",
+      "workstream": "repository",
+      "requirement": "scoped ID query corruption behavior",
+      "status": "implemented",
+      "platform": "cross_platform",
+      "evidence_type": "pytest",
+      "test_selectors": [
+        "tests/persistence/test_prepared_jpeg_repository.py::test_pr011_rep_012_scoped_id_query_corruption_behavior"
+      ],
+      "evidence_files": [
+        "tests/persistence/test_prepared_jpeg_repository.py"
+      ],
+      "evidence_refs": [],
+      "notes": "File-backed production repository evidence injects deterministic synthetic corruption and verifies scoped fail-closed reads."
+    },
+    {
+      "id": "PR011-REP-013",
+      "stage": "repository_corruption",
+      "workstream": "repository",
+      "requirement": "scoped natural-key corruption behavior",
+      "status": "implemented",
+      "platform": "cross_platform",
+      "evidence_type": "pytest",
+      "test_selectors": [
+        "tests/persistence/test_prepared_jpeg_repository.py::test_pr011_rep_013_scoped_natural_key_corruption_behavior"
+      ],
+      "evidence_files": [
+        "tests/persistence/test_prepared_jpeg_repository.py"
+      ],
+      "evidence_refs": [],
+      "notes": "File-backed production repository evidence injects deterministic synthetic corruption and verifies scoped fail-closed reads."
+    },
+    {
+      "id": "PR011-REP-014",
+      "stage": "repository_corruption",
+      "workstream": "repository",
+      "requirement": "scoped source-list corruption behavior",
+      "status": "implemented",
+      "platform": "cross_platform",
+      "evidence_type": "pytest",
+      "test_selectors": [
+        "tests/persistence/test_prepared_jpeg_repository.py::test_pr011_rep_014_scoped_source_list_corruption_behavior"
+      ],
+      "evidence_files": [
+        "tests/persistence/test_prepared_jpeg_repository.py"
+      ],
+      "evidence_refs": [],
+      "notes": "File-backed production repository evidence injects deterministic synthetic corruption and verifies scoped fail-closed reads."
+    },
+    {
+      "id": "PR011-REP-015",
+      "stage": "repository_corruption",
+      "workstream": "repository",
+      "requirement": "scoped geometry-list corruption behavior",
+      "status": "implemented",
+      "platform": "cross_platform",
+      "evidence_type": "pytest",
+      "test_selectors": [
+        "tests/persistence/test_prepared_jpeg_repository.py::test_pr011_rep_015_scoped_geometry_list_corruption_behavior"
+      ],
+      "evidence_files": [
+        "tests/persistence/test_prepared_jpeg_repository.py"
+      ],
+      "evidence_refs": [],
+      "notes": "File-backed production repository evidence injects deterministic synthetic corruption and verifies scoped fail-closed reads."
+    },
+    {
+      "id": "PR011-REP-016",
+      "stage": "repository_corruption",
+      "workstream": "repository",
+      "requirement": "canonical-payload corruption matrix",
+      "status": "implemented",
+      "platform": "cross_platform",
+      "evidence_type": "pytest",
+      "test_selectors": [
+        "tests/persistence/test_prepared_jpeg_repository.py::test_pr011_rep_016_canonical_payload_corruption_matrix"
+      ],
+      "evidence_files": [
+        "tests/persistence/test_prepared_jpeg_repository.py"
+      ],
+      "evidence_refs": [],
+      "notes": "File-backed production repository evidence injects deterministic synthetic corruption and verifies scoped fail-closed reads."
+    },
+    {
+      "id": "PR011-REP-017",
+      "stage": "repository_corruption",
+      "workstream": "repository",
+      "requirement": "projected-column mismatch matrix",
+      "status": "implemented",
+      "platform": "cross_platform",
+      "evidence_type": "pytest",
+      "test_selectors": [
+        "tests/persistence/test_prepared_jpeg_repository.py::test_pr011_rep_017_projected_column_mismatch_matrix"
+      ],
+      "evidence_files": [
+        "tests/persistence/test_prepared_jpeg_repository.py"
+      ],
+      "evidence_refs": [],
+      "notes": "File-backed production repository evidence injects deterministic synthetic corruption and verifies scoped fail-closed reads."
+    },
+    {
+      "id": "PR011-ENC-001",
+      "stage": "encoder",
+      "workstream": "encoder",
+      "requirement": "every resize derived directly from the original uncompressed raster",
+      "status": "implemented",
+      "platform": "cross_platform",
+      "evidence_type": "pytest",
+      "test_selectors": [
+        "tests/image_pipeline/test_jpeg_preparer.py::test_pr011_enc_001_every_resize_uses_original_uncompressed_raster"
+      ],
+      "evidence_files": [
+        "tests/image_pipeline/test_jpeg_preparer.py"
+      ],
+      "evidence_refs": [],
+      "notes": "Deterministic synthetic raster evidence proves the fixed encoder contract without publication dependencies."
+    },
+    {
+      "id": "PR011-ENC-002",
+      "stage": "encoder",
+      "workstream": "encoder",
+      "requirement": "complete 48-attempt ordering",
+      "status": "implemented",
+      "platform": "cross_platform",
+      "evidence_type": "pytest",
+      "test_selectors": [
+        "tests/image_pipeline/test_jpeg_preparer.py::test_pr011_enc_002_complete_48_attempt_ordering"
+      ],
+      "evidence_files": [
+        "tests/image_pipeline/test_jpeg_preparer.py"
+      ],
+      "evidence_refs": [],
+      "notes": "Deterministic synthetic raster evidence proves the fixed encoder contract without publication dependencies."
+    },
+    {
+      "id": "PR011-ENC-003",
+      "stage": "encoder",
+      "workstream": "encoder",
+      "requirement": "exact byte ceiling and ceiling-plus-one behavior",
+      "status": "implemented",
+      "platform": "cross_platform",
+      "evidence_type": "pytest",
+      "test_selectors": [
+        "tests/image_pipeline/test_jpeg_preparer.py::test_pr011_enc_003_exact_byte_ceiling_and_ceiling_plus_one"
+      ],
+      "evidence_files": [
+        "tests/image_pipeline/test_jpeg_preparer.py"
+      ],
+      "evidence_refs": [],
+      "notes": "Deterministic synthetic raster evidence proves the fixed encoder contract without publication dependencies."
+    },
+    {
+      "id": "PR011-ENC-004",
+      "stage": "encoder",
+      "workstream": "encoder",
+      "requirement": "structural JPEG contract",
+      "status": "implemented",
+      "platform": "cross_platform",
+      "evidence_type": "pytest",
+      "test_selectors": [
+        "tests/image_pipeline/test_jpeg_preparer.py::test_pr011_enc_004_structural_jpeg_contract"
+      ],
+      "evidence_files": [
+        "tests/image_pipeline/test_jpeg_preparer.py"
+      ],
+      "evidence_refs": [],
+      "notes": "Deterministic synthetic raster evidence proves the fixed encoder contract without publication dependencies."
+    },
+    {
+      "id": "PR011-ENC-005",
+      "stage": "encoder",
+      "workstream": "encoder",
+      "requirement": "no intermediate candidate publication",
+      "status": "implemented",
+      "platform": "cross_platform",
+      "evidence_type": "pytest",
+      "test_selectors": [
+        "tests/image_pipeline/test_jpeg_preparer.py::test_pr011_enc_005_no_intermediate_candidate_publication"
+      ],
+      "evidence_files": [
+        "tests/image_pipeline/test_jpeg_preparer.py"
+      ],
+      "evidence_refs": [],
+      "notes": "Deterministic synthetic raster evidence proves the fixed encoder contract without publication dependencies."
+    },
+    {
+      "id": "PR011-MIG-001",
+      "stage": "migration",
+      "workstream": "migration",
+      "requirement": "complete populated schema-v6 fixture",
+      "status": "implemented",
+      "platform": "cross_platform",
+      "evidence_type": "pytest",
+      "test_selectors": [
+        "tests/persistence/test_pr011_migration_acceptance.py::test_pr011_mig_001_complete_populated_schema_v6_fixture"
+      ],
+      "evidence_files": [
+        "tests/persistence/test_pr011_migration_acceptance.py"
+      ],
+      "evidence_refs": [],
+      "notes": "Executable file-backed migration evidence uses deterministic fictional entities only."
+    },
+    {
+      "id": "PR011-MIG-002",
+      "stage": "migration",
+      "workstream": "migration",
+      "requirement": "all populated v6 rows survive v0007",
+      "status": "implemented",
+      "platform": "cross_platform",
+      "evidence_type": "pytest",
+      "test_selectors": [
+        "tests/persistence/test_pr011_migration_acceptance.py::test_pr011_mig_002_all_populated_v6_rows_survive_v0007"
+      ],
+      "evidence_files": [
+        "tests/persistence/test_pr011_migration_acceptance.py"
+      ],
+      "evidence_refs": [],
+      "notes": "Executable file-backed migration evidence uses deterministic fictional entities only."
+    },
+    {
+      "id": "PR011-MIG-003",
+      "stage": "migration",
+      "workstream": "migration",
+      "requirement": "migration history and exact checksum",
+      "status": "implemented",
+      "platform": "cross_platform",
+      "evidence_type": "pytest",
+      "test_selectors": [
+        "tests/persistence/test_pr011_migration_acceptance.py::test_pr011_mig_003_migration_history_and_exact_checksum"
+      ],
+      "evidence_files": [
+        "tests/persistence/test_pr011_migration_acceptance.py"
+      ],
+      "evidence_refs": [],
+      "notes": "Executable file-backed migration evidence uses deterministic fictional entities only."
+    },
+    {
+      "id": "PR011-MIG-004",
+      "stage": "migration",
+      "workstream": "migration",
+      "requirement": "foreign-key and integrity validation",
+      "status": "implemented",
+      "platform": "cross_platform",
+      "evidence_type": "pytest",
+      "test_selectors": [
+        "tests/persistence/test_pr011_migration_acceptance.py::test_pr011_mig_004_foreign_key_and_integrity_validation"
+      ],
+      "evidence_files": [
+        "tests/persistence/test_pr011_migration_acceptance.py"
+      ],
+      "evidence_refs": [],
+      "notes": "Executable file-backed migration evidence uses deterministic fictional entities only."
+    },
+    {
+      "id": "PR011-MIG-005",
+      "stage": "migration",
+      "workstream": "migration",
+      "requirement": "actual v0007 rollback and retry",
+      "status": "implemented",
+      "platform": "cross_platform",
+      "evidence_type": "pytest",
+      "test_selectors": [
+        "tests/persistence/test_pr011_migration_acceptance.py::test_pr011_mig_005_actual_v0007_rollback_and_retry"
+      ],
+      "evidence_files": [
+        "tests/persistence/test_pr011_migration_acceptance.py"
+      ],
+      "evidence_refs": [],
+      "notes": "Executable file-backed migration evidence uses deterministic fictional entities only."
+    },
+    {
+      "id": "PR011-MIG-006",
+      "stage": "migration",
+      "workstream": "migration",
+      "requirement": "production SQLite close/reopen v6-to-v7",
+      "status": "implemented",
+      "platform": "cross_platform",
+      "evidence_type": "pytest",
+      "test_selectors": [
+        "tests/persistence/test_pr011_migration_acceptance.py::test_pr011_mig_006_production_sqlite_close_reopen_v6_to_v7"
+      ],
+      "evidence_files": [
+        "tests/persistence/test_pr011_migration_acceptance.py"
+      ],
+      "evidence_refs": [],
+      "notes": "Executable file-backed migration evidence uses deterministic fictional entities only."
+    },
+    {
+      "id": "PR011-MIG-007",
+      "stage": "migration",
+      "workstream": "migration",
+      "requirement": "prepared artifact commit/reopen/read after migration",
+      "status": "implemented",
+      "platform": "cross_platform",
+      "evidence_type": "pytest",
+      "test_selectors": [
+        "tests/persistence/test_pr011_migration_acceptance.py::test_pr011_mig_007_prepared_artifact_commit_reopen_read_after_migration"
+      ],
+      "evidence_files": [
+        "tests/persistence/test_pr011_migration_acceptance.py"
+      ],
+      "evidence_refs": [],
+      "notes": "Executable file-backed migration evidence uses deterministic fictional entities only."
+    },
+    {
+      "id": "PR011-WIN-001",
+      "stage": "windows",
+      "workstream": "migration",
+      "requirement": "production Windows SQLCipher populated v6 creation",
+      "status": "implemented",
+      "platform": "windows",
+      "evidence_type": "pytest",
+      "test_selectors": [
+        "tests/persistence/test_windows_sqlcipher_integration.py::test_pr011_win_001_production_windows_sqlcipher_populated_v6_creation"
+      ],
+      "evidence_files": [
+        "tests/persistence/test_windows_sqlcipher_integration.py"
+      ],
+      "evidence_refs": [],
+      "notes": "Production Windows SQLCipher evidence uses deterministic fictional entities and privacy-safe assertions."
+    },
+    {
+      "id": "PR011-WIN-002",
+      "stage": "windows",
+      "workstream": "migration",
+      "requirement": "production Windows SQLCipher v6-to-v7 migration",
+      "status": "implemented",
+      "platform": "windows",
+      "evidence_type": "pytest",
+      "test_selectors": [
+        "tests/persistence/test_windows_sqlcipher_integration.py::test_pr011_win_002_production_windows_sqlcipher_v6_to_v7_migration"
+      ],
+      "evidence_files": [
+        "tests/persistence/test_windows_sqlcipher_integration.py"
+      ],
+      "evidence_refs": [],
+      "notes": "Production Windows SQLCipher evidence uses deterministic fictional entities and privacy-safe assertions."
+    },
+    {
+      "id": "PR011-WIN-003",
+      "stage": "windows",
+      "workstream": "migration",
+      "requirement": "Windows cipher and foreign-key integrity after reopen",
+      "status": "implemented",
+      "platform": "windows",
+      "evidence_type": "pytest",
+      "test_selectors": [
+        "tests/persistence/test_windows_sqlcipher_integration.py::test_pr011_win_003_windows_cipher_and_foreign_key_integrity_after_reopen"
+      ],
+      "evidence_files": [
+        "tests/persistence/test_windows_sqlcipher_integration.py"
+      ],
+      "evidence_refs": [],
+      "notes": "Production Windows SQLCipher evidence uses deterministic fictional entities and privacy-safe assertions."
+    },
+    {
+      "id": "PR011-WIN-004",
+      "stage": "windows",
+      "workstream": "migration",
+      "requirement": "Windows prepared artifact commit/reopen/read",
+      "status": "implemented",
+      "platform": "windows",
+      "evidence_type": "pytest",
+      "test_selectors": [
+        "tests/persistence/test_windows_sqlcipher_integration.py::test_pr011_win_004_windows_prepared_artifact_commit_reopen_read"
+      ],
+      "evidence_files": [
+        "tests/persistence/test_windows_sqlcipher_integration.py"
+      ],
+      "evidence_refs": [],
+      "notes": "Production Windows SQLCipher evidence uses deterministic fictional entities and privacy-safe assertions."
+    },
+    {
+      "id": "PR011-FIN-001",
+      "stage": "final",
+      "workstream": "final_acceptance",
+      "requirement": "PR body reflects exact current evidence",
+      "status": "implemented",
+      "platform": "documentation",
+      "evidence_type": "pr_metadata",
+      "test_selectors": [],
+      "evidence_files": [],
+      "evidence_refs": [
+        "github:pr:30:body"
+      ],
+      "notes": "The live PR #30 body was reconciled with the current implementation, acceptance evidence, exact checksums, remaining authorization boundary, and human-review status."
+    },
+    {
+      "id": "PR011-FIN-002",
+      "stage": "final",
+      "workstream": "final_acceptance",
+      "requirement": "full Ubuntu and Windows pytest",
+      "status": "implemented",
+      "platform": "cross_platform",
+      "evidence_type": "ci",
+      "test_selectors": [],
+      "evidence_files": [],
+      "evidence_refs": [
+        "github:ci:163:30354589213:6a67c65dcb5c5fbff28c32eaca3601dfbd38de2c:success"
+      ],
+      "notes": "Ubuntu and Windows full pytest passed on the exact audited implementation head."
+    },
+    {
+      "id": "PR011-FIN-003",
+      "stage": "final",
+      "workstream": "final_acceptance",
+      "requirement": "Ubuntu and Windows builds",
+      "status": "implemented",
+      "platform": "cross_platform",
+      "evidence_type": "ci",
+      "test_selectors": [],
+      "evidence_files": [],
+      "evidence_refs": [
+        "github:ci:163:30354589213:6a67c65dcb5c5fbff28c32eaca3601dfbd38de2c:success"
+      ],
+      "notes": "Ubuntu and Windows builds passed on the exact audited implementation head."
+    },
+    {
+      "id": "PR011-FIN-004",
+      "stage": "final",
+      "workstream": "final_acceptance",
+      "requirement": "Windows PR-011 verifier",
+      "status": "implemented",
+      "platform": "cross_platform",
+      "evidence_type": "ci",
+      "test_selectors": [],
+      "evidence_files": [],
+      "evidence_refs": [
+        "github:ci:163:30354589213:6a67c65dcb5c5fbff28c32eaca3601dfbd38de2c:success"
+      ],
+      "notes": "The Windows production PR-011 verifier passed on the exact audited implementation head."
+    },
+    {
+      "id": "PR011-FIN-005",
+      "stage": "final",
+      "workstream": "final_acceptance",
+      "requirement": "exact-head CI success",
+      "status": "implemented",
+      "platform": "cross_platform",
+      "evidence_type": "ci",
+      "test_selectors": [],
+      "evidence_files": [],
+      "evidence_refs": [
+        "github:ci:164:30357908170:300703294cab707f921f56bceba4ff331be0d12c:success"
+      ],
+      "notes": "The complete exact-head CI passed on the final-preparation evidence head before manifest closure."
+    },
+    {
+      "id": "PR011-FIN-006",
+      "stage": "final",
+      "workstream": "final_acceptance",
+      "requirement": "independent acceptance audit",
+      "status": "implemented",
+      "platform": "cross_platform",
+      "evidence_type": "independent_audit",
+      "test_selectors": [],
+      "evidence_files": [],
+      "evidence_refs": [
+        "audit:docs/decisions/PR-011-D1-independent-acceptance-audit.md#independent-audit-result"
+      ],
+      "notes": "An externally supplied independent audit passed for final-acceptance preparation but did not grant human acceptance."
+    },
+    {
+      "id": "PR011-FIN-007",
+      "stage": "final",
+      "workstream": "final_acceptance",
+      "requirement": "no pending manifest entries",
+      "status": "implemented",
+      "platform": "cross_platform",
+      "evidence_type": "independent_audit",
+      "test_selectors": [],
+      "evidence_files": [],
+      "evidence_refs": [
+        "audit:docs/decisions/PR-011-D2-final-manifest-closure-audit.md#final-manifest-closure-result"
+      ],
+      "notes": "The independent closure audit verified the exact closure prerequisites; the resulting manifest contains all 57 implemented entries with none pending."
+    }
+  ]
+}

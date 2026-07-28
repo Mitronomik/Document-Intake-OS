@@ -19,6 +19,7 @@ from document_intake.domain import (
     MigrationDocument,
     OwnerRef,
     Person,
+    PreparedImageArtifact,
     SourceFile,
     Terminal,
     TerminalCode,
@@ -147,6 +148,23 @@ class ImageQualityAssessmentRepository(Protocol):
     def list_by_source(self, source_file_id: EntityId) -> tuple[ImageQualityAssessment, ...]: ...
 
 
+class PreparedImageArtifactRepository(Protocol):
+    def add(self, artifact: PreparedImageArtifact) -> None: ...
+    def get(self, prepared_artifact_id: EntityId) -> PreparedImageArtifact | None: ...
+    def get_by_natural_key(
+        self,
+        geometry_recipe_version_id: EntityId,
+        pipeline_id: str,
+        pipeline_version: int,
+        output_contract_id: str,
+        output_contract_version: int,
+    ) -> PreparedImageArtifact | None: ...
+    def list_by_source(self, source_file_id: EntityId) -> tuple[PreparedImageArtifact, ...]: ...
+    def list_by_geometry_recipe(
+        self, geometry_recipe_version_id: EntityId
+    ) -> tuple[PreparedImageArtifact, ...]: ...
+
+
 class UnitOfWork(Protocol):
     persons: PersonRepository
     identity_documents: IdentityDocumentRepository
@@ -163,6 +181,7 @@ class UnitOfWork(Protocol):
     source_files: SourceFileRepository
     image_quality_assessments: ImageQualityAssessmentRepository
     image_geometry_recipes: ImageGeometryRecipeRepository
+    prepared_image_artifacts: PreparedImageArtifactRepository
 
     def __enter__(self) -> Self: ...
     def __exit__(

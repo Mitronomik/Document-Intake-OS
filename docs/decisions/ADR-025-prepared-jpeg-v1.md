@@ -1,10 +1,10 @@
 # ADR-025 — Deterministic prepared JPEG v1
 
-**Status:** PROPOSED
+**Status:** ACCEPTED
 
 ## Decision status and authorization boundary
 
-This ADR is a documentation-only proposal. It is not accepted and does not authorize PR-011 production implementation. The PR-011 contract is PROPOSED FOR HUMAN REVIEW; PR-011 production implementation is UNAUTHORIZED; PR-012 and later are UNAUTHORIZED; Gate 2 is NOT ACCEPTED; M3 is IN PROGRESS. A later explicit Product owner decision must accept this ADR and the PR-011 contract, authorize implementation, and name the merge commit of this documentation-contract PR as its exact base.
+This ADR and the PR-011 contract were accepted by the Product owner on 2026-07-26. The exact accepted implementation base is `f007fb5a04a5c69c70a37faf7ba12fa6775ae819`. PR-011 production implementation is in review and not human accepted; PR-012 and later remain unauthorized; Gate 2 is not accepted; M3 remains in progress.
 
 ## Proposed decision
 
@@ -56,7 +56,7 @@ Immutable `PreparedImageArtifact` fields are: `id: EntityId`, `source_file_id: E
 
 `PrepareJpegCommand` fields are `prepared_artifact_id`, `stored_artifact_id`, `geometry_recipe_version_id`, `audit_event_id`, `prepared_at`, `actor`, `correlation_id`. IDs/timestamp are caller supplied; record IDs are pairwise distinct; time is aware UTC; there is no UUID/time generation, path, bytes, encoder/quality/resize override, or PR-009 policy identity. Results return controlled metadata and the persisted entity, never bytes or paths.
 
-Future forward-only migration `v0007_prepared_jpeg` transitions schema 6 to 7, must not alter v0001-v0006, and receives no checksum until implemented/reviewed. It enforces immutable rows; positive dimensions/size; the exact byte ceiling; JPEG/SRGB; allowed quality/resize sequences; fixed identities; foreign keys; canonical payload/projection equality; update/delete/replacement rejection; deterministic ordering; and `UNIQUE (geometry_recipe_version_id, pipeline_id, pipeline_version, output_contract_id, output_contract_version)`. Repository reads validate every canonical payload and projection before filtering or returning.
+Future forward-only migration `v0007_prepared_jpeg` transitions schema 6 to 7, must not alter v0001-v0006, and receives no checksum until implemented/reviewed. It enforces immutable rows; positive dimensions/size; the exact byte ceiling; JPEG/SRGB; allowed quality/resize sequences; fixed identities; foreign keys; canonical payload/projection equality; update/delete/replacement rejection; deterministic ordering; and `UNIQUE (geometry_recipe_version_id, pipeline_id, pipeline_version, output_contract_id, output_contract_version)`. Each public repository method must constrain its SQL query to the requested scope. Every row returned by that scoped SQL query must be fully deserialized and projection-validated before any result is returned. Corruption inside the query result set fails closed. Corruption outside the query result set must not poison an unrelated query.
 
 ## Publication, transaction and reconciliation
 
@@ -79,3 +79,22 @@ The encoder is deterministic and replayable; application creation is create-once
 ## Roadmap/pipeline ordering resolution
 
 The product pipeline retains “merge before final compression.” PR-012 supplies confirmed recipes per region. PR-013 composes confirmed uncompressed RGB rasters into one controlled `UncompressedRgbRaster`, then calls `PreparedJpegEncoderPort` directly—not the recipe service. It cannot bypass or change settings, sequences, metadata rules or byte limit. Gate 2 remains blocked until PR-011, PR-012 and PR-013 are accepted and local real-photo evidence exists outside Git, Codex and CI.
+
+## Current lifecycle state — 2026-07-26
+
+
+Product owner authorization date: 2026-07-26. Accepted contract and implementation base: `f007fb5a04a5c69c70a37faf7ba12fa6775ae819`. Current schema version: `7`. Final v0007 checksum: `afad8ccc6de4ef81d73f137cbffa5a45fec1fdbb6940eabb0507cc9d6580a4a7`. V0007 uses a checksum-protected `DISABLED_DURING_TABLE_REBUILD` execution mode, a transactional populated-table copy, foreign-key checks before and after restoration, and no internal SQLite schema edits. Candidate evidence uses the production attempt generator and observer; determinism reuses the same PR-010 RGB render; verifier privacy uses an exact allowlist and runtime forbidden-value checks. ADR-025: ACCEPTED. PR-011 CONTRACT: ACCEPTED. PR-011 PRODUCTION IMPLEMENTATION: IMPLEMENTED AND IN REVIEW; NOT HUMAN ACCEPTED. PR-012 AND LATER: UNAUTHORIZED. Q-021: DEFERRED. PRODUCTION PR-009 QUALITY POLICY: NOT ACTIVE. PRODUCTION `policy_id`: NOT ASSIGNED. PRODUCTION `policy_version`: NOT ASSIGNED. AUTOMATIC PR-009 QUALITY BLOCKING: NOT ACTIVE. AUTOMATIC PRODUCTION `RETAKE_REQUIRED`: NOT ACTIVE. GATE 2: NOT ACCEPTED. M3: IN PROGRESS. Real documents and personal data remain prohibited in Git, Codex and CI.
+## PR-011 acceptance-control status
+
+This normative acceptance status supersedes broader implementation wording for current readiness only; dated historical snapshots remain historical.
+
+- PR-011 PRODUCTION CODE: IMPLEMENTED IN REVIEW
+- PR-011 ACCEPTANCE EVIDENCE: INCOMPLETE
+- PR-011 HUMAN ACCEPTANCE: BLOCKED
+- PR-012 AND LATER: UNAUTHORIZED
+- Q-021: DEFERRED
+- PRODUCTION PR-009 QUALITY POLICY: NOT ACTIVE
+- GATE 2: NOT ACCEPTED
+- M3: IN PROGRESS
+
+CI success proves the checked implementation and tests pass; it does not prove that every acceptance-manifest entry exists.

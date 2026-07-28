@@ -1,14 +1,14 @@
 # PR-011 — Deterministic JPEG Preparation Under 1.90 MiB
 
-**Status:** CONTRACT PROPOSED FOR HUMAN REVIEW; PRODUCTION IMPLEMENTATION UNAUTHORIZED
+**Status:** IMPLEMENTED AND IN REVIEW; NOT HUMAN ACCEPTED
 
 ## Authorization and implementation base
 
-This is a documentation-only contract proposal governed by proposed [ADR-025](../decisions/ADR-025-prepared-jpeg-v1.md). Merging it does not authorize production implementation. The future exact implementation base is **the merge commit of this documentation-contract PR, after separate Product owner acceptance and authorization**. That decision must accept ADR-025 and this contract. PR-012 and later remain UNAUTHORIZED; Gate 2 is NOT ACCEPTED; M3 is IN PROGRESS.
+ADR-025 and this contract were accepted by the Product owner on 2026-07-26. Production implementation is in review in PR #30 and is not human accepted. The exact implementation base is `f007fb5a04a5c69c70a37faf7ba12fa6775ae819`. PR-012 and later remain UNAUTHORIZED; Gate 2 is NOT ACCEPTED; M3 is IN PROGRESS.
 
 ## Complete V1 contract
 
-ADR-025's exact input, original-raster, output, candidate ordering, determinism, technical guard, immutable model, DTO, future v0007, publication/UoW/reconciliation, audit, controlled-error, idempotency, privacy, and PR-012/PR-013 orchestration rules are normative and incorporated here without caller overrides.
+ADR-025's exact input, original-raster, output, candidate ordering, determinism, technical guard, immutable model, DTO, implemented v0007, publication/UoW/reconciliation, audit, controlled-error, idempotency, privacy, and PR-012/PR-013 orchestration rules are normative and incorporated here without caller overrides.
 
 Fixed identities and boundary:
 
@@ -39,17 +39,17 @@ The selected JPEG is published exactly once only after the write Unit of Work is
 
 PR-011 consumes one accepted recipe and implements no multi-region or side merge. PR-012 supplies recipes per region; PR-013 preserves merge-before-final-compression by composing working rasters/sides and reusing the versioned primitive without silently changing encoder semantics.
 
-## Future implementation files (not created by this PR)
+## Implemented production modules
 
 `src/document_intake/domain/prepared_jpeg.py`; `src/document_intake/application/dto/prepared_jpeg.py`; `src/document_intake/application/services/prepared_jpeg.py`; `src/document_intake/application/ports/jpeg_preparation.py`; `src/document_intake/image_pipeline/jpeg_preparer.py`; `src/document_intake/persistence/migrations/v0007_prepared_jpeg.py`; `src/document_intake/persistence/repositories/prepared_jpeg.py`; `src/document_intake/persistence/serialization.py`; `src/document_intake/persistence/database.py`; `src/document_intake/application/ports/persistence.py`; `scripts/verify_pr011_jpeg.py`; `tests/domain/test_prepared_jpeg.py`; `tests/image_pipeline/test_jpeg_preparer.py`; `tests/application/test_prepared_jpeg_service.py`; `tests/persistence/test_prepared_jpeg_repository.py`; `tests/persistence/test_migrations.py`; `tests/persistence/test_static_contracts.py`; `tests/test_verify_pr011_jpeg.py`; `.github/workflows/ci.yml`.
 
-## Future tests
+## Verification requirements
 
 Synthetic-only tests must cover: exact accepted/rejected byte boundaries; JPEG decode; RGB/sRGB/no alpha; empty EXIF and absent ICC/XMP/IPTC/comment/source metadata; exact quality and resolution ordering; quality before resolution; every attempt from uncompressed raster and never prior JPEG; 4:4:4; non-progressive; repeated determinism; immutable original and recipe; no intermediate publication; selected publication once; failure publishes nothing; database failure preserves valid records and meets orphan reconciliation; canonical payload/projection validation; update/delete/replace rejection; audit insertion/rollback; privacy-safe errors/repr/verifier; no paths or bytes in DTOs; full Ubuntu/Windows pytest; `uv build`; Windows production SQLCipher verification; and no real documents or PII.
 
-## Future verifier
+## Implemented Windows production verifier
 
-Future `scripts/verify_pr011_jpeg.py` uses synthetic data only and proves immutable original, accepted geometry replay, candidate order, boundary, JPEG/RGB/metadata, selected quality/scale, deterministic rerun, encrypted immutable storage, persistence, audit, rollback, allowlisted privacy output, migration chain, and production SQLCipher on Windows. It is not added to CI by this documentation PR. Sanitized output contract:
+`scripts/verify_pr011_jpeg.py` is present in CI and uses production SQLCipher, encrypted immutable storage, repositories, the PR-011 service, and synthetic data only and proves immutable original, accepted geometry replay, candidate order, boundary, JPEG/RGB/metadata, selected quality/scale, deterministic rerun, encrypted immutable storage, persistence, audit, rollback, allowlisted privacy output, migration chain, and production SQLCipher on Windows. Sanitized output contract:
 
 ```text
 PR011_VERIFY schema_version=7
@@ -69,13 +69,13 @@ PR011_VERIFY privacy=PASS
 PR011_VERIFY result=PASS
 ```
 
-## Non-goals
+## Remaining non-goals
 
-No production code, migration/checksum, dependency/lock/workflow change, encoding, resizing, metadata stripping, persistence, audit enum, verifier, region orchestration, side merge, UI, OCR, Excel, terminal adapter, PR-009 policy activation, Q-021 resolution, installer, network/cloud/telemetry, fixture/binary, real document, or personal data is included.
+PR-012 region orchestration, PR-013 side merge, UI, OCR, Excel, terminal adapters, PR-009 policy activation, Q-021 resolution, installer, network/cloud/telemetry, committed binary fixtures, real documents and personal data remain outside PR-011.
 
-## Recipe application service and reusable encoder
+## Implemented application service
 
-The future use case `prepare_geometry_recipe_as_jpeg` accepts one immutable `geometry_recipe_version_id` plus caller `prepared_artifact_id`, `stored_artifact_id`, `audit_event_id`, `prepared_at`, `actor` and `correlation_id`. It loads and replays PR-010 geometry, constructs a fresh `UncompressedRgbRaster`, calls `PreparedJpegEncoderPort`, then publishes and persists. It rejects caller bytes/paths/settings, unconfirmed geometry, multiple recipes/sides, and composed rasters. PR-013 never calls this recipe service with composition output.
+The implemented `document_intake.application.services.prepared_jpeg.prepare_geometry_recipe_as_jpeg` service accepts one immutable `geometry_recipe_version_id` plus caller `prepared_artifact_id`, `stored_artifact_id`, `audit_event_id`, `prepared_at`, `actor` and `correlation_id`. It loads and replays PR-010 geometry, constructs a fresh `UncompressedRgbRaster`, calls `PreparedJpegEncoderPort`, then publishes and persists. It rejects caller bytes/paths/settings, unconfirmed geometry, multiple recipes/sides, and composed rasters. PR-013 never calls this recipe service with composition output.
 
 ```python
 @dataclass(frozen=True, slots=True)
@@ -111,7 +111,7 @@ Raster dimensions are positive, `len(rgb_pixels) == width * height * 3`, and mod
 
 ## Create-once persistence and exact operation order
 
-Exactly one artifact exists for natural key `(geometry_recipe_version_id, pipeline_id, pipeline_version, output_contract_id, output_contract_version)`, enforced by the exact future unique constraint:
+Exactly one artifact exists for natural key `(geometry_recipe_version_id, pipeline_id, pipeline_version, output_contract_id, output_contract_version)`, enforced by the exact implemented unique constraint:
 
 ```text
 UNIQUE (
@@ -179,10 +179,49 @@ correlation_id = command.correlation_id
 
 Audit, stored-artifact metadata and prepared artifact commit atomically in the write Unit of Work; none commits without the others. Audit excludes filename, path, bytes, source/output checksum, quality, resize, dimensions, byte size, coordinates, document identifiers, OCR, PII and raw exceptions. Controlled metrics remain on the immutable artifact.
 
-## Future v0007 persistence correction
+## Implemented persistence and migration
 
-The proposal transitions schema 6 to 7 without modifying v0001–v0006 or assigning a checksum here. It enforces immutable rows; UPDATE/DELETE/REPLACE rejection; positive dimensions/size; `byte_size <= 1_992_294`; allowed quality/resize sequences; fixed JPEG/SRGB and pipeline/output identities; foreign keys; canonical payload/projection equality; deterministic ordering; and the unique natural key above. Reads validate every canonical payload and projection before filtering or returning.
+The proposal transitions schema 6 to 7 without modifying v0001–v0006 or assigning a checksum here. It enforces immutable rows; UPDATE/DELETE/REPLACE rejection; positive dimensions/size; `byte_size <= 1_992_294`; allowed quality/resize sequences; fixed JPEG/SRGB and pipeline/output identities; foreign keys; canonical payload/projection equality; deterministic ordering; and the unique natural key above. Each public repository method must constrain its SQL query to the requested scope. Every row returned by that scoped SQL query must be fully deserialized and projection-validated before any result is returned. Corruption inside the query result set fails closed. Corruption outside the query result set must not poison an unrelated query.
 
-## Additional future tests
+## Required acceptance evidence before PR-011 human acceptance
 
-Tests must prove recipe service rejection of caller raster bytes; valid-only RGB raster input; PR-013-compatible encoder reuse; no persistence/storage/audit in the encoder; create-once natural key; duplicate-ID and existing-key preflight before publication; late-race controlled orphan reconciliation; exact audit fields; and artifact/audit atomicity.
+The following required workstreams are currently incomplete and are not optional future improvements:
+
+1. application-service scenario matrix;
+2. exact service sequencing and publication-exactly-once;
+3. real service rollback and orphan reconciliation;
+4. production Unit of Work repository tests;
+5. repository commit, rollback and close containment;
+6. duplicate ID, stored-reference and natural-key constraints;
+7. canonical-payload corruption matrix;
+8. projected-column mismatch matrix;
+9. scoped corruption behavior;
+10. complete populated schema-v6 migration fixture;
+11. production SQLite multi-reopen migration;
+12. Windows SQLCipher v6-to-v7 migration and reopen;
+13. prepared-artifact commit, close, reopen and read;
+14. controlled-error privacy matrix;
+15. final exact-head acceptance audit.
+
+## Current lifecycle state — 2026-07-26
+
+
+Product owner authorization date: 2026-07-26. Accepted contract and implementation base: `f007fb5a04a5c69c70a37faf7ba12fa6775ae819`. Current schema version: `7`. Final v0007 checksum: `afad8ccc6de4ef81d73f137cbffa5a45fec1fdbb6940eabb0507cc9d6580a4a7`. V0007 uses a checksum-protected `DISABLED_DURING_TABLE_REBUILD` execution mode, a transactional populated-table copy, foreign-key checks before and after restoration, and no internal SQLite schema edits. Candidate evidence uses the production attempt generator and observer; determinism reuses the same PR-010 RGB render; verifier privacy uses an exact allowlist and runtime forbidden-value checks. ADR-025: ACCEPTED. PR-011 CONTRACT: ACCEPTED. PR-011 PRODUCTION IMPLEMENTATION: IMPLEMENTED AND IN REVIEW; NOT HUMAN ACCEPTED. PR-012 AND LATER: UNAUTHORIZED. Q-021: DEFERRED. PRODUCTION PR-009 QUALITY POLICY: NOT ACTIVE. PRODUCTION `policy_id`: NOT ASSIGNED. PRODUCTION `policy_version`: NOT ASSIGNED. AUTOMATIC PR-009 QUALITY BLOCKING: NOT ACTIVE. AUTOMATIC PRODUCTION `RETAKE_REQUIRED`: NOT ACTIVE. GATE 2: NOT ACCEPTED. M3: IN PROGRESS. Real documents and personal data remain prohibited in Git, Codex and CI.
+
+## Human-acceptance boundary
+
+PR-011 remains implemented and in review, not human accepted. Exact-head Ubuntu and Windows CI, including the production Windows verifier, must succeed before human acceptance. PR-012 and later remain unauthorized; Gate 2 is not accepted; M3 remains in progress.
+## PR-011 acceptance-control status
+
+This normative acceptance status supersedes broader implementation wording for current readiness only; dated historical snapshots remain historical.
+
+- PR-011 PRODUCTION CODE: IMPLEMENTED IN REVIEW
+- PR-011 ACCEPTANCE EVIDENCE: INCOMPLETE
+- PR-011 HUMAN ACCEPTANCE: BLOCKED
+- PR-012 AND LATER: UNAUTHORIZED
+- Q-021: DEFERRED
+- PRODUCTION PR-009 QUALITY POLICY: NOT ACTIVE
+- GATE 2: NOT ACCEPTED
+- M3: IN PROGRESS
+
+CI success proves the checked implementation and tests pass; it does not prove that every acceptance-manifest entry exists.

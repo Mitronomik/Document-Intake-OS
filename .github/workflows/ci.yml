@@ -34,6 +34,8 @@ jobs:
           python-version-file: ".python-version"
       - name: Repository policy
         run: python scripts/check_repository_policy.py
+      - name: PR-011 acceptance inventory
+        run: python scripts/check_pr011_acceptance.py --inventory
       - name: Install Qt runtime libraries on Linux
         if: runner.os == 'Linux'
         run: |
@@ -52,11 +54,13 @@ jobs:
           uv run mypy
           src
           scripts/check_repository_policy.py
+          scripts/check_pr011_acceptance.py
           scripts/verify_pr006_storage.py
           scripts/verify_pr007_audit.py
           scripts/verify_pr008_import.py
           scripts/verify_pr009_quality.py
           scripts/verify_pr010_geometry.py
+          scripts/verify_pr011_jpeg.py
       - name: Pytest
         run: uv run pytest -ra
       - name: Build package
@@ -75,6 +79,9 @@ jobs:
       - name: Verify PR-010 geometry on production SQLCipher
         if: runner.os == 'Windows'
         run: uv run python scripts/verify_pr010_geometry.py
+      - name: Verify PR-011 JPEG on production SQLCipher
+        if: runner.os == 'Windows'
+        run: uv run python scripts/verify_pr011_jpeg.py
 
   windows-encryption-spike:
     name: PR-S001 Windows encryption spike

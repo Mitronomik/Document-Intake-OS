@@ -22,6 +22,9 @@ from document_intake.persistence.migrations.v0005_image_quality import (
 from document_intake.persistence.migrations.v0006_image_geometry import (
     MIGRATION as V0006_IMAGE_GEOMETRY,
 )
+from document_intake.persistence.migrations.v0007_prepared_jpeg import (
+    MIGRATION as V0007_PREPARED_JPEG,
+)
 
 REQUIRED_TABLES = {
     "schema_migrations",
@@ -79,13 +82,14 @@ def test_migration_1_creates_tables_metadata_user_version_and_application_id() -
         (V0004_MIGRATION.version, V0004_MIGRATION.name, V0004_MIGRATION.checksum),
         (V0005_IMAGE_QUALITY.version, V0005_IMAGE_QUALITY.name, V0005_IMAGE_QUALITY.checksum),
         (V0006_IMAGE_GEOMETRY.version, V0006_IMAGE_GEOMETRY.name, V0006_IMAGE_GEOMETRY.checksum),
+        (V0007_PREPARED_JPEG.version, V0007_PREPARED_JPEG.name, V0007_PREPARED_JPEG.checksum),
     ]
 
 
 def test_initialize_migrations_are_idempotent() -> None:
     connection = apply()
     database._apply_migrations(connection)
-    assert connection.execute("SELECT count(*) FROM schema_migrations").fetchone()[0] == 6
+    assert connection.execute("SELECT count(*) FROM schema_migrations").fetchone()[0] == 7
 
 
 def test_applied_prefix_validates_and_future_migration_applies(
@@ -94,7 +98,7 @@ def test_applied_prefix_validates_and_future_migration_applies(
     connection = apply()
     future_statements = ("CREATE TABLE future_projection(id INTEGER PRIMARY KEY)",)
     future = Migration(
-        7,
+        8,
         "future_projection",
         future_statements,
         migration_checksum(future_statements),
@@ -109,15 +113,16 @@ def test_applied_prefix_validates_and_future_migration_applies(
             V0004_MIGRATION,
             V0005_IMAGE_QUALITY,
             V0006_IMAGE_GEOMETRY,
+            V0007_PREPARED_JPEG,
             future,
         ),
     )
-    monkeypatch.setattr(database, "CURRENT_SCHEMA_VERSION", 7)
+    monkeypatch.setattr(database, "CURRENT_SCHEMA_VERSION", 8)
 
     database._validate_schema(connection)
     database._apply_migrations(connection)
 
-    assert connection.execute("PRAGMA user_version").fetchone()[0] == 7
+    assert connection.execute("PRAGMA user_version").fetchone()[0] == 8
     assert connection.execute(
         "SELECT version, name, checksum FROM schema_migrations ORDER BY version"
     ).fetchall() == [
@@ -127,6 +132,7 @@ def test_applied_prefix_validates_and_future_migration_applies(
         (V0004_MIGRATION.version, V0004_MIGRATION.name, V0004_MIGRATION.checksum),
         (V0005_IMAGE_QUALITY.version, V0005_IMAGE_QUALITY.name, V0005_IMAGE_QUALITY.checksum),
         (V0006_IMAGE_GEOMETRY.version, V0006_IMAGE_GEOMETRY.name, V0006_IMAGE_GEOMETRY.checksum),
+        (V0007_PREPARED_JPEG.version, V0007_PREPARED_JPEG.name, V0007_PREPARED_JPEG.checksum),
         (future.version, future.name, future.checksum),
     ]
     assert connection.execute(
@@ -139,7 +145,7 @@ def test_applied_prefix_validates_and_future_migration_applies(
     [
         lambda c: c.execute(
             "INSERT INTO schema_migrations(version, name, checksum, applied_at_utc) "
-            "VALUES (7, 'extra', 'extra', '2026-07-19T00:00:00Z')"
+            "VALUES (8, 'extra', 'extra', '2026-07-19T00:00:00Z')"
         ),
         lambda c: c.execute("UPDATE schema_migrations SET name='reordered' WHERE version=1"),
         lambda c: (
@@ -440,15 +446,15 @@ def test_v0004_literal_metadata_and_all_prior_checksums_are_frozen() -> None:
     )
 
 
-def test_empty_database_and_upgrade_from_version_3_reach_exact_schema_6() -> None:
+def test_empty_database_and_upgrade_from_version_3_reach_exact_schema_7() -> None:
     empty = apply()
-    assert empty.execute("PRAGMA user_version").fetchone()[0] == 6
+    assert empty.execute("PRAGMA user_version").fetchone()[0] == 7
     upgraded = apply_through_v0003()
     database._apply_migrations(upgraded)
-    assert upgraded.execute("PRAGMA user_version").fetchone()[0] == 6
+    assert upgraded.execute("PRAGMA user_version").fetchone()[0] == 7
     assert upgraded.execute(
         "SELECT version, name, checksum FROM schema_migrations ORDER BY version DESC LIMIT 1"
-    ).fetchone() == (6, V0006_IMAGE_GEOMETRY.name, V0006_IMAGE_GEOMETRY.checksum)
+    ).fetchone() == (7, V0007_PREPARED_JPEG.name, V0007_PREPARED_JPEG.checksum)
 
 
 def test_v0004_column_constraints_foreign_keys_and_indexes() -> None:
@@ -684,3 +690,157 @@ def test_pr010_migration_metadata_checksum_and_columns() -> None:
         "created_at_utc",
         "canonical_payload",
     ]
+
+
+def test_v0007_populated_v6_rebuild_preserves_rows_and_foreign_keys() -> None:
+    connection = conn()
+    connection.execute("PRAGMA foreign_keys=ON")
+    for migration in database.MIGRATIONS[:6]:
+        database._apply_one_migration(connection, migration)
+    insert_batch(connection)
+    insert_artifact(connection)
+    connection.execute(
+        "INSERT INTO source_files VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)", source_values()
+    )
+    connection.execute(
+        "INSERT INTO upload_batch_source_files VALUES (?,?,?)",
+        ("00000000-0000-0000-0000-000000000001", 0, "00000000-0000-0000-0000-000000000001"),
+    )
+    before = connection.execute("SELECT * FROM stored_artifacts").fetchall()
+    database._apply_one_migration(connection, V0007_PREPARED_JPEG)
+    assert connection.execute("PRAGMA user_version").fetchone()[0] == 7
+    assert connection.execute("SELECT * FROM stored_artifacts").fetchall() == before
+    assert connection.execute("PRAGMA foreign_keys").fetchone()[0] == 1
+    assert connection.execute("PRAGMA foreign_key_check").fetchall() == []
+    assert connection.execute("PRAGMA integrity_check").fetchone()[0] == "ok"
+    parents = {row[2] for row in connection.execute("PRAGMA foreign_key_list(source_files)")}
+    assert "stored_artifacts" in parents
+    assert not ({"stored_artifacts_v0007_new"} & parents)
+
+
+def test_migrations_forbid_internal_schema_edits() -> None:
+    prohibited = (
+        "writable_schema",
+        "update sqlite_schema",
+        "update sqlite_master",
+        "pragma schema_version",
+    )
+    for migration in database.MIGRATIONS:
+        text = "\n".join(migration.statements).lower()
+        assert not any(marker in text for marker in prohibited)
+
+
+def test_table_rebuild_mode_is_checksum_protected_and_restores_foreign_keys_on_failure() -> None:
+    from document_intake.persistence.migrations.model import Migration, migration_checksum
+
+    statements = ("CREATE TABLE temporary_rebuild(id INTEGER)", "SELECT * FROM missing_table")
+    checksum = migration_checksum(statements, foreign_key_mode="DISABLED_DURING_TABLE_REBUILD")
+    assert checksum != migration_checksum(statements)
+    migration = Migration(
+        1, "failing_rebuild", statements, checksum, "DISABLED_DURING_TABLE_REBUILD"
+    )
+    connection = conn()
+    connection.execute("PRAGMA foreign_keys=ON")
+    with pytest.raises(PersistenceError) as exc:
+        database._apply_one_migration(connection, migration)
+    assert exc.value.code is PersistenceErrorCode.MIGRATION_FAILED
+    assert connection.execute("PRAGMA foreign_keys").fetchone()[0] == 1
+    assert connection.execute("PRAGMA user_version").fetchone()[0] == 0
+    assert (
+        connection.execute(
+            "SELECT name FROM sqlite_master WHERE name='temporary_rebuild'"
+        ).fetchone()
+        is None
+    )
+
+
+class _FailAfterRealStatement:
+    def __init__(self, connection: sqlite3.Connection, marker: str) -> None:
+        self._connection = connection
+        self._marker = marker.lower()
+        self.failed = False
+
+    @property
+    def in_transaction(self) -> bool:
+        return self._connection.in_transaction
+
+    def execute(self, statement: str, parameters=()):  # type: ignore[no-untyped-def]
+        cursor = self._connection.execute(statement, parameters)
+        if not self.failed and self._marker in " ".join(statement.lower().split()):
+            self.failed = True
+            raise sqlite3.OperationalError("synthetic migration interruption")
+        return cursor
+
+    def rollback(self) -> None:
+        self._connection.rollback()
+
+    def commit(self) -> None:
+        self._connection.commit()
+
+
+@pytest.mark.parametrize(
+    "marker",
+    [
+        "insert into audit_events select * from audit_events_v0006",
+        "insert into stored_artifacts_v0007_new",
+    ],
+    ids=("after-audit-copy", "after-stored-artifact-copy"),
+)
+def test_actual_v0007_mid_migration_failure_is_atomic_and_retryable(marker: str) -> None:
+    connection = conn()
+    connection.execute("PRAGMA foreign_keys=ON")
+    for migration in database.MIGRATIONS[:6]:
+        database._apply_one_migration(connection, migration)
+    insert_batch(connection)
+    insert_artifact(connection)
+    connection.execute(
+        "INSERT INTO source_files VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)", source_values()
+    )
+    before = connection.execute("SELECT * FROM stored_artifacts").fetchall()
+    wrapped = _FailAfterRealStatement(connection, marker)
+    with pytest.raises(PersistenceError) as exc:
+        database._apply_one_migration(wrapped, V0007_PREPARED_JPEG)  # type: ignore[arg-type]
+    assert exc.value.code is PersistenceErrorCode.MIGRATION_FAILED
+    assert wrapped.failed
+    assert connection.execute("PRAGMA user_version").fetchone()[0] == 6
+    assert connection.execute("SELECT count(*) FROM schema_migrations").fetchone()[0] == 6
+    assert connection.execute("SELECT * FROM stored_artifacts").fetchall() == before
+    names = {row[0] for row in connection.execute("SELECT name FROM sqlite_master")}
+    assert "stored_artifacts_v0007_new" not in names
+    assert "prepared_image_artifacts" not in names
+    assert connection.execute("PRAGMA foreign_keys").fetchone()[0] == 1
+    assert connection.execute("PRAGMA foreign_key_check").fetchall() == []
+    assert connection.execute("PRAGMA integrity_check").fetchone()[0] == "ok"
+    database._apply_one_migration(connection, V0007_PREPARED_JPEG)
+    assert connection.execute("PRAGMA user_version").fetchone()[0] == 7
+    assert connection.execute("SELECT * FROM stored_artifacts").fetchall() == before
+
+
+def test_file_backed_v6_to_v7_migration_survives_real_close_and_reopen(tmp_path) -> None:  # type: ignore[no-untyped-def]
+    path = tmp_path / "migration-reopen.sqlite"
+    first = sqlite3.connect(path, isolation_level=None)
+    first.execute("PRAGMA foreign_keys=ON")
+    for migration in database.MIGRATIONS[:6]:
+        database._apply_one_migration(first, migration)
+    insert_batch(first)
+    insert_artifact(first)
+    first.execute(
+        "INSERT INTO source_files VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)", source_values()
+    )
+    expected = first.execute("SELECT * FROM stored_artifacts").fetchall()
+    first.close()
+
+    second = sqlite3.connect(path, isolation_level=None)
+    second.execute("PRAGMA foreign_keys=ON")
+    database._apply_one_migration(second, V0007_PREPARED_JPEG)
+    second.close()
+
+    third = sqlite3.connect(path, isolation_level=None)
+    third.execute("PRAGMA foreign_keys=ON")
+    assert third.execute("PRAGMA user_version").fetchone()[0] == 7
+    assert third.execute("SELECT * FROM stored_artifacts").fetchall() == expected
+    assert third.execute("SELECT count(*) FROM schema_migrations").fetchone()[0] == 7
+    assert third.execute("PRAGMA foreign_keys").fetchone()[0] == 1
+    assert third.execute("PRAGMA foreign_key_check").fetchall() == []
+    assert third.execute("PRAGMA integrity_check").fetchone()[0] == "ok"
+    third.close()
