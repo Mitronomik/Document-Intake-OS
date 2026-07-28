@@ -81,6 +81,11 @@ def expected_type(i: str) -> str:
     return "pytest"
 
 
+EXPECTED_IDS_BY_STAGE = {
+    stage: frozenset(i for i in REQUIRED_IDS if expected_stage(i) == stage) for stage in STAGES
+}
+
+
 def _function(root: Path, selector: str) -> ast.FunctionDef | ast.AsyncFunctionDef | None:
     parts = selector.split("::")
     if len(parts) != 2:
@@ -240,12 +245,21 @@ def validate(
         errors.append("REQUIRED_ID_MISSING")
     if observed - REQUIRED_IDS:
         errors.append("UNKNOWN_ID")
+    valid_known_ids: set[str] = set()
+    valid_evidence_ids: set[str] = set()
+    status_by_id: dict[str, str] = {}
+    selector_ids: dict[str, set[str]] = {}
     for e in valid_entries:
         i = e["id"]
+        if i not in REQUIRED_IDS:
+            continue
+        valid_known_ids.add(i)
+        entry_error_count = len(errors)
         status = e["status"]
         if status not in {"pending", "implemented"}:
             errors.append("INVALID_STATUS")
             continue
+        status_by_id[i] = status
         (implemented if status == "implemented" else pending).append(i)
         if e["stage"] not in STAGES or e["stage"] != expected_stage(i):
             errors.append("INVALID_STAGE")
@@ -270,6 +284,7 @@ def validate(
             token = "test_" + i.lower().replace("-", "_") + "_"
             for s in e["test_selectors"]:
                 selectors.setdefault(s, []).append(i)
+                selector_ids.setdefault(s, set()).add(i)
                 path = s.split("::")[0]
                 if path not in e["evidence_files"] or not _allowed_path(i, path):
                     errors.append("EVIDENCE_PATH_INVALID")
@@ -290,14 +305,21 @@ def validate(
                 for r in e["evidence_refs"]
             ):
                 errors.append("EVIDENCE_REF_INVALID")
+        if len(errors) == entry_error_count:
+            valid_evidence_ids.add(i)
     if any(len(v) > 1 for v in selectors.values()):
         errors.append("DUPLICATE_EVIDENCE_SELECTOR")
+        for selector, evidence_ids in selector_ids.items():
+            if len(selectors[selector]) > 1:
+                valid_evidence_ids.difference_update(evidence_ids)
     findings = guardrail_codes(root)
     stage = "final" if require_complete else required_stage
     if stage is not None:
-        upto = set(STAGES[: STAGES.index(stage) + 1])
-        required = [e["id"] for e in valid_entries if e["stage"] in upto]
-        if any(i in pending for i in required):
+        required = frozenset().union(
+            *(EXPECTED_IDS_BY_STAGE[s] for s in STAGES[: STAGES.index(stage) + 1])
+        )
+        implemented_valid = {i for i in valid_evidence_ids if status_by_id.get(i) == "implemented"}
+        if not required <= implemented_valid:
             errors.append("PENDING_EVIDENCE")
         if STAGES.index(stage) >= 1:
             errors.extend(
@@ -312,8 +334,11 @@ def validate(
     ) != "READY_FOR_HUMAN_REVIEW":
         errors.append("LIFECYCLE_STATUS_INVALID")
     completed = sum(
-        all(e.get("status") == "implemented" for e in valid_entries if e["stage"] == s)
-        for s in STAGES
+        bool(expected_ids)
+        and expected_ids <= valid_known_ids
+        and expected_ids <= valid_evidence_ids
+        and all(status_by_id.get(i) == "implemented" for i in expected_ids)
+        for expected_ids in EXPECTED_IDS_BY_STAGE.values()
     )
     return Report(
         int(data.get("schema_version", 0)) if isinstance(data, dict) else 0,

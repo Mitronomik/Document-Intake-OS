@@ -405,7 +405,9 @@ def test_lifecycle_state_records_pr005_accepted_state() -> None:
     assert "PR-S001-F3 is the current correction" not in progress
     assert "**Обновлено:** 2026-07-17" not in progress
     assert "**Обновлено:** 2026-07-18" not in progress
-    assert "**Обновлено:** 2026-07-26" in progress
+    active_header = progress.split("##", 1)[0]
+    assert "**Обновлено:** 2026-07-28" in active_header
+    assert "**Обновлено:** 2026-07-26" not in active_header
     assert "- [x] GATE-S1: COMPLETED AND HUMAN ACCEPTED;" in progress
     assert "- [x] ADR-018: ACCEPTED;" in progress
     assert "- [x] Q-010: ACCEPTED;" in progress

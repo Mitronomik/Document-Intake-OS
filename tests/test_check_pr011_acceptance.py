@@ -57,6 +57,84 @@ def test_schema_v2_and_exact_ids():
     assert len(d["entries"]) == 57
 
 
+def test_canonical_stage_membership_counts():
+    assert {stage: len(ids) for stage, ids in checker.EXPECTED_IDS_BY_STAGE.items()} == {
+        "application_service": 17,
+        "repository_core": 11,
+        "repository_corruption": 6,
+        "encoder": 5,
+        "migration": 7,
+        "windows": 4,
+        "final": 7,
+    }
+    assert len(frozenset().union(*checker.EXPECTED_IDS_BY_STAGE.values())) == 57
+
+
+@pytest.mark.parametrize(
+    "unknown_id", ["PR011-REP-ABC", "PR011-REP-", "PR011-UNKNOWN-001", "UNKNOWN"]
+)
+def test_unknown_string_ids_fail_closed(tmp_path, unknown_id):
+    d = manifest()
+    d["entries"][0]["id"] = unknown_id
+    report = checker.validate(d, tmp_path)
+    assert {"UNKNOWN_ID", "REQUIRED_ID_MISSING"} <= set(report.errors)
+    assert "CHECKER_INTERNAL_ERROR" not in report.errors
+
+
+def test_unknown_implemented_id_cannot_supply_evidence_or_complete_stage(tmp_path):
+    d = manifest()
+    e = d["entries"][0]
+    e.update(
+        id="PR011-REP-ABC",
+        status="implemented",
+        test_selectors=["tests/application/test_prepared_jpeg_service.py::test_plausible"],
+        evidence_files=["tests/application/test_prepared_jpeg_service.py"],
+    )
+    report = checker.validate(d, tmp_path, required_stage="application_service")
+    assert report.implemented == ()
+    assert report.completed_stages == 0
+    assert {"UNKNOWN_ID", "REQUIRED_ID_MISSING", "PENDING_EVIDENCE"} <= set(report.errors)
+
+
+def test_stage_with_no_structurally_valid_entries_is_not_vacuously_complete(tmp_path):
+    d = manifest()
+    for e in d["entries"]:
+        if e["stage"] == "application_service":
+            e["stage"] = None
+    assert checker.validate(d, tmp_path).completed_stages == 0
+
+
+def test_partial_then_complete_synthetic_stage(tmp_path):
+    d = manifest()
+    svc_ids = sorted(checker.EXPECTED_IDS_BY_STAGE["application_service"])
+    for i in svc_ids[:-1]:
+        implement(d, tmp_path, i)
+    assert checker.validate(d, tmp_path).completed_stages == 0
+    implement(d, tmp_path, svc_ids[-1])
+    report = checker.validate(d, tmp_path)
+    assert report.errors == ()
+    assert report.completed_stages == 1
+
+
+def test_complete_stage_with_invalid_evidence_is_not_complete(tmp_path):
+    d = manifest()
+    svc_ids = sorted(checker.EXPECTED_IDS_BY_STAGE["application_service"])
+    for i in svc_ids:
+        implement(d, tmp_path, i)
+    entry(d, svc_ids[0])["evidence_files"].append("tests/application/missing.txt")
+    report = checker.validate(d, tmp_path)
+    assert "EVIDENCE_FILE_MISSING" in report.errors
+    assert report.completed_stages == 0
+
+
+def test_stage_gate_uses_canonical_ids_when_required_entry_is_missing(tmp_path):
+    d = manifest()
+    d["entries"] = [e for e in d["entries"] if e["id"] != "PR011-SVC-001"]
+    report = checker.validate(d, tmp_path, required_stage="application_service")
+    assert {"REQUIRED_ID_MISSING", "PENDING_EVIDENCE"} <= set(report.errors)
+    assert report.completed_stages == 0
+
+
 @pytest.mark.parametrize(
     ("field", "value", "code"),
     [
@@ -251,3 +329,22 @@ def test_malformed_typed_cli_output_is_private(tmp_path, capsys, monkeypatch):
         captured.err == "" and "Traceback" not in captured.out and "TypeError" not in captured.out
     )
     assert str(tmp_path) not in captured.out and "private" not in captured.out
+
+
+def test_unknown_string_id_cli_output_is_private(tmp_path, capsys, monkeypatch):
+    d = manifest()
+    d["entries"][0]["id"] = "PR011-REP-ABC"
+    path = tmp_path / "manifest.json"
+    path.write_text(json.dumps(d))
+    monkeypatch.setattr(checker, "MANIFEST", path)
+    monkeypatch.setattr(checker, "ROOT", tmp_path)
+
+    assert checker.main(["--inventory"]) == 1
+    captured = capsys.readouterr()
+    assert captured.err == ""
+    assert "UNKNOWN_ID" in captured.out
+    assert "Traceback" not in captured.out
+    assert "ValueError" not in captured.out
+    assert "CHECKER_INTERNAL_ERROR" not in captured.out
+    assert "PR011-REP-ABC" not in captured.out
+    assert str(tmp_path) not in captured.out
