@@ -8,6 +8,16 @@ import pytest
 from scripts import verify_pr012_regions as verifier
 
 ROOT = Path(__file__).resolve().parents[1]
+_PRIVACY_FORBIDDEN = (
+    "/tmp/",
+    "\\\\",
+    "00000000-",
+    "SELECT ",
+    "INSERT ",
+    "key=",
+    " x=",
+    " y=",
+)
 
 
 def test_supported_success_is_exact(
@@ -55,8 +65,12 @@ def test_runtime_output_has_exact_allowlist() -> None:
     )
     assert completed.stderr == ""
     assert tuple(completed.stdout.splitlines()) in (verifier._LABELS, verifier._UNSUPPORTED)
-    forbidden = ("/tmp/", "\\\\", "00000000-", "SELECT ", "INSERT ", "key=", " x=", " y=")
-    assert not any(value in completed.stdout for value in forbidden)
+    assert not any(value in completed.stdout for value in _PRIVACY_FORBIDDEN)
+
+
+def test_configured_output_allowlists_are_privacy_safe() -> None:
+    for line in (*verifier._LABELS, *verifier._UNSUPPORTED):
+        assert not any(value in line for value in _PRIVACY_FORBIDDEN)
 
 
 def test_wrong_key_probe_isolated_with_suppressed_native_output(
