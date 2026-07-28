@@ -179,3 +179,75 @@ def test_invalid_json_output_is_private(tmp_path, capsys, monkeypatch):
     assert checker.main(["--inventory"]) == 1
     o = capsys.readouterr()
     assert "private" not in o.out and not o.err
+
+
+@pytest.mark.parametrize(
+    ("field", "value"),
+    [("schema_version", True), ("pr", True), ("entries", "not-a-list"), ("current_status", 123)],
+)
+def test_top_level_malformed_types_fail_closed(tmp_path, field, value):
+    d = manifest()
+    d[field] = value
+    assert "MANIFEST_INVALID" in checker.validate(d, tmp_path).errors
+
+
+def test_list_manifest_fails_closed(tmp_path):
+    assert "MANIFEST_INVALID" in checker.validate([], tmp_path).errors
+
+
+@pytest.mark.parametrize(
+    ("field", "value"),
+    [
+        ("id", 123),
+        ("stage", None),
+        ("workstream", []),
+        ("requirement", 123),
+        ("status", []),
+        ("platform", None),
+        ("evidence_type", 1),
+        ("test_selectors", "selector"),
+        ("test_selectors", [123]),
+        ("evidence_files", "file"),
+        ("evidence_files", [None]),
+        ("evidence_refs", {}),
+        ("evidence_refs", [1]),
+        ("notes", []),
+    ],
+)
+def test_entry_malformed_types_fail_closed(tmp_path, field, value):
+    d = manifest()
+    d["entries"][0][field] = value
+    assert "MANIFEST_INVALID" in checker.validate(d, tmp_path).errors
+
+
+def test_every_evidence_file_is_validated(tmp_path):
+    d = manifest()
+    implement(d, tmp_path, "PR011-SVC-001")
+    e = entry(d, "PR011-SVC-001")
+    e["evidence_files"].append("tests/application/missing.txt")
+    assert "EVIDENCE_FILE_MISSING" in checker.validate(d, tmp_path).errors
+    supporting = tmp_path / "tests/application/support.txt"
+    supporting.write_text("synthetic")
+    e["evidence_files"][-1] = "tests/application/support.txt"
+    assert checker.validate(d, tmp_path).errors == ()
+
+
+@pytest.mark.parametrize("path", ["/absolute/file", "../outside", "tests/../../outside"])
+def test_unsafe_evidence_paths_are_rejected(tmp_path, path):
+    d = manifest()
+    implement(d, tmp_path, "PR011-SVC-001")
+    entry(d, "PR011-SVC-001")["evidence_files"].append(path)
+    assert "EVIDENCE_PATH_INVALID" in checker.validate(d, tmp_path).errors
+
+
+def test_malformed_typed_cli_output_is_private(tmp_path, capsys, monkeypatch):
+    bad = tmp_path / "manifest.json"
+    bad.write_text(json.dumps({"schema_version": True, "private": str(tmp_path)}))
+    monkeypatch.setattr(checker, "MANIFEST", bad)
+    monkeypatch.setattr(checker, "ROOT", tmp_path)
+    assert checker.main(["--inventory"]) == 1
+    captured = capsys.readouterr()
+    assert (
+        captured.err == "" and "Traceback" not in captured.out and "TypeError" not in captured.out
+    )
+    assert str(tmp_path) not in captured.out and "private" not in captured.out

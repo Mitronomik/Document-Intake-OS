@@ -155,13 +155,13 @@ def valid_quality_metrics() -> tuple[ImageQualityMetric, ...]:
 
 
 def valid_quality_issue() -> ImageQualityIssue:
-    return ImageQualityIssue(QualityIssueCode.LOW_RESOLUTION, QualityIssueSeverity.WARNING)
+    return _valid_quality_result()[0][0]
 
 
 def _policy() -> ImageQualityPolicy:
     return ImageQualityPolicy(
         QualityPolicyVersion("TEST_PR009", 1),
-        24,
+        25,
         32,
         Decimal("1"),
         Decimal("1"),
@@ -176,20 +176,25 @@ def _policy() -> ImageQualityPolicy:
 
 
 def valid_quality_assessment() -> ImageQualityAssessment:
+    issues, status = _valid_quality_result()
     return ImageQualityAssessment(
         entity_id(24),
         entity_id(20),
         STAMP,
         _policy(),
-        QualityAssessmentStatus.GOOD,
+        status,
         32,
         24,
         None,
         32,
         24,
         valid_quality_metrics(),
-        (),
+        issues,
     )
+
+
+def _valid_quality_result() -> tuple[tuple[ImageQualityIssue, ...], QualityAssessmentStatus]:
+    return derive_quality_issues_and_status(valid_quality_metrics(), _policy())
 
 
 def valid_geometry_recipe() -> ImageGeometryRecipe:
@@ -262,9 +267,14 @@ def assert_foreign_keys(c: sqlite3.Connection) -> None:
 class PopulatedV6Fixture:
     path: Path
     batch: UploadBatch
+    persisted_batch: UploadBatch
     original: StoredArtifactRecord
     source: SourceFile
-    audits: tuple[AuditEvent, ...]
+    historical_audit: AuditEvent
+    quality_audit: AuditEvent
+    geometry_audit: AuditEvent
+    quality_metrics: tuple[ImageQualityMetric, ...]
+    quality_issues: tuple[ImageQualityIssue, ...]
     assessment: ImageQualityAssessment
     recipe: ImageGeometryRecipe
 
@@ -282,17 +292,31 @@ def build_populated_schema_v6(path: Path, monkeypatch: Any) -> PopulatedV6Fixtur
     assessment = valid_quality_assessment()
     recipe = valid_geometry_recipe()
     audits = (valid_audit_event(), valid_quality_audit_event(), valid_geometry_audit_event())
+    persisted_batch = batch.append_source_file_id(source.id)
     with SqlCipherUnitOfWork(path, Provider()) as u:
         u.upload_batches.add(batch)
         u.stored_artifacts.add(original)
         u.source_files.add(source)
-        u.upload_batches.update(batch.append_source_file_id(source.id))
+        u.upload_batches.update(persisted_batch)
         u.image_quality_assessments.add(assessment)
         u.image_geometry_recipes.add(recipe)
         for a in audits:
             u.audit_events.add(a)
         u.commit()
-    return PopulatedV6Fixture(path, batch, original, source, audits, assessment, recipe)
+    return PopulatedV6Fixture(
+        path,
+        batch,
+        persisted_batch,
+        original,
+        source,
+        audits[0],
+        audits[1],
+        audits[2],
+        assessment.metrics,
+        assessment.issues,
+        assessment,
+        recipe,
+    )
 
 
 class CommitFailureUow:
@@ -311,6 +335,27 @@ class CommitFailureUow:
     def commit(self):
         self.commit_attempts += 1
         raise RuntimeError("SYNTHETIC_COMMIT_FAILURE")
+
+    def __getattr__(self, name: str) -> Any:
+        return getattr(self.entered if self.entered is not None else self.delegated, name)
+
+
+class RecordingCommitUow:
+    def __init__(self, delegated: Any):
+        self.delegated = delegated
+        self.entered = None
+        self.commit_calls = 0
+
+    def __enter__(self):
+        self.entered = self.delegated.__enter__()
+        return self
+
+    def __exit__(self, *args):
+        return self.delegated.__exit__(*args)
+
+    def commit(self):
+        self.commit_calls += 1
+        return self.entered.commit()
 
     def __getattr__(self, name: str) -> Any:
         return getattr(self.entered if self.entered is not None else self.delegated, name)

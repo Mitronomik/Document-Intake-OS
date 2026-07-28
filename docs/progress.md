@@ -74,7 +74,7 @@ PR-S001/PR-S001-F1/PR-S001-F2/PR-S001-F3/PR-S001-F4 use fictional synthetic data
 
 ## Следующий безопасный шаг
 
-Harden the PR-011 acceptance foundation, then execute the remaining PR-011 evidence workstreams sequentially. Do not begin PR-012.
+Execute the PR-011 application-service evidence stage. Do not begin repository-core evidence until the application-service stage gate passes. Do not begin PR-012.
 
 ## Historical lifecycle snapshot — Current PR-010 geometry contract staging — 2026-07-23
 

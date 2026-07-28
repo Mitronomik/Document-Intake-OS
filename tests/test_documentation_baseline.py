@@ -2583,8 +2583,9 @@ def test_pr010_contract_current_lifecycle_and_merge_evidence_are_section_scoped(
     ):
         assert required in current, required
     assert (
-        "Harden the PR-011 acceptance foundation, then execute the remaining PR-011 "
-        "evidence workstreams sequentially. Do not begin PR-012." in next_step
+        "Execute the PR-011 application-service evidence stage. Do not begin repository-core "
+        "evidence until the application-service stage gate passes. Do not begin PR-012."
+        in next_step
     )
     assert "PR-009: IMPLEMENTED AND IN REVIEW; NOT HUMAN ACCEPTED" in historical
     assert "Q-021: OPEN — REQUIRES PRODUCT-OWNER ACCEPTANCE" in historical

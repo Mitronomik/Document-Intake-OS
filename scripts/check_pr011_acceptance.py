@@ -188,17 +188,51 @@ def validate(
     implemented: list[str] = []
     pending: list[str] = []
     selectors: dict[str, list[str]] = {}
-    entries = data.get("entries", []) if isinstance(data, dict) else []
+    top_valid = (
+        isinstance(data, dict)
+        and type(data.get("schema_version")) is int
+        and data.get("schema_version") == 2
+        and type(data.get("pr")) is int
+        and data.get("pr") == 30
+        and isinstance(data.get("contract"), str)
+        and isinstance(data.get("implementation_base"), str)
+        and isinstance(data.get("current_status"), str)
+        and isinstance(data.get("entries"), list)
+    )
+    if not top_valid:
+        return Report(0, 0, (), (), ("MANIFEST_INVALID",), (), required_stage, 0)
+    entries = data["entries"]
     if (
-        not isinstance(data, dict)
-        or data.get("schema_version") != 2
-        or data.get("pr") != 30
+        data.get("pr") != 30
         or data.get("contract") != "PR-011"
         or data.get("implementation_base") != "f007fb5a04a5c69c70a37faf7ba12fa6775ae819"
         or not isinstance(entries, list)
     ):
         errors.append("MANIFEST_INVALID")
-    ids = [e.get("id") for e in entries if isinstance(e, dict)]
+    valid_entries: list[dict[str, Any]] = []
+    for e in entries:
+        if not isinstance(e, dict) or set(e) != FIELDS:
+            errors.append("MANIFEST_INVALID")
+            continue
+        scalar_fields = (
+            "id",
+            "stage",
+            "workstream",
+            "requirement",
+            "status",
+            "platform",
+            "evidence_type",
+            "notes",
+        )
+        list_fields = ("test_selectors", "evidence_files", "evidence_refs")
+        if any(not isinstance(e[k], str) or not e[k] for k in scalar_fields) or any(
+            type(e[k]) is not list or any(not isinstance(v, str) or not v for v in e[k])
+            for k in list_fields
+        ):
+            errors.append("MANIFEST_INVALID")
+            continue
+        valid_entries.append(e)
+    ids = [e["id"] for e in valid_entries]
     if len(ids) != len(set(ids)):
         errors.append("DUPLICATE_ID")
     observed = {i for i in ids if isinstance(i, str)}
@@ -206,10 +240,7 @@ def validate(
         errors.append("REQUIRED_ID_MISSING")
     if observed - REQUIRED_IDS:
         errors.append("UNKNOWN_ID")
-    for e in entries:
-        if not isinstance(e, dict) or set(e) != FIELDS:
-            errors.append("MANIFEST_INVALID")
-            continue
+    for e in valid_entries:
         i = e["id"]
         status = e["status"]
         if status not in {"pending", "implemented"}:
@@ -222,6 +253,17 @@ def validate(
             errors.append("INVALID_EVIDENCE_TYPE")
         if e["platform"] not in PLATFORMS:
             errors.append("MANIFEST_INVALID")
+        for evidence in e["evidence_files"]:
+            candidate = Path(evidence)
+            try:
+                resolved = (root / candidate).resolve()
+                inside = resolved.is_relative_to(root.resolve())
+            except (OSError, RuntimeError):
+                inside = False
+            if candidate.is_absolute() or ".." in candidate.parts or not inside:
+                errors.append("EVIDENCE_PATH_INVALID")
+            elif not resolved.is_file():
+                errors.append("EVIDENCE_FILE_MISSING")
         if status == "implemented" and e["evidence_type"] == "pytest":
             if not e["test_selectors"] or not e["evidence_files"]:
                 errors.append("TEST_SELECTOR_MISSING")
@@ -254,7 +296,7 @@ def validate(
     stage = "final" if require_complete else required_stage
     if stage is not None:
         upto = set(STAGES[: STAGES.index(stage) + 1])
-        required = [e["id"] for e in entries if isinstance(e, dict) and e.get("stage") in upto]
+        required = [e["id"] for e in valid_entries if e["stage"] in upto]
         if any(i in pending for i in required):
             errors.append("PENDING_EVIDENCE")
         if STAGES.index(stage) >= 1:
@@ -270,11 +312,7 @@ def validate(
     ) != "READY_FOR_HUMAN_REVIEW":
         errors.append("LIFECYCLE_STATUS_INVALID")
     completed = sum(
-        all(
-            e.get("status") == "implemented"
-            for e in entries
-            if isinstance(e, dict) and e.get("stage") == s
-        )
+        all(e.get("status") == "implemented" for e in valid_entries if e["stage"] == s)
         for s in STAGES
     )
     return Report(
@@ -296,7 +334,12 @@ def run(
         data = json.loads(manifest.read_text())
     except (OSError, UnicodeError, json.JSONDecodeError):
         return Report(0, 0, (), (), ("MANIFEST_INVALID",), (), required_stage, 0)
-    return validate(data, root, required_stage=required_stage, require_complete=require_complete)
+    try:
+        return validate(
+            data, root, required_stage=required_stage, require_complete=require_complete
+        )
+    except Exception:
+        return Report(0, 0, (), (), ("CHECKER_INTERNAL_ERROR",), (), required_stage, 0)
 
 
 def main(argv: list[str] | None = None) -> int:

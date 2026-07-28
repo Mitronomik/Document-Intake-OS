@@ -48,6 +48,11 @@ def test_typed_builders_are_deterministic_and_coherent():
     assert not any(isinstance(v, dict) for v in values)
     metrics = pr011.valid_quality_metrics()
     assert len(metrics) == 7 and all(type(m) is ImageQualityMetric for m in metrics)
+    assessment = pr011.valid_quality_assessment()
+    assert assessment.status is pr011.QualityAssessmentStatus.REVIEW_REQUIRED
+    assert assessment.issues == (pr011.valid_quality_issue(),)
+    assert pr011._policy().minimum_short_side_pixels == 25
+    assert metrics[0].numeric_value == 24 and metrics[1].numeric_value == 32
     assert (
         values[6].source_file_id
         == values[2].id
@@ -60,26 +65,49 @@ def test_typed_builders_are_deterministic_and_coherent():
     assert pr011.STAMP.utcoffset().total_seconds() == 0
 
 
+def assert_populated_v6_fixture(u: SqlCipherUnitOfWork, fixture: pr011.PopulatedV6Fixture) -> None:
+    c = u._connection()
+    assert c.execute("PRAGMA user_version").fetchone() == (6,)
+    pr011.assert_foreign_keys(c)
+    assert c.execute("PRAGMA foreign_key_check").fetchall() == []
+    assert c.execute(
+        "SELECT count(*) FROM image_quality_metrics WHERE assessment_id=?",
+        (str(fixture.assessment.id),),
+    ).fetchone() == (7,)
+    assert c.execute(
+        "SELECT count(*) FROM image_quality_issues WHERE assessment_id=?",
+        (str(fixture.assessment.id),),
+    ).fetchone() == (1,)
+    assert u.upload_batches.get(fixture.batch.id) == fixture.persisted_batch
+    assert fixture.persisted_batch.source_file_ids == (fixture.source.id,)
+    assert u.source_files.get(fixture.source.id) == fixture.source
+    assert u.stored_artifacts.get(fixture.original.artifact_id) == fixture.original
+    assert u.audit_events.get(fixture.historical_audit.event_id) == fixture.historical_audit
+    assert u.audit_events.get(fixture.quality_audit.event_id) == fixture.quality_audit
+    assert u.audit_events.get(fixture.geometry_audit.event_id) == fixture.geometry_audit
+    assessment = u.image_quality_assessments.get(fixture.assessment.id)
+    assert assessment == fixture.assessment
+    assert assessment.metrics == fixture.quality_metrics
+    assert assessment.issues == fixture.quality_issues
+    assert assessment.status is pr011.QualityAssessmentStatus.REVIEW_REQUIRED
+    assert assessment.issues == (
+        pr011.ImageQualityIssue(
+            pr011.QualityIssueCode.LOW_RESOLUTION, pr011.QualityIssueSeverity.WARNING
+        ),
+    )
+    assert u.image_geometry_recipes.get(fixture.recipe.recipe_version_id) == fixture.recipe
+
+
 def test_file_backed_populated_v6_survives_reopen(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
     path = tmp_path / "v6.db"
     fixture = pr011.build_populated_schema_v6(path, monkeypatch)
-    with SqlCipherUnitOfWork(path, pr011.Provider()) as u:
-        c = u._connection()
-        assert c.execute("PRAGMA user_version").fetchone() == (6,)
-        pr011.assert_foreign_keys(c)
-        assert c.execute("PRAGMA foreign_key_check").fetchall() == []
-        assert u.upload_batches.get(fixture.batch.id) == fixture.batch.append_source_file_id(
-            fixture.source.id
-        )
-        assert u.source_files.get(fixture.source.id) == fixture.source
-        assert u.stored_artifacts.get(fixture.original.artifact_id) == fixture.original
-        assert u.image_quality_assessments.get(fixture.assessment.id) == fixture.assessment
-        assert u.image_geometry_recipes.get(fixture.recipe.recipe_version_id) == fixture.recipe
+    with SqlCipherUnitOfWork(path, pr011.Provider()) as first:
+        assert_populated_v6_fixture(first, fixture)
     with SqlCipherUnitOfWork(path, pr011.Provider()) as reopened:
-        assert reopened.source_files.get(fixture.source.id) == fixture.source
+        assert_populated_v6_fixture(reopened, fixture)
 
 
-def test_commit_wrapper_raises_before_real_commit_and_rolls_back(
+def test_commit_wrapper_never_delegates_commit_and_rolls_back(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ):
     path = tmp_path / "rollback.db"
@@ -89,12 +117,13 @@ def test_commit_wrapper_raises_before_real_commit_and_rolls_back(
         database._apply_one_migration(source, m)
     source.close()
     monkeypatch.setattr(database, "_open_connection", pr011.open_sqlite)
-    real = SqlCipherUnitOfWork(path, pr011.Provider())
-    wrapper = pr011.CommitFailureUow(real)
+    recording = pr011.RecordingCommitUow(SqlCipherUnitOfWork(path, pr011.Provider()))
+    wrapper = pr011.CommitFailureUow(recording)
     with pytest.raises(RuntimeError, match="SYNTHETIC_COMMIT_FAILURE"), wrapper as u:
         u.upload_batches.add(pr011.valid_upload_batch())
         u.commit()
     assert wrapper.commit_attempts == 1
+    assert recording.commit_calls == 0
     with SqlCipherUnitOfWork(path, pr011.Provider()) as u:
         assert u.upload_batches.get(pr011.valid_upload_batch().id) is None
 
