@@ -5,6 +5,7 @@ import pytest
 from document_intake.application.dto.document_regions import (
     ConfirmDocumentRegionsCommand,
     ExistingRecipeSelection,
+    NewRecipeRevision,
     RegionSetMemberInput,
 )
 from document_intake.application.ports.media import DecodedGeometryMedia, RenderedGeometryRaster
@@ -28,10 +29,21 @@ from tests.support.pr011 import (
 
 class Repo:
     def __init__(self, items=()):
-        self.items = {
-            getattr(x, "recipe_version_id", getattr(x, "id", getattr(x, "artifact_id", None))): x
-            for x in items
-        }
+        self.items = {self._key(item): item for item in items}
+
+    @staticmethod
+    def _key(item):
+        for attribute in (
+            "region_set_version_id",
+            "recipe_version_id",
+            "event_id",
+            "id",
+            "artifact_id",
+        ):
+            value = getattr(item, attribute, None)
+            if value is not None:
+                return value
+        return None
 
     def get(self, key):
         return self.items.get(key)
@@ -55,20 +67,14 @@ class Repo:
         return max(scoped, key=lambda item: item.revision) if scoped else None
 
     def add(self, item):
-        self.items[
-            getattr(
-                item,
-                "region_set_version_id",
-                getattr(item, "recipe_version_id", getattr(item, "event_id", None)),
-            )
-        ] = item
+        self.items[self._key(item)] = item
 
 
 class Uow:
-    def __init__(self, recipe):
+    def __init__(self, recipes=()):
         self.source_files = Repo((valid_source_file(),))
         self.stored_artifacts = Repo((valid_original_stored_artifact(),))
-        self.image_geometry_recipes = Repo((recipe,))
+        self.image_geometry_recipes = Repo(recipes)
         self.document_region_sets = Repo()
         self.audit_events = Repo()
         self.commits = 0
@@ -84,8 +90,8 @@ class Uow:
 
 
 class Factory:
-    def __init__(self, recipe):
-        self.units = [Uow(recipe), Uow(recipe)]
+    def __init__(self, *recipes):
+        self.units = [Uow(recipes), Uow(recipes)]
 
     def unit_of_work(self):
         return self.units.pop(0)
@@ -106,6 +112,17 @@ def command(recipe):
         STAMP,
         actor(),
         None,
+    )
+
+
+def new_selection(recipe_id, audit_id, quadrilateral, *, revision=1, predecessor=None):
+    return NewRecipeRevision(
+        recipe_id,
+        predecessor,
+        revision,
+        quadrilateral,
+        valid_geometry_recipe().quarter_turn,
+        audit_id,
     )
 
 
@@ -191,6 +208,12 @@ def run(command_value, factory):
     return result, calls
 
 
+def with_previous(factory, previous):
+    for unit in factory.units:
+        unit.document_region_sets = Repo((previous,))
+    return factory
+
+
 def test_successful_one_existing_recipe_decodes_and_renders_once() -> None:
     recipe = valid_geometry_recipe()
     factory = Factory(recipe)
@@ -201,6 +224,195 @@ def test_successful_one_existing_recipe_decodes_and_renders_once() -> None:
     assert read.commits == 0 and write.commits == 1
     assert len(write.image_geometry_recipes.items) == 1
     assert len(write.audit_events.items) == 1
+
+
+def test_one_entirely_new_region_creates_root_recipe_and_atomic_set() -> None:
+    template = valid_geometry_recipe()
+    recipe_id = entity_id(31)
+    value = replace(
+        command(template),
+        members=(
+            RegionSetMemberInput(
+                1,
+                recipe_id,
+                new_selection(recipe_id, entity_id(41), template.quadrilateral),
+            ),
+        ),
+    )
+    factory = Factory()
+    read, write = tuple(factory.units)
+    result, calls = run(value, factory)
+    recipe = result.selected_recipes[0]
+    assert recipe.revision == 1
+    assert recipe.region_id == recipe.recipe_version_id == recipe_id
+    assert recipe.superseded_recipe_version_id is None
+    assert result.region_set.revision == 1
+    assert tuple(member.order_index for member in result.region_set.members) == (1,)
+    assert calls == ["storage.read", "decode", "render"]
+    assert len(write.image_geometry_recipes.items) == 1
+    assert len(write.document_region_sets.items) == 1
+    assert len(write.audit_events.items) == 2
+    assert read.commits == 0 and write.commits == 1
+
+
+def test_two_entirely_new_regions_create_independent_ordered_lineages() -> None:
+    template = valid_geometry_recipe()
+    second_quad = replace(
+        template.quadrilateral,
+        top_left=replace(template.quadrilateral.top_left, x=1),
+    )
+    first_id, second_id = entity_id(31), entity_id(32)
+    value = replace(
+        command(template),
+        members=(
+            RegionSetMemberInput(
+                1,
+                first_id,
+                new_selection(first_id, entity_id(41), template.quadrilateral),
+            ),
+            RegionSetMemberInput(
+                2,
+                second_id,
+                new_selection(second_id, entity_id(42), second_quad),
+            ),
+        ),
+    )
+    factory = Factory()
+    read, write = tuple(factory.units)
+    result, calls = run(value, factory)
+    first, second = result.selected_recipes
+    assert (first.revision, second.revision) == (1, 1)
+    assert first.region_id == first.recipe_version_id == first_id
+    assert second.region_id == second.recipe_version_id == second_id
+    assert first.region_id != second.region_id
+    assert tuple(member.region_id for member in result.region_set.members) == (
+        first_id,
+        second_id,
+    )
+    assert len(write.image_geometry_recipes.items) == 2
+    assert len(write.document_region_sets.items) == 1
+    assert len(write.audit_events.items) == 3
+    assert read.commits == 0 and write.commits == 1
+    assert calls.count("render") == 2
+
+
+def test_existing_plus_new_inserts_only_new_recipe_in_command_order() -> None:
+    existing = valid_geometry_recipe()
+    new_id = entity_id(31)
+    new_quad = replace(
+        existing.quadrilateral,
+        top_left=replace(existing.quadrilateral.top_left, x=1),
+    )
+    value = replace(
+        command(existing),
+        members=(
+            RegionSetMemberInput(
+                1,
+                existing.region_id,
+                ExistingRecipeSelection(existing.recipe_version_id),
+            ),
+            RegionSetMemberInput(
+                2,
+                new_id,
+                new_selection(new_id, entity_id(41), new_quad),
+            ),
+        ),
+    )
+    factory = Factory(existing)
+    _, write = tuple(factory.units)
+    result, _ = run(value, factory)
+    assert result.selected_recipes[0] is existing
+    assert result.selected_recipes[1].region_id == new_id
+    assert tuple(write.image_geometry_recipes.items.values()) == (
+        existing,
+        result.selected_recipes[1],
+    )
+    assert len(write.document_region_sets.items) == 1
+
+
+def test_revision_preserves_lineage_and_exact_predecessor() -> None:
+    root = valid_geometry_recipe()
+    first_factory = Factory(root)
+    previous, _ = run(command(root), first_factory)
+    revision_id = entity_id(31)
+    value = replace(
+        command(root),
+        region_set_version_id=entity_id(62),
+        region_set_audit_event_id=entity_id(63),
+        superseded_region_set_version_id=previous.region_set.region_set_version_id,
+        set_revision=2,
+        members=(
+            RegionSetMemberInput(
+                1,
+                root.region_id,
+                new_selection(
+                    revision_id,
+                    entity_id(41),
+                    root.quadrilateral,
+                    revision=2,
+                    predecessor=root.recipe_version_id,
+                ),
+            ),
+        ),
+    )
+    factory = with_previous(Factory(root), previous.region_set)
+    _, write = tuple(factory.units)
+    result, _ = run(value, factory)
+    revised = result.selected_recipes[0]
+    assert revised.revision == 2
+    assert revised.region_id == root.region_id
+    assert revised.superseded_recipe_version_id == root.recipe_version_id
+    assert write.image_geometry_recipes.get(root.recipe_version_id) == root
+    assert result.region_set.members[0].geometry_recipe_version_id == revision_id
+    assert write.document_region_sets.get(previous.region_set.region_set_version_id) is not None
+
+
+def test_order_only_revision_reverses_members_without_geometry_or_recipe_audits() -> None:
+    first = valid_geometry_recipe()
+    second_id = entity_id(31)
+    second = replace(
+        first,
+        recipe_version_id=second_id,
+        region_id=second_id,
+        quadrilateral=replace(
+            first.quadrilateral,
+            top_left=replace(first.quadrilateral.top_left, x=1),
+        ),
+    )
+    initial = replace(
+        command(first),
+        members=(
+            RegionSetMemberInput(
+                1, first.region_id, ExistingRecipeSelection(first.recipe_version_id)
+            ),
+            RegionSetMemberInput(
+                2, second.region_id, ExistingRecipeSelection(second.recipe_version_id)
+            ),
+        ),
+    )
+    previous, _ = run(initial, Factory(first, second))
+    reordered = replace(
+        initial,
+        region_set_version_id=entity_id(62),
+        region_set_audit_event_id=entity_id(63),
+        superseded_region_set_version_id=previous.region_set.region_set_version_id,
+        set_revision=2,
+        members=(
+            replace(initial.members[1], order_index=1),
+            replace(initial.members[0], order_index=2),
+        ),
+    )
+    factory = with_previous(Factory(first, second), previous.region_set)
+    _, write = tuple(factory.units)
+    result, _ = run(reordered, factory)
+    assert result.selected_recipes == (second, first)
+    assert tuple(member.region_id for member in result.region_set.members) == (
+        second.region_id,
+        first.region_id,
+    )
+    assert len(write.image_geometry_recipes.items) == 2
+    assert len(write.audit_events.items) == 1
+    assert write.document_region_sets.get(previous.region_set.region_set_version_id) is not None
 
 
 def test_successful_two_existing_recipes_render_each_once() -> None:
