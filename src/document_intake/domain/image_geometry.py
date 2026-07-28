@@ -199,8 +199,11 @@ class ImageGeometryRecipe:
     quadrilateral: SourceQuadrilateral
     pipeline: GeometryPipelineVersion
     created_at: datetime
+    region_id: EntityId = None  # type: ignore[assignment]
 
     def __post_init__(self) -> None:
+        if self.region_id is None and self.revision == 1:
+            object.__setattr__(self, "region_id", self.recipe_version_id)
         for n in ("recipe_version_id", "source_file_id"):
             if not isinstance(getattr(self, n), EntityId):
                 raise InvalidValueError(f"image_geometry_recipe.{n}: invalid_type")
@@ -214,6 +217,12 @@ class ImageGeometryRecipe:
             raise InvalidValueError("image_geometry_recipe.revision: invalid_value")
         if (self.revision == 1) != (self.superseded_recipe_version_id is None):
             raise InvalidValueError("image_geometry_recipe.revision_chain: invalid_value")
+        if not isinstance(self.region_id, EntityId):
+            raise InvalidValueError("image_geometry_recipe.region_id: invalid_type")
+        if self.revision == 1 and self.region_id != self.recipe_version_id:
+            raise InvalidValueError("image_geometry_recipe.region_id: invalid_value")
+        if self.revision > 1 and self.region_id == self.recipe_version_id:
+            raise InvalidValueError("image_geometry_recipe.region_id: invalid_value")
         if not isinstance(self.coordinate_space, GeometryCoordinateSpace):
             raise InvalidValueError("image_geometry_recipe.coordinate_space: invalid_type")
         if (

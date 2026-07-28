@@ -1437,7 +1437,7 @@ class ImageQualityAssessmentRepo(_Repo):
 
 
 class ImageGeometryRecipeRepo(_Repo):
-    _SELECT = "SELECT recipe_version_id, source_file_id, superseded_recipe_version_id, revision, coordinate_space, source_effective_width, source_effective_height, quarter_turn_clockwise, top_left_x, top_left_y, top_right_x, top_right_y, bottom_right_x, bottom_right_y, bottom_left_x, bottom_left_y, geometry_pipeline_id, geometry_pipeline_version, created_at_utc, canonical_payload FROM image_geometry_recipes"
+    _SELECT = "SELECT recipe_version_id, source_file_id, region_id, superseded_recipe_version_id, revision, coordinate_space, source_effective_width, source_effective_height, quarter_turn_clockwise, top_left_x, top_left_y, top_right_x, top_right_y, bottom_right_x, bottom_right_y, bottom_left_x, bottom_left_y, geometry_pipeline_id, geometry_pipeline_version, created_at_utc, canonical_payload FROM image_geometry_recipes"
 
     def __init__(self, uow: SqlCipherUnitOfWork) -> None:
         super().__init__(
@@ -1452,7 +1452,7 @@ class ImageGeometryRecipeRepo(_Repo):
         if not isinstance(recipe, ImageGeometryRecipe):
             raise PersistenceError(PersistenceErrorCode.PERSISTED_DATA_INVALID)
         existing = self._list_all_validated()
-        latest = self._latest_from_validated(existing, recipe.source_file_id)
+        latest = self._latest_region(existing, recipe.source_file_id, recipe.region_id)
         if latest is None:
             if recipe.revision != 1 or recipe.superseded_recipe_version_id is not None:
                 raise PersistenceError(PersistenceErrorCode.PERSISTED_DATA_INVALID)
@@ -1463,7 +1463,7 @@ class ImageGeometryRecipeRepo(_Repo):
             raise PersistenceError(PersistenceErrorCode.PERSISTED_DATA_INVALID)
         payload = ser.image_geometry_recipe_to_json(recipe)
         self._execute(
-            "INSERT INTO image_geometry_recipes(recipe_version_id, source_file_id, superseded_recipe_version_id, revision, coordinate_space, source_effective_width, source_effective_height, quarter_turn_clockwise, top_left_x, top_left_y, top_right_x, top_right_y, bottom_right_x, bottom_right_y, bottom_left_x, bottom_left_y, geometry_pipeline_id, geometry_pipeline_version, created_at_utc, canonical_payload) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+            "INSERT INTO image_geometry_recipes(recipe_version_id, source_file_id, region_id, superseded_recipe_version_id, revision, coordinate_space, source_effective_width, source_effective_height, quarter_turn_clockwise, top_left_x, top_left_y, top_right_x, top_right_y, bottom_right_x, bottom_right_y, bottom_left_x, bottom_left_y, geometry_pipeline_id, geometry_pipeline_version, created_at_utc, canonical_payload) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
             (*ser.image_geometry_recipe_columns(recipe), payload),
             duplicate_is_already_exists=True,
         )
@@ -1511,14 +1511,39 @@ class ImageGeometryRecipeRepo(_Repo):
         )
 
     def _from_projection(self, row: tuple[Any, ...]) -> ImageGeometryRecipe:
-        entity = self._deserialize(row[19])
+        entity = self._deserialize(row[20])
         if (
             not isinstance(entity, ImageGeometryRecipe)
-            or ser.image_geometry_recipe_columns(entity) != tuple(row[:19])
-            or ser.image_geometry_recipe_to_json(entity) != row[19]
+            or ser.image_geometry_recipe_columns(entity) != tuple(row[:20])
+            or ser.image_geometry_recipe_to_json(entity) != row[20]
         ):
             raise PersistenceError(PersistenceErrorCode.PERSISTED_DATA_INVALID)
         return entity
+
+    def _latest_region(
+        self,
+        recipes: tuple[ImageGeometryRecipe, ...],
+        source_file_id: EntityId,
+        region_id: EntityId,
+    ) -> ImageGeometryRecipe | None:
+        scoped = [
+            r for r in recipes if r.source_file_id == source_file_id and r.region_id == region_id
+        ]
+        return None if not scoped else max(scoped, key=lambda r: r.revision)
+
+    def list_by_region(
+        self, source_file_id: EntityId, region_id: EntityId
+    ) -> tuple[ImageGeometryRecipe, ...]:
+        return tuple(
+            r
+            for r in self._list_all_validated()
+            if r.source_file_id == source_file_id and r.region_id == region_id
+        )
+
+    def get_latest_by_region(
+        self, source_file_id: EntityId, region_id: EntityId
+    ) -> ImageGeometryRecipe | None:
+        return self._latest_region(self._list_all_validated(), source_file_id, region_id)
 
     def _latest_from_validated(
         self, recipes: tuple[ImageGeometryRecipe, ...], source_file_id: EntityId
@@ -1533,34 +1558,143 @@ class ImageGeometryRecipeRepo(_Repo):
         )
 
     def _validate_all_histories(self, recipes: tuple[ImageGeometryRecipe, ...]) -> None:
-        by_id: dict[EntityId, ImageGeometryRecipe] = {}
-        for recipe in recipes:
-            if recipe.recipe_version_id in by_id:
-                raise PersistenceError(PersistenceErrorCode.PERSISTED_DATA_INVALID)
-            by_id[recipe.recipe_version_id] = recipe
-        sources = sorted({r.source_file_id for r in recipes}, key=str)
-        for source_id in sources:
+        by_id = {r.recipe_version_id: r for r in recipes}
+        if len(by_id) != len(recipes):
+            raise PersistenceError(PersistenceErrorCode.PERSISTED_DATA_INVALID)
+        scopes = {(r.source_file_id, r.region_id) for r in recipes}
+        for source_id, region_id in scopes:
             chain = sorted(
-                (r for r in recipes if r.source_file_id == source_id),
-                key=lambda r: (r.revision, r.created_at, str(r.recipe_version_id)),
+                (r for r in recipes if r.source_file_id == source_id and r.region_id == region_id),
+                key=lambda r: r.revision,
             )
-            seen_superseded: set[EntityId] = set()
-            for index, recipe in enumerate(chain, start=1):
+            for index, recipe in enumerate(chain, 1):
                 if recipe.revision != index:
                     raise PersistenceError(PersistenceErrorCode.PERSISTED_DATA_INVALID)
                 if index == 1:
-                    if recipe.superseded_recipe_version_id is not None:
+                    if (
+                        recipe.recipe_version_id != region_id
+                        or recipe.superseded_recipe_version_id is not None
+                    ):
                         raise PersistenceError(PersistenceErrorCode.PERSISTED_DATA_INVALID)
-                    continue
-                previous = chain[index - 2]
-                if recipe.superseded_recipe_version_id != previous.recipe_version_id:
+                else:
+                    previous = chain[index - 2]
+                    if recipe.superseded_recipe_version_id != previous.recipe_version_id:
+                        raise PersistenceError(PersistenceErrorCode.PERSISTED_DATA_INVALID)
+                    predecessor = by_id.get(recipe.superseded_recipe_version_id)
+                    if (
+                        predecessor is None
+                        or predecessor.source_file_id != source_id
+                        or predecessor.region_id != region_id
+                    ):
+                        raise PersistenceError(PersistenceErrorCode.PERSISTED_DATA_INVALID)
+
+
+class DocumentRegionSetRepo(_Repo):
+    def __init__(self, uow: SqlCipherUnitOfWork) -> None:
+        super().__init__(
+            uow,
+            "document_region_set_versions",
+            ser.document_region_set_to_json,
+            ser.document_region_set_from_json,
+            lambda x: str(x.region_set_version_id),
+        )
+
+    def add(self, region_set: DocumentRegionSetVersion) -> None:
+        payload = ser.document_region_set_to_json(region_set)
+        self._execute(
+            "INSERT INTO document_region_set_versions(region_set_version_id,source_file_id,superseded_region_set_version_id,revision,confirmed_at_utc,confirmed_by_actor_id,confirmed_by_actor_kind,canonical_payload) VALUES(?,?,?,?,?,?,?,?)",
+            (
+                str(region_set.region_set_version_id),
+                str(region_set.source_file_id),
+                None
+                if region_set.superseded_region_set_version_id is None
+                else str(region_set.superseded_region_set_version_id),
+                region_set.revision,
+                ser.utc_iso(region_set.confirmed_at),
+                str(region_set.confirmed_by.actor_id),
+                region_set.confirmed_by.kind.value,
+                payload,
+            ),
+            duplicate_is_already_exists=True,
+        )
+        for member in region_set.members:
+            self._execute(
+                "INSERT INTO document_region_set_members(region_set_version_id,order_index,region_id,geometry_recipe_version_id) VALUES(?,?,?,?)",
+                (
+                    str(region_set.region_set_version_id),
+                    member.order_index,
+                    str(member.region_id),
+                    str(member.geometry_recipe_version_id),
+                ),
+                duplicate_is_already_exists=True,
+            )
+
+    def _scoped(self, where: str, args: tuple[Any, ...]) -> tuple[DocumentRegionSetVersion, ...]:
+        rows = self._fetchall(
+            "SELECT region_set_version_id,source_file_id,superseded_region_set_version_id,revision,confirmed_at_utc,confirmed_by_actor_id,confirmed_by_actor_kind,canonical_payload FROM document_region_set_versions WHERE "
+            + where
+            + " ORDER BY revision",
+            args,
+        )
+        result = []
+        for row in rows:
+            entity = self._deserialize(row[7])
+            members = self._fetchall(
+                "SELECT order_index,region_id,geometry_recipe_version_id FROM document_region_set_members WHERE region_set_version_id=? ORDER BY order_index",
+                (row[0],),
+            )
+            projection = (
+                str(entity.region_set_version_id),
+                str(entity.source_file_id),
+                None
+                if entity.superseded_region_set_version_id is None
+                else str(entity.superseded_region_set_version_id),
+                entity.revision,
+                ser.utc_iso(entity.confirmed_at),
+                str(entity.confirmed_by.actor_id),
+                entity.confirmed_by.kind.value,
+            )
+            member_projection = tuple(
+                (m.order_index, str(m.region_id), str(m.geometry_recipe_version_id))
+                for m in entity.members
+            )
+            if (
+                projection != tuple(row[:7])
+                or member_projection != members
+                or ser.document_region_set_to_json(entity) != row[7]
+            ):
+                raise PersistenceError(PersistenceErrorCode.PERSISTED_DATA_INVALID)
+            result.append(entity)
+        for i, item in enumerate(result, 1):
+            if (
+                item.revision != i
+                or (i == 1 and item.superseded_region_set_version_id is not None)
+                or (
+                    i > 1
+                    and item.superseded_region_set_version_id != result[i - 2].region_set_version_id
+                )
+            ):
+                raise PersistenceError(PersistenceErrorCode.PERSISTED_DATA_INVALID)
+            for member in item.members:
+                recipe = self._uow.image_geometry_recipes.get(member.geometry_recipe_version_id)
+                if (
+                    recipe is None
+                    or recipe.source_file_id != item.source_file_id
+                    or recipe.region_id != member.region_id
+                ):
                     raise PersistenceError(PersistenceErrorCode.PERSISTED_DATA_INVALID)
-                if recipe.superseded_recipe_version_id in seen_superseded:
-                    raise PersistenceError(PersistenceErrorCode.PERSISTED_DATA_INVALID)
-                seen_superseded.add(recipe.superseded_recipe_version_id)
-                superseded = by_id.get(recipe.superseded_recipe_version_id)
-                if superseded is None or superseded.source_file_id != recipe.source_file_id:
-                    raise PersistenceError(PersistenceErrorCode.PERSISTED_DATA_INVALID)
+        return tuple(result)
+
+    def get(self, region_set_version_id: EntityId) -> DocumentRegionSetVersion | None:
+        rows = self._scoped("region_set_version_id=?", (str(region_set_version_id),))
+        return None if not rows else rows[0]
+
+    def list_by_source(self, source_file_id: EntityId) -> tuple[DocumentRegionSetVersion, ...]:
+        return self._scoped("source_file_id=?", (str(source_file_id),))
+
+    def get_latest_by_source(self, source_file_id: EntityId) -> DocumentRegionSetVersion | None:
+        rows = self.list_by_source(source_file_id)
+        return None if not rows else rows[-1]
 
 
 class PreparedImageArtifactRepo(_Repo):
@@ -1672,6 +1806,7 @@ class SqlCipherUnitOfWork:
         self._image_quality_assessments: ImageQualityAssessmentRepo | None = None
         self._image_geometry_recipes: ImageGeometryRecipeRepo | None = None
         self._prepared_image_artifacts: PreparedImageArtifactRepo | None = None
+        self._document_region_sets: DocumentRegionSetRepo | None = None
 
     def __repr__(self) -> str:
         return "SqlCipherUnitOfWork(<redacted>)"
@@ -1754,6 +1889,10 @@ class SqlCipherUnitOfWork:
     def prepared_image_artifacts(self) -> PreparedImageArtifactRepo:
         return self._repository(self._prepared_image_artifacts)
 
+    @property
+    def document_region_sets(self) -> DocumentRegionSetRepo:
+        return self._repository(self._document_region_sets)
+
     def _construct_repositories(self) -> None:
         self._persons = PersonRepo(self)
         self._identity_documents = IdentityRepo(self)
@@ -1771,6 +1910,7 @@ class SqlCipherUnitOfWork:
         self._image_quality_assessments = ImageQualityAssessmentRepo(self)
         self._image_geometry_recipes = ImageGeometryRecipeRepo(self)
         self._prepared_image_artifacts = PreparedImageArtifactRepo(self)
+        self._document_region_sets = DocumentRegionSetRepo(self)
 
     def _invalidate(self) -> None:
         connection = self._conn

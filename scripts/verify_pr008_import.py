@@ -260,7 +260,7 @@ def _has_allowlisted_shape(lines: tuple[str, ...]) -> bool:
         return lines in tuple(
             (f"PR008_VERIFY result=INCONCLUSIVE code={code}",) for code in _INCONCLUSIVE_CODES
         ) or lines == ("PR008_VERIFY result=FAIL",)
-    if len(lines) != len(_CHECKS) + 2 or lines[0] != "PR008_VERIFY schema_version=7":
+    if len(lines) != len(_CHECKS) + 2 or lines[0] != "PR008_VERIFY schema_version=8":
         return False
     for name, line in zip(_CHECKS, lines[1:-1], strict=True):
         if line not in {f"PR008_VERIFY {name}=PASS", f"PR008_VERIFY {name}=FAIL"}:

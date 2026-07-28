@@ -1339,6 +1339,7 @@ def image_geometry_recipe_to_json(o: ImageGeometryRecipe) -> str:
         {
             "recipe_version_id": str(o.recipe_version_id),
             "source_file_id": str(o.source_file_id),
+            "region_id": str(o.region_id),
             "superseded_recipe_version_id": _id(o.superseded_recipe_version_id),
             "revision": o.revision,
             "coordinate_space": o.coordinate_space.value,
@@ -1359,6 +1360,7 @@ def image_geometry_recipe_from_json(payload: str) -> ImageGeometryRecipe:
         {
             "recipe_version_id",
             "source_file_id",
+            "region_id",
             "superseded_recipe_version_id",
             "revision",
             "coordinate_space",
@@ -1383,6 +1385,7 @@ def image_geometry_recipe_from_json(payload: str) -> ImageGeometryRecipe:
         source_quadrilateral_from_dict(d["quadrilateral"]),
         GeometryPipelineVersion(_require_str(p["pipeline_id"]), _require_int(p["version"])),
         parse_datetime(_require_str(d["created_at"])),
+        EntityId.parse(_require_str(d["region_id"])),
     )
 
 
@@ -1391,6 +1394,7 @@ def image_geometry_recipe_columns(o: ImageGeometryRecipe) -> tuple[Any, ...]:
     return (
         str(o.recipe_version_id),
         str(o.source_file_id),
+        str(o.region_id),
         _id(o.superseded_recipe_version_id),
         o.revision,
         o.coordinate_space.value,
@@ -1408,6 +1412,63 @@ def image_geometry_recipe_columns(o: ImageGeometryRecipe) -> tuple[Any, ...]:
         o.pipeline.pipeline_id,
         o.pipeline.version,
         utc_iso(o.created_at),
+    )
+
+
+def document_region_set_to_json(o: DocumentRegionSetVersion) -> str:
+    return _json_dumps(
+        {
+            "region_set_version_id": str(o.region_set_version_id),
+            "source_file_id": str(o.source_file_id),
+            "superseded_region_set_version_id": _id(o.superseded_region_set_version_id),
+            "revision": o.revision,
+            "members": [
+                {
+                    "order_index": m.order_index,
+                    "region_id": str(m.region_id),
+                    "geometry_recipe_version_id": str(m.geometry_recipe_version_id),
+                }
+                for m in o.members
+            ],
+            "confirmed_at": utc_iso(o.confirmed_at),
+            "confirmed_by": _actor(o.confirmed_by),
+        }
+    )
+
+
+@persisted_data_boundary
+def document_region_set_from_json(payload: str) -> DocumentRegionSetVersion:
+    d = _require_keys(
+        json.loads(payload),
+        {
+            "region_set_version_id",
+            "source_file_id",
+            "superseded_region_set_version_id",
+            "revision",
+            "members",
+            "confirmed_at",
+            "confirmed_by",
+        },
+    )
+    actor = parse_actor(d["confirmed_by"])
+    if actor is None or not isinstance(d["members"], list):
+        raise PersistenceError(PersistenceErrorCode.PERSISTED_DATA_INVALID)
+    members = tuple(
+        DocumentRegionSetMember(
+            _require_int(m["order_index"]),
+            EntityId.parse(_require_str(m["region_id"])),
+            EntityId.parse(_require_str(m["geometry_recipe_version_id"])),
+        )
+        for m in d["members"]
+    )
+    return DocumentRegionSetVersion(
+        EntityId.parse(_require_str(d["region_set_version_id"])),
+        EntityId.parse(_require_str(d["source_file_id"])),
+        parse_id(d["superseded_region_set_version_id"]),
+        _require_int(d["revision"]),
+        members,
+        parse_datetime(_require_str(d["confirmed_at"])),
+        actor,
     )
 
 

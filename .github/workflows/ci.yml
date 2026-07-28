@@ -61,6 +61,7 @@ jobs:
           scripts/verify_pr009_quality.py
           scripts/verify_pr010_geometry.py
           scripts/verify_pr011_jpeg.py
+          scripts/verify_pr012_regions.py
       - name: Pytest
         run: uv run pytest -ra
       - name: Build package
@@ -82,6 +83,9 @@ jobs:
       - name: Verify PR-011 JPEG on production SQLCipher
         if: runner.os == 'Windows'
         run: uv run python scripts/verify_pr011_jpeg.py
+      - name: Verify PR-012 regions on production SQLCipher
+        if: runner.os == 'Windows'
+        run: uv run python scripts/verify_pr012_regions.py
 
   windows-encryption-spike:
     name: PR-S001 Windows encryption spike

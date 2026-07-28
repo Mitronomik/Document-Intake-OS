@@ -76,7 +76,7 @@ _CHECKS = (
     "privacy",
 )
 _SUCCESS_LINES = (
-    "PR009_VERIFY schema_version=7",
+    "PR009_VERIFY schema_version=8",
     *(f"PR009_VERIFY {name}=PASS" for name in _CHECKS),
     "PR009_VERIFY result=PASS",
 )
@@ -368,7 +368,7 @@ def _has_allowlisted_shape(lines: tuple[str, ...]) -> bool:
         return lines == ("PR009_VERIFY result=FAIL",) or lines in tuple(
             (f"PR009_VERIFY result=INCONCLUSIVE code={code}",) for code in _INCONCLUSIVE_CODES
         )
-    if len(lines) != len(_CHECKS) + 2 or lines[0] != "PR009_VERIFY schema_version=7":
+    if len(lines) != len(_CHECKS) + 2 or lines[0] != "PR009_VERIFY schema_version=8":
         return False
     for name, line in zip(_CHECKS, lines[1:-1], strict=True):
         if line not in {f"PR009_VERIFY {name}=PASS", f"PR009_VERIFY {name}=FAIL"}:

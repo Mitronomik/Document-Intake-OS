@@ -134,6 +134,7 @@ def create_image_geometry_recipe(
                 command.quadrilateral,
                 command.pipeline,
                 command.created_at,
+                command.recipe_version_id if latest is None else latest.region_id,
             )
             try:
                 uow.image_geometry_recipes.add(recipe)
