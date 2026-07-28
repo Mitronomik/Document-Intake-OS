@@ -50,17 +50,24 @@ region_id: EntityId
 
 `region_id` is the stable identity of one document-region lineage.
 
+`region_id` is not a separate database row created by a confirmation command. Its exact identity rules are:
+
 ```text
-revision == 1:
+new region lineage:
+    recipe_revision == 1
     superseded_recipe_version_id is None
     region_id == recipe_version_id
 
-revision > 1:
+later recipe revision:
+    recipe_revision > 1
     superseded_recipe_version_id is required
-    region_id equals the predecessor region_id
+    region_id == predecessor.region_id
+    recipe_version_id != region_id
 ```
 
-A revision never changes `source_file_id`, `region_id`, coordinate-space identity, or geometry-pipeline identity. Two regions in one source have different `region_id` values and independent revision chains. A revision from one region never supersedes another region.
+Two distinct regions in one set have different `region_id` values. Pairwise distinctness applies to newly created persistent record IDs: `region_set_version_id`, `region_set_audit_event_id`, every new `recipe_version_id`, and every new `recipe_audit_event_id`. The only permitted intentional ID alias is `region_id == recipe_version_id` for the first recipe revision of that same lineage. A `region_id` must not equal an unrelated set, recipe, or audit record ID.
+
+A revision never changes `source_file_id`, `region_id`, coordinate-space identity, or geometry-pipeline identity. Two regions in one source have independent revision chains. A revision from one region never supersedes another region.
 
 ## Confirmed region-set aggregate
 
@@ -106,7 +113,23 @@ Two regions with exactly identical canonical quadrilaterals are rejected. V1 def
 
 ## Persistence and migration proposal
 
-Future migration `v0008_document_regions` proposes schema 7 to schema 8. It adds non-null `region_id`, replaces one-chain-per-source uniqueness with `UNIQUE(source_file_id, region_id, revision)`, and retains `UNIQUE(superseded_recipe_version_id)`. Existing chains are deterministically backfilled by finding each chain's root revision and using that root `recipe_version_id` as `region_id` for every recipe in the chain. No random ID is generated; recipe-version IDs are not rewritten. Every `prepared_image_artifacts.geometry_recipe_version_id` reference and prepared-artifact natural key remains unchanged.
+Future migration `v0008_document_regions` proposes schema 7 to schema 8. It adds non-null `region_id`, replaces one-chain-per-source uniqueness with `UNIQUE(source_file_id, region_id, revision)`, and retains `UNIQUE(superseded_recipe_version_id)`. Adding required `region_id` changes the canonical representation of `ImageGeometryRecipe`; v0008 must not copy schema-7 `canonical_payload` bytes unchanged.
+
+For every existing schema-7 geometry recipe, the future migration must:
+
+1. read the complete existing recipe chain for the source;
+2. validate the schema-7 canonical payload against every schema-7 SQL projection;
+3. reject and roll back on malformed payload, projection mismatch, missing revision, branch, invalid predecessor, or cross-source predecessor;
+4. find the root recipe version of the chain;
+5. derive `region_id = root.recipe_version_id`, using the root `recipe_version_id` as `region_id`;
+6. construct the schema-8 recipe representation with that `region_id`;
+7. serialize a new deterministic schema-8 canonical payload using the accepted repository serializer;
+8. write the new `region_id` projection and new canonical payload;
+9. validate schema-8 payload/projection equality before completing the migration;
+10. preserve `recipe_version_id`, source ID, revision, predecessor, geometry, pipeline identity, and timestamps;
+11. preserve every prepared-artifact foreign key and natural key, including every `prepared_image_artifacts.geometry_recipe_version_id`.
+
+No random or current-time value may be generated. The migration fails closed and rolls back completely when any legacy payload or revision chain is invalid.
 
 The proposed immutable set tables use `UNIQUE(source_file_id, revision)` and `UNIQUE(superseded_region_set_version_id)`. Membership uses a primary key on `(region_set_version_id, order_index)`, uniqueness for each set's `region_id` and recipe reference, and `CHECK(order_index IN (1, 2))`. The parent-table rebuild must follow accepted forward-only populated-table migration safety, preserve foreign-key and cipher integrity, roll back on failure, and assign no final v0008 checksum until implementation review.
 
@@ -120,4 +143,17 @@ PR-012 creates and confirms region identities and geometry recipes. It neither c
 
 ## Decision and authorization
 
-This model and its migration are proposals for human review, not accepted architecture or implementation permission. Production implementation remains unauthorized. PR-013 and later remain unauthorized; Gate 2 remains not accepted; M3 remains in progress.
+This model and its migration are proposals for human review, not accepted architecture or implementation permission.
+
+```text
+ADR-026: PROPOSED
+PR-012 CONTRACT: PROPOSED FOR HUMAN REVIEW
+PR-012 PRODUCTION IMPLEMENTATION: UNAUTHORIZED
+PR-013 AND LATER: UNAUTHORIZED
+GATE 2: NOT ACCEPTED
+M3: IN PROGRESS
+Q-021: DEFERRED
+PRODUCTION PR-009 QUALITY POLICY: NOT ACTIVE
+AUTOMATIC PR-009 QUALITY BLOCKING: NOT ACTIVE
+AUTOMATIC PRODUCTION RETAKE_REQUIRED: NOT ACTIVE
+```

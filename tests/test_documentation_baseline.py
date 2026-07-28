@@ -3140,3 +3140,176 @@ def test_pr012_task_contract_sections_nongoals_and_unauthorized_boundary() -> No
     authorization = _section(task, "## Authorization boundary")
     assert "PR-012 production implementation is unauthorized" in authorization
     assert "PR-013 and later are unauthorized" in authorization
+
+
+def test_pr012_identity_and_recipe_selection_corrections_are_exact() -> None:
+    task = (REPO_ROOT / "docs/tasks/PR-012-multiple-documents-per-image.md").read_text(
+        encoding="utf-8"
+    )
+    dto = _section(task, "## 4. Application DTO")
+    for marker in (
+        "RegionSetMemberInput:",
+        "ExistingRecipeSelection:",
+        "geometry_recipe_version_id",
+        "NewRecipeRevision:",
+        "Exactly one selection form is allowed per member",
+        "recipe_revision == 1",
+        "superseded_recipe_version_id is None",
+        "region_id == recipe_version_id",
+        "recipe_revision > 1",
+        "superseded_recipe_version_id is required",
+        "region_id == predecessor.region_id",
+        "recipe_version_id != region_id",
+        "every new `recipe_version_id`",
+        "every new `recipe_audit_event_id`",
+        "must not equal an unrelated set, recipe, or audit record ID",
+        "first confirmed region set after migration may reference an existing legacy PR-010 recipe",
+        "change order without a geometry revision",
+    ):
+        assert marker in dto, marker
+    assert "All record IDs are pairwise distinct" not in dto
+
+
+def test_pr012_existing_new_and_order_only_operation_contract_is_exact() -> None:
+    task = (REPO_ROOT / "docs/tasks/PR-012-multiple-documents-per-image.md").read_text(
+        encoding="utf-8"
+    )
+    operation = _section(task, "## 5. Exact application operation order")
+    atomicity = _section(task, "## 6. Atomicity")
+    future_application = _section(task, "### Application")
+    for marker in (
+        "load and validate every selected existing recipe",
+        "load and validate predecessors and current latest recipes for proposed new revisions",
+        "render every selected recipe against the immutable source",
+        "add only new geometry-recipe revisions",
+        "recipe-created audit event only for each new recipe revision",
+        "membership rows for both existing and new selections",
+    ):
+        assert marker in operation, marker
+    for marker in (
+        "zero geometry-recipe rows",
+        "zero recipe-created audit events",
+        "one new `DocumentRegionSetVersion`",
+    ):
+        assert marker in atomicity, marker
+    for marker in (
+        "first set may reference a migrated existing PR-010 recipe",
+        "mixed existing/new selection",
+        "order-only revision creates zero new geometry recipes",
+        "one changed region leaves the other selected recipe version unchanged",
+    ):
+        assert marker in future_application, marker
+
+
+def test_pr012_canonical_payload_migration_correction_is_exact() -> None:
+    adr = (REPO_ROOT / "docs/decisions/ADR-026-document-regions-v1.md").read_text(encoding="utf-8")
+    task = (REPO_ROOT / "docs/tasks/PR-012-multiple-documents-per-image.md").read_text(
+        encoding="utf-8"
+    )
+    for migration in (
+        _section(adr, "## Persistence and migration proposal"),
+        _section(task, "## 7. Persistence and migration proposal"),
+    ):
+        for marker in (
+            "must not",
+            "schema-7 `canonical_payload` bytes",
+            "read the complete existing recipe chain for the source",
+            "validate the schema-7 canonical payload against every schema-7 SQL projection",
+            "malformed payload, projection mismatch, missing revision, branch, invalid "
+            "predecessor, or cross-source predecessor",
+            "region_id = root.recipe_version_id",
+            "new deterministic schema-8 canonical payload using the accepted repository serializer",
+            "validate schema-8 payload/projection equality",
+            "preserve every prepared-artifact foreign key and natural key",
+            "No random or current-time value may be generated",
+            "rolls back completely",
+        ):
+            assert marker in migration, marker
+    migration_tests = _section(task, "### Migration")
+    for marker in (
+        "canonical payload rewritten to include `region_id`",
+        "deterministic rewritten payload",
+        "schema-7 payload/projection corruption blocks migration",
+        "schema-8 repository reads succeed after reopen",
+        "prepared artifacts still reference the same recipe-version IDs",
+    ):
+        assert marker in migration_tests, marker
+
+
+def test_pr012_controlled_error_semantics_are_frozen() -> None:
+    task = (REPO_ROOT / "docs/tasks/PR-012-multiple-documents-per-image.md").read_text(
+        encoding="utf-8"
+    )
+    errors = _section(task, "## 11. Proposed controlled errors")
+    definitions = {
+        "IDENTITY_CONFLICT": (
+            "A newly supplied persistent record ID already exists during preflight before any "
+            "insert."
+        ),
+        "REGION_COUNT_INVALID": "The member count is not exactly one or two.",
+        "REGION_ORDER_INVALID": (
+            "Member order indices are not exactly `1` or `1, 2` in contiguous order."
+        ),
+        "REGION_SELECTION_INVALID": (
+            "A member supplies neither recipe-selection form or both forms."
+        ),
+        "REGION_IDENTITY_CONFLICT": (
+            "A region violates the revision-1 alias rule, changes lineage identity, references a "
+            "recipe from another region/source, or aliases an unrelated record ID."
+        ),
+        "DUPLICATE_REGION": (
+            "The command contains duplicate region identities, duplicate selected recipe versions, "
+            "or exactly identical canonical quadrilaterals for two members."
+        ),
+        "REGION_REVISION_CONFLICT": (
+            "A proposed new recipe revision is not the immediate next revision or does not "
+            "supersede the current latest recipe revision for that region."
+        ),
+        "REGION_SET_REVISION_CONFLICT": (
+            "The proposed set revision is not the immediate next revision or does not supersede "
+            "the current latest set version for the source."
+        ),
+        "REGION_SET_NOT_FOUND": "A caller-supplied preceding set version does not exist.",
+        "PERSISTENCE_CONFLICT": (
+            "A uniqueness or concurrency race occurs after successful preflight but before commit."
+        ),
+        "PERSISTENCE_FAILED": "A non-conflict persistence operation fails before commit.",
+        "COMMIT_FAILED": "The Unit of Work commit itself fails.",
+        "PERSISTED_DATA_INVALID": (
+            "A loaded persisted recipe, region set, membership, canonical payload, projection, or "
+            "revision chain is corrupt or internally inconsistent."
+        ),
+    }
+    for code, definition in definitions.items():
+        assert f"### `{code}`" in errors
+        assert definition in errors
+    assert (
+        "no raw IDs, paths, filenames, bytes, checksums, coordinates, SQL, PII, or raw exceptions"
+        in errors
+    )
+
+
+def test_pr012_correction_preserves_proposed_authorization_boundaries() -> None:
+    for filename in (
+        "docs/decisions/ADR-026-document-regions-v1.md",
+        "docs/tasks/PR-012-multiple-documents-per-image.md",
+    ):
+        text = (REPO_ROOT / filename).read_text(encoding="utf-8")
+        boundary = (
+            _section(text, "## Decision and authorization")
+            if "ADR-026" in filename
+            else _section(text, "## Authorization boundary")
+        )
+        for marker in (
+            "ADR-026: PROPOSED",
+            "PR-012 CONTRACT: PROPOSED FOR HUMAN REVIEW",
+            "PR-012 PRODUCTION IMPLEMENTATION: UNAUTHORIZED",
+            "PR-013 AND LATER: UNAUTHORIZED",
+            "GATE 2: NOT ACCEPTED",
+            "M3: IN PROGRESS",
+            "Q-021: DEFERRED",
+            "PRODUCTION PR-009 QUALITY POLICY: NOT ACTIVE",
+            "AUTOMATIC PR-009 QUALITY BLOCKING: NOT ACTIVE",
+            "AUTOMATIC PRODUCTION RETAKE_REQUIRED: NOT ACTIVE",
+        ):
+            assert marker in boundary, (filename, marker)

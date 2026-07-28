@@ -34,81 +34,141 @@ region_set_version_id
 source_file_id
 superseded_region_set_version_id
 set_revision
-regions
+members
 region_set_audit_event_id
 confirmed_at
 actor
 correlation_id
 ```
 
-Each `RegionConfirmationInput` contains:
+Each member uses this explicit selection model:
 
 ```text
-order_index
-region_id
-recipe_version_id
-superseded_recipe_version_id
-recipe_revision
-quadrilateral
-quarter_turn
-recipe_audit_event_id
+RegionSetMemberInput:
+    order_index
+    region_id
+    recipe_selection
 ```
 
-All IDs and timestamps are caller supplied; timestamps are timezone-aware UTC. The service generates no UUID or current time. All record IDs are pairwise distinct. For a new region, `region_id == recipe_version_id`; for a revision, `region_id` is unchanged. Exactly one or two inputs are allowed, with indices `1` or `1, 2`. Commands contain no paths, filenames, image bytes, JPEG settings, document type/country/owner/side, or PR-009 policy identity.
+`recipe_selection` uses exactly one of two mutually exclusive forms.
 
-`ConfirmDocumentRegionsResult` returns the persisted `DocumentRegionSetVersion` and ordered persisted `ImageGeometryRecipe` entities/identifiers only: no raster, JPEG bytes, filesystem path, original bytes, or PII.
+### Existing recipe selection
+
+```text
+ExistingRecipeSelection:
+    geometry_recipe_version_id
+```
+
+This references an already persisted immutable recipe. It creates no new geometry recipe and no recipe-created audit event.
+
+### New recipe revision
+
+```text
+NewRecipeRevision:
+    recipe_version_id
+    superseded_recipe_version_id
+    recipe_revision
+    quadrilateral
+    quarter_turn
+    recipe_audit_event_id
+```
+
+This creates one new immutable geometry-recipe revision and one recipe-created audit event.
+
+Exactly one selection form is allowed per member. Reject neither form, both forms, an existing recipe from another source or `region_id`, a new revision whose predecessor is not the immediate latest revision of that region, or a revision that changes source or region lineage.
+
+`region_id` is a stable lineage identity, not a separate persistent row created by the command. The exact identity contract is:
+
+```text
+new region lineage:
+    recipe_revision == 1
+    superseded_recipe_version_id is None
+    region_id == recipe_version_id
+
+later recipe revision:
+    recipe_revision > 1
+    superseded_recipe_version_id is required
+    region_id == predecessor.region_id
+    recipe_version_id != region_id
+```
+
+Two distinct regions in one set have different `region_id` values. Pairwise distinctness applies to the newly created persistent record IDs `region_set_version_id`, `region_set_audit_event_id`, every new `recipe_version_id`, and every new `recipe_audit_event_id`. The only permitted intentional ID alias is `region_id == recipe_version_id` for revision 1 of that same region lineage. A `region_id` must not equal an unrelated set, recipe, or audit record ID.
+
+The first confirmed region set after migration may reference an existing legacy PR-010 recipe without creating a duplicate revision. A later set may reuse all recipes; revise only one region; revise both; change order without a geometry revision; reduce two members to one while retaining an existing recipe; or increase one to two by retaining one existing recipe and adding one new lineage.
+
+All IDs and timestamps are caller supplied; timestamps are timezone-aware UTC. The service generates no UUID or current time. Exactly one or two member inputs are allowed, with indices `1` or `1, 2`. Commands contain no paths, filenames, image bytes, JPEG settings, document type/country/owner/side, or PR-009 policy identity.
+
+`ConfirmDocumentRegionsResult` returns the persisted `DocumentRegionSetVersion` and ordered selected persisted `ImageGeometryRecipe` entities/identifiers only: no raster, JPEG bytes, filesystem path, original bytes, or PII.
 
 ## 5. Exact application operation order
 
 1. validate source-independent command invariants;
 2. validate region count;
 3. validate contiguous order indices;
-4. validate record-ID distinctness;
-5. validate new/revision region identity rules;
-6. reject exact duplicate canonical quadrilaterals;
-7. open one read Unit of Work;
-8. load and validate the source file;
-9. load and validate the immutable original stored artifact;
-10. load and validate the preceding region-set version when revision is greater than 1;
-11. load and validate preceding recipe revisions for revised regions;
-12. close the read Unit of Work without commit;
-13. read immutable original bytes;
-14. verify checksum and byte integrity;
-15. decode the source once;
-16. apply EXIF orientation exactly once;
-17. compare decoded source-effective dimensions with authoritative metadata;
-18. validate every region using accepted PR-010 geometry rules;
-19. derive deterministic output dimensions for every region;
-20. render every proposed region to an ephemeral RGB raster to prove the recipe is executable;
-21. discard all ephemeral rasters;
-22. open one write Unit of Work;
-23. re-read and revalidate the source and original-artifact metadata;
-24. re-read and revalidate preceding set/recipe revisions;
-25. verify every caller-supplied record ID is absent;
-26. verify set revision uniqueness;
-27. verify independent region revision uniqueness;
-28. add all new geometry-recipe revisions in `order_index` order;
-29. add one PR-010-compatible recipe-created audit event per new recipe revision;
-30. add `DocumentRegionSetVersion`;
-31. add ordered region-set membership rows;
-32. add the region-set confirmation audit event;
-33. commit exactly once;
-34. exit the Unit of Work;
-35. construct and return the result.
+4. validate newly created persistent record-ID distinctness and the sole revision-1 alias exception;
+5. validate that every member supplies exactly one recipe-selection form;
+6. validate new/revision region identity rules;
+7. reject duplicate region identities, duplicate selected recipe versions, and exact duplicate canonical quadrilaterals;
+8. open one read Unit of Work;
+9. load and validate the source file;
+10. load and validate the immutable original stored artifact;
+11. load and validate the preceding region-set version when revision is greater than 1;
+12. load and validate every selected existing recipe;
+13. load and validate predecessors and current latest recipes for proposed new revisions;
+14. close the read Unit of Work without commit;
+15. read immutable original bytes;
+16. verify checksum and byte integrity;
+17. decode the source once;
+18. apply EXIF orientation exactly once;
+19. compare decoded source-effective dimensions with authoritative metadata;
+20. validate every selected existing recipe and proposed new revision using accepted PR-010 geometry rules;
+21. derive deterministic output dimensions for every selected recipe;
+22. render every selected recipe against the immutable source to an ephemeral RGB raster, proving the complete set is executable;
+23. discard all ephemeral rasters;
+24. open one write Unit of Work;
+25. re-read and revalidate the source and original-artifact metadata;
+26. re-read and revalidate the preceding set, selected existing recipes, and new-revision predecessors/current latest recipes;
+27. verify every newly supplied persistent record ID is absent;
+28. verify set revision uniqueness and immediate-latest predecessor;
+29. verify independent region revision uniqueness and immediate-latest predecessors;
+30. add only new geometry-recipe revisions in `order_index` order;
+31. add one PR-010-compatible recipe-created audit event only for each new recipe revision;
+32. add `DocumentRegionSetVersion`;
+33. add ordered region-set membership rows for both existing and new selections;
+34. add the region-set confirmation audit event;
+35. commit exactly once;
+36. exit the Unit of Work;
+37. construct and return the result.
 
 No image artifact is published, no JPEG encoder is called, and no partial region set may commit.
 
 ## 6. Atomicity
 
-All geometry-recipe revisions, recipe audit events, the region-set version, ordered memberships, and region-set audit event commit in one database Unit of Work. Any failure commits nothing: no new set, recipe, membership, or audit is visible; originals and existing recipes/sets remain unchanged. PR-012 publishes no filesystem artifact, so this service introduces no orphan-storage case.
+Only newly requested geometry-recipe revisions and their recipe audit events join the region-set version, ordered memberships, and region-set audit event in one database Unit of Work. Existing recipe selections create no recipe row and no recipe-created audit event. Any failure commits nothing: no new set, recipe, membership, or audit is visible; originals and existing recipes/sets remain unchanged. PR-012 publishes no filesystem artifact, so this service introduces no orphan-storage case.
+
+A pure set-order change creates exactly one new `DocumentRegionSetVersion`, new membership rows, and one region-set audit event. It creates zero geometry-recipe rows and zero recipe-created audit events.
 
 ## 7. Persistence and migration proposal
 
 Future migration `v0008_document_regions` transitions `schema 7 -> schema 8`. Do not modify v0001–v0007 or assign a final v0008 checksum before implementation review.
 
-It must extend immutable audit enums; safely rebuild `image_geometry_recipes`; add non-null `region_id`; deterministically backfill legacy PR-010 chains; preserve recipe-version IDs and every `prepared_image_artifacts.geometry_recipe_version_id`; replace old one-chain-per-source uniqueness; add immutable set/membership tables; preserve foreign-key/cipher integrity; and set `PRAGMA user_version = 8`.
+It must extend immutable audit enums; safely rebuild `image_geometry_recipes`; add non-null `region_id`; replace old one-chain-per-source uniqueness; add immutable set/membership tables; preserve foreign-key/cipher integrity; and set `PRAGMA user_version = 8`.
 
-Legacy backfill finds the root revision of each existing source recipe chain and uses the root `recipe_version_id` as `region_id` for every recipe in that chain. It generates no random IDs, rewrites no recipe-version IDs, and changes no prepared-artifact natural key.
+Adding required `region_id` changes the canonical representation of `ImageGeometryRecipe`. Migration v0008 must not merely copy schema-7 `canonical_payload` bytes. For every existing schema-7 geometry recipe, it must:
+
+1. read the complete existing recipe chain for the source;
+2. validate the schema-7 canonical payload against every schema-7 SQL projection;
+3. reject and roll back on malformed payload, projection mismatch, missing revision, branch, invalid predecessor, or cross-source predecessor;
+4. find the root recipe version of the chain;
+5. derive `region_id = root.recipe_version_id`;
+6. construct the schema-8 recipe representation with that `region_id`;
+7. serialize a new deterministic schema-8 canonical payload using the accepted repository serializer;
+8. write the new `region_id` projection and new canonical payload;
+9. validate schema-8 payload/projection equality before completing the migration;
+10. preserve `recipe_version_id`, source ID, revision, predecessor, geometry, pipeline identity, and timestamps;
+11. preserve every prepared-artifact foreign key and natural key.
+
+No random or current-time value may be generated. The migration fails closed and rolls back completely when any legacy payload or revision chain is invalid.
 
 ```text
 UNIQUE(source_file_id, region_id, revision)
@@ -181,9 +241,13 @@ Audits contain no polygons/coordinates, dimensions, region count/order, filename
 
 ## 11. Proposed controlled errors
 
+The exact proposed service-level set is:
+
 ```text
+IDENTITY_CONFLICT
 REGION_COUNT_INVALID
 REGION_ORDER_INVALID
+REGION_SELECTION_INVALID
 REGION_IDENTITY_CONFLICT
 DUPLICATE_REGION
 REGION_REVISION_CONFLICT
@@ -195,9 +259,61 @@ PERSISTED_DATA_INVALID
 COMMIT_FAILED
 ```
 
+### `IDENTITY_CONFLICT`
+
+A newly supplied persistent record ID already exists during preflight before any insert.
+
+### `REGION_COUNT_INVALID`
+
+The member count is not exactly one or two.
+
+### `REGION_ORDER_INVALID`
+
+Member order indices are not exactly `1` or `1, 2` in contiguous order.
+
+### `REGION_SELECTION_INVALID`
+
+A member supplies neither recipe-selection form or both forms.
+
+### `REGION_IDENTITY_CONFLICT`
+
+A region violates the revision-1 alias rule, changes lineage identity, references a recipe from another region/source, or aliases an unrelated record ID.
+
+### `DUPLICATE_REGION`
+
+The command contains duplicate region identities, duplicate selected recipe versions, or exactly identical canonical quadrilaterals for two members.
+
+### `REGION_REVISION_CONFLICT`
+
+A proposed new recipe revision is not the immediate next revision or does not supersede the current latest recipe revision for that region.
+
+### `REGION_SET_REVISION_CONFLICT`
+
+The proposed set revision is not the immediate next revision or does not supersede the current latest set version for the source.
+
+### `REGION_SET_NOT_FOUND`
+
+A caller-supplied preceding set version does not exist.
+
+### `PERSISTENCE_CONFLICT`
+
+A uniqueness or concurrency race occurs after successful preflight but before commit.
+
+### `PERSISTENCE_FAILED`
+
+A non-conflict persistence operation fails before commit.
+
+### `COMMIT_FAILED`
+
+The Unit of Work commit itself fails.
+
+### `PERSISTED_DATA_INVALID`
+
+A loaded persisted recipe, region set, membership, canonical payload, projection, or revision chain is corrupt or internally inconsistent.
+
 Applicable accepted PR-010/source codes remain: `SOURCE_FILE_NOT_FOUND`, `ARTIFACT_NOT_FOUND`, `ARTIFACT_INTEGRITY_FAILED`, `DECODE_FAILED`, `SOURCE_DIMENSIONS_MISMATCH`, `POINT_OUT_OF_BOUNDS`, `DUPLICATE_POINT`, `NON_CLOCKWISE_QUADRILATERAL`, `SELF_INTERSECTING_QUADRILATERAL`, `NON_CONVEX_QUADRILATERAL`, `AREA_TOO_SMALL`, `OUTPUT_DIMENSIONS_TOO_SMALL`, `INVALID_QUARTER_TURN`, `INVALID_PIPELINE_VERSION`, and `RENDER_FAILED`.
 
-Representations expose controlled codes only, never paths, filenames, bytes, checksums, coordinates, region/source identities, personal data, raw SQL, or raw exception messages.
+All errors remain privacy-safe. Representations expose controlled codes only and no raw IDs, paths, filenames, bytes, checksums, coordinates, SQL, PII, or raw exceptions.
 
 ## 12. Exact future files
 
@@ -232,7 +348,7 @@ Prove one/two accepted; zero/three rejected; contiguous order; exact duplicates 
 
 ### Application
 
-Prove one decode and one EXIF application; all regions validated/rendered ephemerally; no JPEG or filesystem publication; one atomic commit; one failure prevents all writes; ID preflight before writes; write-UoW revalidation; atomic audits; no bytes/paths in result.
+Prove one decode and one EXIF application; all selected recipes validated/rendered ephemerally; first set may reference a migrated existing PR-010 recipe; mixed existing/new selection; order-only revision creates zero new geometry recipes and zero recipe-created audits; one changed region leaves the other selected recipe version unchanged; no JPEG or filesystem publication; one atomic commit; one failure prevents all writes; ID preflight before writes; write-UoW revalidation; atomic audits; no bytes/paths in result.
 
 ### Persistence
 
@@ -240,7 +356,7 @@ Prove independent chains; no cross-region supersession; exact current/historical
 
 ### Migration
 
-Prove populated schema 7 -> 8; root-recipe backfill; unchanged recipe IDs/prepared FKs; readable prepared artifacts; valid history/checksums; no temporary table; injected-failure rollback to schema 7; SQLite/Windows SQLCipher reopen; private controlled wrong-key behavior.
+Prove populated schema 7 -> 8; canonical payload rewritten to include `region_id`; deterministic rewritten payload; schema-7 payload/projection corruption blocks migration; root-recipe backfill; unchanged recipe IDs/prepared FKs; schema-8 repository reads succeed after reopen; prepared artifacts still reference the same recipe-version IDs; valid history/checksums; no temporary table; injected-failure rollback to schema 7; SQLite/Windows SQLCipher reopen; private controlled wrong-key behavior.
 
 ### Compatibility
 
@@ -291,3 +407,16 @@ Using synthetic files only: import one image with two rectangles; confirm two ma
 ## Authorization boundary
 
 This contract remains proposed for human review. PR-012 production implementation is unauthorized. PR-013 and later are unauthorized. No production code, migration, or CI change is authorized by this document.
+
+```text
+ADR-026: PROPOSED
+PR-012 CONTRACT: PROPOSED FOR HUMAN REVIEW
+PR-012 PRODUCTION IMPLEMENTATION: UNAUTHORIZED
+PR-013 AND LATER: UNAUTHORIZED
+GATE 2: NOT ACCEPTED
+M3: IN PROGRESS
+Q-021: DEFERRED
+PRODUCTION PR-009 QUALITY POLICY: NOT ACTIVE
+AUTOMATIC PR-009 QUALITY BLOCKING: NOT ACTIVE
+AUTOMATIC PRODUCTION RETAKE_REQUIRED: NOT ACTIVE
+```
