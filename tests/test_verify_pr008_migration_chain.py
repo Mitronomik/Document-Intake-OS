@@ -20,12 +20,13 @@ def _chain() -> tuple[Migration, ...]:
         verifier.V0005,
         verifier.V0006,
         verifier.V0007,
+        verifier.V0008,
     )
 
 
-def test_pr008_verifier_accepts_only_exact_current_seven_migration_chain() -> None:
-    assert verifier._migration_chain_valid(7, _chain())
-    assert not verifier._migration_chain_valid(6, _chain())
+def test_pr008_verifier_accepts_only_exact_current_eight_migration_chain() -> None:
+    assert verifier._migration_chain_valid(8, _chain())
+    assert not verifier._migration_chain_valid(7, _chain())
 
 
 @pytest.mark.parametrize(
@@ -50,7 +51,7 @@ def test_pr008_verifier_accepts_only_exact_current_seven_migration_chain() -> No
     ),
 )
 def test_pr008_verifier_rejects_non_exact_migration_chain(mutated) -> None:  # type: ignore[no-untyped-def]
-    assert not verifier._migration_chain_valid(7, mutated(_chain()))
+    assert not verifier._migration_chain_valid(8, mutated(_chain()))
 
 
 def test_pr008_verifier_preserves_accepted_migration_output_field() -> None:

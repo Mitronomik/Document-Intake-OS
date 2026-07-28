@@ -63,6 +63,7 @@ from document_intake.persistence.migrations.v0004_source_file_import import MIGR
 from document_intake.persistence.migrations.v0005_image_quality import MIGRATION as V0005
 from document_intake.persistence.migrations.v0006_image_geometry import MIGRATION as V0006
 from document_intake.persistence.migrations.v0007_prepared_jpeg import MIGRATION as V0007
+from document_intake.persistence.migrations.v0008_document_regions import MIGRATION as V0008
 from document_intake.storage.filesystem import ImmutableFilesystemStorage
 
 _EXPECTED_MIGRATION_CHECKSUMS = (
@@ -73,6 +74,7 @@ _EXPECTED_MIGRATION_CHECKSUMS = (
     "6d020d1acfbce3fcb7168e935617f2ae008a32bea7def1f37de84e36e9e2224f",
     "ac9d5bfbe79160d880f30af6ee1ed645ab500b9be140a18b9d6498cc68eba5ec",
     "afad8ccc6de4ef81d73f137cbffa5a45fec1fdbb6940eabb0507cc9d6580a4a7",
+    "ff1d114954cf6a43cfe38ef8338a05b8bc11912fb51cd36dec2442d7ecee8f9b",
 )
 _FIXTURE = Path(__file__).parents[1] / "tests" / "fixtures" / "synthetic" / "pr008_color_grid.heic"
 _NOW = datetime(2026, 7, 20, 12, 0, tzinfo=UTC)
@@ -241,7 +243,7 @@ def _unsupported_code() -> str | None:
 
 
 def _render_status_lines(statuses: Mapping[str, bool]) -> tuple[str, ...]:
-    passed = CURRENT_SCHEMA_VERSION == 7 and all(statuses[name] for name in _CHECKS)
+    passed = CURRENT_SCHEMA_VERSION == 8 and all(statuses[name] for name in _CHECKS)
     return (
         f"PR008_VERIFY schema_version={CURRENT_SCHEMA_VERSION}",
         *(f"PR008_VERIFY {name}={'PASS' if statuses[name] else 'FAIL'}" for name in _CHECKS),
@@ -359,9 +361,9 @@ def _migration_chain_valid(
     current_schema_version: int,
     migrations: tuple[Migration, ...],
 ) -> bool:
-    expected = (V0001, V0002, V0003, V0004, V0005, V0006, V0007)
+    expected = (V0001, V0002, V0003, V0004, V0005, V0006, V0007, V0008)
     return (
-        current_schema_version == 7
+        current_schema_version == 8
         and migrations == expected
         and tuple(migration.checksum for migration in migrations) == _EXPECTED_MIGRATION_CHECKSUMS
     )
@@ -822,7 +824,7 @@ def main() -> int:
     )
     lines = _render_status_lines(statuses)
     sys.stdout.write("\n".join(lines) + "\n")
-    passed = CURRENT_SCHEMA_VERSION == 7 and all(statuses.values())
+    passed = CURRENT_SCHEMA_VERSION == 8 and all(statuses.values())
     return 0 if passed else 1
 
 

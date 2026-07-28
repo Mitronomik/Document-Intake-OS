@@ -20,7 +20,7 @@ from document_intake.domain.image_geometry import (
     ImageGeometryRecipe,
     derive_geometry_dimensions,
 )
-from document_intake.domain.value_objects import AuditReasonCode, AuditValueSummary
+from document_intake.domain.value_objects import AuditReasonCode, AuditValueSummary, EntityId
 
 
 class ImageGeometryError(Exception):
@@ -44,6 +44,36 @@ def _map_geometry_validation(exc: Exception) -> NoReturn:
             if code.value in str(exc):
                 _raise(code)
     _raise(GeometryErrorCode.RENDER_FAILED)
+
+
+def _region_id_for_recipe(
+    command: CreateImageGeometryRecipeCommand, latest: ImageGeometryRecipe | None
+) -> EntityId:
+    if latest is None:
+        return command.recipe_version_id
+    return latest.region_id
+
+
+def _build_recipe(
+    command: CreateImageGeometryRecipeCommand,
+    width: int,
+    height: int,
+    latest: ImageGeometryRecipe | None,
+) -> ImageGeometryRecipe:
+    return ImageGeometryRecipe(
+        command.recipe_version_id,
+        command.source_file_id,
+        command.superseded_recipe_version_id,
+        command.revision,
+        GeometryCoordinateSpace.SOURCE_EFFECTIVE_PIXELS_V1,
+        width,
+        height,
+        command.quarter_turn,
+        command.quadrilateral,
+        command.pipeline,
+        command.created_at,
+        _region_id_for_recipe(command, latest),
+    )
 
 
 def create_image_geometry_recipe(
@@ -122,20 +152,7 @@ def create_image_geometry_recipe(
                 or command.superseded_recipe_version_id != latest.recipe_version_id
             ):
                 _raise(GeometryErrorCode.REVISION_CONFLICT)
-            recipe = ImageGeometryRecipe(
-                command.recipe_version_id,
-                command.source_file_id,
-                command.superseded_recipe_version_id,
-                command.revision,
-                GeometryCoordinateSpace.SOURCE_EFFECTIVE_PIXELS_V1,
-                media.effective_width,
-                media.effective_height,
-                command.quarter_turn,
-                command.quadrilateral,
-                command.pipeline,
-                command.created_at,
-                command.recipe_version_id if latest is None else latest.region_id,
-            )
+            recipe = _build_recipe(command, media.effective_width, media.effective_height, latest)
             try:
                 uow.image_geometry_recipes.add(recipe)
             except Exception:

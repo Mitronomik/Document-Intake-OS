@@ -141,7 +141,7 @@ def _create_populated_encrypted_v6(
                 reopened_unit._connection().execute("PRAGMA cipher_integrity_check").fetchall()
                 == []
             )
-    assert persistence_database.CURRENT_SCHEMA_VERSION == 7
+    assert persistence_database.CURRENT_SCHEMA_VERSION == 8
     assert persistence_database._open_connection is production_open_connection
     reopened = persistence_database._open_connection(path, provider)
     expected = _rows(reopened)
@@ -359,7 +359,7 @@ def test_pr011_win_002_production_windows_sqlcipher_v6_to_v7_migration(
     path = tmp_path / "pr011-win-migration.db"
     key = b"m" * 32
     before = _create_populated_encrypted_v6(path, key, monkeypatch)
-    assert persistence_database.CURRENT_SCHEMA_VERSION == 7
+    assert persistence_database.CURRENT_SCHEMA_VERSION == 8
     _migrate_encrypted_v7(path, key)
     connection = persistence_database._open_connection(path, Provider(key))
     assert connection.execute("PRAGMA user_version").fetchone() == (7,)
@@ -389,7 +389,7 @@ def test_pr011_win_003_windows_cipher_and_foreign_key_integrity_after_reopen(
     key = b"i" * 32
     wrong_key = b"j" * 32
     _create_populated_encrypted_v6(path, key, monkeypatch)
-    assert persistence_database.CURRENT_SCHEMA_VERSION == 7
+    assert persistence_database.CURRENT_SCHEMA_VERSION == 8
     _migrate_encrypted_v7(path, key)
     raw = persistence_database._open_connection(path, Provider(key))
     assert not raw.in_transaction
@@ -436,7 +436,7 @@ def test_pr011_win_004_windows_prepared_artifact_commit_reopen_read(
     path = tmp_path / "pr011-win-prepared.db"
     key = b"p" * 32
     _create_populated_encrypted_v6(path, key, monkeypatch)
-    assert persistence_database.CURRENT_SCHEMA_VERSION == 7
+    assert persistence_database.CURRENT_SCHEMA_VERSION == 8
     database = _migrate_encrypted_v7(path, key)
     prepared = valid_prepared_artifact()
     stored = valid_prepared_stored_artifact()

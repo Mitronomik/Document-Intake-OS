@@ -41,7 +41,7 @@ class Provider:
 def test_package_imports_without_sqlcipher3_eager_import() -> None:
     import document_intake.persistence as persistence
 
-    assert persistence.CURRENT_SCHEMA_VERSION == 7
+    assert persistence.CURRENT_SCHEMA_VERSION == 8
 
 
 def test_production_persistence_contains_no_sqlite3_import() -> None:
@@ -72,7 +72,7 @@ def test_raw_key_helper_is_private_and_rejects_bad_key() -> None:
 
 
 def test_migration_metadata_contract() -> None:
-    assert CURRENT_SCHEMA_VERSION == 7
+    assert CURRENT_SCHEMA_VERSION == 8
     assert APPLICATION_ID == 0x44494F53
     assert MIGRATION.version == 1
     assert MIGRATION.checksum == CHECKSUM

@@ -176,7 +176,7 @@ def _run_production(root: Path) -> tuple[str, ...]:
     encoder = PillowPreparedJpegEncoder()
     factory = cast(UnitOfWorkFactory, db)
     statuses: list[str] = []
-    if CURRENT_SCHEMA_VERSION != 7 or MIGRATION.checksum != _CHECKSUM:
+    if CURRENT_SCHEMA_VERSION != 8 or MIGRATION.checksum != _CHECKSUM:
         raise RuntimeError from None
     statuses.append("schema_version=8")
     statuses.append("byte_limit=1992294")

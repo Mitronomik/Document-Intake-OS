@@ -55,6 +55,11 @@ class DocumentRegionSetVersion:
     confirmed_by: ActorRef
 
     def __post_init__(self) -> None:
+        self._validate_identity_and_revision()
+        self._validate_members()
+        self._normalize_confirmation()
+
+    def _validate_identity_and_revision(self) -> None:
         if not isinstance(self.region_set_version_id, EntityId) or not isinstance(
             self.source_file_id, EntityId
         ):
@@ -63,6 +68,8 @@ class DocumentRegionSetVersion:
             raise InvalidValueError(DocumentRegionErrorCode.REGION_SET_REVISION_CONFLICT.value)
         if (self.revision == 1) != (self.superseded_region_set_version_id is None):
             raise InvalidValueError(DocumentRegionErrorCode.REGION_SET_REVISION_CONFLICT.value)
+
+    def _validate_members(self) -> None:
         if len(self.members) not in (1, 2):
             raise InvalidValueError(DocumentRegionErrorCode.REGION_COUNT_INVALID.value)
         if not all(isinstance(x, DocumentRegionSetMember) for x in self.members):
@@ -73,6 +80,8 @@ class DocumentRegionSetVersion:
             {x.geometry_recipe_version_id for x in self.members}
         ) != len(self.members):
             raise InvalidValueError(DocumentRegionErrorCode.DUPLICATE_REGION.value)
+
+    def _normalize_confirmation(self) -> None:
         if not isinstance(self.confirmed_at, datetime) or self.confirmed_at.tzinfo is None:
             raise InvalidValueError("document_region_set.confirmed_at: timezone_required")
         if not isinstance(self.confirmed_by, ActorRef):

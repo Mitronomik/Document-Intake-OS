@@ -2516,7 +2516,7 @@ def test_pr009_implementation_stage_has_production_contract_symbols() -> None:
         encoding="utf-8"
     )
 
-    assert "CURRENT_SCHEMA_VERSION = 7" in migrations
+    assert "CURRENT_SCHEMA_VERSION = 8" in migrations
     for required in (
         "QualityAssessmentErrorCode",
         "IMAGE_QUALITY_ASSESSED",
@@ -3080,7 +3080,7 @@ def test_pr011_d3_records_exact_accepted_evidence_and_boundaries() -> None:
 
 def test_adr026_proposed_region_model_is_exact() -> None:
     adr = (REPO_ROOT / "docs/decisions/ADR-026-document-regions-v1.md").read_text(encoding="utf-8")
-    assert "PROPOSED" in _section(adr, "## Status")
+    assert "ACCEPTED" in _section(adr, "## Status")
     for marker in (
         "PR-012 CONTRACT: PROPOSED FOR HUMAN REVIEW",
         "PR-012 PRODUCTION IMPLEMENTATION: UNAUTHORIZED",
@@ -3104,8 +3104,10 @@ def test_pr012_task_contract_sections_nongoals_and_unauthorized_boundary() -> No
     task = (REPO_ROOT / "docs/tasks/PR-012-multiple-documents-per-image.md").read_text(
         encoding="utf-8"
     )
-    assert "CONTRACT PROPOSED FOR HUMAN REVIEW" in _section(task, "## Status")
-    assert "PRODUCTION IMPLEMENTATION UNAUTHORIZED" in _section(task, "## Status")
+    assert "PR-012 CONTRACT: ACCEPTED" in _section(task, "## Status")
+    assert "PR-012 PRODUCTION IMPLEMENTATION: AUTHORIZED AND IN REVIEW" in _section(
+        task, "## Status"
+    )
     for number, title in (
         (1, "Objective"),
         (2, "Expected implementation base"),
@@ -3125,7 +3127,7 @@ def test_pr012_task_contract_sections_nongoals_and_unauthorized_boundary() -> No
         (16, "Manual verification for future implementation"),
     ):
         assert f"## {number}. {title}" in task
-    assert "PR-012_IMPLEMENTATION_BASE = TO_BE_SET_AFTER_CONTRACT_PR_MERGE" in task
+    assert ("PR-012_IMPLEMENTATION_BASE =\ne326ff30c9ab83615c97579c02e480e2497838ab") in task
     non_goals = _section(task, "## 15. Non-goals")
     for marker in (
         "automatic document detection",

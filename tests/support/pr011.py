@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import json
 import sqlite3
 from dataclasses import dataclass
 from datetime import UTC, datetime
@@ -32,7 +33,7 @@ from document_intake.domain.value_objects.imports import (
     Sha256Digest,
     SourceBasename,
 )
-from document_intake.persistence import database
+from document_intake.persistence import database, geometry_serialization
 from document_intake.persistence.database import SqlCipherUnitOfWork
 from document_intake.persistence.migrations import MIGRATIONS
 
@@ -299,7 +300,16 @@ def build_populated_schema_v6(path: Path, monkeypatch: Any) -> PopulatedV6Fixtur
         u.source_files.add(source)
         u.upload_batches.update(persisted_batch)
         u.image_quality_assessments.add(assessment)
-        u.image_geometry_recipes.add(recipe)
+        columns = geometry_serialization.image_geometry_recipe_columns(recipe)
+        payload = json.loads(geometry_serialization.image_geometry_recipe_to_json(recipe))
+        payload.pop("region_id")
+        u._connection().execute(
+            "INSERT INTO image_geometry_recipes VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+            (
+                *(columns[0], columns[1], *columns[3:]),
+                json.dumps(payload, sort_keys=True, separators=(",", ":")),
+            ),
+        )
         for a in audits:
             u.audit_events.add(a)
         u.commit()

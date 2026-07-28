@@ -349,7 +349,7 @@ def _unsupported_code() -> str | None:
 
 
 def _render(statuses: Mapping[str, bool]) -> tuple[str, ...]:
-    passed = CURRENT_SCHEMA_VERSION == 7 and all(statuses[name] for name in _CHECKS)
+    passed = CURRENT_SCHEMA_VERSION == 8 and all(statuses[name] for name in _CHECKS)
     return (
         f"PR009_VERIFY schema_version={CURRENT_SCHEMA_VERSION}",
         *(f"PR009_VERIFY {name}={'PASS' if statuses[name] else 'FAIL'}" for name in _CHECKS),
@@ -566,7 +566,7 @@ def _run_supported() -> _Run:
         storage = ImmutableFilesystemStorage(storage_root, _StorageKeyProvider())
         decoder = PillowMediaDecoder()
         statuses["migration_v0005"] = (
-            CURRENT_SCHEMA_VERSION == 7
+            CURRENT_SCHEMA_VERSION == 8
             and MIGRATIONS == (V0001, V0002, V0003, V0004, V0005, V0006, V0007)
             and tuple(migration.checksum for migration in MIGRATIONS)
             == _EXPECTED_MIGRATION_CHECKSUMS

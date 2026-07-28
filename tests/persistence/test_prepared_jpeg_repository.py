@@ -521,6 +521,7 @@ def add_alternate_source(
     recipe = replace(
         valid_geometry_recipe(),
         recipe_version_id=entity_id(603),
+        region_id=entity_id(603),
         source_file_id=source.id,
     )
     extra_stored = replace(valid_prepared_stored_artifact(), artifact_id=entity_id(604))

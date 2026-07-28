@@ -1,0 +1,190 @@
+{
+  "base_commit": "e326ff30c9ab83615c97579c02e480e2497838ab",
+  "legacy": {
+    "src/document_intake/application/dto/image_geometry.py": {
+      "symbols": {
+        "CreateImageGeometryRecipeCommand.__post_init__": {
+          "complexity": 18
+        }
+      }
+    },
+    "src/document_intake/application/dto/storage.py": {
+      "symbols": {
+        "StoredArtifactRecord.__post_init__": {
+          "complexity": 14
+        }
+      }
+    },
+    "src/document_intake/application/ports/jpeg_preparation.py": {
+      "symbols": {
+        "EncodedPreparedJpeg.__post_init__": {
+          "complexity": 15
+        }
+      }
+    },
+    "src/document_intake/application/ports/media.py": {
+      "symbols": {
+        "DecodedQualityMedia.__post_init__": {
+          "complexity": 14
+        }
+      }
+    },
+    "src/document_intake/application/services/image_geometry.py": {
+      "symbols": {
+        "create_image_geometry_recipe": {
+          "complexity": 26,
+          "lines": 124
+        }
+      }
+    },
+    "src/document_intake/application/services/image_quality.py": {
+      "symbols": {
+        "assess_source_file_quality": {
+          "complexity": 15,
+          "lines": 83
+        }
+      }
+    },
+    "src/document_intake/application/services/imports.py": {
+      "symbols": {
+        "import_source_files": {
+          "complexity": 23,
+          "lines": 150
+        }
+      }
+    },
+    "src/document_intake/application/services/prepared_jpeg.py": {
+      "symbols": {
+        "prepare_geometry_recipe_as_jpeg": {
+          "complexity": 35,
+          "lines": 158
+        }
+      }
+    },
+    "src/document_intake/domain/entities/audit.py": {
+      "symbols": {
+        "AuditEvent.__post_init__": {
+          "complexity": 19
+        }
+      }
+    },
+    "src/document_intake/domain/entities/core.py": {
+      "symbols": {
+        "VerifiedField.__post_init__": {
+          "complexity": 19
+        }
+      }
+    },
+    "src/document_intake/domain/entities/imports.py": {
+      "symbols": {
+        "ImportWarning.__post_init__": {
+          "complexity": 22
+        },
+        "SourceFile.__post_init__": {
+          "complexity": 21
+        }
+      }
+    },
+    "src/document_intake/domain/image_geometry.py": {
+      "symbols": {
+        "ImageGeometryRecipe.__post_init__": {
+          "complexity": 19
+        },
+        "SourceQuadrilateral.validate_for_source": {
+          "complexity": 16
+        }
+      }
+    },
+    "src/document_intake/domain/image_quality.py": {
+      "symbols": {
+        "ImageQualityAssessment.__post_init__": {
+          "complexity": 37
+        },
+        "ImageQualityMetric.__post_init__": {
+          "complexity": 17
+        },
+        "ImageQualityPolicy.__post_init__": {
+          "complexity": 20
+        },
+        "derive_quality_issues_and_status": {
+          "complexity": 17
+        }
+      }
+    },
+    "src/document_intake/domain/prepared_jpeg.py": {
+      "symbols": {
+        "PreparedImageArtifact.__post_init__": {
+          "complexity": 20
+        }
+      }
+    },
+    "src/document_intake/domain/value_objects/audit.py": {
+      "symbols": {
+        "AuditValueSummary.__post_init__": {
+          "complexity": 15
+        }
+      }
+    },
+    "src/document_intake/domain/value_objects/core.py": {
+      "symbols": {
+        "_canonicalize": {
+          "complexity": 13
+        }
+      }
+    },
+    "src/document_intake/persistence/database.py": {
+      "module_lines": 1878,
+      "symbols": {
+        "ImageGeometryRecipeRepo._validate_all_histories": {
+          "complexity": 14
+        },
+        "ImageQualityAssessmentRepo._from_projection": {
+          "complexity": 19
+        },
+        "UploadBatchRepo.update": {
+          "complexity": 14
+        },
+        "_apply_one_migration": {
+          "complexity": 18
+        },
+        "_harden_connection": {
+          "complexity": 17
+        },
+        "_validate_schema": {
+          "complexity": 15
+        }
+      }
+    },
+    "src/document_intake/persistence/serialization.py": {
+      "module_lines": 1510
+    },
+    "src/document_intake/storage/envelope.py": {
+      "symbols": {
+        "_validate_header": {
+          "complexity": 16
+        }
+      }
+    },
+    "src/document_intake/storage/filesystem.py": {
+      "module_lines": 685,
+      "symbols": {
+        "ImmutableFilesystemStorage": {
+          "lines": 469
+        },
+        "ImmutableFilesystemStorage._discover_managed_objects": {
+          "lines": 81
+        },
+        "ImmutableFilesystemStorage.reconcile": {
+          "complexity": 27,
+          "lines": 131
+        }
+      }
+    }
+  },
+  "limits": {
+    "class_lines": 300,
+    "complexity": 12,
+    "module_lines": 400,
+    "symbol_lines": 80
+  }
+}

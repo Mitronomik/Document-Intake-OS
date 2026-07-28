@@ -377,19 +377,3 @@ IN PROGRESS
 PR-011 is merged and human accepted under [PR-011-D3](decisions/PR-011-D3-lifecycle-acceptance.md). [ADR-026](decisions/ADR-026-document-regions-v1.md) and the [PR-012 contract](tasks/PR-012-multiple-documents-per-image.md) are proposals for Product-owner review only. Contract preparation is authorized; production implementation is not.
 
 Q-021: DEFERRED. PRODUCTION PR-009 QUALITY POLICY: NOT ACTIVE. PRODUCTION `policy_id`: NOT ASSIGNED. PRODUCTION `policy_version`: NOT ASSIGNED. AUTOMATIC PR-009 QUALITY BLOCKING: NOT ACTIVE. AUTOMATIC PRODUCTION `RETAKE_REQUIRED`: NOT ACTIVE. Real documents and personal data remain prohibited in Git, Codex, and CI.
-
-
-## Current PR-012 production-review lifecycle (2026-07-28)
-
-```text
-ADR-026: ACCEPTED
-PR-012 CONTRACT: ACCEPTED
-PR-012 PRODUCTION IMPLEMENTATION: AUTHORIZED AND IN REVIEW
-PR-012 HUMAN ACCEPTANCE: NOT GRANTED
-PR-012 MERGE: NOT AUTHORIZED
-PR-013 AND LATER: UNAUTHORIZED
-GATE 2: NOT ACCEPTED
-M3: IN PROGRESS
-```
-
-Implementation base: `e326ff30c9ab83615c97579c02e480e2497838ab`. Earlier lifecycle sections remain historical.

@@ -18,6 +18,8 @@ from document_intake.domain.enums import *
 from document_intake.domain.errors import DomainError
 from document_intake.domain.policies import rehydrate_application_snapshot
 from document_intake.domain.value_objects import *
+from document_intake.persistence import geometry_serialization as geometry_ser
+from document_intake.persistence import region_serialization as region_ser
 from document_intake.persistence.errors import PersistenceError, PersistenceErrorCode
 
 
@@ -1306,170 +1308,24 @@ def image_quality_assessment_columns(o: ImageQualityAssessment) -> tuple[Any, ..
     )
 
 
-def geometry_point_to_dict(p: GeometryPoint) -> dict[str, int]:
-    return {"x": p.x, "y": p.y}
-
-
-def geometry_point_from_dict(value: Any) -> GeometryPoint:
-    d = _require_keys(value, {"x", "y"})
-    return GeometryPoint(_require_int(d["x"]), _require_int(d["y"]))
-
-
-def source_quadrilateral_to_dict(q: SourceQuadrilateral) -> dict[str, dict[str, int]]:
-    return {
-        "top_left": geometry_point_to_dict(q.top_left),
-        "top_right": geometry_point_to_dict(q.top_right),
-        "bottom_right": geometry_point_to_dict(q.bottom_right),
-        "bottom_left": geometry_point_to_dict(q.bottom_left),
-    }
-
-
-def source_quadrilateral_from_dict(value: Any) -> SourceQuadrilateral:
-    d = _require_keys(value, {"top_left", "top_right", "bottom_right", "bottom_left"})
-    return SourceQuadrilateral(
-        geometry_point_from_dict(d["top_left"]),
-        geometry_point_from_dict(d["top_right"]),
-        geometry_point_from_dict(d["bottom_right"]),
-        geometry_point_from_dict(d["bottom_left"]),
-    )
-
-
 def image_geometry_recipe_to_json(o: ImageGeometryRecipe) -> str:
-    return _json_dumps(
-        {
-            "recipe_version_id": str(o.recipe_version_id),
-            "source_file_id": str(o.source_file_id),
-            "region_id": str(o.region_id),
-            "superseded_recipe_version_id": _id(o.superseded_recipe_version_id),
-            "revision": o.revision,
-            "coordinate_space": o.coordinate_space.value,
-            "source_effective_width": o.source_effective_width,
-            "source_effective_height": o.source_effective_height,
-            "quarter_turn": int(o.quarter_turn),
-            "quadrilateral": source_quadrilateral_to_dict(o.quadrilateral),
-            "pipeline": {"pipeline_id": o.pipeline.pipeline_id, "version": o.pipeline.version},
-            "created_at": utc_iso(o.created_at),
-        }
-    )
+    return geometry_ser.image_geometry_recipe_to_json(o)
 
 
-@persisted_data_boundary
 def image_geometry_recipe_from_json(payload: str) -> ImageGeometryRecipe:
-    d = _require_keys(
-        json.loads(payload),
-        {
-            "recipe_version_id",
-            "source_file_id",
-            "region_id",
-            "superseded_recipe_version_id",
-            "revision",
-            "coordinate_space",
-            "source_effective_width",
-            "source_effective_height",
-            "quarter_turn",
-            "quadrilateral",
-            "pipeline",
-            "created_at",
-        },
-    )
-    p = _require_keys(d["pipeline"], {"pipeline_id", "version"})
-    return ImageGeometryRecipe(
-        EntityId.parse(_require_str(d["recipe_version_id"])),
-        EntityId.parse(_require_str(d["source_file_id"])),
-        parse_id(d["superseded_recipe_version_id"]),
-        _require_int(d["revision"]),
-        GeometryCoordinateSpace(_require_str(d["coordinate_space"])),
-        _require_int(d["source_effective_width"]),
-        _require_int(d["source_effective_height"]),
-        GeometryQuarterTurn(_require_int(d["quarter_turn"])),
-        source_quadrilateral_from_dict(d["quadrilateral"]),
-        GeometryPipelineVersion(_require_str(p["pipeline_id"]), _require_int(p["version"])),
-        parse_datetime(_require_str(d["created_at"])),
-        EntityId.parse(_require_str(d["region_id"])),
-    )
+    return geometry_ser.image_geometry_recipe_from_json(payload)
 
 
 def image_geometry_recipe_columns(o: ImageGeometryRecipe) -> tuple[Any, ...]:
-    q = o.quadrilateral
-    return (
-        str(o.recipe_version_id),
-        str(o.source_file_id),
-        str(o.region_id),
-        _id(o.superseded_recipe_version_id),
-        o.revision,
-        o.coordinate_space.value,
-        o.source_effective_width,
-        o.source_effective_height,
-        int(o.quarter_turn),
-        q.top_left.x,
-        q.top_left.y,
-        q.top_right.x,
-        q.top_right.y,
-        q.bottom_right.x,
-        q.bottom_right.y,
-        q.bottom_left.x,
-        q.bottom_left.y,
-        o.pipeline.pipeline_id,
-        o.pipeline.version,
-        utc_iso(o.created_at),
-    )
+    return geometry_ser.image_geometry_recipe_columns(o)
 
 
 def document_region_set_to_json(o: DocumentRegionSetVersion) -> str:
-    return _json_dumps(
-        {
-            "region_set_version_id": str(o.region_set_version_id),
-            "source_file_id": str(o.source_file_id),
-            "superseded_region_set_version_id": _id(o.superseded_region_set_version_id),
-            "revision": o.revision,
-            "members": [
-                {
-                    "order_index": m.order_index,
-                    "region_id": str(m.region_id),
-                    "geometry_recipe_version_id": str(m.geometry_recipe_version_id),
-                }
-                for m in o.members
-            ],
-            "confirmed_at": utc_iso(o.confirmed_at),
-            "confirmed_by": _actor(o.confirmed_by),
-        }
-    )
+    return region_ser.document_region_set_to_json(o)
 
 
-@persisted_data_boundary
 def document_region_set_from_json(payload: str) -> DocumentRegionSetVersion:
-    d = _require_keys(
-        json.loads(payload),
-        {
-            "region_set_version_id",
-            "source_file_id",
-            "superseded_region_set_version_id",
-            "revision",
-            "members",
-            "confirmed_at",
-            "confirmed_by",
-        },
-    )
-    actor = parse_actor(d["confirmed_by"])
-    if actor is None or not isinstance(d["members"], list):
-        raise PersistenceError(PersistenceErrorCode.PERSISTED_DATA_INVALID)
-    members = tuple(
-        DocumentRegionSetMember(
-            _require_int(m["order_index"]),
-            EntityId.parse(_require_str(m["region_id"])),
-            EntityId.parse(_require_str(m["geometry_recipe_version_id"])),
-        )
-        for m in d["members"]
-    )
-    return DocumentRegionSetVersion(
-        EntityId.parse(_require_str(d["region_set_version_id"])),
-        EntityId.parse(_require_str(d["source_file_id"])),
-        parse_id(d["superseded_region_set_version_id"]),
-        _require_int(d["revision"]),
-        members,
-        parse_datetime(_require_str(d["confirmed_at"])),
-        actor,
-    )
+    return region_ser.document_region_set_from_json(payload)
 
 
 def prepared_image_artifact_to_json(o: PreparedImageArtifact) -> str:

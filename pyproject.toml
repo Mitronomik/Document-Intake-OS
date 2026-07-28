@@ -41,7 +41,7 @@ target-version = "py312"
 src = ["src", "tests"]
 
 [tool.ruff.lint]
-select = ["E", "F", "I", "UP", "B", "SIM", "RUF"]
+select = ["E", "F", "I", "UP", "B", "SIM", "RUF", "C90"]
 
 [tool.ruff.format]
 quote-style = "double"
@@ -62,3 +62,32 @@ pythonpath = ["src"]
 [[tool.mypy.overrides]]
 module = ["PySide6", "PySide6.*", "cryptography", "cryptography.*"]
 ignore_missing_imports = true
+
+[tool.ruff.lint.mccabe]
+max-complexity = 12
+
+[tool.ruff.lint.per-file-ignores]
+"src/document_intake/application/dto/image_geometry.py" = ["C901"]
+"src/document_intake/application/dto/storage.py" = ["C901"]
+"src/document_intake/application/ports/jpeg_preparation.py" = ["C901"]
+"src/document_intake/application/ports/media.py" = ["C901"]
+"src/document_intake/application/services/image_geometry.py" = ["C901"]
+"src/document_intake/application/services/image_quality.py" = ["C901"]
+"src/document_intake/application/services/imports.py" = ["C901"]
+"src/document_intake/application/services/prepared_jpeg.py" = ["C901"]
+"src/document_intake/domain/entities/audit.py" = ["C901"]
+"src/document_intake/domain/entities/core.py" = ["C901"]
+"src/document_intake/domain/entities/imports.py" = ["C901"]
+"src/document_intake/domain/image_geometry.py" = ["C901"]
+"src/document_intake/domain/image_quality.py" = ["C901"]
+"src/document_intake/domain/prepared_jpeg.py" = ["C901"]
+"src/document_intake/domain/value_objects/audit.py" = ["C901"]
+"src/document_intake/domain/value_objects/core.py" = ["C901"]
+"src/document_intake/persistence/database.py" = ["C901"]
+"src/document_intake/storage/envelope.py" = ["C901"]
+"src/document_intake/storage/filesystem.py" = ["C901"]
+"scripts/check_pr011_acceptance.py" = ["C901"]
+"scripts/verify_pr011_jpeg.py" = ["C901"]
+"spikes/windows_encryption/safe_report.py" = ["C901"]
+"spikes/windows_encryption/sqlcipher_probe.py" = ["C901"]
+"tests/test_documentation_baseline.py" = ["C901"]
