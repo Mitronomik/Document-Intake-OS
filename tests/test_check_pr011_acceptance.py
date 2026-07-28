@@ -9,6 +9,7 @@ from scripts import check_pr011_acceptance as checker
 def manifest(*, current: bool = False):
     data = json.loads(checker.MANIFEST.read_text())
     if not current:
+        data["current_status"] = "BLOCKED"
         for item in data["entries"]:
             item.update(status="pending", test_selectors=[], evidence_files=[], evidence_refs=[])
     return data
@@ -59,29 +60,41 @@ def test_schema_v2_and_exact_ids():
     assert d["schema_version"] == 2
     assert {e["id"] for e in d["entries"]} == checker.REQUIRED_IDS
     assert len(d["entries"]) == 57
-    assert sum(e["status"] == "implemented" for e in d["entries"]) == 54
+    assert sum(e["status"] == "implemented" for e in d["entries"]) == 57
 
 
-def test_current_final_preparation_evidence_and_pending_boundary():
+def test_current_final_manifest_closure_evidence_and_lifecycle():
     d = manifest(current=True)
-    ci_ref = "github:ci:163:30354589213:6a67c65dcb5c5fbff28c32eaca3601dfbd38de2c:success"
-    audit_ref = (
-        "audit:docs/decisions/PR-011-D1-independent-acceptance-audit.md#independent-audit-result"
+    expected = {
+        "PR011-FIN-001": "github:pr:30:body",
+        "PR011-FIN-005": (
+            "github:ci:164:30357908170:300703294cab707f921f56bceba4ff331be0d12c:success"
+        ),
+        "PR011-FIN-007": (
+            "audit:docs/decisions/PR-011-D2-final-manifest-closure-audit.md"
+            "#final-manifest-closure-result"
+        ),
+    }
+    assert all(evidence["status"] == "implemented" for evidence in d["entries"])
+    assert not [evidence for evidence in d["entries"] if evidence["status"] == "pending"]
+    for evidence_id, evidence_ref in expected.items():
+        assert entry(d, evidence_id)["evidence_refs"] == [evidence_ref]
+    assert d["current_status"] == "READY_FOR_HUMAN_REVIEW"
+    assert checker.validate(d, checker.ROOT, required_stage="final").errors == ()
+    assert checker.validate(d, checker.ROOT, require_complete=True).errors == ()
+
+
+def test_current_final_closure_rejects_blocked_lifecycle_or_missing_reference():
+    d = manifest(current=True)
+    d["current_status"] = "BLOCKED"
+    assert (
+        "LIFECYCLE_STATUS_INVALID"
+        in checker.validate(d, checker.ROOT, require_complete=True).errors
     )
-    for evidence_id in ("PR011-FIN-002", "PR011-FIN-003", "PR011-FIN-004"):
-        evidence = entry(d, evidence_id)
-        assert evidence["status"] == "implemented"
-        assert evidence["evidence_refs"] == [ci_ref]
-    independent = entry(d, "PR011-FIN-006")
-    assert independent["status"] == "implemented"
-    assert independent["evidence_refs"] == [audit_ref]
-    for pending_id in ("PR011-FIN-001", "PR011-FIN-005", "PR011-FIN-007"):
-        pending = entry(d, pending_id)
-        assert pending["status"] == "pending"
-        assert pending["test_selectors"] == []
-        assert pending["evidence_files"] == []
-        assert pending["evidence_refs"] == []
-    assert d["current_status"] == "BLOCKED"
+    d = manifest(current=True)
+    entry(d, "PR011-FIN-005")["evidence_refs"] = []
+    errors = checker.validate(d, checker.ROOT, require_complete=True).errors
+    assert "EVIDENCE_REF_COUNT" in errors or "PENDING_EVIDENCE" in errors
 
 
 def test_canonical_stage_membership_counts():

@@ -3,7 +3,7 @@
   "pr": 30,
   "contract": "PR-011",
   "implementation_base": "f007fb5a04a5c69c70a37faf7ba12fa6775ae819",
-  "current_status": "BLOCKED",
+  "current_status": "READY_FOR_HUMAN_REVIEW",
   "entries": [
     {
       "id": "PR011-SVC-001",
@@ -860,13 +860,15 @@
       "stage": "final",
       "workstream": "final_acceptance",
       "requirement": "PR body reflects exact current evidence",
-      "status": "pending",
+      "status": "implemented",
       "platform": "documentation",
       "evidence_type": "pr_metadata",
       "test_selectors": [],
       "evidence_files": [],
-      "evidence_refs": [],
-      "notes": "Required focused acceptance evidence remains pending."
+      "evidence_refs": [
+        "github:pr:30:body"
+      ],
+      "notes": "The live PR #30 body was reconciled with the current implementation, acceptance evidence, exact checksums, remaining authorization boundary, and human-review status."
     },
     {
       "id": "PR011-FIN-002",
@@ -918,13 +920,15 @@
       "stage": "final",
       "workstream": "final_acceptance",
       "requirement": "exact-head CI success",
-      "status": "pending",
+      "status": "implemented",
       "platform": "cross_platform",
       "evidence_type": "ci",
       "test_selectors": [],
       "evidence_files": [],
-      "evidence_refs": [],
-      "notes": "Required focused acceptance evidence remains pending."
+      "evidence_refs": [
+        "github:ci:164:30357908170:300703294cab707f921f56bceba4ff331be0d12c:success"
+      ],
+      "notes": "The complete exact-head CI passed on the final-preparation evidence head before manifest closure."
     },
     {
       "id": "PR011-FIN-006",
@@ -946,13 +950,15 @@
       "stage": "final",
       "workstream": "final_acceptance",
       "requirement": "no pending manifest entries",
-      "status": "pending",
+      "status": "implemented",
       "platform": "cross_platform",
       "evidence_type": "independent_audit",
       "test_selectors": [],
       "evidence_files": [],
-      "evidence_refs": [],
-      "notes": "Required focused acceptance evidence remains pending."
+      "evidence_refs": [
+        "audit:docs/decisions/PR-011-D2-final-manifest-closure-audit.md#final-manifest-closure-result"
+      ],
+      "notes": "The independent closure audit verified the exact closure prerequisites; the resulting manifest contains all 57 implemented entries with none pending."
     }
   ]
 }

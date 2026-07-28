@@ -55,6 +55,7 @@ REQUIRED_DOCUMENTS = (
     "docs/decisions/ADR-024-image-geometry-recipe-v1.md",
     "docs/decisions/ADR-025-prepared-jpeg-v1.md",
     "docs/decisions/PR-011-D1-independent-acceptance-audit.md",
+    "docs/decisions/PR-011-D2-final-manifest-closure-audit.md",
     "docs/tasks/PR-010-geometry-tools.md",
     "docs/tasks/PR-011-jpeg-preparation.md",
 )
@@ -2586,13 +2587,13 @@ def test_pr010_contract_current_lifecycle_and_merge_evidence_are_section_scoped(
     ):
         assert required in current, required
     assert (
-        "PR-011 has six complete implementation/evidence stages, including Windows SQLCipher "
-        "accepted through exact-head CI #163. The independent audit passed for final-acceptance "
-        "preparation, not human acceptance. 54 of 57 manifest entries are implemented and three "
-        "final entries remain pending: PR-body reconciliation, final-preparation exact-head CI, "
-        "and no-pending manifest closure. PR-011 human acceptance remains blocked; PR-012 and "
-        "later remain unauthorized. Gate 2 remains not accepted, M3 remains in progress, Q-021 "
-        "remains deferred, and no PR-009 production quality policy is active." in next_step
+        "PR-011 production implementation and acceptance evidence are complete: all seven "
+        "manifest stages and all 57 entries are implemented, with none pending. The lifecycle "
+        "is `READY_FOR_HUMAN_REVIEW`, not human accepted. Product-owner human acceptance has not "
+        "occurred, and merge remains unauthorized until explicit Product-owner acceptance after "
+        "closure-head CI is checked. PR-012 and later remain unauthorized. Gate 2 remains not "
+        "accepted, M3 remains in progress, Q-021 remains deferred, and no active PR-009 "
+        "production quality policy exists." in next_step
     )
     assert "PR-009: IMPLEMENTED AND IN REVIEW; NOT HUMAN ACCEPTED" in historical
     assert "Q-021: OPEN — REQUIRES PRODUCT-OWNER ACCEPTANCE" in historical
@@ -2610,6 +2611,20 @@ def test_pr011_independent_audit_preserves_final_acceptance_boundary() -> None:
     assert "30354589213" in audit
     assert "PR-012 and later work\nremain unauthorized" in audit
     assert "PR-011 human acceptance remains blocked" in audit
+
+
+def test_pr011_closure_audit_preserves_human_acceptance_boundary() -> None:
+    audit = (REPO_ROOT / "docs/decisions/PR-011-D2-final-manifest-closure-audit.md").read_text(
+        encoding="utf-8"
+    )
+    assert "PASS FOR FINAL MANIFEST CLOSURE — NOT HUMAN ACCEPTANCE" in audit
+    assert "## Final-manifest-closure result" in audit
+    assert "300703294cab707f921f56bceba4ff331be0d12c" in audit
+    assert "CI #164" in audit
+    assert "30357908170" in audit
+    assert "READY_FOR_HUMAN_REVIEW" in audit
+    assert "Product-owner human acceptance has not occurred" in audit
+    assert "PR-012 and later remain unauthorized" in audit
 
 
 def _assert_ordered_markers(section: str) -> None:
