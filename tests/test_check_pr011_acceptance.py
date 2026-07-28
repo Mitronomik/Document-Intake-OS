@@ -59,7 +59,29 @@ def test_schema_v2_and_exact_ids():
     assert d["schema_version"] == 2
     assert {e["id"] for e in d["entries"]} == checker.REQUIRED_IDS
     assert len(d["entries"]) == 57
-    assert sum(e["status"] == "implemented" for e in d["entries"]) == 50
+    assert sum(e["status"] == "implemented" for e in d["entries"]) == 54
+
+
+def test_current_final_preparation_evidence_and_pending_boundary():
+    d = manifest(current=True)
+    ci_ref = "github:ci:163:30354589213:6a67c65dcb5c5fbff28c32eaca3601dfbd38de2c:success"
+    audit_ref = (
+        "audit:docs/decisions/PR-011-D1-independent-acceptance-audit.md#independent-audit-result"
+    )
+    for evidence_id in ("PR011-FIN-002", "PR011-FIN-003", "PR011-FIN-004"):
+        evidence = entry(d, evidence_id)
+        assert evidence["status"] == "implemented"
+        assert evidence["evidence_refs"] == [ci_ref]
+    independent = entry(d, "PR011-FIN-006")
+    assert independent["status"] == "implemented"
+    assert independent["evidence_refs"] == [audit_ref]
+    for pending_id in ("PR011-FIN-001", "PR011-FIN-005", "PR011-FIN-007"):
+        pending = entry(d, pending_id)
+        assert pending["status"] == "pending"
+        assert pending["test_selectors"] == []
+        assert pending["evidence_files"] == []
+        assert pending["evidence_refs"] == []
+    assert d["current_status"] == "BLOCKED"
 
 
 def test_canonical_stage_membership_counts():

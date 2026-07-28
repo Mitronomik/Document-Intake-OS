@@ -54,6 +54,7 @@ REQUIRED_DOCUMENTS = (
     "docs/decisions/ADR-023-image-quality-assessment-v1.md",
     "docs/decisions/ADR-024-image-geometry-recipe-v1.md",
     "docs/decisions/ADR-025-prepared-jpeg-v1.md",
+    "docs/decisions/PR-011-D1-independent-acceptance-audit.md",
     "docs/tasks/PR-010-geometry-tools.md",
     "docs/tasks/PR-011-jpeg-preparation.md",
 )
@@ -2585,17 +2586,30 @@ def test_pr010_contract_current_lifecycle_and_merge_evidence_are_section_scoped(
     ):
         assert required in current, required
     assert (
-        "PR-011 application-service, repository-core, repository-corruption, encoder and migration "
-        "evidence is complete. Windows SQLCipher evidence code is implemented, but exact-head CI "
-        "#162 failed during Windows pytest; the version-scoped v6 Unit of Work correction is "
-        "required before the Windows stage can be accepted. Final acceptance remains blocked. "
-        "Do not begin "
-        "PR-012. PR-011 human "
-        "acceptance remains blocked." in next_step
+        "PR-011 has six complete implementation/evidence stages, including Windows SQLCipher "
+        "accepted through exact-head CI #163. The independent audit passed for final-acceptance "
+        "preparation, not human acceptance. 54 of 57 manifest entries are implemented and three "
+        "final entries remain pending: PR-body reconciliation, final-preparation exact-head CI, "
+        "and no-pending manifest closure. PR-011 human acceptance remains blocked; PR-012 and "
+        "later remain unauthorized. Gate 2 remains not accepted, M3 remains in progress, Q-021 "
+        "remains deferred, and no PR-009 production quality policy is active." in next_step
     )
     assert "PR-009: IMPLEMENTED AND IN REVIEW; NOT HUMAN ACCEPTED" in historical
     assert "Q-021: OPEN — REQUIRES PRODUCT-OWNER ACCEPTANCE" in historical
     assert "PR-010 AND LATER: UNAUTHORIZED" in historical
+
+
+def test_pr011_independent_audit_preserves_final_acceptance_boundary() -> None:
+    audit = (REPO_ROOT / "docs/decisions/PR-011-D1-independent-acceptance-audit.md").read_text(
+        encoding="utf-8"
+    )
+    assert "PASS FOR FINAL ACCEPTANCE PREPARATION — NOT HUMAN ACCEPTANCE" in audit
+    assert "## Independent-audit result" in audit
+    assert "6a67c65dcb5c5fbff28c32eaca3601dfbd38de2c" in audit
+    assert "CI #163" in audit
+    assert "30354589213" in audit
+    assert "PR-012 and later work\nremain unauthorized" in audit
+    assert "PR-011 human acceptance remains blocked" in audit
 
 
 def _assert_ordered_markers(section: str) -> None:

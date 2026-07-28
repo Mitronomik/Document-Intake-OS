@@ -74,7 +74,7 @@ PR-S001/PR-S001-F1/PR-S001-F2/PR-S001-F3/PR-S001-F4 use fictional synthetic data
 
 ## Следующий безопасный шаг
 
-PR-011 application-service, repository-core, repository-corruption, encoder and migration evidence is complete. Windows SQLCipher evidence code is implemented, but exact-head CI #162 failed during Windows pytest; the version-scoped v6 Unit of Work correction is required before the Windows stage can be accepted. Final acceptance remains blocked. Do not begin PR-012. PR-011 human acceptance remains blocked.
+PR-011 has six complete implementation/evidence stages, including Windows SQLCipher accepted through exact-head CI #163. The independent audit passed for final-acceptance preparation, not human acceptance. 54 of 57 manifest entries are implemented and three final entries remain pending: PR-body reconciliation, final-preparation exact-head CI, and no-pending manifest closure. PR-011 human acceptance remains blocked; PR-012 and later remain unauthorized. Gate 2 remains not accepted, M3 remains in progress, Q-021 remains deferred, and no PR-009 production quality policy is active.
 
 ## Historical lifecycle snapshot — Current PR-010 geometry contract staging — 2026-07-23
 

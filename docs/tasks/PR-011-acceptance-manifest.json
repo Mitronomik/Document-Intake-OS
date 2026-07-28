@@ -873,39 +873,45 @@
       "stage": "final",
       "workstream": "final_acceptance",
       "requirement": "full Ubuntu and Windows pytest",
-      "status": "pending",
+      "status": "implemented",
       "platform": "cross_platform",
       "evidence_type": "ci",
       "test_selectors": [],
       "evidence_files": [],
-      "evidence_refs": [],
-      "notes": "Required focused acceptance evidence remains pending."
+      "evidence_refs": [
+        "github:ci:163:30354589213:6a67c65dcb5c5fbff28c32eaca3601dfbd38de2c:success"
+      ],
+      "notes": "Ubuntu and Windows full pytest passed on the exact audited implementation head."
     },
     {
       "id": "PR011-FIN-003",
       "stage": "final",
       "workstream": "final_acceptance",
       "requirement": "Ubuntu and Windows builds",
-      "status": "pending",
+      "status": "implemented",
       "platform": "cross_platform",
       "evidence_type": "ci",
       "test_selectors": [],
       "evidence_files": [],
-      "evidence_refs": [],
-      "notes": "Required focused acceptance evidence remains pending."
+      "evidence_refs": [
+        "github:ci:163:30354589213:6a67c65dcb5c5fbff28c32eaca3601dfbd38de2c:success"
+      ],
+      "notes": "Ubuntu and Windows builds passed on the exact audited implementation head."
     },
     {
       "id": "PR011-FIN-004",
       "stage": "final",
       "workstream": "final_acceptance",
       "requirement": "Windows PR-011 verifier",
-      "status": "pending",
+      "status": "implemented",
       "platform": "cross_platform",
       "evidence_type": "ci",
       "test_selectors": [],
       "evidence_files": [],
-      "evidence_refs": [],
-      "notes": "Required focused acceptance evidence remains pending."
+      "evidence_refs": [
+        "github:ci:163:30354589213:6a67c65dcb5c5fbff28c32eaca3601dfbd38de2c:success"
+      ],
+      "notes": "The Windows production PR-011 verifier passed on the exact audited implementation head."
     },
     {
       "id": "PR011-FIN-005",
@@ -925,13 +931,15 @@
       "stage": "final",
       "workstream": "final_acceptance",
       "requirement": "independent acceptance audit",
-      "status": "pending",
+      "status": "implemented",
       "platform": "cross_platform",
       "evidence_type": "independent_audit",
       "test_selectors": [],
       "evidence_files": [],
-      "evidence_refs": [],
-      "notes": "Required focused acceptance evidence remains pending."
+      "evidence_refs": [
+        "audit:docs/decisions/PR-011-D1-independent-acceptance-audit.md#independent-audit-result"
+      ],
+      "notes": "An externally supplied independent audit passed for final-acceptance preparation but did not grant human acceptance."
     },
     {
       "id": "PR011-FIN-007",
