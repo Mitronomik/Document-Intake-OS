@@ -20,7 +20,11 @@ from document_intake.domain.prepared_jpeg import (
 from document_intake.domain.value_objects import AuditReasonCode, EntityId
 from document_intake.persistence import database
 from document_intake.persistence.database import EncryptedDatabase, SqlCipherUnitOfWork
-from document_intake.persistence.errors import PersistenceError, PersistenceErrorCode
+from document_intake.persistence.errors import (
+    PersistenceError,
+    PersistenceErrorCode,
+    translate_driver_error,
+)
 from tests.support.pr011 import (
     STAMP,
     Provider,
@@ -355,27 +359,27 @@ def test_pr011_rep_010_immutable_update_delete_replace_rejected(
     repository_environment: RepositoryEnvironment, mutation: str
 ) -> None:
     first = commit_first(repository_environment)
-    with (
-        pytest.raises(sqlite3.IntegrityError),
-        production_uow(repository_environment) as unit,
-    ):
+    with production_uow(repository_environment) as unit:
         connection = unit._connection()
-        if mutation == "update":
-            connection.execute(
-                "UPDATE prepared_image_artifacts SET width=2 WHERE prepared_artifact_id=?",
-                (str(first.id),),
-            )
-        elif mutation == "delete":
-            connection.execute(
-                "DELETE FROM prepared_image_artifacts WHERE prepared_artifact_id=?",
-                (str(first.id),),
-            )
-        else:
-            connection.execute(
-                "INSERT OR REPLACE INTO prepared_image_artifacts SELECT * "
-                "FROM prepared_image_artifacts WHERE prepared_artifact_id=?",
-                (str(first.id),),
-            )
+        with pytest.raises(Exception) as caught:
+            if mutation == "update":
+                connection.execute(
+                    "UPDATE prepared_image_artifacts SET width=2 WHERE prepared_artifact_id=?",
+                    (str(first.id),),
+                )
+            elif mutation == "delete":
+                connection.execute(
+                    "DELETE FROM prepared_image_artifacts WHERE prepared_artifact_id=?",
+                    (str(first.id),),
+                )
+            else:
+                connection.execute(
+                    "INSERT OR REPLACE INTO prepared_image_artifacts SELECT * "
+                    "FROM prepared_image_artifacts WHERE prepared_artifact_id=?",
+                    (str(first.id),),
+                )
+        translated = translate_driver_error(caught.value)
+        assert translated.code is PersistenceErrorCode.PERSISTENCE_CONSTRAINT
     with production_uow(repository_environment) as reopened:
         assert reopened.prepared_image_artifacts.get(first.id) == first
         assert_integrity(reopened)
