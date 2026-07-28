@@ -1,11 +1,19 @@
+from hashlib import sha256
 from io import BytesIO
+from pathlib import Path
 
 import pytest
 from PIL import Image, JpegImagePlugin
 
 from document_intake.application.ports.jpeg_preparation import UncompressedRgbRaster
 from document_intake.domain.prepared_jpeg import (
+    JPEG_QUALITY_SEQUENCE,
+    JPEG_RESIZE_PERCENT_SEQUENCE,
     MAX_PREPARED_JPEG_BYTES,
+    PREPARED_JPEG_OUTPUT_CONTRACT_ID,
+    PREPARED_JPEG_PIPELINE_ID,
+    PreparedJpegError,
+    PreparedJpegErrorCode,
     PreparedJpegPipelineVersion,
 )
 from document_intake.image_pipeline.jpeg_preparer import (
@@ -14,7 +22,7 @@ from document_intake.image_pipeline.jpeg_preparer import (
 )
 
 
-def test_preparer_is_deterministic_metadata_free_rgb_jpeg() -> None:
+def test_pr011_enc_004_structural_jpeg_contract() -> None:
     pixels = bytes(
         (x * 17 + y * 31 + channel * 53) % 256
         for y in range(64)
@@ -29,7 +37,33 @@ def test_preparer_is_deterministic_metadata_free_rgb_jpeg() -> None:
     assert first.byte_size <= MAX_PREPARED_JPEG_BYTES
     assert first.jpeg_quality == 95
     assert first.resize_percent == 100
-    assert JpegImagePlugin.get_sampling(Image.open(__import__("io").BytesIO(first.jpeg_bytes))) == 0
+    assert first.byte_size == len(first.jpeg_bytes)
+    assert first.sha256.value == sha256(first.jpeg_bytes).hexdigest()
+    assert first.pipeline_id == PREPARED_JPEG_PIPELINE_ID
+    assert first.pipeline_version == 1
+    assert first.output_contract_id == PREPARED_JPEG_OUTPUT_CONTRACT_ID
+    assert first.output_contract_version == 1
+    assert b"synthetic-source" not in first.jpeg_bytes
+    with Image.open(BytesIO(first.jpeg_bytes)) as decoded:
+        decoded.load()
+        assert decoded.format == "JPEG"
+        assert decoded.mode == "RGB"
+        assert "A" not in decoded.getbands()
+        assert decoded.size == (first.width, first.height)
+        assert not decoded.getexif()
+        assert JpegImagePlugin.get_sampling(decoded) == 0
+        assert not decoded.info.get("progressive")
+        assert not decoded.info.get("progression")
+        for key in (
+            "icc_profile",
+            "xmp",
+            "XML:com.adobe.xmp",
+            "iptc",
+            "comment",
+            "dpi",
+            "thumbnail",
+        ):
+            assert key not in decoded.info
 
 
 def test_half_up_dimension_math() -> None:
@@ -178,7 +212,7 @@ def _jpeg_for(image: Image.Image, quality: int) -> bytes:
     return output.getvalue()
 
 
-def test_full_48_attempt_exhaustion_is_observed_in_exact_order() -> None:
+def test_pr011_enc_002_complete_48_attempt_ordering() -> None:
     from document_intake.domain.prepared_jpeg import PreparedJpegError, PreparedJpegErrorCode
     from document_intake.image_pipeline.jpeg_preparer import (
         _encode_prepared_jpeg_internal,
@@ -200,41 +234,64 @@ def test_full_48_attempt_exhaustion_is_observed_in_exact_order() -> None:
             candidate_encoder=oversized,
         )
     assert exc.value.code is PreparedJpegErrorCode.SIZE_LIMIT_UNREACHABLE
+    assert exc.value.__cause__ is None
+    assert "path" not in repr(exc.value).lower()
     assert observed == list(_iter_candidate_attempts(raster))
     assert len(observed) == 48
+    assert [(item.resize_percent, item.jpeg_quality) for item in observed] == [
+        (scale, quality)
+        for scale in JPEG_RESIZE_PERCENT_SEQUENCE
+        for quality in JPEG_QUALITY_SEQUENCE
+    ]
+    assert [(item.width, item.height) for item in observed[::8]] == [
+        (2400, 2400),
+        (2160, 2160),
+        (1920, 1920),
+        (1680, 1680),
+        (1440, 1440),
+        (1200, 1200),
+    ]
 
 
-@pytest.mark.parametrize("fit_size", [MAX_PREPARED_JPEG_BYTES, MAX_PREPARED_JPEG_BYTES + 1])
-def test_exact_byte_ceiling_and_ceiling_plus_one(fit_size: int) -> None:
+def test_pr011_enc_003_exact_byte_ceiling_and_ceiling_plus_one() -> None:
     from document_intake.domain.prepared_jpeg import PreparedJpegError, PreparedJpegErrorCode
     from document_intake.image_pipeline.jpeg_preparer import _encode_prepared_jpeg_internal
 
     raster = UncompressedRgbRaster(32, 32, b"\0" * (32 * 32 * 3))
     observed = []
 
-    def sized(image: Image.Image, quality: int) -> bytes:
-        data = _jpeg_for(image, quality)
-        return data + b"\0" * (fit_size - len(data))
+    calls = 0
 
-    if fit_size == MAX_PREPARED_JPEG_BYTES:
-        result = _encode_prepared_jpeg_internal(
+    def sized(image: Image.Image, quality: int) -> bytes:
+        nonlocal calls
+        calls += 1
+        data = _jpeg_for(image, quality)
+        size = MAX_PREPARED_JPEG_BYTES + 1 if calls == 1 else MAX_PREPARED_JPEG_BYTES
+        return data + b"\0" * (size - len(data))
+
+    result = _encode_prepared_jpeg_internal(
+        raster,
+        pipeline=PreparedJpegPipelineVersion(),
+        attempt_observer=observed.append,
+        candidate_encoder=sized,
+    )
+    assert calls == len(observed) == 2
+    assert result.byte_size == MAX_PREPARED_JPEG_BYTES
+    assert result.sha256.value == sha256(result.jpeg_bytes).hexdigest()
+    assert result.jpeg_quality == 90
+
+    failed_result = None
+    with pytest.raises(PreparedJpegError) as exc:
+        failed_result = _encode_prepared_jpeg_internal(
             raster,
             pipeline=PreparedJpegPipelineVersion(),
-            attempt_observer=observed.append,
-            candidate_encoder=sized,
+            candidate_encoder=lambda image, quality: (
+                _jpeg_for(image, quality)
+                + b"\0" * (MAX_PREPARED_JPEG_BYTES + 1 - len(_jpeg_for(image, quality)))
+            ),
         )
-        assert result.byte_size == MAX_PREPARED_JPEG_BYTES
-        assert len(observed) == 1
-    else:
-        with pytest.raises(PreparedJpegError) as exc:
-            _encode_prepared_jpeg_internal(
-                raster,
-                pipeline=PreparedJpegPipelineVersion(),
-                attempt_observer=observed.append,
-                candidate_encoder=sized,
-            )
-        assert exc.value.code is PreparedJpegErrorCode.SIZE_LIMIT_UNREACHABLE
-        assert len(observed) == 8
+    assert exc.value.code is PreparedJpegErrorCode.SIZE_LIMIT_UNREACHABLE
+    assert failed_result is None
 
 
 def test_oversized_candidate_advances_and_later_exact_ceiling_is_selected() -> None:
@@ -425,7 +482,7 @@ def test_resize_failure_is_sanitized_before_scaled_attempt_is_observed(monkeypat
     assert len(observed) == 8
 
 
-def test_scaled_candidates_are_resized_directly_from_the_original(monkeypatch) -> None:  # type: ignore[no-untyped-def]
+def test_pr011_enc_001_every_resize_uses_original_uncompressed_raster(monkeypatch) -> None:  # type: ignore[no-untyped-def]
     from document_intake.image_pipeline import jpeg_preparer
 
     original_resize = jpeg_preparer.Image.Image.resize
@@ -438,26 +495,82 @@ def test_scaled_candidates_are_resized_directly_from_the_original(monkeypatch) -
         return result
 
     monkeypatch.setattr(jpeg_preparer.Image.Image, "resize", tracked_resize)
-    calls = 0
+    source_pixels = b"\0" * (2400 * 2400 * 3)
+    raster = UncompressedRgbRaster(2400, 2400, source_pixels)
 
     def candidate(image: Image.Image, quality: int) -> bytes:
-        nonlocal calls
-        calls += 1
         encoded_images.append(id(image))
         data = _jpeg_for(image, quality)
-        size = MAX_PREPARED_JPEG_BYTES if calls == 17 else MAX_PREPARED_JPEG_BYTES + 1
-        return data + b"\0" * (size - len(data))
+        return data + b"\0" * (MAX_PREPARED_JPEG_BYTES + 1 - len(data))
 
-    jpeg_preparer._encode_prepared_jpeg_internal(
-        UncompressedRgbRaster(2400, 2400, b"\0" * (2400 * 2400 * 3)),
+    with pytest.raises(PreparedJpegError) as exc:
+        jpeg_preparer._encode_prepared_jpeg_internal(
+            raster,
+            pipeline=PreparedJpegPipelineVersion(),
+            candidate_encoder=candidate,
+        )
+    assert exc.value.code is PreparedJpegErrorCode.SIZE_LIMIT_UNREACHABLE
+    assert len(resize_calls) == 5
+    original_id = encoded_images[0]
+    assert all(call[0] == original_id for call in resize_calls)
+    assert [call[1] for call in resize_calls] == [
+        (2160, 2160),
+        (1920, 1920),
+        (1680, 1680),
+        (1440, 1440),
+        (1200, 1200),
+    ]
+    assert all(call[2] == Image.Resampling.LANCZOS for call in resize_calls)
+    scale_ids = [original_id, *(call[3] for call in resize_calls)]
+    assert len(set(scale_ids)) == 6
+    for index, image_id in enumerate(scale_ids):
+        assert encoded_images[index * 8 : (index + 1) * 8] == [image_id] * 8
+    assert raster.rgb_pixels == source_pixels
+
+
+def test_pr011_enc_005_no_intermediate_candidate_publication(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from document_intake.image_pipeline.jpeg_preparer import _encode_prepared_jpeg_internal
+
+    monkeypatch.setattr(
+        Path,
+        "write_bytes",
+        lambda *args, **kwargs: pytest.fail("encoder attempted filesystem publication"),
+    )
+    raster = UncompressedRgbRaster(32, 32, b"\0" * (32 * 32 * 3))
+    candidates: list[bytes] = []
+    observed = []
+
+    def candidate(image: Image.Image, quality: int) -> bytes:
+        data = _jpeg_for(image, quality)
+        size = MAX_PREPARED_JPEG_BYTES + 1 if not candidates else MAX_PREPARED_JPEG_BYTES
+        value = data + bytes([quality]) * (size - len(data))
+        candidates.append(value)
+        return value
+
+    result = _encode_prepared_jpeg_internal(
+        raster,
         pipeline=PreparedJpegPipelineVersion(),
+        attempt_observer=observed.append,
         candidate_encoder=candidate,
     )
-    assert len(resize_calls) == 2
-    assert resize_calls[0][0] == resize_calls[1][0]
-    assert resize_calls[0][1] == (2160, 2160)
-    assert resize_calls[1][1] == (1920, 1920)
-    assert all(call[2] == Image.Resampling.LANCZOS for call in resize_calls)
-    assert resize_calls[0][3] != resize_calls[1][3]
-    assert encoded_images[8] == resize_calls[0][3]
-    assert encoded_images[16] == resize_calls[1][3]
+    assert len(candidates) == len(observed) == 2
+    assert result.jpeg_bytes == candidates[1]
+    assert result.jpeg_bytes != candidates[0]
+    assert candidates[0] not in result.jpeg_bytes
+    assert result.sha256.value != sha256(candidates[0]).hexdigest()
+    assert all(not hasattr(attempt, "jpeg_bytes") for attempt in observed)
+
+    failed_result = None
+    with pytest.raises(PreparedJpegError) as exc:
+        failed_result = _encode_prepared_jpeg_internal(
+            raster,
+            pipeline=PreparedJpegPipelineVersion(),
+            candidate_encoder=lambda image, quality: (
+                _jpeg_for(image, quality)
+                + b"\0" * (MAX_PREPARED_JPEG_BYTES + 1 - len(_jpeg_for(image, quality)))
+            ),
+        )
+    assert exc.value.code is PreparedJpegErrorCode.SIZE_LIMIT_UNREACHABLE
+    assert failed_result is None

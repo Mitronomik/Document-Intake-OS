@@ -588,65 +588,85 @@
       "stage": "encoder",
       "workstream": "encoder",
       "requirement": "every resize derived directly from the original uncompressed raster",
-      "status": "pending",
+      "status": "implemented",
       "platform": "cross_platform",
       "evidence_type": "pytest",
-      "test_selectors": [],
-      "evidence_files": [],
+      "test_selectors": [
+        "tests/image_pipeline/test_jpeg_preparer.py::test_pr011_enc_001_every_resize_uses_original_uncompressed_raster"
+      ],
+      "evidence_files": [
+        "tests/image_pipeline/test_jpeg_preparer.py"
+      ],
       "evidence_refs": [],
-      "notes": "Required focused acceptance evidence remains pending."
+      "notes": "Deterministic synthetic raster evidence proves the fixed encoder contract without publication dependencies."
     },
     {
       "id": "PR011-ENC-002",
       "stage": "encoder",
       "workstream": "encoder",
       "requirement": "complete 48-attempt ordering",
-      "status": "pending",
+      "status": "implemented",
       "platform": "cross_platform",
       "evidence_type": "pytest",
-      "test_selectors": [],
-      "evidence_files": [],
+      "test_selectors": [
+        "tests/image_pipeline/test_jpeg_preparer.py::test_pr011_enc_002_complete_48_attempt_ordering"
+      ],
+      "evidence_files": [
+        "tests/image_pipeline/test_jpeg_preparer.py"
+      ],
       "evidence_refs": [],
-      "notes": "Required focused acceptance evidence remains pending."
+      "notes": "Deterministic synthetic raster evidence proves the fixed encoder contract without publication dependencies."
     },
     {
       "id": "PR011-ENC-003",
       "stage": "encoder",
       "workstream": "encoder",
       "requirement": "exact byte ceiling and ceiling-plus-one behavior",
-      "status": "pending",
+      "status": "implemented",
       "platform": "cross_platform",
       "evidence_type": "pytest",
-      "test_selectors": [],
-      "evidence_files": [],
+      "test_selectors": [
+        "tests/image_pipeline/test_jpeg_preparer.py::test_pr011_enc_003_exact_byte_ceiling_and_ceiling_plus_one"
+      ],
+      "evidence_files": [
+        "tests/image_pipeline/test_jpeg_preparer.py"
+      ],
       "evidence_refs": [],
-      "notes": "Required focused acceptance evidence remains pending."
+      "notes": "Deterministic synthetic raster evidence proves the fixed encoder contract without publication dependencies."
     },
     {
       "id": "PR011-ENC-004",
       "stage": "encoder",
       "workstream": "encoder",
       "requirement": "structural JPEG contract",
-      "status": "pending",
+      "status": "implemented",
       "platform": "cross_platform",
       "evidence_type": "pytest",
-      "test_selectors": [],
-      "evidence_files": [],
+      "test_selectors": [
+        "tests/image_pipeline/test_jpeg_preparer.py::test_pr011_enc_004_structural_jpeg_contract"
+      ],
+      "evidence_files": [
+        "tests/image_pipeline/test_jpeg_preparer.py"
+      ],
       "evidence_refs": [],
-      "notes": "Required focused acceptance evidence remains pending."
+      "notes": "Deterministic synthetic raster evidence proves the fixed encoder contract without publication dependencies."
     },
     {
       "id": "PR011-ENC-005",
       "stage": "encoder",
       "workstream": "encoder",
       "requirement": "no intermediate candidate publication",
-      "status": "pending",
+      "status": "implemented",
       "platform": "cross_platform",
       "evidence_type": "pytest",
-      "test_selectors": [],
-      "evidence_files": [],
+      "test_selectors": [
+        "tests/image_pipeline/test_jpeg_preparer.py::test_pr011_enc_005_no_intermediate_candidate_publication"
+      ],
+      "evidence_files": [
+        "tests/image_pipeline/test_jpeg_preparer.py"
+      ],
       "evidence_refs": [],
-      "notes": "Required focused acceptance evidence remains pending."
+      "notes": "Deterministic synthetic raster evidence proves the fixed encoder contract without publication dependencies."
     },
     {
       "id": "PR011-MIG-001",
