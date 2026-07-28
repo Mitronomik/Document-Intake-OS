@@ -1,14 +1,6 @@
 from dataclasses import replace
 
 import pytest
-from tests.support.pr011 import (
-    STAMP,
-    actor,
-    entity_id,
-    valid_geometry_recipe,
-    valid_original_stored_artifact,
-    valid_source_file,
-)
 
 from document_intake.application.dto.document_regions import (
     ConfirmDocumentRegionsCommand,
@@ -24,6 +16,14 @@ from document_intake.domain.document_regions import DocumentRegionErrorCode
 from document_intake.domain.enums import SourceMediaType
 from document_intake.domain.image_geometry import derive_geometry_dimensions
 from document_intake.persistence.errors import PersistenceError, PersistenceErrorCode
+from tests.support.pr011 import (
+    STAMP,
+    actor,
+    entity_id,
+    valid_geometry_recipe,
+    valid_original_stored_artifact,
+    valid_source_file,
+)
 
 
 class Repo:

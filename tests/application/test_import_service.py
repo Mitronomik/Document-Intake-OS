@@ -733,9 +733,9 @@ def test_pr008_supported_real_flow_proves_distance_nine_exclusion(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     from scripts import verify_pr008_import as verifier
-    from tests.persistence.test_unit_of_work import open_sqlite
 
     from document_intake.persistence import database
+    from tests.persistence.test_unit_of_work import open_sqlite
 
     monkeypatch.setattr(database, "_open_connection", open_sqlite)
     monkeypatch.setattr(verifier, "_ordinary_sqlite_rejects", lambda _path: True)

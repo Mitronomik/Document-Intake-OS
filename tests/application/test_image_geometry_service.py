@@ -3,7 +3,6 @@ from datetime import UTC, datetime
 from uuid import uuid4
 
 import pytest
-from tests.support.pr011 import valid_geometry_recipe
 
 from document_intake.application.dto.image_geometry import CreateImageGeometryRecipeCommand
 from document_intake.application.services.image_geometry import (
@@ -20,6 +19,7 @@ from document_intake.domain.image_geometry import (
     SourceQuadrilateral,
 )
 from document_intake.domain.value_objects import ActorRef, EntityId
+from tests.support.pr011 import valid_geometry_recipe
 
 
 def eid():
