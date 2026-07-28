@@ -82,9 +82,10 @@ def _rows(connection: Any) -> dict[str, tuple[tuple[Any, ...], ...]]:
 
 
 def _create_populated_encrypted_v6(
-    path: Path, key: bytes
+    path: Path, key: bytes, monkeypatch: pytest.MonkeyPatch
 ) -> dict[str, tuple[tuple[Any, ...], ...]]:
     provider = Provider(key)
+    production_open_connection = persistence_database._open_connection
     connection = persistence_database._open_connection(path, provider)
     _cipher_active(connection)
     for migration in MIGRATIONS[:6]:
@@ -103,31 +104,45 @@ def _create_populated_encrypted_v6(
     )
     connection.close()
 
-    database = EncryptedDatabase(path, provider)
-    batch = valid_upload_batch()
-    source = valid_source_file()
-    original = valid_original_stored_artifact()
-    with database.unit_of_work() as unit:
-        unit.persons.add(person())
-        unit.identity_documents.add(identity_document())
-        unit.migration_documents.add(migration_document())
-        unit.vehicles.add(vehicle(entity_id(20), VehicleRole.TRACTOR))
-        unit.vehicles.add(vehicle(entity_id(21), VehicleRole.TRAILER))
-        unit.terminals.add(terminal())
-        unit.documents.add(document())
-        unit.field_candidates.add(candidate())
-        unit.applications.add(application())
-        unit.stored_artifacts.add(original)
-        unit.stored_artifacts.add(replace(original, artifact_id=entity_id(81)))
-        unit.stored_artifacts.add(replace(original, artifact_id=entity_id(82)))
-        unit.application_snapshots.add(snapshot(application()))
-        unit.upload_batches.add(batch)
-        unit.source_files.add(source)
-        unit.upload_batches.update(batch.append_source_file_id(source.id))
-        unit.image_quality_assessments.add(valid_quality_assessment())
-        unit.image_geometry_recipes.add(valid_geometry_recipe())
-        unit.audit_events.add(valid_audit_event())
-        unit.commit()
+    with monkeypatch.context() as v6_context:
+        v6_context.setattr(persistence_database, "CURRENT_SCHEMA_VERSION", 6)
+        assert persistence_database._open_connection is production_open_connection
+        database = EncryptedDatabase(path, provider)
+        batch = valid_upload_batch()
+        source = valid_source_file()
+        original = valid_original_stored_artifact()
+        with database.unit_of_work() as unit:
+            unit.persons.add(person())
+            unit.identity_documents.add(identity_document())
+            unit.migration_documents.add(migration_document())
+            unit.vehicles.add(vehicle(entity_id(20), VehicleRole.TRACTOR))
+            unit.vehicles.add(vehicle(entity_id(21), VehicleRole.TRAILER))
+            unit.terminals.add(terminal())
+            unit.documents.add(document())
+            unit.field_candidates.add(candidate())
+            unit.applications.add(application())
+            unit.stored_artifacts.add(original)
+            unit.stored_artifacts.add(replace(original, artifact_id=entity_id(81)))
+            unit.stored_artifacts.add(replace(original, artifact_id=entity_id(82)))
+            unit.application_snapshots.add(snapshot(application()))
+            unit.upload_batches.add(batch)
+            unit.source_files.add(source)
+            unit.upload_batches.update(batch.append_source_file_id(source.id))
+            unit.image_quality_assessments.add(valid_quality_assessment())
+            unit.image_geometry_recipes.add(valid_geometry_recipe())
+            unit.audit_events.add(valid_audit_event())
+            unit.commit()
+        with EncryptedDatabase(path, provider).unit_of_work() as reopened_unit:
+            assert reopened_unit.persons.get(person().id) == person()
+            assert reopened_unit.applications.get(application().id) == application()
+            assert reopened_unit.source_files.get(source.id) == source
+            assert reopened_unit._connection().execute("PRAGMA foreign_key_check").fetchall() == []
+            assert (
+                reopened_unit._connection().execute("PRAGMA cipher_integrity_check").fetchall()
+                == []
+            )
+    assert persistence_database.CURRENT_SCHEMA_VERSION == 7
+    assert persistence_database._open_connection is production_open_connection
     reopened = persistence_database._open_connection(path, provider)
     expected = _rows(reopened)
     assert all(expected[table] for table in V6_TABLES)
@@ -321,30 +336,30 @@ def test_actual_windows_sqlcipher_schema_v7_reopens_with_clean_integrity(tmp_pat
 
 
 def test_pr011_win_001_production_windows_sqlcipher_populated_v6_creation(
-    tmp_path: Path,
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     path = tmp_path / "pr011-win-v6.db"
     key = b"v" * 32
-    expected = _create_populated_encrypted_v6(path, key)
+    expected = _create_populated_encrypted_v6(path, key, monkeypatch)
     assert path.read_bytes()[:16] != b"SQLite format 3\x00"
     with pytest.raises(sqlite3.DatabaseError):
         sqlite3.connect(path).execute("SELECT count(*) FROM schema_migrations").fetchone()
-    with EncryptedDatabase(path, Provider(key)).unit_of_work() as unit:
-        _cipher_active(unit._connection())
-        assert unit.persons.get(person().id) == person()
-        assert unit.applications.get(application().id) == application()
-        assert unit.source_files.get(valid_source_file().id) == valid_source_file()
-        assert all(expected[table] for table in V6_TABLES)
-        assert unit._connection().execute("PRAGMA foreign_key_check").fetchall() == []
-        assert unit._connection().execute("PRAGMA cipher_integrity_check").fetchall() == []
+    raw = persistence_database._open_connection(path, Provider(key))
+    _cipher_active(raw)
+    assert raw.execute("PRAGMA user_version").fetchone() == (6,)
+    assert all(expected[table] for table in V6_TABLES)
+    assert raw.execute("PRAGMA foreign_key_check").fetchall() == []
+    assert raw.execute("PRAGMA cipher_integrity_check").fetchall() == []
+    raw.close()
 
 
 def test_pr011_win_002_production_windows_sqlcipher_v6_to_v7_migration(
-    tmp_path: Path,
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     path = tmp_path / "pr011-win-migration.db"
     key = b"m" * 32
-    before = _create_populated_encrypted_v6(path, key)
+    before = _create_populated_encrypted_v6(path, key, monkeypatch)
+    assert persistence_database.CURRENT_SCHEMA_VERSION == 7
     _migrate_encrypted_v7(path, key)
     connection = persistence_database._open_connection(path, Provider(key))
     assert connection.execute("PRAGMA user_version").fetchone() == (7,)
@@ -365,13 +380,23 @@ def test_pr011_win_002_production_windows_sqlcipher_v6_to_v7_migration(
 
 
 def test_pr011_win_003_windows_cipher_and_foreign_key_integrity_after_reopen(
-    tmp_path: Path, caplog: pytest.LogCaptureFixture, capsys: pytest.CaptureFixture[str]
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
+    capsys: pytest.CaptureFixture[str],
 ) -> None:
     path = tmp_path / "pr011-win-integrity.db"
     key = b"i" * 32
     wrong_key = b"j" * 32
-    _create_populated_encrypted_v6(path, key)
+    _create_populated_encrypted_v6(path, key, monkeypatch)
+    assert persistence_database.CURRENT_SCHEMA_VERSION == 7
     _migrate_encrypted_v7(path, key)
+    raw = persistence_database._open_connection(path, Provider(key))
+    assert not raw.in_transaction
+    _cipher_active(raw)
+    assert raw.execute("PRAGMA foreign_key_check").fetchall() == []
+    assert raw.execute("PRAGMA cipher_integrity_check").fetchall() == []
+    raw.close()
     reopened = EncryptedDatabase(path, Provider(key))
     reopened.initialize()
     with reopened.unit_of_work() as unit:
@@ -392,7 +417,6 @@ def test_pr011_win_003_windows_cipher_and_foreign_key_integrity_after_reopen(
             "prepared_image_artifacts_recipe_order_idx",
         } <= names
         assert not {"audit_events_v0006", "stored_artifacts_v0007_new"} & names
-        assert connection.in_transaction
     assert path.read_bytes()[:16] != b"SQLite format 3\x00"
     with (
         pytest.raises(PersistenceError) as rejected,
@@ -406,10 +430,13 @@ def test_pr011_win_003_windows_cipher_and_foreign_key_integrity_after_reopen(
         assert forbidden not in rendered
 
 
-def test_pr011_win_004_windows_prepared_artifact_commit_reopen_read(tmp_path: Path) -> None:
+def test_pr011_win_004_windows_prepared_artifact_commit_reopen_read(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     path = tmp_path / "pr011-win-prepared.db"
     key = b"p" * 32
-    _create_populated_encrypted_v6(path, key)
+    _create_populated_encrypted_v6(path, key, monkeypatch)
+    assert persistence_database.CURRENT_SCHEMA_VERSION == 7
     database = _migrate_encrypted_v7(path, key)
     prepared = valid_prepared_artifact()
     stored = valid_prepared_stored_artifact()
