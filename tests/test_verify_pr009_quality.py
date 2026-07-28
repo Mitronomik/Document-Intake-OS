@@ -3,6 +3,7 @@ from __future__ import annotations
 import ast
 import inspect
 import io
+from dataclasses import replace
 
 from PIL import Image
 from scripts import verify_pr009_quality as verifier
@@ -10,6 +11,42 @@ from scripts import verify_pr009_quality as verifier
 
 def _passing_run() -> verifier._Run:
     return verifier._Run(dict.fromkeys(verifier._CHECKS, True))
+
+
+def test_pr009_historical_prefix_accepts_v0008_and_future_migrations(monkeypatch) -> None:  # type: ignore[no-untyped-def]
+    assert verifier._historical_migration_prefix_valid()
+    future = replace(verifier.MIGRATIONS[-1], version=9, name="synthetic_future")
+    monkeypatch.setattr(verifier, "MIGRATIONS", (*verifier.MIGRATIONS, future))
+    monkeypatch.setattr(verifier, "CURRENT_SCHEMA_VERSION", 9)
+    assert verifier._historical_migration_prefix_valid()
+
+
+def test_pr009_historical_prefix_rejects_changed_checksum(monkeypatch) -> None:  # type: ignore[no-untyped-def]
+    changed = replace(verifier.V0001, checksum="0" * 64)
+    monkeypatch.setattr(verifier, "MIGRATIONS", (changed, *verifier.MIGRATIONS[1:]))
+    assert not verifier._historical_migration_prefix_valid()
+
+
+def test_pr009_historical_prefix_rejects_reordering(monkeypatch) -> None:  # type: ignore[no-untyped-def]
+    migrations = verifier.MIGRATIONS
+    monkeypatch.setattr(verifier, "MIGRATIONS", (migrations[1], migrations[0], *migrations[2:]))
+    assert not verifier._historical_migration_prefix_valid()
+
+
+def test_pr009_historical_prefix_rejects_missing_migration(monkeypatch) -> None:  # type: ignore[no-untyped-def]
+    monkeypatch.setattr(verifier, "MIGRATIONS", verifier.MIGRATIONS[:6])
+    monkeypatch.setattr(verifier, "CURRENT_SCHEMA_VERSION", 6)
+    assert not verifier._historical_migration_prefix_valid()
+
+
+def test_pr009_output_tracks_current_schema_and_remains_allowlisted(monkeypatch, capsys) -> None:  # type: ignore[no-untyped-def]
+    future = replace(verifier.MIGRATIONS[-1], version=9, name="synthetic_future")
+    monkeypatch.setattr(verifier, "MIGRATIONS", (*verifier.MIGRATIONS, future))
+    monkeypatch.setattr(verifier, "CURRENT_SCHEMA_VERSION", 9)
+    lines = verifier._render(_passing_run().statuses)
+    assert lines[0] == "PR009_VERIFY schema_version=9"
+    assert verifier._has_allowlisted_shape(lines)
+    assert capsys.readouterr().err == ""
 
 
 def test_pr009_verifier_exact_success_output_and_exit_zero(monkeypatch, capsys) -> None:  # type: ignore[no-untyped-def]

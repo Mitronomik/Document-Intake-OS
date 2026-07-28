@@ -76,7 +76,7 @@ _CHECKS = (
     "privacy",
 )
 _SUCCESS_LINES = (
-    "PR009_VERIFY schema_version=8",
+    f"PR009_VERIFY schema_version={CURRENT_SCHEMA_VERSION}",
     *(f"PR009_VERIFY {name}=PASS" for name in _CHECKS),
     "PR009_VERIFY result=PASS",
 )
@@ -90,6 +90,7 @@ _EXPECTED_MIGRATION_CHECKSUMS = (
     "ac9d5bfbe79160d880f30af6ee1ed645ab500b9be140a18b9d6498cc68eba5ec",
     "afad8ccc6de4ef81d73f137cbffa5a45fec1fdbb6940eabb0507cc9d6580a4a7",
 )
+_EXPECTED_MIGRATION_PREFIX = (V0001, V0002, V0003, V0004, V0005, V0006, V0007)
 _EXPECTED_IMPORT_GRAYSCALE = (
     b'%&))\x1b\x00\x00\x00\x00"!\x1f\x1e!*4;;$!\x19\x174p\xaa\xd1\xd2HB5/J'
     b"\x8a\xcb\xf7\xf7wsmgdjszujv\x89\xa1\xa4\x89cF87T\x83\xc0\xe6\xd4\xa5|f"
@@ -349,7 +350,9 @@ def _unsupported_code() -> str | None:
 
 
 def _render(statuses: Mapping[str, bool]) -> tuple[str, ...]:
-    passed = CURRENT_SCHEMA_VERSION == 8 and all(statuses[name] for name in _CHECKS)
+    passed = (CURRENT_SCHEMA_VERSION == len(MIGRATIONS)) and all(  # noqa: SIM300
+        statuses[name] for name in _CHECKS
+    )
     return (
         f"PR009_VERIFY schema_version={CURRENT_SCHEMA_VERSION}",
         *(f"PR009_VERIFY {name}={'PASS' if statuses[name] else 'FAIL'}" for name in _CHECKS),
@@ -368,7 +371,10 @@ def _has_allowlisted_shape(lines: tuple[str, ...]) -> bool:
         return lines == ("PR009_VERIFY result=FAIL",) or lines in tuple(
             (f"PR009_VERIFY result=INCONCLUSIVE code={code}",) for code in _INCONCLUSIVE_CODES
         )
-    if len(lines) != len(_CHECKS) + 2 or lines[0] != "PR009_VERIFY schema_version=8":
+    if (
+        len(lines) != len(_CHECKS) + 2
+        or lines[0] != f"PR009_VERIFY schema_version={CURRENT_SCHEMA_VERSION}"
+    ):
         return False
     for name, line in zip(_CHECKS, lines[1:-1], strict=True):
         if line not in {f"PR009_VERIFY {name}=PASS", f"PR009_VERIFY {name}=FAIL"}:
@@ -386,6 +392,17 @@ def _privacy_safe(lines: tuple[str, ...], *, forbidden_values: tuple[str, ...]) 
     if _LOWER_SHA256.search(rendered) is not None:
         return False
     return not any(value and value in rendered for value in forbidden_values)
+
+
+def _historical_migration_prefix_valid() -> bool:
+    prefix_length = len(_EXPECTED_MIGRATION_PREFIX)
+    return (
+        (CURRENT_SCHEMA_VERSION == len(MIGRATIONS))  # noqa: SIM300
+        and (CURRENT_SCHEMA_VERSION >= prefix_length)  # noqa: SIM300
+        and MIGRATIONS[:prefix_length] == _EXPECTED_MIGRATION_PREFIX
+        and tuple(migration.checksum for migration in MIGRATIONS[:prefix_length])
+        == _EXPECTED_MIGRATION_CHECKSUMS
+    )
 
 
 def _metric_vector(assessment: Any) -> tuple[tuple[str, str, int, str, str], ...]:
@@ -566,10 +583,7 @@ def _run_supported() -> _Run:
         storage = ImmutableFilesystemStorage(storage_root, _StorageKeyProvider())
         decoder = PillowMediaDecoder()
         statuses["migration_v0005"] = (
-            CURRENT_SCHEMA_VERSION == 8
-            and MIGRATIONS == (V0001, V0002, V0003, V0004, V0005, V0006, V0007)
-            and tuple(migration.checksum for migration in MIGRATIONS)
-            == _EXPECTED_MIGRATION_CHECKSUMS
+            _historical_migration_prefix_valid()
             and V0005.checksum == _EXPECTED_MIGRATION_CHECKSUMS[4]
             and V0006.checksum == _EXPECTED_MIGRATION_CHECKSUMS[5]
             and V0007.checksum == _EXPECTED_MIGRATION_CHECKSUMS[6]
