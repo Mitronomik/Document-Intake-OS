@@ -56,8 +56,11 @@ REQUIRED_DOCUMENTS = (
     "docs/decisions/ADR-025-prepared-jpeg-v1.md",
     "docs/decisions/PR-011-D1-independent-acceptance-audit.md",
     "docs/decisions/PR-011-D2-final-manifest-closure-audit.md",
+    "docs/decisions/PR-011-D3-lifecycle-acceptance.md",
+    "docs/decisions/ADR-026-document-regions-v1.md",
     "docs/tasks/PR-010-geometry-tools.md",
     "docs/tasks/PR-011-jpeg-preparation.md",
+    "docs/tasks/PR-012-multiple-documents-per-image.md",
 )
 
 CANONICAL_SOURCE_ORDER = (
@@ -1896,9 +1899,13 @@ def test_pr009_quality_contract_is_human_accepted_with_deferred_q021_policy() ->
     )
     task_header = task.split("\n## Implementation base rule", maxsplit=1)[0]
     roadmap = (REPO_ROOT / "docs/roadmap.md").read_text(encoding="utf-8")
-    current_m3 = _adr_section(roadmap, "## Current lifecycle state — 2026-07-26")
+    current_m3 = _adr_section(
+        roadmap, "## Historical lifecycle snapshot — Current lifecycle state — 2026-07-26"
+    )
     handoff = (REPO_ROOT / "docs/handoff.md").read_text(encoding="utf-8")
-    current_handoff = _adr_section(handoff, "## Current lifecycle state — 2026-07-26")
+    current_handoff = _adr_section(
+        handoff, "## Historical lifecycle snapshot — Current lifecycle state — 2026-07-26"
+    )
     questions = (REPO_ROOT / "docs/open-questions.md").read_text(encoding="utf-8")
     q007 = _question_section(questions, "Q-007")
     q021 = _question_section(questions, "Q-021")
@@ -2383,7 +2390,9 @@ def test_pr009_quality_contract_is_human_accepted_with_deferred_q021_policy() ->
 
 def test_current_pr009_lifecycle_sections_are_scoped_after_d4() -> None:
     traceability = (REPO_ROOT / "docs/traceability-matrix.md").read_text(encoding="utf-8")
-    current_traceability = _adr_section(traceability, "## Current lifecycle state — 2026-07-26")
+    current_traceability = _adr_section(
+        traceability, "## Historical lifecycle snapshot — Current lifecycle state — 2026-07-26"
+    )
     current_pr010_traceability = _adr_section(
         traceability,
         "## Historical lifecycle snapshot — Current PR-010 geometry contract staging — 2026-07-23",
@@ -2560,7 +2569,9 @@ def _section(markdown: str, heading: str) -> str:
 
 def test_pr010_contract_current_lifecycle_and_merge_evidence_are_section_scoped() -> None:
     progress = (REPO_ROOT / "docs/progress.md").read_text(encoding="utf-8")
-    current = _section(progress, "## Current lifecycle state — 2026-07-26")
+    current = _section(
+        progress, "## Historical lifecycle snapshot — Current lifecycle state — 2026-07-26"
+    )
     next_step = _section(progress, "## Следующий безопасный шаг")
     historical = _section(
         progress,
@@ -2871,7 +2882,7 @@ def test_pr010_task_and_adr024_contract_terms_are_exact() -> None:
 
 
 def test_current_pr010_closure_and_pr011_contract_proposal() -> None:
-    current_heading = "## Current lifecycle state — 2026-07-26"
+    historical_heading = "## Historical lifecycle snapshot — Current lifecycle state — 2026-07-26"
     current_files = [
         "docs/progress.md",
         "docs/roadmap.md",
@@ -2907,8 +2918,8 @@ def test_current_pr010_closure_and_pr011_contract_proposal() -> None:
     ]
     for filename in current_files:
         text = (REPO_ROOT / filename).read_text(encoding="utf-8")
-        assert text.count(current_heading) == 1, filename
-        current = _section(text, current_heading)
+        assert text.count(historical_heading) == 1, filename
+        current = _section(text, historical_heading)
         for marker in required:
             assert marker in current, (filename, marker)
         for stale in (
@@ -2951,33 +2962,8 @@ def test_accepted_pr011_contract_is_exact_and_in_review() -> None:
         "M3: IN PROGRESS",
     ):
         assert marker in combined, marker
-    for filename in (
-        "docs/architecture.md",
-        "docs/decisions.md",
-        "docs/decisions/ADR-025-prepared-jpeg-v1.md",
-        "docs/domain-model.md",
-        "docs/handoff.md",
-        "docs/image-pipeline.md",
-        "docs/implementation-plan.md",
-        "docs/open-questions.md",
-        "docs/progress.md",
-        "docs/roadmap.md",
-        "docs/security.md",
-        "docs/tasks/PR-011-jpeg-preparation.md",
-        "docs/testing-strategy.md",
-        "docs/traceability-matrix.md",
-    ):
-        text = (REPO_ROOT / filename).read_text(encoding="utf-8")
-        assert text.count("## Current lifecycle state — 2026-07-26") == 1
-        assert "## Current PR-011 production implementation lifecycle" not in text
-        current = _section(text, "## Current lifecycle state — 2026-07-26")
-        assert "ADR-025: ACCEPTED" in current
-        assert "PR-011 CONTRACT: ACCEPTED" in current
-        assert (
-            "PR-011 PRODUCTION IMPLEMENTATION: IMPLEMENTED AND IN REVIEW; NOT HUMAN ACCEPTED"
-            in current
-        )
-        assert "PR-012 AND LATER: UNAUTHORIZED" in current
+    assert "ADR-025: ACCEPTED" in combined
+    assert "PR-011 CONTRACT: ACCEPTED" in combined
 
 
 def test_pr011_task_describes_implemented_production_evidence() -> None:
@@ -3001,3 +2987,329 @@ def test_pr011_task_describes_implemented_production_evidence() -> None:
         "No production code",
     ):
         assert stale not in task
+
+
+def test_pr011_lifecycle_closure_and_pr012_contract_current_sections() -> None:
+    current_files = (
+        "docs/progress.md",
+        "docs/roadmap.md",
+        "docs/implementation-plan.md",
+        "docs/handoff.md",
+        "docs/architecture.md",
+        "docs/domain-model.md",
+        "docs/image-pipeline.md",
+        "docs/testing-strategy.md",
+        "docs/traceability-matrix.md",
+        "docs/decisions.md",
+        "docs/open-questions.md",
+        "docs/security.md",
+    )
+    required = (
+        "PR-011: COMPLETED AND HUMAN ACCEPTED",
+        "639e1c68e2fd5f3de15c45028d4926c1fa8c10bf",
+        "72cf3852e286b711969f7277539654573818d859",
+        "CI #166 / run ID 30362433088 / success",
+        "SCHEMA VERSION:\n7",
+        "afad8ccc6de4ef81d73f137cbffa5a45fec1fdbb6940eabb0507cc9d6580a4a7",
+        "ADR-026:\nPROPOSED",
+        "PR-012 CONTRACT:\nPROPOSED FOR HUMAN REVIEW",
+        "PR-012 PRODUCTION IMPLEMENTATION:\nUNAUTHORIZED",
+        "PR-013 AND LATER:\nUNAUTHORIZED",
+        "GATE 2:\nNOT ACCEPTED",
+        "M3:\nIN PROGRESS",
+        "Q-021: DEFERRED",
+        "PRODUCTION PR-009 QUALITY POLICY: NOT ACTIVE",
+        "PRODUCTION `policy_id`: NOT ASSIGNED",
+        "PRODUCTION `policy_version`: NOT ASSIGNED",
+        "AUTOMATIC PR-009 QUALITY BLOCKING: NOT ACTIVE",
+        "AUTOMATIC PRODUCTION `RETAKE_REQUIRED`: NOT ACTIVE",
+    )
+    stale = (
+        "PR-011 HUMAN ACCEPTANCE: BLOCKED",
+        "PR-011 ACCEPTANCE EVIDENCE: INCOMPLETE",
+        "PR-011 PRODUCTION IMPLEMENTATION: IMPLEMENTED AND IN REVIEW",
+        "PR-011 PRODUCTION IMPLEMENTATION: UNAUTHORIZED",
+        "PR-012 contract review has not started",
+    )
+    for filename in current_files:
+        text = (REPO_ROOT / filename).read_text(encoding="utf-8")
+        assert text.count("## Current lifecycle state — 2026-07-28") == 1, filename
+        current = _section(text, "## Current lifecycle state — 2026-07-28")
+        for marker in required:
+            assert marker in current, (filename, marker)
+        for marker in stale:
+            assert marker not in current, (filename, marker)
+        # The superseded 2026-07-26 state remains explicitly historical.
+        assert "## Historical lifecycle snapshot — Current lifecycle state — 2026-07-26" in text
+
+
+def test_pr011_d3_records_exact_accepted_evidence_and_boundaries() -> None:
+    decision = (REPO_ROOT / "docs/decisions/PR-011-D3-lifecycle-acceptance.md").read_text(
+        encoding="utf-8"
+    )
+    for heading in (
+        "## Status",
+        "## Date",
+        "## Accepted evidence",
+        "## Product-owner decision",
+        "## Accepted residual boundaries",
+        "## Authorization boundary",
+    ):
+        assert heading in decision
+    evidence = _section(decision, "## Accepted evidence")
+    for marker in (
+        "PR-011: COMPLETED AND HUMAN ACCEPTED",
+        "639e1c68e2fd5f3de15c45028d4926c1fa8c10bf",
+        "72cf3852e286b711969f7277539654573818d859",
+        "CI #166",
+        "30362433088",
+        "success",
+        "1_992_294",
+        "schema version 7",
+        "afad8ccc6de4ef81d73f137cbffa5a45fec1fdbb6940eabb0507cc9d6580a4a7",
+        "total=57",
+        "implemented=57",
+        "pending=0",
+    ):
+        assert marker in evidence
+    boundary = _section(decision, "## Authorization boundary")
+    assert "PR-012 production implementation" in boundary
+    assert "does not authorize" in boundary
+    assert "PR-013 and later remain unauthorized" in boundary
+
+
+def test_adr026_proposed_region_model_is_exact() -> None:
+    adr = (REPO_ROOT / "docs/decisions/ADR-026-document-regions-v1.md").read_text(encoding="utf-8")
+    assert "PROPOSED" in _section(adr, "## Status")
+    for marker in (
+        "PR-012 CONTRACT: PROPOSED FOR HUMAN REVIEW",
+        "PR-012 PRODUCTION IMPLEMENTATION: UNAUTHORIZED",
+        "UNIQUE(source_file_id, revision)",
+        "minimum confirmed regions = 1",
+        "maximum confirmed regions = 2",
+        "region_id: EntityId",
+        "independent revision chains",
+        "v0008_document_regions",
+        "root `recipe_version_id` as `region_id`",
+        "prepared_image_artifacts.geometry_recipe_version_id",
+        "prepare_geometry_recipe_as_jpeg",
+        "Existing PR-011 prepared artifacts remain valid",
+        "automatic document detection",
+        "neither creates nor classifies final `Document` records",
+    ):
+        assert marker in adr, marker
+
+
+def test_pr012_task_contract_sections_nongoals_and_unauthorized_boundary() -> None:
+    task = (REPO_ROOT / "docs/tasks/PR-012-multiple-documents-per-image.md").read_text(
+        encoding="utf-8"
+    )
+    assert "CONTRACT PROPOSED FOR HUMAN REVIEW" in _section(task, "## Status")
+    assert "PRODUCTION IMPLEMENTATION UNAUTHORIZED" in _section(task, "## Status")
+    for number, title in (
+        (1, "Objective"),
+        (2, "Expected implementation base"),
+        (3, "Domain changes"),
+        (4, "Application DTO"),
+        (5, "Exact application operation order"),
+        (6, "Atomicity"),
+        (7, "Persistence and migration proposal"),
+        (8, "Repository behavior"),
+        (9, "PR-011 compatibility"),
+        (10, "Audit contract"),
+        (11, "Proposed controlled errors"),
+        (12, "Exact future files"),
+        (13, "Required future test matrix"),
+        (14, "Synthetic fixtures"),
+        (15, "Non-goals"),
+        (16, "Manual verification for future implementation"),
+    ):
+        assert f"## {number}. {title}" in task
+    assert "PR-012_IMPLEMENTATION_BASE = TO_BE_SET_AFTER_CONTRACT_PR_MERGE" in task
+    non_goals = _section(task, "## 15. Non-goals")
+    for marker in (
+        "automatic document detection",
+        "UI",
+        "`Document` creation",
+        "automatic `RETAKE_REQUIRED`",
+        "PR-013",
+        "cloud APIs",
+        "more than two regions per source",
+    ):
+        assert marker in non_goals
+    authorization = _section(task, "## Authorization boundary")
+    assert "PR-012 production implementation is unauthorized" in authorization
+    assert "PR-013 and later are unauthorized" in authorization
+
+
+def test_pr012_identity_and_recipe_selection_corrections_are_exact() -> None:
+    task = (REPO_ROOT / "docs/tasks/PR-012-multiple-documents-per-image.md").read_text(
+        encoding="utf-8"
+    )
+    dto = _section(task, "## 4. Application DTO")
+    for marker in (
+        "RegionSetMemberInput:",
+        "ExistingRecipeSelection:",
+        "geometry_recipe_version_id",
+        "NewRecipeRevision:",
+        "Exactly one selection form is allowed per member",
+        "recipe_revision == 1",
+        "superseded_recipe_version_id is None",
+        "region_id == recipe_version_id",
+        "recipe_revision > 1",
+        "superseded_recipe_version_id is required",
+        "region_id == predecessor.region_id",
+        "recipe_version_id != region_id",
+        "every new `recipe_version_id`",
+        "every new `recipe_audit_event_id`",
+        "must not equal an unrelated set, recipe, or audit record ID",
+        "first confirmed region set after migration may reference an existing legacy PR-010 recipe",
+        "change order without a geometry revision",
+    ):
+        assert marker in dto, marker
+    assert "All record IDs are pairwise distinct" not in dto
+
+
+def test_pr012_existing_new_and_order_only_operation_contract_is_exact() -> None:
+    task = (REPO_ROOT / "docs/tasks/PR-012-multiple-documents-per-image.md").read_text(
+        encoding="utf-8"
+    )
+    operation = _section(task, "## 5. Exact application operation order")
+    atomicity = _section(task, "## 6. Atomicity")
+    future_application = _section(task, "### Application")
+    for marker in (
+        "load and validate every selected existing recipe",
+        "load and validate predecessors and current latest recipes for proposed new revisions",
+        "render every selected recipe against the immutable source",
+        "add only new geometry-recipe revisions",
+        "recipe-created audit event only for each new recipe revision",
+        "membership rows for both existing and new selections",
+    ):
+        assert marker in operation, marker
+    for marker in (
+        "zero geometry-recipe rows",
+        "zero recipe-created audit events",
+        "one new `DocumentRegionSetVersion`",
+    ):
+        assert marker in atomicity, marker
+    for marker in (
+        "first set may reference a migrated existing PR-010 recipe",
+        "mixed existing/new selection",
+        "order-only revision creates zero new geometry recipes",
+        "one changed region leaves the other selected recipe version unchanged",
+    ):
+        assert marker in future_application, marker
+
+
+def test_pr012_canonical_payload_migration_correction_is_exact() -> None:
+    adr = (REPO_ROOT / "docs/decisions/ADR-026-document-regions-v1.md").read_text(encoding="utf-8")
+    task = (REPO_ROOT / "docs/tasks/PR-012-multiple-documents-per-image.md").read_text(
+        encoding="utf-8"
+    )
+    for migration in (
+        _section(adr, "## Persistence and migration proposal"),
+        _section(task, "## 7. Persistence and migration proposal"),
+    ):
+        for marker in (
+            "must not",
+            "schema-7 `canonical_payload` bytes",
+            "read the complete existing recipe chain for the source",
+            "validate the schema-7 canonical payload against every schema-7 SQL projection",
+            "malformed payload, projection mismatch, missing revision, branch, invalid "
+            "predecessor, or cross-source predecessor",
+            "region_id = root.recipe_version_id",
+            "new deterministic schema-8 canonical payload using the accepted repository serializer",
+            "validate schema-8 payload/projection equality",
+            "preserve every prepared-artifact foreign key and natural key",
+            "No random or current-time value may be generated",
+            "rolls back completely",
+        ):
+            assert marker in migration, marker
+    migration_tests = _section(task, "### Migration")
+    for marker in (
+        "canonical payload rewritten to include `region_id`",
+        "deterministic rewritten payload",
+        "schema-7 payload/projection corruption blocks migration",
+        "schema-8 repository reads succeed after reopen",
+        "prepared artifacts still reference the same recipe-version IDs",
+    ):
+        assert marker in migration_tests, marker
+
+
+def test_pr012_controlled_error_semantics_are_frozen() -> None:
+    task = (REPO_ROOT / "docs/tasks/PR-012-multiple-documents-per-image.md").read_text(
+        encoding="utf-8"
+    )
+    errors = _section(task, "## 11. Proposed controlled errors")
+    definitions = {
+        "IDENTITY_CONFLICT": (
+            "A newly supplied persistent record ID already exists during preflight before any "
+            "insert."
+        ),
+        "REGION_COUNT_INVALID": "The member count is not exactly one or two.",
+        "REGION_ORDER_INVALID": (
+            "Member order indices are not exactly `1` or `1, 2` in contiguous order."
+        ),
+        "REGION_SELECTION_INVALID": (
+            "A member supplies neither recipe-selection form or both forms."
+        ),
+        "REGION_IDENTITY_CONFLICT": (
+            "A region violates the revision-1 alias rule, changes lineage identity, references a "
+            "recipe from another region/source, or aliases an unrelated record ID."
+        ),
+        "DUPLICATE_REGION": (
+            "The command contains duplicate region identities, duplicate selected recipe versions, "
+            "or exactly identical canonical quadrilaterals for two members."
+        ),
+        "REGION_REVISION_CONFLICT": (
+            "A proposed new recipe revision is not the immediate next revision or does not "
+            "supersede the current latest recipe revision for that region."
+        ),
+        "REGION_SET_REVISION_CONFLICT": (
+            "The proposed set revision is not the immediate next revision or does not supersede "
+            "the current latest set version for the source."
+        ),
+        "REGION_SET_NOT_FOUND": "A caller-supplied preceding set version does not exist.",
+        "PERSISTENCE_CONFLICT": (
+            "A uniqueness or concurrency race occurs after successful preflight but before commit."
+        ),
+        "PERSISTENCE_FAILED": "A non-conflict persistence operation fails before commit.",
+        "COMMIT_FAILED": "The Unit of Work commit itself fails.",
+        "PERSISTED_DATA_INVALID": (
+            "A loaded persisted recipe, region set, membership, canonical payload, projection, or "
+            "revision chain is corrupt or internally inconsistent."
+        ),
+    }
+    for code, definition in definitions.items():
+        assert f"### `{code}`" in errors
+        assert definition in errors
+    assert (
+        "no raw IDs, paths, filenames, bytes, checksums, coordinates, SQL, PII, or raw exceptions"
+        in errors
+    )
+
+
+def test_pr012_correction_preserves_proposed_authorization_boundaries() -> None:
+    for filename in (
+        "docs/decisions/ADR-026-document-regions-v1.md",
+        "docs/tasks/PR-012-multiple-documents-per-image.md",
+    ):
+        text = (REPO_ROOT / filename).read_text(encoding="utf-8")
+        boundary = (
+            _section(text, "## Decision and authorization")
+            if "ADR-026" in filename
+            else _section(text, "## Authorization boundary")
+        )
+        for marker in (
+            "ADR-026: PROPOSED",
+            "PR-012 CONTRACT: PROPOSED FOR HUMAN REVIEW",
+            "PR-012 PRODUCTION IMPLEMENTATION: UNAUTHORIZED",
+            "PR-013 AND LATER: UNAUTHORIZED",
+            "GATE 2: NOT ACCEPTED",
+            "M3: IN PROGRESS",
+            "Q-021: DEFERRED",
+            "PRODUCTION PR-009 QUALITY POLICY: NOT ACTIVE",
+            "AUTOMATIC PR-009 QUALITY BLOCKING: NOT ACTIVE",
+            "AUTOMATIC PRODUCTION RETAKE_REQUIRED: NOT ACTIVE",
+        ):
+            assert marker in boundary, (filename, marker)
