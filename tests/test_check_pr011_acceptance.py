@@ -6,8 +6,12 @@ import pytest
 from scripts import check_pr011_acceptance as checker
 
 
-def manifest():
-    return json.loads(checker.MANIFEST.read_text())
+def manifest(*, current: bool = False):
+    data = json.loads(checker.MANIFEST.read_text())
+    if not current:
+        for item in data["entries"]:
+            item.update(status="pending", test_selectors=[], evidence_files=[], evidence_refs=[])
+    return data
 
 
 def entry(data, i):
@@ -51,10 +55,11 @@ def implement(data, root, i, body="assert 1 == 1"):
 
 
 def test_schema_v2_and_exact_ids():
-    d = manifest()
+    d = manifest(current=True)
     assert d["schema_version"] == 2
     assert {e["id"] for e in d["entries"]} == checker.REQUIRED_IDS
     assert len(d["entries"]) == 57
+    assert sum(e["status"] == "implemented" for e in d["entries"]) == 17
 
 
 def test_canonical_stage_membership_counts():

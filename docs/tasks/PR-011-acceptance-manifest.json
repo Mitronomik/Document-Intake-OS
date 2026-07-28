@@ -10,221 +10,289 @@
       "stage": "application_service",
       "workstream": "application_service",
       "requirement": "read-UoW repository failure mappings",
-      "status": "pending",
+      "status": "implemented",
       "platform": "cross_platform",
       "evidence_type": "pytest",
-      "test_selectors": [],
-      "evidence_files": [],
+      "test_selectors": [
+        "tests/application/test_prepared_jpeg_service_acceptance.py::test_pr011_svc_001_read_uow_repository_failure_mappings"
+      ],
+      "evidence_files": [
+        "tests/application/test_prepared_jpeg_service_acceptance.py"
+      ],
       "evidence_refs": [],
-      "notes": "Required focused acceptance evidence remains pending."
+      "notes": "Deterministic synthetic application-service evidence exercises the required boundary without personal data."
     },
     {
       "id": "PR011-SVC-002",
       "stage": "application_service",
       "workstream": "application_service",
       "requirement": "missing and invalid read state",
-      "status": "pending",
+      "status": "implemented",
       "platform": "cross_platform",
       "evidence_type": "pytest",
-      "test_selectors": [],
-      "evidence_files": [],
+      "test_selectors": [
+        "tests/application/test_prepared_jpeg_service_acceptance.py::test_pr011_svc_002_missing_and_invalid_read_state"
+      ],
+      "evidence_files": [
+        "tests/application/test_prepared_jpeg_service_acceptance.py"
+      ],
       "evidence_refs": [],
-      "notes": "Required focused acceptance evidence remains pending."
+      "notes": "Deterministic synthetic application-service evidence exercises the required boundary without personal data."
     },
     {
       "id": "PR011-SVC-003",
       "stage": "application_service",
       "workstream": "application_service",
       "requirement": "source identity mismatch before storage",
-      "status": "pending",
+      "status": "implemented",
       "platform": "cross_platform",
       "evidence_type": "pytest",
-      "test_selectors": [],
-      "evidence_files": [],
+      "test_selectors": [
+        "tests/application/test_prepared_jpeg_service_acceptance.py::test_pr011_svc_003_source_identity_mismatch_before_storage"
+      ],
+      "evidence_files": [
+        "tests/application/test_prepared_jpeg_service_acceptance.py"
+      ],
       "evidence_refs": [],
-      "notes": "Required focused acceptance evidence remains pending."
+      "notes": "Deterministic synthetic application-service evidence exercises the required boundary without personal data."
     },
     {
       "id": "PR011-SVC-004",
       "stage": "application_service",
       "workstream": "application_service",
       "requirement": "storage and decoder failure matrix",
-      "status": "pending",
+      "status": "implemented",
       "platform": "cross_platform",
       "evidence_type": "pytest",
-      "test_selectors": [],
-      "evidence_files": [],
+      "test_selectors": [
+        "tests/application/test_prepared_jpeg_service_acceptance.py::test_pr011_svc_004_storage_and_decoder_failure_matrix"
+      ],
+      "evidence_files": [
+        "tests/application/test_prepared_jpeg_service_acceptance.py"
+      ],
       "evidence_refs": [],
-      "notes": "Required focused acceptance evidence remains pending."
+      "notes": "Deterministic synthetic application-service evidence exercises the required boundary without personal data."
     },
     {
       "id": "PR011-SVC-005",
       "stage": "application_service",
       "workstream": "application_service",
       "requirement": "renderer failure matrix",
-      "status": "pending",
+      "status": "implemented",
       "platform": "cross_platform",
       "evidence_type": "pytest",
-      "test_selectors": [],
-      "evidence_files": [],
+      "test_selectors": [
+        "tests/application/test_prepared_jpeg_service_acceptance.py::test_pr011_svc_005_renderer_failure_matrix"
+      ],
+      "evidence_files": [
+        "tests/application/test_prepared_jpeg_service_acceptance.py"
+      ],
       "evidence_refs": [],
-      "notes": "Required focused acceptance evidence remains pending."
+      "notes": "Deterministic synthetic application-service evidence exercises the required boundary without personal data."
     },
     {
       "id": "PR011-SVC-006",
       "stage": "application_service",
       "workstream": "application_service",
       "requirement": "encoder controlled and unexpected failure matrix",
-      "status": "pending",
+      "status": "implemented",
       "platform": "cross_platform",
       "evidence_type": "pytest",
-      "test_selectors": [],
-      "evidence_files": [],
+      "test_selectors": [
+        "tests/application/test_prepared_jpeg_service_acceptance.py::test_pr011_svc_006_encoder_controlled_and_unexpected_failure_matrix"
+      ],
+      "evidence_files": [
+        "tests/application/test_prepared_jpeg_service_acceptance.py"
+      ],
       "evidence_refs": [],
-      "notes": "Required focused acceptance evidence remains pending."
+      "notes": "Deterministic synthetic application-service evidence exercises the required boundary without personal data."
     },
     {
       "id": "PR011-SVC-007",
       "stage": "application_service",
       "workstream": "application_service",
       "requirement": "write-UoW authoritative revalidation",
-      "status": "pending",
+      "status": "implemented",
       "platform": "cross_platform",
       "evidence_type": "pytest",
-      "test_selectors": [],
-      "evidence_files": [],
+      "test_selectors": [
+        "tests/application/test_prepared_jpeg_service_acceptance.py::test_pr011_svc_007_write_uow_authoritative_revalidation"
+      ],
+      "evidence_files": [
+        "tests/application/test_prepared_jpeg_service_acceptance.py"
+      ],
       "evidence_refs": [],
-      "notes": "Required focused acceptance evidence remains pending."
+      "notes": "Deterministic synthetic application-service evidence exercises the required boundary without personal data."
     },
     {
       "id": "PR011-SVC-008",
       "stage": "application_service",
       "workstream": "application_service",
       "requirement": "caller ID preflight matrix",
-      "status": "pending",
+      "status": "implemented",
       "platform": "cross_platform",
       "evidence_type": "pytest",
-      "test_selectors": [],
-      "evidence_files": [],
+      "test_selectors": [
+        "tests/application/test_prepared_jpeg_service_acceptance.py::test_pr011_svc_008_caller_id_preflight_matrix"
+      ],
+      "evidence_files": [
+        "tests/application/test_prepared_jpeg_service_acceptance.py"
+      ],
       "evidence_refs": [],
-      "notes": "Required focused acceptance evidence remains pending."
+      "notes": "Deterministic synthetic application-service evidence exercises the required boundary without personal data."
     },
     {
       "id": "PR011-SVC-009",
       "stage": "application_service",
       "workstream": "application_service",
       "requirement": "natural-key preflight",
-      "status": "pending",
+      "status": "implemented",
       "platform": "cross_platform",
       "evidence_type": "pytest",
-      "test_selectors": [],
-      "evidence_files": [],
+      "test_selectors": [
+        "tests/application/test_prepared_jpeg_service_acceptance.py::test_pr011_svc_009_natural_key_preflight"
+      ],
+      "evidence_files": [
+        "tests/application/test_prepared_jpeg_service_acceptance.py"
+      ],
       "evidence_refs": [],
-      "notes": "Required focused acceptance evidence remains pending."
+      "notes": "Deterministic synthetic application-service evidence exercises the required boundary without personal data."
     },
     {
       "id": "PR011-SVC-010",
       "stage": "application_service",
       "workstream": "application_service",
       "requirement": "exact successful operation sequence",
-      "status": "pending",
+      "status": "implemented",
       "platform": "cross_platform",
       "evidence_type": "pytest",
-      "test_selectors": [],
-      "evidence_files": [],
+      "test_selectors": [
+        "tests/application/test_prepared_jpeg_service_acceptance.py::test_pr011_svc_010_exact_successful_operation_sequence"
+      ],
+      "evidence_files": [
+        "tests/application/test_prepared_jpeg_service_acceptance.py"
+      ],
       "evidence_refs": [],
-      "notes": "Required focused acceptance evidence remains pending."
+      "notes": "Deterministic synthetic application-service evidence exercises the required boundary without personal data."
     },
     {
       "id": "PR011-SVC-011",
       "stage": "application_service",
       "workstream": "application_service",
       "requirement": "selected JPEG publication exactly once",
-      "status": "pending",
+      "status": "implemented",
       "platform": "cross_platform",
       "evidence_type": "pytest",
-      "test_selectors": [],
-      "evidence_files": [],
+      "test_selectors": [
+        "tests/application/test_prepared_jpeg_service_acceptance.py::test_pr011_svc_011_selected_jpeg_publication_exactly_once"
+      ],
+      "evidence_files": [
+        "tests/application/test_prepared_jpeg_service_acceptance.py"
+      ],
       "evidence_refs": [],
-      "notes": "Required focused acceptance evidence remains pending."
+      "notes": "Deterministic synthetic application-service evidence exercises the required boundary without personal data."
     },
     {
       "id": "PR011-SVC-012",
       "stage": "application_service",
       "workstream": "application_service",
       "requirement": "returned storage-record mismatch matrix",
-      "status": "pending",
+      "status": "implemented",
       "platform": "cross_platform",
       "evidence_type": "pytest",
-      "test_selectors": [],
-      "evidence_files": [],
+      "test_selectors": [
+        "tests/application/test_prepared_jpeg_service_acceptance.py::test_pr011_svc_012_returned_storage_record_mismatch_matrix"
+      ],
+      "evidence_files": [
+        "tests/application/test_prepared_jpeg_service_acceptance.py"
+      ],
       "evidence_refs": [],
-      "notes": "Required focused acceptance evidence remains pending."
+      "notes": "Deterministic synthetic application-service evidence exercises the required boundary without personal data."
     },
     {
       "id": "PR011-SVC-013",
       "stage": "application_service",
       "workstream": "application_service",
       "requirement": "repository add and pre-commit failure matrix",
-      "status": "pending",
+      "status": "implemented",
       "platform": "cross_platform",
       "evidence_type": "pytest",
-      "test_selectors": [],
-      "evidence_files": [],
+      "test_selectors": [
+        "tests/application/test_prepared_jpeg_service_acceptance.py::test_pr011_svc_013_repository_add_and_precommit_failure_matrix"
+      ],
+      "evidence_files": [
+        "tests/application/test_prepared_jpeg_service_acceptance.py"
+      ],
       "evidence_refs": [],
-      "notes": "Required focused acceptance evidence remains pending."
+      "notes": "Deterministic synthetic application-service evidence exercises the required boundary without personal data."
     },
     {
       "id": "PR011-SVC-014",
       "stage": "application_service",
       "workstream": "application_service",
       "requirement": "late database uniqueness race matrix",
-      "status": "pending",
+      "status": "implemented",
       "platform": "cross_platform",
       "evidence_type": "pytest",
-      "test_selectors": [],
-      "evidence_files": [],
+      "test_selectors": [
+        "tests/application/test_prepared_jpeg_service_acceptance.py::test_pr011_svc_014_late_database_uniqueness_race_matrix"
+      ],
+      "evidence_files": [
+        "tests/application/test_prepared_jpeg_service_acceptance.py"
+      ],
       "evidence_refs": [],
-      "notes": "Required focused acceptance evidence remains pending."
+      "notes": "Deterministic synthetic application-service evidence exercises the required boundary without personal data."
     },
     {
       "id": "PR011-SVC-015",
       "stage": "application_service",
       "workstream": "application_service",
       "requirement": "real rollback after publication and before commit",
-      "status": "pending",
+      "status": "implemented",
       "platform": "cross_platform",
       "evidence_type": "pytest",
-      "test_selectors": [],
-      "evidence_files": [],
+      "test_selectors": [
+        "tests/application/test_prepared_jpeg_service_acceptance.py::test_pr011_svc_015_real_rollback_after_publication_before_commit"
+      ],
+      "evidence_files": [
+        "tests/application/test_prepared_jpeg_service_acceptance.py"
+      ],
       "evidence_refs": [],
-      "notes": "Required focused acceptance evidence remains pending."
+      "notes": "Deterministic synthetic application-service evidence exercises the required boundary without personal data."
     },
     {
       "id": "PR011-SVC-016",
       "stage": "application_service",
       "workstream": "application_service",
       "requirement": "real orphan reconciliation",
-      "status": "pending",
+      "status": "implemented",
       "platform": "cross_platform",
       "evidence_type": "pytest",
-      "test_selectors": [],
-      "evidence_files": [],
+      "test_selectors": [
+        "tests/application/test_prepared_jpeg_service_acceptance.py::test_pr011_svc_016_real_orphan_reconciliation"
+      ],
+      "evidence_files": [
+        "tests/application/test_prepared_jpeg_service_acceptance.py"
+      ],
       "evidence_refs": [],
-      "notes": "Required focused acceptance evidence remains pending."
+      "notes": "Deterministic synthetic application-service evidence exercises the required boundary without personal data."
     },
     {
       "id": "PR011-SVC-017",
       "stage": "application_service",
       "workstream": "application_service",
       "requirement": "controlled-error privacy matrix",
-      "status": "pending",
+      "status": "implemented",
       "platform": "cross_platform",
       "evidence_type": "pytest",
-      "test_selectors": [],
-      "evidence_files": [],
+      "test_selectors": [
+        "tests/application/test_prepared_jpeg_service_acceptance.py::test_pr011_svc_017_controlled_error_privacy_matrix"
+      ],
+      "evidence_files": [
+        "tests/application/test_prepared_jpeg_service_acceptance.py"
+      ],
       "evidence_refs": [],
-      "notes": "Required focused acceptance evidence remains pending."
+      "notes": "Deterministic synthetic application-service evidence exercises the required boundary without personal data."
     },
     {
       "id": "PR011-REP-001",

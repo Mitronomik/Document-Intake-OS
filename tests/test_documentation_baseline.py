@@ -2585,9 +2585,10 @@ def test_pr010_contract_current_lifecycle_and_merge_evidence_are_section_scoped(
     ):
         assert required in current, required
     assert (
-        "Execute the PR-011 application-service evidence stage. Do not begin repository-core "
-        "evidence until the application-service stage gate passes. Do not begin PR-012."
-        in next_step
+        "PR-011 application-service acceptance evidence is complete: 17 of 57 manifest entries "
+        "are implemented and 40 remain pending. Execute the repository-core evidence stage next. "
+        "Repository-corruption and later stages remain blocked; do not begin PR-012. PR-011 human "
+        "acceptance remains blocked." in next_step
     )
     assert "PR-009: IMPLEMENTED AND IN REVIEW; NOT HUMAN ACCEPTED" in historical
     assert "Q-021: OPEN — REQUIRES PRODUCT-OWNER ACCEPTANCE" in historical
