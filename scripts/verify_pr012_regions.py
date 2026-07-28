@@ -2,8 +2,11 @@
 
 from __future__ import annotations
 
+import os
 import platform
 import sqlite3
+import subprocess
+import sys
 import tempfile
 from pathlib import Path
 
@@ -26,6 +29,8 @@ _LABELS = (
     "PR012_VERIFY result=PASS",
 )
 _UNSUPPORTED = ("PR012_VERIFY result=INCONCLUSIVE code=UNSUPPORTED_PLATFORM",)
+_PROBE_PATH = "DOCUMENT_INTAKE_PR012_PROBE_PATH"
+_PROBE_KEY = "DOCUMENT_INTAKE_PR012_PROBE_KEY"
 
 
 class _Key:
@@ -57,6 +62,37 @@ def _create_schema7(path: Path) -> None:
         database.CURRENT_SCHEMA_VERSION = old_version  # type: ignore[attr-defined]
 
 
+def _wrong_key_probe() -> int | None:
+    raw_path = os.environ.get(_PROBE_PATH)
+    raw_key = os.environ.get(_PROBE_KEY)
+    if raw_path is None and raw_key is None:
+        return None
+    if raw_path is None or raw_key is None:
+        return 2
+    try:
+        connection = database._open_connection(Path(raw_path), _Key(bytes.fromhex(raw_key)))
+    except PersistenceError:
+        return 0
+    except Exception:
+        return 2
+    connection.close()
+    return 1
+
+
+def _wrong_key_rejected(path: Path) -> bool:
+    environment = os.environ.copy()
+    environment[_PROBE_PATH] = str(path)
+    environment[_PROBE_KEY] = (b"W" * 32).hex()
+    completed = subprocess.run(
+        [sys.executable, str(Path(__file__).resolve())],
+        env=environment,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+        check=False,
+    )
+    return completed.returncode == 0
+
+
 def _run_supported() -> bool:
     with tempfile.TemporaryDirectory(prefix="pr012-verify-") as temporary:
         path = Path(temporary) / "state.db"
@@ -72,11 +108,7 @@ def _run_supported() -> bool:
             foreign_keys = connection.execute("PRAGMA foreign_key_check").fetchall() == []
         finally:
             connection.close()
-        try:
-            database._open_connection(path, _Key(b"W" * 32))
-            wrong_key = False
-        except PersistenceError:
-            wrong_key = True
+        wrong_key = _wrong_key_rejected(path)
         try:
             plain = sqlite3.connect(path)
             plain.execute("SELECT count(*) FROM schema_migrations").fetchone()
@@ -111,4 +143,5 @@ def main() -> int:
 
 
 if __name__ == "__main__":
-    raise SystemExit(main())
+    probe_result = _wrong_key_probe()
+    raise SystemExit(main() if probe_result is None else probe_result)

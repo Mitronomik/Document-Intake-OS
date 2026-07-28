@@ -57,3 +57,26 @@ def test_runtime_output_has_exact_allowlist() -> None:
     assert tuple(completed.stdout.splitlines()) in (verifier._LABELS, verifier._UNSUPPORTED)
     forbidden = ("/tmp/", "\\\\", "00000000-", "SELECT ", "INSERT ", "key=", " x=", " y=")
     assert not any(value in completed.stdout for value in forbidden)
+
+
+def test_wrong_key_probe_isolated_with_suppressed_native_output(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    observed: dict[str, object] = {}
+
+    def run(command, **options):
+        observed["command"] = command
+        observed.update(options)
+        return subprocess.CompletedProcess(command, 0)
+
+    monkeypatch.setattr(verifier.subprocess, "run", run)
+    path = tmp_path / "private.db"
+    assert verifier._wrong_key_rejected(path)
+    assert observed["stdout"] is subprocess.DEVNULL
+    assert observed["stderr"] is subprocess.DEVNULL
+    assert observed["check"] is False
+    assert str(path) not in observed["command"]
+    assert (b"W" * 32).hex() not in observed["command"]
+    environment = observed["env"]
+    assert environment[verifier._PROBE_PATH] == str(path)
+    assert environment[verifier._PROBE_KEY] == (b"W" * 32).hex()
