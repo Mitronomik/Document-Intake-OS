@@ -3345,6 +3345,8 @@ def test_pr012_authoritative_progress_and_handoff_sections_are_current() -> None
     handoff = (REPO_ROOT / "docs/handoff.md").read_text(encoding="utf-8")
     heading = "## Current lifecycle state — PR-012 production review (authoritative, 2026-07-28)"
     current_sections = (_section(progress, heading), _section(handoff, heading))
+    assert progress.count(heading) == 1
+    assert handoff.count(heading) == 1
     lifecycle = (
         "ADR-026: ACCEPTED",
         "PR-012 CONTRACT: ACCEPTED",
@@ -3384,3 +3386,6 @@ def test_pr012_authoritative_progress_and_handoff_sections_are_current() -> None
     for text in (progress, handoff):
         historical = _section(text, historical_heading)
         assert "historical and does not define current lifecycle status" in historical
+        assert "supersedes historical lifecycle sections for current status" not in text
+        assert "supersedes earlier lifecycle snapshots for current status" not in text
+        assert "supersedes earlier historical lifecycle snapshots for current status" not in text

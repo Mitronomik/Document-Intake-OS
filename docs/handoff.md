@@ -158,17 +158,17 @@ Final reviewed head: `72c01662031f73985f8715d6c3c87abf7aa5c4db`.
 Merge commit: `b491226878cabfc87c484f6a4d41bc2969851273`.
 Merge date: 2026-07-22.
 
-This current PR-009-D4-backed section supersedes earlier historical lifecycle snapshots for current status only. It does not rewrite those historical records and does not authorize PR-010 production implementation or PR-011 and later work. FR-04 remains incomplete because geometry, document regions and later image-preparation work remain future scope.
+This dated PR-009-D4-backed section is a historical snapshot only and does not define current lifecycle status. It does not rewrite the historical record. FR-04 was incomplete at that snapshot because geometry, document regions and later image-preparation work remained future scope.
 ## Historical lifecycle snapshot — Current PR-010 geometry contract staging — 2026-07-23
 
-This current section supersedes historical lifecycle sections for current status only and does not rewrite the historical record.
+This dated section is a historical snapshot only and does not define current lifecycle status.
 
 PR #26 merged successfully on 2026-07-23 from reviewed head `cc79a80fcacdbde2667cae858815b30176f87555` at merge commit `f27647e8cdfb2f8d3e5bb13478a4df50987ca1cb`; exact-head CI `CI #129` succeeded. PR-009 is COMPLETED AND HUMAN ACCEPTED WITH DOCUMENTED RESIDUAL LIMITATION. Q-021 is DEFERRED — NEGATIVE CALIBRATION EVIDENCE ACCEPTED; NO PRODUCTION POLICY SELECTED. Production default PR-009 quality policy is NOT ACTIVE. Production `policy_id` and `policy_version` are NOT ASSIGNED. Automatic PR-009 quality-based document blocking and production RETAKE_REQUIRED enforcement are NOT ACTIVE. `RISK-PR009-NO-PRODUCTION-QUALITY-POLICY` remains OPEN AND ACCEPTED FOR THE PR-009 INFRASTRUCTURE AND HUMAN-ACCEPTANCE BOUNDARY. ADR-024 is PROPOSED. PR-010 CONTRACT is PROPOSED FOR HUMAN REVIEW. PR-010 PRODUCTION IMPLEMENTATION is UNAUTHORIZED. PR-011 AND LATER are UNAUTHORIZED. Gate 2 is NOT ACCEPTED. M3 is IN PROGRESS.
 
 
 ## Historical lifecycle snapshot — Current lifecycle state — 2026-07-26
 
-This current section supersedes earlier lifecycle snapshots for current status only and does not rewrite the historical record.
+This dated section is a historical snapshot only and does not define current lifecycle status.
 
 PR-005: COMPLETED AND HUMAN ACCEPTED. PR-006: COMPLETED AND HUMAN ACCEPTED. PR-007: COMPLETED AND HUMAN ACCEPTED. PR-008: COMPLETED AND HUMAN ACCEPTED WITH DOCUMENTED RESIDUAL RISK. PR-009: COMPLETED AND HUMAN ACCEPTED WITH DOCUMENTED RESIDUAL LIMITATION. PR-010: COMPLETED AND HUMAN ACCEPTED. ADR-024: ACCEPTED. PR-010 contract: ACCEPTED. PR-010 CONTRACT: ACCEPTED.
 
