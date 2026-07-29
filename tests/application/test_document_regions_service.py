@@ -728,3 +728,209 @@ def test_audit_failure_rolls_back_new_recipe_and_region_set() -> None:
     assert write.document_region_sets.committed == {}
     assert write.audit_events.committed == {}
     assert all(repository.pending == {} for repository in write._repositories())
+
+
+def test_s1_s6_transition_flow_preserves_independent_histories() -> None:
+    a1 = valid_geometry_recipe()
+    a2 = replace(
+        a1,
+        recipe_version_id=entity_id(31),
+        revision=2,
+        superseded_recipe_version_id=a1.recipe_version_id,
+    )
+    a3 = replace(
+        a2,
+        recipe_version_id=entity_id(32),
+        revision=3,
+        superseded_recipe_version_id=a2.recipe_version_id,
+    )
+    recipes = [a1, a2, a3]
+    sets = []
+
+    s1_command = replace(
+        command(a3),
+        members=(
+            RegionSetMemberInput(1, a3.region_id, ExistingRecipeSelection(a3.recipe_version_id)),
+        ),
+    )
+    s1_factory = Factory(*recipes)
+    s1_write = s1_factory.units[1]
+    s1, _ = run(s1_command, s1_factory)
+    sets.append(s1.region_set)
+    assert s1.selected_recipes == (a3,)
+    assert s1_write.image_geometry_recipes.add_calls == []
+    assert [event.action_code for event in s1_write.audit_events.add_calls] == [
+        AuditAction.DOCUMENT_REGION_SET_CONFIRMED
+    ]
+    assert s1_write.commits == 1
+
+    c1_id = entity_id(33)
+    c_quad = SourceQuadrilateral(
+        GeometryPoint(12, 0),
+        GeometryPoint(32, 0),
+        GeometryPoint(32, 24),
+        GeometryPoint(12, 24),
+    )
+    s2_command = ConfirmDocumentRegionsCommand(
+        entity_id(62),
+        a1.source_file_id,
+        s1.region_set.region_set_version_id,
+        2,
+        (
+            RegionSetMemberInput(1, a3.region_id, ExistingRecipeSelection(a3.recipe_version_id)),
+            RegionSetMemberInput(2, c1_id, new_selection(c1_id, entity_id(42), c_quad)),
+        ),
+        entity_id(72),
+        STAMP,
+        actor(),
+        None,
+    )
+    s2_factory = with_previous(Factory(*recipes), s1.region_set)
+    s2_write = s2_factory.units[1]
+    s2, _ = run(s2_command, s2_factory)
+    c1 = s2.selected_recipes[1]
+    recipes.append(c1)
+    sets.append(s2.region_set)
+    assert s2.selected_recipes == (a3, c1)
+    assert c1.region_id == c1.recipe_version_id == c1_id
+    assert s2_write.image_geometry_recipes.add_calls == [c1]
+    assert [event.action_code for event in s2_write.audit_events.add_calls] == [
+        AuditAction.IMAGE_GEOMETRY_RECIPE_CREATED,
+        AuditAction.DOCUMENT_REGION_SET_CONFIRMED,
+    ]
+    assert s2_write.commits == 1
+
+    a4_id = entity_id(34)
+    s3_command = replace(
+        s2_command,
+        region_set_version_id=entity_id(63),
+        superseded_region_set_version_id=s2.region_set.region_set_version_id,
+        set_revision=3,
+        region_set_audit_event_id=entity_id(73),
+        members=(
+            RegionSetMemberInput(
+                1,
+                a3.region_id,
+                new_selection(
+                    a4_id,
+                    entity_id(43),
+                    a3.quadrilateral,
+                    revision=4,
+                    predecessor=a3.recipe_version_id,
+                ),
+            ),
+            RegionSetMemberInput(2, c1.region_id, ExistingRecipeSelection(c1.recipe_version_id)),
+        ),
+    )
+    s3_factory = Factory(*recipes)
+    for unit in s3_factory.units:
+        unit.document_region_sets = Repo(sets)
+    s3_write = s3_factory.units[1]
+    s3, _ = run(s3_command, s3_factory)
+    a4 = s3.selected_recipes[0]
+    recipes.append(a4)
+    sets.append(s3.region_set)
+    assert s3.selected_recipes == (a4, c1)
+    assert a4.region_id == a1.region_id
+    assert a4.superseded_recipe_version_id == a3.recipe_version_id
+    assert s3_write.image_geometry_recipes.add_calls == [a4]
+    assert s3_write.commits == 1
+
+    c2_id = entity_id(35)
+    s4_command = replace(
+        s3_command,
+        region_set_version_id=entity_id(64),
+        superseded_region_set_version_id=s3.region_set.region_set_version_id,
+        set_revision=4,
+        region_set_audit_event_id=entity_id(74),
+        members=(
+            RegionSetMemberInput(1, a4.region_id, ExistingRecipeSelection(a4.recipe_version_id)),
+            RegionSetMemberInput(
+                2,
+                c1.region_id,
+                new_selection(
+                    c2_id,
+                    entity_id(44),
+                    c_quad,
+                    revision=2,
+                    predecessor=c1.recipe_version_id,
+                ),
+            ),
+        ),
+    )
+    s4_factory = Factory(*recipes)
+    for unit in s4_factory.units:
+        unit.document_region_sets = Repo(sets)
+    s4_write = s4_factory.units[1]
+    s4, _ = run(s4_command, s4_factory)
+    c2 = s4.selected_recipes[1]
+    recipes.append(c2)
+    sets.append(s4.region_set)
+    assert s4.selected_recipes == (a4, c2)
+    assert c2.region_id == c1.region_id
+    assert c2.superseded_recipe_version_id == c1.recipe_version_id
+    assert s4_write.image_geometry_recipes.add_calls == [c2]
+    assert s4_write.commits == 1
+
+    s5_command = replace(
+        s4_command,
+        region_set_version_id=entity_id(65),
+        superseded_region_set_version_id=s4.region_set.region_set_version_id,
+        set_revision=5,
+        region_set_audit_event_id=entity_id(75),
+        members=(
+            RegionSetMemberInput(1, c2.region_id, ExistingRecipeSelection(c2.recipe_version_id)),
+            RegionSetMemberInput(2, a4.region_id, ExistingRecipeSelection(a4.recipe_version_id)),
+        ),
+    )
+    s5_factory = Factory(*recipes)
+    for unit in s5_factory.units:
+        unit.document_region_sets = Repo(sets)
+    s5_write = s5_factory.units[1]
+    s5, _ = run(s5_command, s5_factory)
+    sets.append(s5.region_set)
+    assert s5.selected_recipes == (c2, a4)
+    assert s5_write.image_geometry_recipes.add_calls == []
+    assert [event.action_code for event in s5_write.audit_events.add_calls] == [
+        AuditAction.DOCUMENT_REGION_SET_CONFIRMED
+    ]
+    assert s5_write.commits == 1
+
+    s6_command = replace(
+        s5_command,
+        region_set_version_id=entity_id(66),
+        superseded_region_set_version_id=s5.region_set.region_set_version_id,
+        set_revision=6,
+        region_set_audit_event_id=entity_id(76),
+        members=(
+            RegionSetMemberInput(1, c2.region_id, ExistingRecipeSelection(c2.recipe_version_id)),
+        ),
+    )
+    s6_factory = Factory(*recipes)
+    for unit in s6_factory.units:
+        unit.document_region_sets = Repo(sets)
+    s6_write = s6_factory.units[1]
+    s6, _ = run(s6_command, s6_factory)
+    sets.append(s6.region_set)
+    assert s6.selected_recipes == (c2,)
+    assert s6_write.image_geometry_recipes.add_calls == []
+    assert [event.action_code for event in s6_write.audit_events.add_calls] == [
+        AuditAction.DOCUMENT_REGION_SET_CONFIRMED
+    ]
+    assert s6_write.commits == 1
+    assert [item.revision for item in sets] == [1, 2, 3, 4, 5, 6]
+    assert [item.superseded_region_set_version_id for item in sets] == [
+        None,
+        sets[0].region_set_version_id,
+        sets[1].region_set_version_id,
+        sets[2].region_set_version_id,
+        sets[3].region_set_version_id,
+        sets[4].region_set_version_id,
+    ]
+    assert [recipe.revision for recipe in recipes if recipe.region_id == a1.region_id] == [
+        1,
+        2,
+        3,
+        4,
+    ]
+    assert [recipe.revision for recipe in recipes if recipe.region_id == c1.region_id] == [1, 2]
