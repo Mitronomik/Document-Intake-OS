@@ -48,7 +48,14 @@ def test_reconciliation_healthy_missing_invalid_orphan_and_temporary(tmp_path) -
     )
     object_path(tmp_path, missing.artifact_id).unlink()
     invalid_path = object_path(tmp_path, invalid.artifact_id)
-    invalid_path.write_bytes(invalid_path.read_bytes()[:-1] + b"x")
+    original_payload = invalid_path.read_bytes()
+    corrupted_payload = bytearray(original_payload)
+    if not corrupted_payload:
+        raise AssertionError("published encrypted object unexpectedly empty")
+    corrupted_payload[-1] ^= 0x01
+    invalid_path.write_bytes(corrupted_payload)
+    assert len(invalid_path.read_bytes()) == len(original_payload)
+    assert invalid_path.read_bytes() != original_payload
     temp = (
         object_path(tmp_path, healthy.artifact_id).parent
         / ".tmp-00000000-0000-0000-0000-000000000000.diosobj"

@@ -775,7 +775,22 @@ def _run_transition(value, recipes, sets):
     return result, write
 
 
-def _synthetic_post_migration_shaped_history() -> TransitionHistory:
+def _region_set_value_snapshot(region_set):
+    return (
+        region_set.region_set_version_id,
+        region_set.source_file_id,
+        region_set.superseded_region_set_version_id,
+        region_set.revision,
+        region_set.confirmed_at,
+        region_set.confirmed_by,
+        tuple(
+            (member.order_index, member.region_id, member.geometry_recipe_version_id)
+            for member in region_set.members
+        ),
+    )
+
+
+def _synthetic_post_migration_shaped_history(through: int) -> TransitionHistory:
     a1 = valid_geometry_recipe()
     a2 = replace(
         a1,
@@ -804,8 +819,12 @@ def _synthetic_post_migration_shaped_history() -> TransitionHistory:
     result, write = _run_transition(first, recipes, sets)
     sets.append(result.region_set)
     writes.append(write)
-    snapshots.append(result.region_set)
+    snapshots.append(_region_set_value_snapshot(result.region_set))
     results.append(result)
+    if through == 1:
+        return TransitionHistory(
+            tuple(recipes), tuple(sets), tuple(writes), tuple(snapshots), tuple(results)
+        )
 
     c1_id = entity_id(33)
     one_to_two = ConfirmDocumentRegionsCommand(
@@ -831,8 +850,12 @@ def _synthetic_post_migration_shaped_history() -> TransitionHistory:
     recipes.append(c1)
     sets.append(result.region_set)
     writes.append(write)
-    snapshots.append(result.region_set)
+    snapshots.append(_region_set_value_snapshot(result.region_set))
     results.append(result)
+    if through == 2:
+        return TransitionHistory(
+            tuple(recipes), tuple(sets), tuple(writes), tuple(snapshots), tuple(results)
+        )
 
     a4_id = entity_id(34)
     revise_a = replace(
@@ -861,8 +884,12 @@ def _synthetic_post_migration_shaped_history() -> TransitionHistory:
     recipes.append(a4)
     sets.append(result.region_set)
     writes.append(write)
-    snapshots.append(result.region_set)
+    snapshots.append(_region_set_value_snapshot(result.region_set))
     results.append(result)
+    if through == 3:
+        return TransitionHistory(
+            tuple(recipes), tuple(sets), tuple(writes), tuple(snapshots), tuple(results)
+        )
 
     c2_id = entity_id(35)
     revise_c = replace(
@@ -891,8 +918,12 @@ def _synthetic_post_migration_shaped_history() -> TransitionHistory:
     recipes.append(c2)
     sets.append(result.region_set)
     writes.append(write)
-    snapshots.append(result.region_set)
+    snapshots.append(_region_set_value_snapshot(result.region_set))
     results.append(result)
+    if through == 4:
+        return TransitionHistory(
+            tuple(recipes), tuple(sets), tuple(writes), tuple(snapshots), tuple(results)
+        )
 
     order_only = replace(
         revise_c,
@@ -908,8 +939,12 @@ def _synthetic_post_migration_shaped_history() -> TransitionHistory:
     result, write = _run_transition(order_only, recipes, sets)
     sets.append(result.region_set)
     writes.append(write)
-    snapshots.append(result.region_set)
+    snapshots.append(_region_set_value_snapshot(result.region_set))
     results.append(result)
+    if through == 5:
+        return TransitionHistory(
+            tuple(recipes), tuple(sets), tuple(writes), tuple(snapshots), tuple(results)
+        )
 
     two_to_one = replace(
         order_only,
@@ -924,7 +959,7 @@ def _synthetic_post_migration_shaped_history() -> TransitionHistory:
     result, write = _run_transition(two_to_one, recipes, sets)
     sets.append(result.region_set)
     writes.append(write)
-    snapshots.append(result.region_set)
+    snapshots.append(_region_set_value_snapshot(result.region_set))
     results.append(result)
     return TransitionHistory(
         tuple(recipes), tuple(sets), tuple(writes), tuple(snapshots), tuple(results)
@@ -947,7 +982,7 @@ def _assert_audits(write, expected):
 
 
 def test_first_set_reuses_post_migration_shaped_existing_a3() -> None:
-    history = _synthetic_post_migration_shaped_history()
+    history = _synthetic_post_migration_shaped_history(1)
     a3 = history.recipes[2]
     first, write = history.sets[0], history.writes[0]
     assert history.results[0].selected_recipes == (a3,)
@@ -971,7 +1006,7 @@ def test_first_set_reuses_post_migration_shaped_existing_a3() -> None:
 
 
 def test_one_to_two_adds_new_independent_lineage() -> None:
-    history = _synthetic_post_migration_shaped_history()
+    history = _synthetic_post_migration_shaped_history(2)
     a3, c1 = history.recipes[2], history.recipes[3]
     current, write = history.sets[1], history.writes[1]
     assert history.results[1].selected_recipes == (a3, c1)
@@ -1004,7 +1039,7 @@ def test_one_to_two_adds_new_independent_lineage() -> None:
 
 
 def test_revise_one_of_two_preserves_other_exact_recipe() -> None:
-    history = _synthetic_post_migration_shaped_history()
+    history = _synthetic_post_migration_shaped_history(3)
     a3, c1, a4 = history.recipes[2], history.recipes[3], history.recipes[4]
     current, write = history.sets[2], history.writes[2]
     assert history.results[2].selected_recipes == (a4, c1)
@@ -1037,11 +1072,10 @@ def test_revise_one_of_two_preserves_other_exact_recipe() -> None:
     assert write.commits == 1
 
 
-def test_revise_both_regions_in_one_atomic_command() -> None:
-    history = _synthetic_post_migration_shaped_history()
+def _revise_both_command(history):
     a3, c1 = history.recipes[2], history.recipes[3]
     a4_id, c2_id = entity_id(36), entity_id(37)
-    command_value = ConfirmDocumentRegionsCommand(
+    return ConfirmDocumentRegionsCommand(
         entity_id(67),
         a3.source_file_id,
         history.sets[1].region_set_version_id,
@@ -1075,12 +1109,28 @@ def test_revise_both_regions_in_one_atomic_command() -> None:
         actor(),
         None,
     )
+
+
+def test_revise_both_regions_in_one_atomic_command() -> None:
+    history = _synthetic_post_migration_shaped_history(2)
+    a3, c1 = history.recipes[2], history.recipes[3]
+    command_value = _revise_both_command(history)
     result, write = _run_transition(command_value, history.recipes[:4], history.sets[:2])
     a4, c2 = result.selected_recipes
     assert a4.quadrilateral != a3.quadrilateral
     assert c2.quadrilateral != c1.quadrilateral
     assert a4.quadrilateral != c2.quadrilateral
     assert (a4.region_id, c2.region_id) == (a3.region_id, c1.region_id)
+    assert a4.recipe_version_id != a3.recipe_version_id
+    assert a4.revision == a3.revision + 1
+    assert a4.superseded_recipe_version_id == a3.recipe_version_id
+    assert c2.recipe_version_id != c1.recipe_version_id
+    assert c2.revision == c1.revision + 1
+    assert c2.superseded_recipe_version_id == c1.recipe_version_id
+    assert result.region_set.revision == history.sets[1].revision + 1
+    assert (
+        result.region_set.superseded_region_set_version_id == history.sets[1].region_set_version_id
+    )
     assert write.image_geometry_recipes.add_calls == [a4, c2]
     _assert_audits(
         write,
@@ -1107,15 +1157,74 @@ def test_revise_both_regions_in_one_atomic_command() -> None:
     )
     assert write.document_region_sets.add_calls == [result.region_set]
     assert tuple(member.geometry_recipe_version_id for member in result.region_set.members) == (
-        a4_id,
-        c2_id,
+        a4.recipe_version_id,
+        c2.recipe_version_id,
     )
     assert write.commits == 1
     assert history.recipes[2] == a3 and history.recipes[3] == c1
 
 
+def _revise_both_factory(history):
+    factory = Factory(*history.recipes[:4])
+    for unit in factory.units:
+        unit.document_region_sets = Repo(history.sets[:2])
+    return factory
+
+
+def test_revise_both_second_recipe_write_failure_rolls_back_all_pending_rows() -> None:
+    history = _synthetic_post_migration_shaped_history(2)
+    factory = _revise_both_factory(history)
+    write = factory.units[1]
+    original_recipes = dict(write.image_geometry_recipes.committed)
+    original_sets = dict(write.document_region_sets.committed)
+    calls = 0
+
+    def fail_second(item):
+        nonlocal calls
+        calls += 1
+        if calls == 2:
+            raise PersistenceError(PersistenceErrorCode.PERSISTENCE_UNEXPECTED)
+        Repo.add(write.image_geometry_recipes, item)
+
+    write.image_geometry_recipes.add = fail_second
+    with pytest.raises(DocumentRegionsError) as error:
+        run(_revise_both_command(history), factory)
+
+    assert error.value.code is DocumentRegionErrorCode.PERSISTENCE_FAILED
+    assert "private" not in str(error.value)
+    assert write.commits == 0 and write.rollbacks == 1
+    assert write.image_geometry_recipes.committed == original_recipes
+    assert write.document_region_sets.committed == original_sets
+    assert write.audit_events.committed == {}
+    assert all(repository.pending == {} for repository in write._repositories())
+
+
+def test_revise_both_commit_failure_restores_all_repository_state() -> None:
+    history = _synthetic_post_migration_shaped_history(2)
+    factory = _revise_both_factory(history)
+    write = factory.units[1]
+    original = tuple(
+        (dict(repository.committed), dict(repository.pending))
+        for repository in write._repositories()
+    )
+
+    def fail_commit():
+        raise RuntimeError("private commit failure")
+
+    write.commit = fail_commit
+    with pytest.raises(DocumentRegionsError) as error:
+        run(_revise_both_command(history), factory)
+
+    assert error.value.code is DocumentRegionErrorCode.COMMIT_FAILED
+    assert "private commit failure" not in str(error.value)
+    assert write.commits == 0 and write.rollbacks == 1
+    for repository, (committed, _pending) in zip(write._repositories(), original, strict=True):
+        assert repository.committed == committed
+        assert repository.pending == {}
+
+
 def test_order_only_revision_reuses_recipes_without_recipe_audits() -> None:
-    history = _synthetic_post_migration_shaped_history()
+    history = _synthetic_post_migration_shaped_history(5)
     a4, c2 = history.recipes[4], history.recipes[5]
     current, write = history.sets[4], history.writes[4]
     assert history.results[4].selected_recipes == (c2, a4)
@@ -1139,7 +1248,7 @@ def test_order_only_revision_reuses_recipes_without_recipe_audits() -> None:
 
 
 def test_two_to_one_retains_selected_existing_lineage() -> None:
-    history = _synthetic_post_migration_shaped_history()
+    history = _synthetic_post_migration_shaped_history(6)
     c2 = history.recipes[5]
     current, write = history.sets[5], history.writes[5]
     assert history.results[5].selected_recipes == (c2,)
@@ -1162,8 +1271,8 @@ def test_two_to_one_retains_selected_existing_lineage() -> None:
     assert history.recipes[4] in history.writes[5].image_geometry_recipes.committed.values()
 
 
-def test_transition_history_preserves_exact_immutable_membership_manifest() -> None:
-    history = _synthetic_post_migration_shaped_history()
+def test_transition_history_preserves_exact_value_manifest() -> None:
+    history = _synthetic_post_migration_shaped_history(6)
     a3, c1, a4, c2 = history.recipes[2:]
     expected = (
         ((a3.recipe_version_id,), (a3.region_id,)),
@@ -1173,7 +1282,7 @@ def test_transition_history_preserves_exact_immutable_membership_manifest() -> N
         ((c2.recipe_version_id, a4.recipe_version_id), (c2.region_id, a4.region_id)),
         ((c2.recipe_version_id,), (c2.region_id,)),
     )
-    assert history.sets == history.snapshots
+    assert tuple(_region_set_value_snapshot(item) for item in history.sets) == history.snapshots
     for index, (region_set, (recipe_ids, region_ids)) in enumerate(
         zip(history.sets, expected, strict=True), 1
     ):
