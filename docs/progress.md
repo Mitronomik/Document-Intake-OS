@@ -1,7 +1,7 @@
 # Progress
 
 **Обновлено:** 2026-07-28
-**Статус:** PR-010: COMPLETED AND HUMAN ACCEPTED; ADR-025: ACCEPTED; PR-011 CONTRACT: ACCEPTED; PR-011 PRODUCTION CODE: IMPLEMENTED; PR-011 ACCEPTANCE EVIDENCE: COMPLETE; PR-011 LIFECYCLE: READY_FOR_HUMAN_REVIEW; PR-011 HUMAN ACCEPTANCE: PENDING; PR-011 MERGE: NOT AUTHORIZED; PR-012 AND LATER: UNAUTHORIZED; Q-021: DEFERRED; PRODUCTION PR-009 QUALITY POLICY: NOT ACTIVE; Gate 2: NOT ACCEPTED; M3: IN PROGRESS
+**Статус:** ADR-026: ACCEPTED; PR-012 CONTRACT: ACCEPTED; PR-012 PRODUCTION IMPLEMENTATION: AUTHORIZED AND IN REVIEW; PR-012 HUMAN ACCEPTANCE: NOT GRANTED; PR-012 MERGE: NOT AUTHORIZED; PR-013 AND LATER: UNAUTHORIZED; GATE 2: NOT ACCEPTED; M3: IN PROGRESS
 
 ## Завершено
 
@@ -74,7 +74,7 @@ PR-S001/PR-S001-F1/PR-S001-F2/PR-S001-F3/PR-S001-F4 use fictional synthetic data
 
 ## Следующий безопасный шаг
 
-PR-011 production implementation and acceptance evidence are complete: all seven manifest stages and all 57 entries are implemented, with none pending. The lifecycle is `READY_FOR_HUMAN_REVIEW`, not human accepted. Product-owner human acceptance has not occurred, and merge remains unauthorized until explicit Product-owner acceptance after closure-head CI is checked. PR-012 and later remain unauthorized. Gate 2 remains not accepted, M3 remains in progress, Q-021 remains deferred, and no active PR-009 production quality policy exists.
+Continue PR-012 correction and executable evidence completion on its authorized review branch. PR-012 human acceptance has not been granted, merge remains unauthorized, and PR-013 and later remain unauthorized. Gate 2 remains not accepted, M3 remains in progress, Q-021 remains deferred, and no active PR-009 production quality policy exists.
 
 ## Historical lifecycle snapshot — Current PR-010 geometry contract staging — 2026-07-23
 
@@ -220,9 +220,9 @@ This normative acceptance status supersedes broader implementation wording for c
 CI success proves the checked implementation and tests pass; it does not prove that every acceptance-manifest entry exists.
 
 
-## Current lifecycle state — 2026-07-28
+## Historical lifecycle snapshot — PR-012 contract proposal before acceptance — 2026-07-28
 
-This section is authoritative for current lifecycle status. It supersedes earlier dated lifecycle snapshots for current status only and does not rewrite their historical record.
+This section records the pre-acceptance proposal state only. It is historical and does not define current lifecycle status.
 
 ```text
 PR-011: COMPLETED AND HUMAN ACCEPTED
@@ -255,7 +255,9 @@ PR-011 is merged and human accepted under [PR-011-D3](decisions/PR-011-D3-lifecy
 Q-021: DEFERRED. PRODUCTION PR-009 QUALITY POLICY: NOT ACTIVE. PRODUCTION `policy_id`: NOT ASSIGNED. PRODUCTION `policy_version`: NOT ASSIGNED. AUTOMATIC PR-009 QUALITY BLOCKING: NOT ACTIVE. AUTOMATIC PRODUCTION `RETAKE_REQUIRED`: NOT ACTIVE. Real documents and personal data remain prohibited in Git, Codex, and CI.
 
 
-## Current PR-012 production-review lifecycle (2026-07-28)
+## Current lifecycle state — PR-012 production review (authoritative, 2026-07-28)
+
+This is the single authoritative current lifecycle section. All earlier lifecycle snapshots are historical and do not define current status.
 
 ```text
 ADR-026: ACCEPTED

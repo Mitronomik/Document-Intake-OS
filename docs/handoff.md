@@ -50,7 +50,7 @@ PR-006: COMPLETED AND HUMAN ACCEPTED. PR-007: COMPLETED AND HUMAN ACCEPTED. PR-0
 
 ## Authorization boundary
 
-GATE-S1 is completed and human accepted after GitHub PR #7. PR #9 merged PR-S001 as a research harness; PR-S001 is ACCEPTED WITH DOCUMENTED RESIDUAL RISK RISK-S001-W11. PR-005 is COMPLETED AND HUMAN ACCEPTED. PR-006 is COMPLETED AND HUMAN ACCEPTED; PR-007 is COMPLETED AND HUMAN ACCEPTED through GitHub PR #19; PR-008 is COMPLETED AND HUMAN ACCEPTED WITH DOCUMENTED RESIDUAL RISK. PR-009 is COMPLETED AND HUMAN ACCEPTED WITH DOCUMENTED RESIDUAL LIMITATION after GitHub PR #24 merged on 2026-07-22 from reviewed head `72c01662031f73985f8715d6c3c87abf7aa5c4db` at merge commit `b491226878cabfc87c484f6a4d41bc2969851273`. Q-021 is DEFERRED after accepted negative calibration evidence; no production default quality policy is active, production policy_id and policy_version are not assigned, automatic quality-based blocking is inactive and production RETAKE_REQUIRED enforcement is inactive. `RISK-PR009-NO-PRODUCTION-QUALITY-POLICY` blocks production activation, not human acceptance of the explicit-policy infrastructure. ADR-024 is ACCEPTED; PR-010 contract is ACCEPTED; PR-010 production implementation is AUTHORIZED AND IN REVIEW; NOT HUMAN ACCEPTED; PR-011 and later remain UNAUTHORIZED until separate future product-owner authorization. Gate 2 is NOT ACCEPTED, and M3 is IN PROGRESS. PR-006 and PR-007 are merged and separately human accepted.
+ADR-026 and the PR-012 contract are accepted. PR-012 production implementation is authorized and remains in review. PR-012 human acceptance has not been granted, and merge remains unauthorized. PR-013 and later remain unauthorized. Gate 2 is not accepted, and M3 remains in progress.
 
 ## Риски
 
@@ -58,7 +58,7 @@ GATE-S1 is completed and human accepted after GitHub PR #7. PR #9 merged PR-S001
 
 ## Продолжение
 
-The next safe activity is preparation of the exact PR-010 documentation contract. The local Q-021 calibration is complete with accepted negative evidence; no production policy was selected. Before each later task, read the authoritative sources, check the applicable gate, form a single PR contract and preserve unresolved questions unless an accepted decision explicitly resolves them. Do not begin PR-010 production implementation or PR-011 and later work.
+The next safe activity is continued PR-012 correction, executable evidence completion, and Product-owner review preparation. Do not merge PR-012 and do not begin PR-013 or later work. The local Q-021 calibration remains complete with accepted negative evidence; no production policy was selected.
 
 PR-S001-F1, PR-S001-F2, PR-S001-F3 and PR-S001-F4 are completed. PR-S001/PR-S001-F1/PR-S001-F2/PR-S001-F3/PR-S001-F4 use fictional synthetic data only, may evaluate candidate packages and prototypes, must not create production database/storage APIs, and must not use real documents or personal data. PR-006 is COMPLETED AND HUMAN ACCEPTED through PR #17. Q-017 remains deferred. The sensitive-data/private-contour gate remains open, and real documents and personal data remain prohibited in Git, Codex and CI.
 
@@ -186,9 +186,9 @@ Real documents and personal data remain prohibited in Git, Codex and CI.
 Product owner authorization date: 2026-07-26. Accepted contract and implementation base: `f007fb5a04a5c69c70a37faf7ba12fa6775ae819`. Current schema version: `7`. Final v0007 checksum: `afad8ccc6de4ef81d73f137cbffa5a45fec1fdbb6940eabb0507cc9d6580a4a7`. V0007 uses a checksum-protected `DISABLED_DURING_TABLE_REBUILD` execution mode, a transactional populated-table copy, foreign-key checks before and after restoration, and no internal SQLite schema edits. Candidate evidence uses the production attempt generator and observer; determinism reuses the same PR-010 RGB render; verifier privacy uses an exact allowlist and runtime forbidden-value checks. ADR-025: ACCEPTED. PR-011 CONTRACT: ACCEPTED. PR-011 PRODUCTION IMPLEMENTATION: IMPLEMENTED AND IN REVIEW; NOT HUMAN ACCEPTED. PR-012 AND LATER: UNAUTHORIZED. Q-021: DEFERRED. PRODUCTION PR-009 QUALITY POLICY: NOT ACTIVE. PRODUCTION `policy_id`: NOT ASSIGNED. PRODUCTION `policy_version`: NOT ASSIGNED. AUTOMATIC PR-009 QUALITY BLOCKING: NOT ACTIVE. AUTOMATIC PRODUCTION `RETAKE_REQUIRED`: NOT ACTIVE. GATE 2: NOT ACCEPTED. M3: IN PROGRESS. Real documents and personal data remain prohibited in Git, Codex and CI.
 
 
-## Current lifecycle state — 2026-07-28
+## Historical lifecycle snapshot — PR-012 contract proposal before acceptance — 2026-07-28
 
-This section is authoritative for current lifecycle status. It supersedes earlier dated lifecycle snapshots for current status only and does not rewrite their historical record.
+This section records the pre-acceptance proposal state only. It is historical and does not define current lifecycle status.
 
 ```text
 PR-011: COMPLETED AND HUMAN ACCEPTED
@@ -221,7 +221,9 @@ PR-011 is merged and human accepted under [PR-011-D3](decisions/PR-011-D3-lifecy
 Q-021: DEFERRED. PRODUCTION PR-009 QUALITY POLICY: NOT ACTIVE. PRODUCTION `policy_id`: NOT ASSIGNED. PRODUCTION `policy_version`: NOT ASSIGNED. AUTOMATIC PR-009 QUALITY BLOCKING: NOT ACTIVE. AUTOMATIC PRODUCTION `RETAKE_REQUIRED`: NOT ACTIVE. Real documents and personal data remain prohibited in Git, Codex, and CI.
 
 
-## Current PR-012 production-review lifecycle (2026-07-28)
+## Current lifecycle state — PR-012 production review (authoritative, 2026-07-28)
+
+This is the single authoritative current lifecycle section. All earlier lifecycle snapshots are historical and do not define current status.
 
 ```text
 ADR-026: ACCEPTED

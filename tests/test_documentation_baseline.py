@@ -2597,36 +2597,31 @@ def test_pr010_contract_current_lifecycle_and_merge_evidence_are_section_scoped(
         "M3: IN PROGRESS",
     ):
         assert required in current, required
-    assert (
-        "PR-011 production implementation and acceptance evidence are complete: all seven "
-        "manifest stages and all 57 entries are implemented, with none pending. The lifecycle "
-        "is `READY_FOR_HUMAN_REVIEW`, not human accepted. Product-owner human acceptance has not "
-        "occurred, and merge remains unauthorized until explicit Product-owner acceptance after "
-        "closure-head CI is checked. PR-012 and later remain unauthorized. Gate 2 remains not "
-        "accepted, M3 remains in progress, Q-021 remains deferred, and no active PR-009 "
-        "production quality policy exists." in next_step
-    )
+    assert "Continue PR-012 correction and executable evidence completion" in next_step
+    assert "PR-012 human acceptance has not been granted" in next_step
+    assert "merge remains unauthorized" in next_step
+    assert "PR-013 and later remain unauthorized" in next_step
     assert "PR-009: IMPLEMENTED AND IN REVIEW; NOT HUMAN ACCEPTED" in historical
     assert "Q-021: OPEN — REQUIRES PRODUCT-OWNER ACCEPTANCE" in historical
     assert "PR-010 AND LATER: UNAUTHORIZED" in historical
 
 
-def test_pr011_top_status_matches_ready_for_human_review_boundary() -> None:
+def test_progress_top_status_matches_pr012_review_boundary() -> None:
     progress = (REPO_ROOT / "docs/progress.md").read_text(encoding="utf-8")
     top_status = next(line for line in progress.splitlines() if line.startswith("**Статус:**"))
     for required in (
-        "PR-011 ACCEPTANCE EVIDENCE: COMPLETE",
-        "PR-011 LIFECYCLE: READY_FOR_HUMAN_REVIEW",
-        "PR-011 HUMAN ACCEPTANCE: PENDING",
-        "PR-011 MERGE: NOT AUTHORIZED",
-        "PR-012 AND LATER: UNAUTHORIZED",
+        "ADR-026: ACCEPTED",
+        "PR-012 CONTRACT: ACCEPTED",
+        "PR-012 PRODUCTION IMPLEMENTATION: AUTHORIZED AND IN REVIEW",
+        "PR-012 HUMAN ACCEPTANCE: NOT GRANTED",
+        "PR-012 MERGE: NOT AUTHORIZED",
+        "PR-013 AND LATER: UNAUTHORIZED",
     ):
         assert required in top_status
-    assert "PR-011 ACCEPTANCE EVIDENCE: INCOMPLETE" not in top_status
-    assert "PR-011 HUMAN ACCEPTANCE: COMPLETED" not in top_status
+    assert "PR-012 AND LATER: UNAUTHORIZED" not in top_status
     next_step = _section(progress, "## Следующий безопасный шаг")
-    assert "all seven manifest stages and all 57 entries are implemented" in next_step
-    assert "`READY_FOR_HUMAN_REVIEW`, not human accepted" in next_step
+    assert "Continue PR-012 correction" in next_step
+    assert "PR-013 and later remain unauthorized" in next_step
 
 
 def test_pr011_independent_audit_preserves_final_acceptance_boundary() -> None:
@@ -2991,10 +2986,8 @@ def test_pr011_task_describes_implemented_production_evidence() -> None:
 
 def test_pr011_lifecycle_closure_and_pr012_contract_current_sections() -> None:
     current_files = (
-        "docs/progress.md",
         "docs/roadmap.md",
         "docs/implementation-plan.md",
-        "docs/handoff.md",
         "docs/architecture.md",
         "docs/domain-model.md",
         "docs/image-pipeline.md",
@@ -3345,3 +3338,49 @@ def test_pr012_current_status_sections_are_consistent() -> None:
     for section in (adr_boundary, task_boundary):
         for marker in stale:
             assert marker not in section
+
+
+def test_pr012_authoritative_progress_and_handoff_sections_are_current() -> None:
+    progress = (REPO_ROOT / "docs/progress.md").read_text(encoding="utf-8")
+    handoff = (REPO_ROOT / "docs/handoff.md").read_text(encoding="utf-8")
+    heading = "## Current lifecycle state — PR-012 production review (authoritative, 2026-07-28)"
+    current_sections = (_section(progress, heading), _section(handoff, heading))
+    lifecycle = (
+        "ADR-026: ACCEPTED",
+        "PR-012 CONTRACT: ACCEPTED",
+        "PR-012 PRODUCTION IMPLEMENTATION: AUTHORIZED AND IN REVIEW",
+        "PR-012 HUMAN ACCEPTANCE: NOT GRANTED",
+        "PR-012 MERGE: NOT AUTHORIZED",
+        "PR-013 AND LATER: UNAUTHORIZED",
+        "GATE 2: NOT ACCEPTED",
+        "M3: IN PROGRESS",
+    )
+    stale = (
+        "PR-012 AND LATER: UNAUTHORIZED",
+        "PR-011 AND LATER: UNAUTHORIZED",
+        "PR-012 CONTRACT:\nPROPOSED FOR HUMAN REVIEW",
+        "PR-012 PRODUCTION IMPLEMENTATION:\nUNAUTHORIZED",
+        "Do not begin PR-010 production implementation",
+    )
+    for section in current_sections:
+        assert "single authoritative current lifecycle section" in section
+        for marker in lifecycle:
+            assert marker in section
+        for marker in stale:
+            assert marker not in section
+    progress_next = _section(progress, "## Следующий безопасный шаг")
+    handoff_boundary = _section(handoff, "## Authorization boundary")
+    handoff_next = _section(handoff, "## Продолжение")
+    assert "Continue PR-012 correction and executable evidence completion" in progress_next
+    assert (
+        "PR-012 production implementation is authorized and remains in review" in handoff_boundary
+    )
+    assert "continued PR-012 correction" in handoff_next
+    assert "Do not merge PR-012" in handoff_next
+    assert "do not begin PR-013 or later work" in handoff_next
+    historical_heading = (
+        "## Historical lifecycle snapshot — PR-012 contract proposal before acceptance — 2026-07-28"
+    )
+    for text in (progress, handoff):
+        historical = _section(text, historical_heading)
+        assert "historical and does not define current lifecycle status" in historical
