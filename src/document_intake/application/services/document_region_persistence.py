@@ -106,6 +106,8 @@ def persist_confirmation(
         for member, recipe in zip(command.members, selected, strict=True):
             if isinstance(member.recipe_selection, NewRecipeRevision):
                 uow.image_geometry_recipes.add(recipe)
+        for member in command.members:
+            if isinstance(member.recipe_selection, NewRecipeRevision):
                 uow.audit_events.add(_recipe_audit(command, member.recipe_selection))
         uow.document_region_sets.add(region_set)
         uow.audit_events.add(_set_audit(command))

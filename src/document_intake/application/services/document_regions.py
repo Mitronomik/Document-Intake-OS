@@ -221,7 +221,11 @@ def _render_recipe(
             quarter_turn=recipe.quarter_turn,
             pipeline=recipe.pipeline,
         )
-        if (rendered.width, rendered.height) != expected or rendered.pipeline != recipe.pipeline:
+        if (
+            (rendered.width, rendered.height) != expected
+            or rendered.pipeline != recipe.pipeline
+            or len(rendered.rgb_pixels) != rendered.width * rendered.height * 3
+        ):
             raise ValueError
     except Exception:
         raise ImageGeometryError(GeometryErrorCode.RENDER_FAILED) from None
