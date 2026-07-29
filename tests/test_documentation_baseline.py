@@ -3140,8 +3140,10 @@ def test_pr012_task_contract_sections_nongoals_and_unauthorized_boundary() -> No
     ):
         assert marker in non_goals
     authorization = _section(task, "## Authorization boundary")
-    assert "PR-012 production implementation is unauthorized" in authorization
-    assert "PR-013 and later are unauthorized" in authorization
+    assert "PR-012 production implementation is authorized and remains in review" in authorization
+    assert "PR-012 human acceptance has not been granted" in authorization
+    assert "Merge remains unauthorized" in authorization
+    assert "PR-013 and later remain unauthorized" in authorization
 
 
 def test_pr012_identity_and_recipe_selection_corrections_are_exact() -> None:
@@ -3297,30 +3299,49 @@ def test_pr012_current_status_sections_are_consistent() -> None:
         encoding="utf-8"
     )
     adr_status = _section(adr, "## Status")
-    boundary = _section(adr, "## Decision and authorization")
+    adr_boundary = _section(adr, "## Decision and authorization")
     task_status = _section(task, "## Status")
+    task_boundary = _section(task, "## Authorization boundary")
     assert "ACCEPTED" in adr_status
     for marker in (
         "PR-012 CONTRACT: ACCEPTED",
         "PR-012 PRODUCTION IMPLEMENTATION: AUTHORIZED AND IN REVIEW",
     ):
         assert marker in adr_status
-    for section in (boundary, task_status):
+    for section in (adr_boundary, task_status, task_boundary):
         for marker in (
             "ADR-026: ACCEPTED",
             "PR-012 CONTRACT: ACCEPTED",
             "PR-012 PRODUCTION IMPLEMENTATION: AUTHORIZED AND IN REVIEW",
         ):
             assert marker in section
-    for marker in (
+    lifecycle_boundary = (
         "PR-012 HUMAN ACCEPTANCE: NOT GRANTED",
         "PR-012 MERGE: NOT AUTHORIZED",
         "PR-013 AND LATER: UNAUTHORIZED",
         "GATE 2: NOT ACCEPTED",
         "M3: IN PROGRESS",
+    )
+    for section in (adr_boundary, task_status, task_boundary):
+        for marker in lifecycle_boundary:
+            assert marker in section
+    extended_boundary = (
         "Q-021: DEFERRED",
         "PRODUCTION PR-009 QUALITY POLICY: NOT ACTIVE",
         "AUTOMATIC PR-009 QUALITY BLOCKING: NOT ACTIVE",
         "AUTOMATIC PRODUCTION RETAKE_REQUIRED: NOT ACTIVE",
-    ):
-        assert marker in boundary
+    )
+    for section in (adr_boundary, task_boundary):
+        for marker in extended_boundary:
+            assert marker in section
+    stale = (
+        "This contract remains proposed for human review",
+        "PR-012 production implementation is unauthorized",
+        "ADR-026: PROPOSED",
+        "PR-012 CONTRACT: PROPOSED FOR HUMAN REVIEW",
+        "PR-012 PRODUCTION IMPLEMENTATION: UNAUTHORIZED",
+        "No production code, migration, or CI change is authorized by this document",
+    )
+    for section in (adr_boundary, task_boundary):
+        for marker in stale:
+            assert marker not in section

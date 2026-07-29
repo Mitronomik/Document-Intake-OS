@@ -413,12 +413,28 @@ Using synthetic files only: import one image with two rectangles; confirm two ma
 
 ## Authorization boundary
 
-This contract remains proposed for human review. PR-012 production implementation is unauthorized. PR-013 and later are unauthorized. No production code, migration, or CI change is authorized by this document.
+ADR-026 and the PR-012 contract are accepted.
+
+PR-012 production implementation is authorized and remains in review.
+
+Technical implementation authorization is not Product-owner human acceptance.
+
+PR-012 human acceptance has not been granted.
+
+Merge remains unauthorized.
+
+PR-013 and later remain unauthorized.
+
+Gate 2 is not accepted.
+
+M3 remains in progress.
 
 ```text
-ADR-026: PROPOSED
-PR-012 CONTRACT: PROPOSED FOR HUMAN REVIEW
-PR-012 PRODUCTION IMPLEMENTATION: UNAUTHORIZED
+ADR-026: ACCEPTED
+PR-012 CONTRACT: ACCEPTED
+PR-012 PRODUCTION IMPLEMENTATION: AUTHORIZED AND IN REVIEW
+PR-012 HUMAN ACCEPTANCE: NOT GRANTED
+PR-012 MERGE: NOT AUTHORIZED
 PR-013 AND LATER: UNAUTHORIZED
 GATE 2: NOT ACCEPTED
 M3: IN PROGRESS
