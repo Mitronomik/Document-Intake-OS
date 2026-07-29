@@ -15,7 +15,11 @@ from document_intake.application.services.document_regions import (
 )
 from document_intake.domain.document_regions import DocumentRegionErrorCode
 from document_intake.domain.enums import AuditAction, AuditSubjectType, SourceMediaType
-from document_intake.domain.image_geometry import derive_geometry_dimensions
+from document_intake.domain.image_geometry import (
+    GeometryPoint,
+    SourceQuadrilateral,
+    derive_geometry_dimensions,
+)
 from document_intake.persistence.errors import PersistenceError, PersistenceErrorCode
 from tests.support.pr011 import (
     STAMP,
@@ -118,8 +122,16 @@ class Uow:
         return False
 
     def commit(self):
-        for repository in self._repositories():
-            repository.commit()
+        repositories = self._repositories()
+        snapshots = [(dict(repo.committed), dict(repo.pending)) for repo in repositories]
+        try:
+            for repository in repositories:
+                repository.commit()
+        except Exception:
+            for repository, (committed, pending) in zip(repositories, snapshots, strict=True):
+                repository.committed = committed
+                repository.pending = pending
+            raise
         self.commits += 1
 
     def rollback(self):
@@ -363,6 +375,67 @@ def test_two_entirely_new_regions_create_independent_ordered_lineages() -> None:
     assert calls.count("render") == 2
 
 
+@pytest.mark.parametrize(
+    ("first_quad", "second_quad"),
+    [
+        pytest.param(
+            SourceQuadrilateral(
+                GeometryPoint(0, 0),
+                GeometryPoint(16, 0),
+                GeometryPoint(16, 24),
+                GeometryPoint(0, 24),
+            ),
+            SourceQuadrilateral(
+                GeometryPoint(16, 0),
+                GeometryPoint(32, 0),
+                GeometryPoint(32, 24),
+                GeometryPoint(16, 24),
+            ),
+            id="touching",
+        ),
+        pytest.param(
+            SourceQuadrilateral(
+                GeometryPoint(0, 0),
+                GeometryPoint(20, 0),
+                GeometryPoint(20, 24),
+                GeometryPoint(0, 24),
+            ),
+            SourceQuadrilateral(
+                GeometryPoint(12, 0),
+                GeometryPoint(32, 0),
+                GeometryPoint(32, 24),
+                GeometryPoint(12, 24),
+            ),
+            id="partial-overlap",
+        ),
+    ],
+)
+def test_distinct_touching_and_partially_overlapping_regions_are_accepted(
+    first_quad, second_quad
+) -> None:
+    template = valid_geometry_recipe()
+    first_id, second_id = entity_id(31), entity_id(32)
+    value = replace(
+        command(template),
+        members=(
+            RegionSetMemberInput(1, first_id, new_selection(first_id, entity_id(41), first_quad)),
+            RegionSetMemberInput(
+                2, second_id, new_selection(second_id, entity_id(42), second_quad)
+            ),
+        ),
+    )
+    factory = Factory()
+    result, calls = run(value, factory)
+
+    assert tuple(recipe.region_id for recipe in result.selected_recipes) == (
+        first_id,
+        second_id,
+    )
+    assert result.selected_recipes[0].quadrilateral == first_quad
+    assert result.selected_recipes[1].quadrilateral == second_quad
+    assert calls == ["storage.read", "decode", "render", "render"]
+
+
 def test_existing_plus_new_inserts_only_new_recipe_in_command_order() -> None:
     existing = valid_geometry_recipe()
     new_id = entity_id(31)
@@ -597,3 +670,61 @@ def test_fake_repository_rejects_duplicate_immutable_add() -> None:
     assert repository.add_calls == [recipe]
     assert repository.committed == {recipe.recipe_version_id: recipe}
     assert repository.pending == {}
+
+
+def test_fake_uow_mid_commit_failure_restores_every_repository() -> None:
+    recipe = valid_geometry_recipe()
+    factory = Factory(recipe)
+    write = factory.units[1]
+    original_recipe_state = dict(write.image_geometry_recipes.committed)
+    original_set_state = dict(write.document_region_sets.committed)
+    original_audit_state = dict(write.audit_events.committed)
+
+    def fail_commit():
+        raise RuntimeError("private mid-commit failure")
+
+    write.document_region_sets.commit = fail_commit
+    with pytest.raises(DocumentRegionsError) as error:
+        run(command(recipe), factory)
+
+    assert error.value.code is DocumentRegionErrorCode.COMMIT_FAILED
+    assert write.commits == 0
+    assert write.rollbacks == 1
+    assert write.image_geometry_recipes.committed == original_recipe_state
+    assert write.document_region_sets.committed == original_set_state
+    assert write.audit_events.committed == original_audit_state
+    assert all(repository.pending == {} for repository in write._repositories())
+
+
+def test_audit_failure_rolls_back_new_recipe_and_region_set() -> None:
+    template = valid_geometry_recipe()
+    recipe_id = entity_id(31)
+    value = replace(
+        command(template),
+        members=(
+            RegionSetMemberInput(
+                1,
+                recipe_id,
+                new_selection(recipe_id, entity_id(41), template.quadrilateral),
+            ),
+        ),
+    )
+    factory = Factory()
+    write = factory.units[1]
+
+    def fail_set_audit(item):
+        if item.action_code is AuditAction.DOCUMENT_REGION_SET_CONFIRMED:
+            raise PersistenceError(PersistenceErrorCode.PERSISTENCE_UNEXPECTED)
+        Repo.add(write.audit_events, item)
+
+    write.audit_events.add = fail_set_audit
+    with pytest.raises(DocumentRegionsError) as error:
+        run(value, factory)
+
+    assert error.value.code is DocumentRegionErrorCode.PERSISTENCE_FAILED
+    assert write.commits == 0
+    assert write.rollbacks == 1
+    assert write.image_geometry_recipes.committed == {}
+    assert write.document_region_sets.committed == {}
+    assert write.audit_events.committed == {}
+    assert all(repository.pending == {} for repository in write._repositories())
