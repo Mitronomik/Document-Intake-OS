@@ -270,7 +270,7 @@ def test_pr011_rep_006_duplicate_prepared_artifact_id_preserves_first(
         unit.stored_artifacts.add(stored(444, duplicate))
         unit.prepared_image_artifacts.add(duplicate)
         unit.commit()
-    assert caught.value.code is PersistenceErrorCode.PERSISTENCE_CONSTRAINT
+    assert caught.value.code is PersistenceErrorCode.ENTITY_ALREADY_EXISTS
     with production_uow(repository_environment) as reopened:
         assert reopened.prepared_image_artifacts.get(first.id) == first
         assert reopened.stored_artifacts.get(entity_id(444)) is None
