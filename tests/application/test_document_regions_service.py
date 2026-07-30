@@ -1,4 +1,5 @@
 from dataclasses import dataclass, replace
+from types import SimpleNamespace
 
 import pytest
 
@@ -13,9 +14,11 @@ from document_intake.application.services.document_regions import (
     DocumentRegionsError,
     confirm_document_regions,
 )
+from document_intake.application.services.image_geometry import ImageGeometryError
 from document_intake.domain.document_regions import DocumentRegionErrorCode
 from document_intake.domain.enums import AuditAction, AuditSubjectType, SourceMediaType
 from document_intake.domain.image_geometry import (
+    GeometryErrorCode,
     GeometryPoint,
     SourceQuadrilateral,
     derive_geometry_dimensions,
@@ -600,6 +603,75 @@ def test_factory_failure_is_controlled_and_private() -> None:
         run(command(valid_geometry_recipe()), Broken())
     assert error.value.code is DocumentRegionErrorCode.PERSISTENCE_FAILED
     assert "private" not in str(error.value)
+
+
+def test_initial_missing_source_preserves_source_not_found_error() -> None:
+    recipe = valid_geometry_recipe()
+    factory = Factory(recipe)
+    factory.units[0].source_files = Repo()
+    with pytest.raises(ImageGeometryError) as error:
+        run(command(recipe), factory)
+    assert error.value.code is GeometryErrorCode.SOURCE_FILE_NOT_FOUND
+    assert len(factory.units) == 1
+
+
+def test_initial_missing_artifact_preserves_artifact_not_found_error() -> None:
+    recipe = valid_geometry_recipe()
+    factory = Factory(recipe)
+    factory.units[0].stored_artifacts = Repo()
+    with pytest.raises(ImageGeometryError) as error:
+        run(command(recipe), factory)
+    assert error.value.code is GeometryErrorCode.ARTIFACT_NOT_FOUND
+    assert len(factory.units) == 1
+
+
+@pytest.mark.parametrize(("position", "delta"), [(1, -1), (1, 1), (2, -1), (2, 1)])
+def test_malformed_renderer_rgb_length_fails_before_write(position, delta) -> None:
+    first = valid_geometry_recipe()
+    second = replace(
+        first,
+        recipe_version_id=entity_id(31),
+        region_id=entity_id(31),
+        quadrilateral=_c1_quadrilateral(),
+    )
+    value = replace(
+        command(first),
+        members=(
+            RegionSetMemberInput(
+                1, first.region_id, ExistingRecipeSelection(first.recipe_version_id)
+            ),
+            RegionSetMemberInput(
+                2, second.region_id, ExistingRecipeSelection(second.recipe_version_id)
+            ),
+        ),
+    )
+    factory = Factory(first, second)
+
+    class MalformedRenderer(Renderer):
+        def __init__(self):
+            super().__init__([])
+            self.count = 0
+
+        def render_geometry(self, *, media, quadrilateral, quarter_turn, pipeline):
+            self.count += 1
+            width, height = derive_geometry_dimensions(quadrilateral, quarter_turn)
+            size = width * height * 3 + (delta if self.count == position else 0)
+            return SimpleNamespace(
+                width=width, height=height, rgb_pixels=b"\0" * size, pipeline=pipeline
+            )
+
+    renderer = MalformedRenderer()
+    with pytest.raises(ImageGeometryError) as error:
+        confirm_document_regions(
+            value,
+            decoder=Decoder([]),
+            renderer=renderer,
+            storage=Storage([]),
+            unit_of_work_factory=factory,
+        )
+    assert error.value.code is GeometryErrorCode.RENDER_FAILED
+    assert renderer.count == position
+    assert len(factory.units) == 1
 
 
 def test_commit_failure_maps_commit_failed() -> None:

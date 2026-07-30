@@ -43,7 +43,6 @@ from document_intake.domain.image_geometry import (
     ImageGeometryRecipe,
     derive_geometry_dimensions,
 )
-from document_intake.domain.value_objects import EntityId
 from document_intake.persistence.errors import PersistenceError
 
 
@@ -53,6 +52,13 @@ class _ReadContext:
     stored: StoredArtifactRecord
     previous_set: DocumentRegionSetVersion | None
     selected: tuple[ImageGeometryRecipe, ...]
+
+
+@dataclass(frozen=True, slots=True)
+class _WriteReadback:
+    previous_set: DocumentRegionSetVersion | None
+    latest_set: DocumentRegionSetVersion | None
+    recipes: tuple[ImageGeometryRecipe | None, ...]
 
 
 def _validate_command(command: ConfirmDocumentRegionsCommand) -> None:
@@ -108,10 +114,10 @@ def _load_read_context(
 ) -> tuple[SourceFile, StoredArtifactRecord, DocumentRegionSetVersion | None]:
     source = uow.source_files.get(command.source_file_id)
     if source is None:
-        _fail(DocumentRegionErrorCode.PERSISTED_DATA_INVALID)
+        raise ImageGeometryError(GeometryErrorCode.SOURCE_FILE_NOT_FOUND)
     stored = uow.stored_artifacts.get(source.original_artifact_id)
     if stored is None:
-        _fail(DocumentRegionErrorCode.PERSISTED_DATA_INVALID)
+        raise ImageGeometryError(GeometryErrorCode.ARTIFACT_NOT_FOUND)
     previous = None
     if command.set_revision > 1:
         if command.superseded_region_set_version_id is None:
@@ -206,15 +212,22 @@ def _render_selected_set(
     if (media.effective_width, media.effective_height) != expected:
         raise ImageGeometryError(GeometryErrorCode.SOURCE_DIMENSIONS_MISMATCH)
     for recipe in context.selected:
-        _render_recipe(recipe, media, renderer)
+        recipe.quadrilateral.validate_for_source(media.effective_width, media.effective_height)
+    dimensions = tuple(
+        derive_geometry_dimensions(recipe.quadrilateral, recipe.quarter_turn)
+        for recipe in context.selected
+    )
+    for recipe, expected_dimensions in zip(context.selected, dimensions, strict=True):
+        _render_recipe(recipe, media, renderer, expected_dimensions)
 
 
 def _render_recipe(
-    recipe: ImageGeometryRecipe, media: DecodedGeometryMedia, renderer: GeometryRendererPort
+    recipe: ImageGeometryRecipe,
+    media: DecodedGeometryMedia,
+    renderer: GeometryRendererPort,
+    expected: tuple[int, int],
 ) -> None:
     try:
-        recipe.quadrilateral.validate_for_source(media.effective_width, media.effective_height)
-        expected = derive_geometry_dimensions(recipe.quadrilateral, recipe.quarter_turn)
         rendered = renderer.render_geometry(
             media=media,
             quadrilateral=recipe.quadrilateral,
@@ -239,7 +252,39 @@ def _revalidate_write_context(
         or uow.stored_artifacts.get(read.source.original_artifact_id) != read.stored
     ):
         _fail(DocumentRegionErrorCode.PERSISTED_DATA_INVALID)
+    readback = _reread_selected_state(command, uow)
+    _verify_absent_ids(command, uow)
+    _verify_set_revision(command, read, readback)
+    for member, recipe, current in zip(
+        command.members, read.selected, readback.recipes, strict=True
+    ):
+        _verify_region_revision(member.recipe_selection, recipe, current)
+
+
+def _reread_selected_state(
+    command: ConfirmDocumentRegionsCommand, uow: UnitOfWork
+) -> _WriteReadback:
+    previous = (
+        uow.document_region_sets.get(command.superseded_region_set_version_id)
+        if command.superseded_region_set_version_id is not None
+        else None
+    )
     latest_set = uow.document_region_sets.get_latest_by_source(command.source_file_id)
+    recipes = tuple(
+        uow.image_geometry_recipes.get(selection.geometry_recipe_version_id)
+        if isinstance(selection := member.recipe_selection, ExistingRecipeSelection)
+        else uow.image_geometry_recipes.get_latest_by_region(
+            command.source_file_id, member.region_id
+        )
+        for member in command.members
+    )
+    return _WriteReadback(previous, latest_set, recipes)
+
+
+def _verify_set_revision(
+    command: ConfirmDocumentRegionsCommand, read: _ReadContext, readback: _WriteReadback
+) -> None:
+    latest_set = readback.latest_set
     expected_revision = 1 if latest_set is None else latest_set.revision + 1
     expected_predecessor = None if latest_set is None else latest_set.region_set_version_id
     if (
@@ -249,14 +294,8 @@ def _revalidate_write_context(
         _fail(DocumentRegionErrorCode.REGION_SET_REVISION_CONFLICT)
     if command.set_revision > 1:
         predecessor_id = command.superseded_region_set_version_id
-        if (
-            predecessor_id is None
-            or uow.document_region_sets.get(predecessor_id) != read.previous_set
-        ):
+        if predecessor_id is None or readback.previous_set != read.previous_set:
             _fail(DocumentRegionErrorCode.PERSISTED_DATA_INVALID)
-    _verify_absent_ids(command, uow)
-    for member, recipe in zip(command.members, read.selected, strict=True):
-        _revalidate_recipe(command, member.recipe_selection, recipe, member.region_id, uow)
 
 
 def _verify_absent_ids(command: ConfirmDocumentRegionsCommand, uow: UnitOfWork) -> None:
@@ -274,18 +313,15 @@ def _verify_absent_ids(command: ConfirmDocumentRegionsCommand, uow: UnitOfWork) 
             _fail(DocumentRegionErrorCode.IDENTITY_CONFLICT)
 
 
-def _revalidate_recipe(
-    command: ConfirmDocumentRegionsCommand,
+def _verify_region_revision(
     selection: RecipeSelection,
     recipe: ImageGeometryRecipe,
-    region_id: EntityId,
-    uow: UnitOfWork,
+    latest: ImageGeometryRecipe | None,
 ) -> None:
     if isinstance(selection, ExistingRecipeSelection):
-        if uow.image_geometry_recipes.get(selection.geometry_recipe_version_id) != recipe:
+        if latest != recipe:
             _fail(DocumentRegionErrorCode.PERSISTED_DATA_INVALID)
         return
-    latest = uow.image_geometry_recipes.get_latest_by_region(command.source_file_id, region_id)
     if selection.recipe_revision == 1:
         if latest is not None:
             _fail(DocumentRegionErrorCode.REGION_REVISION_CONFLICT)
