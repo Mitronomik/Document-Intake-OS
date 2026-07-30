@@ -11,37 +11,10 @@ from document_intake.application.dto.document_regions import (
     RegionSetMemberInput,
 )
 from document_intake.application.dto.storage import StoredArtifactRecord
-from document_intake.application.ports.media import (
-    DecodedGeometryMedia,
-    GeometryDecoderPort,
-    GeometryRendererPort,
-)
+from document_intake.application.ports.media import GeometryDecoderPort, GeometryRendererPort
 from document_intake.application.ports.persistence import UnitOfWork, UnitOfWorkFactory
 from document_intake.application.ports.storage import StoragePort
-from document_intake.application.services.document_region_persistence import (
-    DocumentRegionsError,
-)
-from document_intake.application.services.document_region_persistence import (
-    RecipeReadSnapshot as _RecipeReadSnapshot,
-)
-from document_intake.application.services.document_region_persistence import (
-    WriteReadback as _WriteReadback,
-)
-from document_intake.application.services.document_region_persistence import (
-    fail as _fail,
-)
-from document_intake.application.services.document_region_persistence import (
-    map_controlled_failure as _map_controlled_failure,
-)
-from document_intake.application.services.document_region_persistence import (
-    map_geometry_validation_error as _map_geometry_validation_error,
-)
-from document_intake.application.services.document_region_persistence import (
-    persist_confirmation as _persist_confirmation,
-)
-from document_intake.application.services.document_region_persistence import (
-    reread_recipe_state as _reread_recipe_state,
-)
+from document_intake.application.services import document_region_persistence as _persistence
 from document_intake.application.services.image_geometry import ImageGeometryError
 from document_intake.domain.document_regions import (
     DocumentRegionErrorCode,
@@ -56,7 +29,34 @@ from document_intake.domain.image_geometry import (
     ImageGeometryRecipe,
     derive_geometry_dimensions,
 )
+from document_intake.domain.image_geometry import (
+    SourceQuadrilateral as SourceQuadrilateral,
+)
 from document_intake.persistence.errors import PersistenceError
+
+DocumentRegionsError = _persistence.DocumentRegionsError
+_RecipeReadSnapshot = _persistence.RecipeReadSnapshot
+_WriteReadback = _persistence.WriteReadback
+_apply_exif_orientation_once = _persistence.apply_exif_orientation_once
+_decode_source_once = _persistence.decode_source_once
+_discard_ephemeral_rasters = _persistence.discard_ephemeral_rasters
+_fail = _persistence.fail
+_map_controlled_failure = _persistence.map_controlled_failure
+_map_geometry_validation_error = _persistence.map_geometry_validation_error
+_persist_confirmation = _persistence.persist_confirmation
+_read_immutable_original_bytes = _persistence.read_immutable_original_bytes
+_reject_command_level_duplicates = _persistence.reject_command_level_duplicates
+_render_all_selected = _persistence.render_all_selected
+_reread_recipe_state = _persistence.reread_recipe_state
+_validate_all_selected_geometry = _persistence.validate_all_selected_geometry
+_validate_contiguous_order_indices = _persistence.validate_contiguous_order_indices
+_validate_created_record_id_distinctness = _persistence.validate_created_record_id_distinctness
+_validate_exactly_one_selection_form = _persistence.validate_exactly_one_selection_form
+_validate_new_revision_region_identity = _persistence.validate_new_revision_region_identity
+_validate_region_count = _persistence.validate_region_count
+_validate_source_independent_command = _persistence.validate_source_independent_command
+_verify_effective_dimensions = _persistence.verify_effective_dimensions
+_verify_integrity_contract = _persistence.verify_integrity_contract
 
 
 @dataclass(frozen=True, slots=True)
@@ -69,70 +69,40 @@ class _ReadContext:
 
 
 def _validate_command(command: ConfirmDocumentRegionsCommand) -> None:
-    if len(command.members) not in (1, 2):
-        _fail(DocumentRegionErrorCode.REGION_COUNT_INVALID)
-    if tuple(m.order_index for m in command.members) != tuple(range(1, len(command.members) + 1)):
-        _fail(DocumentRegionErrorCode.REGION_ORDER_INVALID)
-    if len({m.region_id for m in command.members}) != len(command.members):
-        _fail(DocumentRegionErrorCode.DUPLICATE_REGION)
-    created = _validate_selections(command)
-    if len(created) != len(set(created)):
-        _fail(DocumentRegionErrorCode.IDENTITY_CONFLICT)
-    _validate_region_aliases(command, created)
+    _validate_source_independent_command(command)
+    _validate_region_count(command)
+    _validate_contiguous_order_indices(command)
+    created = _validate_created_record_id_distinctness(command)
+    _validate_exactly_one_selection_form(command)
+    _validate_new_revision_region_identity(command, created)
+    _reject_command_level_duplicates(command)
 
 
-def _validate_selections(command: ConfirmDocumentRegionsCommand) -> list[object]:
-    created: list[object] = [command.region_set_version_id, command.region_set_audit_event_id]
-    for member in command.members:
-        selection = member.recipe_selection
-        if isinstance(selection, NewRecipeRevision):
-            created.extend((selection.recipe_version_id, selection.recipe_audit_event_id))
-            root = (
-                selection.recipe_revision == 1
-                and selection.superseded_recipe_version_id is None
-                and member.region_id == selection.recipe_version_id
-            )
-            later = (
-                selection.recipe_revision > 1
-                and selection.superseded_recipe_version_id is not None
-                and member.region_id != selection.recipe_version_id
-            )
-            if not (root or later):
-                _fail(DocumentRegionErrorCode.REGION_IDENTITY_CONFLICT)
-        elif not isinstance(selection, ExistingRecipeSelection):
-            _fail(DocumentRegionErrorCode.REGION_SELECTION_INVALID)
-    return created
-
-
-def _validate_region_aliases(command: ConfirmDocumentRegionsCommand, created: list[object]) -> None:
-    for member in command.members:
-        selection = member.recipe_selection
-        root_alias = (
-            isinstance(selection, NewRecipeRevision)
-            and selection.recipe_revision == 1
-            and member.region_id == selection.recipe_version_id
-        )
-        if member.region_id in created and not root_alias:
-            _fail(DocumentRegionErrorCode.REGION_IDENTITY_CONFLICT)
-
-
-def _load_read_context(
-    command: ConfirmDocumentRegionsCommand, uow: UnitOfWork
-) -> tuple[SourceFile, StoredArtifactRecord, DocumentRegionSetVersion | None]:
+def _load_source(command: ConfirmDocumentRegionsCommand, uow: UnitOfWork) -> SourceFile:
     source = uow.source_files.get(command.source_file_id)
     if source is None:
         raise ImageGeometryError(GeometryErrorCode.SOURCE_FILE_NOT_FOUND)
+    return source
+
+
+def _load_original_artifact(source: SourceFile, uow: UnitOfWork) -> StoredArtifactRecord:
     stored = uow.stored_artifacts.get(source.original_artifact_id)
     if stored is None:
         raise ImageGeometryError(GeometryErrorCode.ARTIFACT_NOT_FOUND)
-    previous = None
-    if command.set_revision > 1:
-        if command.superseded_region_set_version_id is None:
-            _fail(DocumentRegionErrorCode.REGION_SET_NOT_FOUND)
-        previous = uow.document_region_sets.get(command.superseded_region_set_version_id)
-        if previous is None:
-            _fail(DocumentRegionErrorCode.REGION_SET_NOT_FOUND)
-    return source, stored, previous
+    return stored
+
+
+def _load_preceding_set(
+    command: ConfirmDocumentRegionsCommand, uow: UnitOfWork
+) -> DocumentRegionSetVersion | None:
+    if command.set_revision == 1:
+        return None
+    if command.superseded_region_set_version_id is None:
+        _fail(DocumentRegionErrorCode.REGION_SET_NOT_FOUND)
+    previous = uow.document_region_sets.get(command.superseded_region_set_version_id)
+    if previous is None:
+        _fail(DocumentRegionErrorCode.REGION_SET_NOT_FOUND)
+    return previous
 
 
 def _new_recipe(
@@ -162,6 +132,8 @@ def _new_recipe(
 def _resolve_recipe_selections(
     command: ConfirmDocumentRegionsCommand, source: SourceFile, uow: UnitOfWork
 ) -> tuple[tuple[ImageGeometryRecipe, ...], tuple[_RecipeReadSnapshot, ...]]:
+    existing = _load_selected_existing_recipes(command, uow)
+    latest_by_region = _load_new_revision_state(command, uow)
     selected = []
     snapshots = []
     for member in command.members:
@@ -169,7 +141,7 @@ def _resolve_recipe_selections(
         exact: ImageGeometryRecipe | None
         latest_at_read: ImageGeometryRecipe | None
         if isinstance(selection, ExistingRecipeSelection):
-            recipe = uow.image_geometry_recipes.get(selection.geometry_recipe_version_id)
+            recipe = existing.get(selection.geometry_recipe_version_id)
             if (
                 recipe is None
                 or recipe.source_file_id != command.source_file_id
@@ -178,9 +150,7 @@ def _resolve_recipe_selections(
                 _fail(DocumentRegionErrorCode.REGION_IDENTITY_CONFLICT)
             exact, latest_at_read = recipe, None
         else:
-            latest = uow.image_geometry_recipes.get_latest_by_region(
-                command.source_file_id, member.region_id
-            )
+            latest = latest_by_region.get(member.region_id)
             valid_root = selection.recipe_revision == 1 and latest is None
             valid_later = (
                 latest is not None
@@ -196,6 +166,30 @@ def _resolve_recipe_selections(
     return tuple(selected), tuple(snapshots)
 
 
+def _load_selected_existing_recipes(
+    command: ConfirmDocumentRegionsCommand, uow: UnitOfWork
+) -> dict[object, ImageGeometryRecipe | None]:
+    return {
+        selection.geometry_recipe_version_id: uow.image_geometry_recipes.get(
+            selection.geometry_recipe_version_id
+        )
+        for member in command.members
+        if isinstance(selection := member.recipe_selection, ExistingRecipeSelection)
+    }
+
+
+def _load_new_revision_state(
+    command: ConfirmDocumentRegionsCommand, uow: UnitOfWork
+) -> dict[object, ImageGeometryRecipe | None]:
+    return {
+        member.region_id: uow.image_geometry_recipes.get_latest_by_region(
+            command.source_file_id, member.region_id
+        )
+        for member in command.members
+        if isinstance(member.recipe_selection, NewRecipeRevision)
+    }
+
+
 def _validate_complete_selected_set(selected: tuple[ImageGeometryRecipe, ...]) -> None:
     recipe_ids = {recipe.recipe_version_id for recipe in selected}
     quadrilaterals = {recipe.quadrilateral for recipe in selected}
@@ -209,60 +203,23 @@ def _render_selected_set(
     renderer: GeometryRendererPort,
     storage: StoragePort,
 ) -> None:
-    try:
-        content = storage.read_bytes(expected=context.stored)
-    except Exception:
-        raise ImageGeometryError(GeometryErrorCode.ARTIFACT_INTEGRITY_FAILED) from None
-    try:
-        media = decoder.decode_for_geometry(content=content)
-    except Exception:
-        raise ImageGeometryError(GeometryErrorCode.DECODE_FAILED) from None
-    expected = (
-        (context.source.height, context.source.width)
-        if context.source.exif_orientation in {5, 6, 7, 8}
-        else (context.source.width, context.source.height)
-    )
-    if (media.effective_width, media.effective_height) != expected:
-        raise ImageGeometryError(GeometryErrorCode.SOURCE_DIMENSIONS_MISMATCH)
-    try:
-        for recipe in context.selected:
-            recipe.quadrilateral.validate_for_source(media.effective_width, media.effective_height)
-    except InvalidValueError as error:
-        _map_geometry_validation_error(error)
-    except Exception:
-        raise ImageGeometryError(GeometryErrorCode.RENDER_FAILED) from None
-    try:
-        dimensions = tuple(
-            derive_geometry_dimensions(recipe.quadrilateral, recipe.quarter_turn)
-            for recipe in context.selected
-        )
-    except InvalidValueError as error:
-        _map_geometry_validation_error(error)
-    except Exception:
-        raise ImageGeometryError(GeometryErrorCode.RENDER_FAILED) from None
-    for recipe, expected_dimensions in zip(context.selected, dimensions, strict=True):
-        _render_recipe(recipe, media, renderer, expected_dimensions)
+    content = _read_immutable_original_bytes(context.stored, storage)
+    _verify_integrity_contract(content)
+    media = _apply_exif_orientation_once(_decode_source_once(content, decoder))
+    _verify_effective_dimensions(context.source, media)
+    _validate_all_selected_geometry(context.selected, media)
+    dimensions = _derive_all_output_dimensions(context.selected)
+    rasters = _render_all_selected(context.selected, dimensions, media, renderer)
+    _discard_ephemeral_rasters(rasters, len(context.selected))
 
 
-def _render_recipe(
-    recipe: ImageGeometryRecipe,
-    media: DecodedGeometryMedia,
-    renderer: GeometryRendererPort,
-    expected: tuple[int, int],
-) -> None:
+def _derive_all_output_dimensions(
+    selected: tuple[ImageGeometryRecipe, ...],
+) -> tuple[tuple[int, int], ...]:
     try:
-        rendered = renderer.render_geometry(
-            media=media,
-            quadrilateral=recipe.quadrilateral,
-            quarter_turn=recipe.quarter_turn,
-            pipeline=recipe.pipeline,
-        )
-        if (
-            (rendered.width, rendered.height) != expected
-            or rendered.pipeline != recipe.pipeline
-            or len(rendered.rgb_pixels) != rendered.width * rendered.height * 3
-        ):
-            raise ValueError
+        return tuple(derive_geometry_dimensions(r.quadrilateral, r.quarter_turn) for r in selected)
+    except InvalidValueError as error:
+        _map_geometry_validation_error(error)
     except Exception:
         raise ImageGeometryError(GeometryErrorCode.RENDER_FAILED) from None
 
@@ -270,14 +227,26 @@ def _render_recipe(
 def _revalidate_write_context(
     command: ConfirmDocumentRegionsCommand, read: _ReadContext, uow: UnitOfWork
 ) -> None:
+    _reread_source_and_artifact(command, read, uow)
+    readback = _reread_and_revalidate_selected_state(command, read, uow)
+    _verify_absent_ids(command, uow)
+    _verify_set_revision(command, read, readback)
+    _verify_region_revisions(command, read, readback)
+
+
+def _reread_source_and_artifact(
+    command: ConfirmDocumentRegionsCommand, read: _ReadContext, uow: UnitOfWork
+) -> None:
     if (
         uow.source_files.get(command.source_file_id) != read.source
         or uow.stored_artifacts.get(read.source.original_artifact_id) != read.stored
     ):
         _fail(DocumentRegionErrorCode.PERSISTED_DATA_INVALID)
-    readback = _reread_and_revalidate_selected_state(command, read, uow)
-    _verify_absent_ids(command, uow)
-    _verify_set_revision(command, read, readback)
+
+
+def _verify_region_revisions(
+    command: ConfirmDocumentRegionsCommand, read: _ReadContext, readback: _WriteReadback
+) -> None:
     for member, recipe, current in zip(
         command.members, read.selected, readback.latest_recipes, strict=True
     ):
@@ -364,7 +333,9 @@ def confirm_document_regions(
     try:
         read_cm = unit_of_work_factory.unit_of_work()
         with read_cm as read_uow:
-            source, stored, previous = _load_read_context(command, read_uow)
+            source = _load_source(command, read_uow)
+            stored = _load_original_artifact(source, read_uow)
+            previous = _load_preceding_set(command, read_uow)
             selected, recipe_snapshots = _resolve_recipe_selections(command, source, read_uow)
             _validate_complete_selected_set(selected)
     except (DocumentRegionsError, ImageGeometryError):
@@ -390,4 +361,10 @@ def confirm_document_regions(
         _map_controlled_failure(error, late=True)
     except Exception:
         _fail(DocumentRegionErrorCode.PERSISTENCE_FAILED)
+    return _construct_confirmation_result(region_set, selected)
+
+
+def _construct_confirmation_result(
+    region_set: DocumentRegionSetVersion, selected: tuple[ImageGeometryRecipe, ...]
+) -> ConfirmDocumentRegionsResult:
     return ConfirmDocumentRegionsResult(region_set, selected)
