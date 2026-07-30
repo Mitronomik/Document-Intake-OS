@@ -639,7 +639,7 @@ def test_exact_predecessor_stale_value_precedes_revision_checks(mutation) -> Non
     assert value.region_set_version_id not in write.document_region_sets.get_calls
 
 
-def test_concurrent_root_creation_is_a_revision_conflict() -> None:
+def test_concurrent_same_root_id_is_an_identity_conflict() -> None:
     template = valid_geometry_recipe()
     proposed_id = entity_id(31)
     value = replace(
@@ -653,38 +653,46 @@ def test_concurrent_root_creation_is_a_revision_conflict() -> None:
         ),
     )
     concurrent = replace(template, recipe_version_id=proposed_id, region_id=proposed_id)
-
-    class ConcurrentRootRepo(Repo):
-        def get(self, key):
-            self.get_calls.append(key)
-            return None if key == proposed_id else self.items.get(key)
-
     factory = Factory()
-    factory.units[1].image_geometry_recipes = ConcurrentRootRepo((concurrent,))
-    _assert_revalidation_failure(value, factory, DocumentRegionErrorCode.REGION_REVISION_CONFLICT)
+    repository = Repo((concurrent,))
+    factory.units[1].image_geometry_recipes = repository
+    assert repository.get(proposed_id) == concurrent
+    assert repository.get_latest_by_region(template.source_file_id, proposed_id) == concurrent
+    _assert_revalidation_failure(value, factory, DocumentRegionErrorCode.IDENTITY_CONFLICT)
 
 
-@pytest.mark.parametrize("latest_revision", [4, 5])
-def test_concurrent_later_revision_is_a_revision_conflict(latest_revision) -> None:
+def _concurrent_revision_case(*, include_revision_three):
     root, previous, value = _revision_case()
-    concurrent = replace(
+    concurrent_a2 = replace(
         root,
         recipe_version_id=entity_id(32),
         superseded_recipe_version_id=root.recipe_version_id,
-        revision=4,
+        revision=2,
     )
-    recipes = [root, concurrent]
-    if latest_revision == 5:
+    recipes = [root, concurrent_a2]
+    if include_revision_three:
         recipes.append(
             replace(
-                concurrent,
+                concurrent_a2,
                 recipe_version_id=entity_id(33),
-                superseded_recipe_version_id=concurrent.recipe_version_id,
-                revision=5,
+                superseded_recipe_version_id=concurrent_a2.recipe_version_id,
+                revision=3,
             )
         )
     factory = with_previous(Factory(root), previous)
-    factory.units[1].image_geometry_recipes = Repo(recipes)
+    repository = Repo(recipes)
+    factory.units[1].image_geometry_recipes = repository
+    assert repository.get(entity_id(31)) is None
+    return value, factory
+
+
+def test_concurrent_valid_revision_two_is_a_region_revision_conflict() -> None:
+    value, factory = _concurrent_revision_case(include_revision_three=False)
+    _assert_revalidation_failure(value, factory, DocumentRegionErrorCode.REGION_REVISION_CONFLICT)
+
+
+def test_concurrent_valid_revision_three_chain_is_a_region_revision_conflict() -> None:
+    value, factory = _concurrent_revision_case(include_revision_three=True)
     _assert_revalidation_failure(value, factory, DocumentRegionErrorCode.REGION_REVISION_CONFLICT)
 
 
