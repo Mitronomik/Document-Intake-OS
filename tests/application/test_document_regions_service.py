@@ -3,6 +3,7 @@ from types import SimpleNamespace
 
 import pytest
 
+import document_intake.application.services.document_regions as regions_service
 from document_intake.application.dto.document_regions import (
     ExistingRecipeSelection,
     RegionSetMemberInput,
@@ -14,6 +15,7 @@ from document_intake.application.services.document_regions import (
 from document_intake.application.services.image_geometry import ImageGeometryError
 from document_intake.domain.document_regions import DocumentRegionErrorCode
 from document_intake.domain.enums import AuditAction, AuditSubjectType
+from document_intake.domain.errors import InvalidValueError
 from document_intake.domain.image_geometry import (
     GeometryErrorCode,
     GeometryPoint,
@@ -511,6 +513,237 @@ def test_source_change_during_write_fails_closed() -> None:
     with pytest.raises(DocumentRegionsError) as error:
         run(command(recipe), factory)
     assert error.value.code is DocumentRegionErrorCode.PERSISTED_DATA_INVALID
+
+
+def _revision_case():
+    root = valid_geometry_recipe()
+    previous, _ = run(command(root), Factory(root))
+    value = replace(
+        command(root),
+        region_set_version_id=entity_id(62),
+        region_set_audit_event_id=entity_id(63),
+        superseded_region_set_version_id=previous.region_set.region_set_version_id,
+        set_revision=2,
+        members=(
+            RegionSetMemberInput(
+                1,
+                root.region_id,
+                new_selection(
+                    entity_id(31),
+                    entity_id(41),
+                    root.quadrilateral,
+                    revision=2,
+                    predecessor=root.recipe_version_id,
+                ),
+            ),
+        ),
+    )
+    return root, previous.region_set, value
+
+
+def _assert_revalidation_failure(value, factory, expected) -> None:
+    write = factory.units[1]
+    with pytest.raises(DocumentRegionsError) as error:
+        run(value, factory)
+    assert error.value.code is expected
+    assert write.commits == 0 and write.rollbacks == 1
+    assert all(repository.pending == {} for repository in write._repositories())
+    assert write.image_geometry_recipes.add_calls == []
+    assert write.document_region_sets.add_calls == []
+    assert write.audit_events.add_calls == []
+
+
+def test_initial_missing_preceding_set_is_not_a_stale_write() -> None:
+    root, previous, value = _revision_case()
+    factory = Factory(root)
+    with pytest.raises(DocumentRegionsError) as error:
+        run(value, factory)
+    assert error.value.code is DocumentRegionErrorCode.REGION_SET_NOT_FOUND
+    assert previous.region_set_version_id not in factory.units[0].document_region_sets.items
+
+
+@pytest.mark.parametrize("mutation", ["removed", "changed"])
+def test_preceding_set_stale_value_fails_semantic_revalidation(mutation) -> None:
+    root, previous, value = _revision_case()
+    factory = with_previous(Factory(root), previous)
+    replacement = (
+        ()
+        if mutation == "removed"
+        else (
+            replace(previous, confirmed_by=replace(previous.confirmed_by, actor_id=entity_id(89))),
+        )
+    )
+    factory.units[1].document_region_sets = Repo(replacement)
+    _assert_revalidation_failure(value, factory, DocumentRegionErrorCode.PERSISTED_DATA_INVALID)
+
+
+def test_new_latest_set_is_a_revision_conflict() -> None:
+    root, previous, value = _revision_case()
+    newer = replace(
+        previous,
+        region_set_version_id=entity_id(64),
+        superseded_region_set_version_id=previous.region_set_version_id,
+        revision=2,
+    )
+    factory = with_previous(Factory(root), previous)
+    factory.units[1].document_region_sets = Repo((previous, newer))
+    _assert_revalidation_failure(
+        value, factory, DocumentRegionErrorCode.REGION_SET_REVISION_CONFLICT
+    )
+
+
+@pytest.mark.parametrize("mutation", ["removed", "changed"])
+def test_selected_existing_recipe_stale_value_precedes_id_checks(mutation) -> None:
+    recipe = valid_geometry_recipe()
+    value = command(recipe)
+    factory = Factory(recipe)
+    replacement = (
+        ()
+        if mutation == "removed"
+        else (
+            replace(
+                recipe,
+                quadrilateral=replace(
+                    recipe.quadrilateral,
+                    top_left=replace(recipe.quadrilateral.top_left, x=1),
+                ),
+            ),
+        )
+    )
+    write = factory.units[1]
+    write.image_geometry_recipes = Repo(replacement)
+    _assert_revalidation_failure(value, factory, DocumentRegionErrorCode.PERSISTED_DATA_INVALID)
+    assert value.region_set_version_id not in write.document_region_sets.get_calls
+
+
+@pytest.mark.parametrize("mutation", ["removed", "changed"])
+def test_exact_predecessor_stale_value_precedes_revision_checks(mutation) -> None:
+    root, previous, value = _revision_case()
+    factory = with_previous(Factory(root), previous)
+    replacement = (
+        ()
+        if mutation == "removed"
+        else (
+            replace(
+                root,
+                quadrilateral=replace(
+                    root.quadrilateral,
+                    top_left=replace(root.quadrilateral.top_left, x=1),
+                ),
+            ),
+        )
+    )
+    write = factory.units[1]
+    write.image_geometry_recipes = Repo(replacement)
+    _assert_revalidation_failure(value, factory, DocumentRegionErrorCode.PERSISTED_DATA_INVALID)
+    assert value.region_set_version_id not in write.document_region_sets.get_calls
+
+
+def test_concurrent_root_creation_is_a_revision_conflict() -> None:
+    template = valid_geometry_recipe()
+    proposed_id = entity_id(31)
+    value = replace(
+        command(template),
+        members=(
+            RegionSetMemberInput(
+                1,
+                proposed_id,
+                new_selection(proposed_id, entity_id(41), template.quadrilateral),
+            ),
+        ),
+    )
+    concurrent = replace(template, recipe_version_id=proposed_id, region_id=proposed_id)
+
+    class ConcurrentRootRepo(Repo):
+        def get(self, key):
+            self.get_calls.append(key)
+            return None if key == proposed_id else self.items.get(key)
+
+    factory = Factory()
+    factory.units[1].image_geometry_recipes = ConcurrentRootRepo((concurrent,))
+    _assert_revalidation_failure(value, factory, DocumentRegionErrorCode.REGION_REVISION_CONFLICT)
+
+
+@pytest.mark.parametrize("latest_revision", [4, 5])
+def test_concurrent_later_revision_is_a_revision_conflict(latest_revision) -> None:
+    root, previous, value = _revision_case()
+    concurrent = replace(
+        root,
+        recipe_version_id=entity_id(32),
+        superseded_recipe_version_id=root.recipe_version_id,
+        revision=4,
+    )
+    recipes = [root, concurrent]
+    if latest_revision == 5:
+        recipes.append(
+            replace(
+                concurrent,
+                recipe_version_id=entity_id(33),
+                superseded_recipe_version_id=concurrent.recipe_version_id,
+                revision=5,
+            )
+        )
+    factory = with_previous(Factory(root), previous)
+    factory.units[1].image_geometry_recipes = Repo(recipes)
+    _assert_revalidation_failure(value, factory, DocumentRegionErrorCode.REGION_REVISION_CONFLICT)
+
+
+@pytest.mark.parametrize(
+    ("phase", "code"),
+    [
+        *(
+            ("validate", code)
+            for code in (
+                GeometryErrorCode.POINT_OUT_OF_BOUNDS,
+                GeometryErrorCode.DUPLICATE_POINT,
+                GeometryErrorCode.NON_CLOCKWISE_QUADRILATERAL,
+                GeometryErrorCode.SELF_INTERSECTING_QUADRILATERAL,
+                GeometryErrorCode.NON_CONVEX_QUADRILATERAL,
+                GeometryErrorCode.AREA_TOO_SMALL,
+            )
+        ),
+        ("derive", GeometryErrorCode.OUTPUT_DIMENSIONS_TOO_SMALL),
+        ("derive", GeometryErrorCode.INVALID_QUARTER_TURN),
+    ],
+)
+def test_geometry_invalid_values_map_to_exact_controlled_code(monkeypatch, phase, code) -> None:
+    recipe = valid_geometry_recipe()
+    factory = Factory(recipe)
+
+    def fail(*_args, **_kwargs):
+        raise InvalidValueError(code.value)
+
+    target = SourceQuadrilateral if phase == "validate" else regions_service
+    attribute = "validate_for_source" if phase == "validate" else "derive_geometry_dimensions"
+    monkeypatch.setattr(target, attribute, fail)
+    with pytest.raises(ImageGeometryError) as error:
+        run(command(recipe), factory)
+    assert error.value.code is code
+    assert len(factory.units) == 1
+
+
+@pytest.mark.parametrize(
+    ("phase", "marker"),
+    [
+        ("validate", "private-geometry-validation-marker"),
+        ("derive", "private-dimension-derivation-marker"),
+    ],
+)
+def test_private_geometry_failures_map_to_render_failed(monkeypatch, phase, marker) -> None:
+    recipe = valid_geometry_recipe()
+    factory = Factory(recipe)
+
+    def fail(*_args, **_kwargs):
+        raise RuntimeError(marker)
+
+    target = SourceQuadrilateral if phase == "validate" else regions_service
+    attribute = "validate_for_source" if phase == "validate" else "derive_geometry_dimensions"
+    monkeypatch.setattr(target, attribute, fail)
+    with pytest.raises(ImageGeometryError) as error:
+        run(command(recipe), factory)
+    assert error.value.code is GeometryErrorCode.RENDER_FAILED
+    assert marker not in str(error.value) and marker not in repr(error.value)
+    assert len(factory.units) == 1
 
 
 def test_late_uniqueness_race_is_controlled() -> None:

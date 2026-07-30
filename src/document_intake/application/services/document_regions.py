@@ -39,6 +39,9 @@ from document_intake.application.services.document_region_persistence import (
 from document_intake.application.services.document_region_persistence import (
     persist_confirmation as _persist_confirmation,
 )
+from document_intake.application.services.document_region_persistence import (
+    reread_recipe_state as _reread_recipe_state,
+)
 from document_intake.application.services.image_geometry import ImageGeometryError
 from document_intake.domain.document_regions import (
     DocumentRegionErrorCode,
@@ -163,6 +166,8 @@ def _resolve_recipe_selections(
     snapshots = []
     for member in command.members:
         selection = member.recipe_selection
+        exact: ImageGeometryRecipe | None
+        latest_at_read: ImageGeometryRecipe | None
         if isinstance(selection, ExistingRecipeSelection):
             recipe = uow.image_geometry_recipes.get(selection.geometry_recipe_version_id)
             if (
@@ -171,6 +176,7 @@ def _resolve_recipe_selections(
                 or recipe.region_id != member.region_id
             ):
                 _fail(DocumentRegionErrorCode.REGION_IDENTITY_CONFLICT)
+            exact, latest_at_read = recipe, None
         else:
             latest = uow.image_geometry_recipes.get_latest_by_region(
                 command.source_file_id, member.region_id
@@ -184,12 +190,9 @@ def _resolve_recipe_selections(
             if not (valid_root or valid_later):
                 _fail(DocumentRegionErrorCode.REGION_REVISION_CONFLICT)
             recipe = _new_recipe(command, source, member, selection)
+            exact = latest_at_read = latest
         selected.append(recipe)
-        snapshots.append(
-            _RecipeReadSnapshot(
-                recipe, recipe if isinstance(selection, ExistingRecipeSelection) else latest
-            )
-        )
+        snapshots.append(_RecipeReadSnapshot(recipe, exact, latest_at_read))
     return tuple(selected), tuple(snapshots)
 
 
@@ -276,7 +279,7 @@ def _revalidate_write_context(
     _verify_absent_ids(command, uow)
     _verify_set_revision(command, read, readback)
     for member, recipe, current in zip(
-        command.members, read.selected, readback.recipes, strict=True
+        command.members, read.selected, readback.latest_recipes, strict=True
     ):
         _verify_region_revision(member.recipe_selection, recipe, current)
 
@@ -290,20 +293,13 @@ def _reread_and_revalidate_selected_state(
         else None
     )
     latest_set = uow.document_region_sets.get_latest_by_source(command.source_file_id)
-    recipes = tuple(
-        uow.image_geometry_recipes.get(selection.geometry_recipe_version_id)
-        if isinstance(selection := member.recipe_selection, ExistingRecipeSelection)
-        else uow.image_geometry_recipes.get_latest_by_region(
-            command.source_file_id, member.region_id
-        )
-        for member in command.members
-    )
+    exact_recipes, latest_recipes = _reread_recipe_state(command, uow)
     if previous != read.previous_set or any(
-        current != snapshot.persisted_recipe_at_read
-        for current, snapshot in zip(recipes, read.recipe_snapshots, strict=True)
+        current != snapshot.exact_persisted_recipe_at_read
+        for current, snapshot in zip(exact_recipes, read.recipe_snapshots, strict=True)
     ):
         _fail(DocumentRegionErrorCode.PERSISTED_DATA_INVALID)
-    return _WriteReadback(previous, latest_set, recipes)
+    return _WriteReadback(previous, latest_set, exact_recipes, latest_recipes)
 
 
 def _verify_set_revision(
@@ -344,8 +340,6 @@ def _verify_region_revision(
     latest: ImageGeometryRecipe | None,
 ) -> None:
     if isinstance(selection, ExistingRecipeSelection):
-        if latest != recipe:
-            _fail(DocumentRegionErrorCode.PERSISTED_DATA_INVALID)
         return
     if selection.recipe_revision == 1:
         if latest is not None:

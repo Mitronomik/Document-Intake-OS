@@ -7,6 +7,7 @@ from typing import NoReturn
 
 from document_intake.application.dto.document_regions import (
     ConfirmDocumentRegionsCommand,
+    ExistingRecipeSelection,
     NewRecipeRevision,
 )
 from document_intake.application.ports.persistence import UnitOfWork
@@ -33,14 +34,16 @@ class DocumentRegionsError(Exception):
 @dataclass(frozen=True, slots=True)
 class RecipeReadSnapshot:
     selected_recipe: ImageGeometryRecipe
-    persisted_recipe_at_read: ImageGeometryRecipe | None
+    exact_persisted_recipe_at_read: ImageGeometryRecipe | None
+    latest_recipe_at_read: ImageGeometryRecipe | None
 
 
 @dataclass(frozen=True, slots=True)
 class WriteReadback:
     previous_set: DocumentRegionSetVersion | None
     latest_set: DocumentRegionSetVersion | None
-    recipes: tuple[ImageGeometryRecipe | None, ...]
+    exact_recipes: tuple[ImageGeometryRecipe | None, ...]
+    latest_recipes: tuple[ImageGeometryRecipe | None, ...]
 
 
 def fail(code: DocumentRegionErrorCode) -> NoReturn:
@@ -65,6 +68,28 @@ def map_controlled_failure(error: PersistenceError, *, late: bool = False) -> No
             else DocumentRegionErrorCode.IDENTITY_CONFLICT
         )
     fail(DocumentRegionErrorCode.PERSISTENCE_FAILED)
+
+
+def reread_recipe_state(
+    command: ConfirmDocumentRegionsCommand, uow: UnitOfWork
+) -> tuple[tuple[ImageGeometryRecipe | None, ...], tuple[ImageGeometryRecipe | None, ...]]:
+    exact = tuple(
+        uow.image_geometry_recipes.get(selection.geometry_recipe_version_id)
+        if isinstance(selection := member.recipe_selection, ExistingRecipeSelection)
+        else uow.image_geometry_recipes.get(selection.superseded_recipe_version_id)
+        if selection.superseded_recipe_version_id is not None
+        else None
+        for member in command.members
+    )
+    latest = tuple(
+        None
+        if isinstance(member.recipe_selection, ExistingRecipeSelection)
+        else uow.image_geometry_recipes.get_latest_by_region(
+            command.source_file_id, member.region_id
+        )
+        for member in command.members
+    )
+    return exact, latest
 
 
 def _summary(label: str) -> tuple[AuditValueSummary, AuditValueSummary]:
