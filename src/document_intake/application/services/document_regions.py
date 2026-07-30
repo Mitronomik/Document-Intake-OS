@@ -22,10 +22,19 @@ from document_intake.application.services.document_region_persistence import (
     DocumentRegionsError,
 )
 from document_intake.application.services.document_region_persistence import (
+    RecipeReadSnapshot as _RecipeReadSnapshot,
+)
+from document_intake.application.services.document_region_persistence import (
+    WriteReadback as _WriteReadback,
+)
+from document_intake.application.services.document_region_persistence import (
     fail as _fail,
 )
 from document_intake.application.services.document_region_persistence import (
     map_controlled_failure as _map_controlled_failure,
+)
+from document_intake.application.services.document_region_persistence import (
+    map_geometry_validation_error as _map_geometry_validation_error,
 )
 from document_intake.application.services.document_region_persistence import (
     persist_confirmation as _persist_confirmation,
@@ -36,6 +45,7 @@ from document_intake.domain.document_regions import (
     DocumentRegionSetVersion,
 )
 from document_intake.domain.entities import SourceFile
+from document_intake.domain.errors import InvalidValueError
 from document_intake.domain.image_geometry import (
     GeometryCoordinateSpace,
     GeometryErrorCode,
@@ -52,13 +62,7 @@ class _ReadContext:
     stored: StoredArtifactRecord
     previous_set: DocumentRegionSetVersion | None
     selected: tuple[ImageGeometryRecipe, ...]
-
-
-@dataclass(frozen=True, slots=True)
-class _WriteReadback:
-    previous_set: DocumentRegionSetVersion | None
-    latest_set: DocumentRegionSetVersion | None
-    recipes: tuple[ImageGeometryRecipe | None, ...]
+    recipe_snapshots: tuple[_RecipeReadSnapshot, ...]
 
 
 def _validate_command(command: ConfirmDocumentRegionsCommand) -> None:
@@ -154,8 +158,9 @@ def _new_recipe(
 
 def _resolve_recipe_selections(
     command: ConfirmDocumentRegionsCommand, source: SourceFile, uow: UnitOfWork
-) -> tuple[ImageGeometryRecipe, ...]:
+) -> tuple[tuple[ImageGeometryRecipe, ...], tuple[_RecipeReadSnapshot, ...]]:
     selected = []
+    snapshots = []
     for member in command.members:
         selection = member.recipe_selection
         if isinstance(selection, ExistingRecipeSelection):
@@ -180,7 +185,12 @@ def _resolve_recipe_selections(
                 _fail(DocumentRegionErrorCode.REGION_REVISION_CONFLICT)
             recipe = _new_recipe(command, source, member, selection)
         selected.append(recipe)
-    return tuple(selected)
+        snapshots.append(
+            _RecipeReadSnapshot(
+                recipe, recipe if isinstance(selection, ExistingRecipeSelection) else latest
+            )
+        )
+    return tuple(selected), tuple(snapshots)
 
 
 def _validate_complete_selected_set(selected: tuple[ImageGeometryRecipe, ...]) -> None:
@@ -211,12 +221,22 @@ def _render_selected_set(
     )
     if (media.effective_width, media.effective_height) != expected:
         raise ImageGeometryError(GeometryErrorCode.SOURCE_DIMENSIONS_MISMATCH)
-    for recipe in context.selected:
-        recipe.quadrilateral.validate_for_source(media.effective_width, media.effective_height)
-    dimensions = tuple(
-        derive_geometry_dimensions(recipe.quadrilateral, recipe.quarter_turn)
-        for recipe in context.selected
-    )
+    try:
+        for recipe in context.selected:
+            recipe.quadrilateral.validate_for_source(media.effective_width, media.effective_height)
+    except InvalidValueError as error:
+        _map_geometry_validation_error(error)
+    except Exception:
+        raise ImageGeometryError(GeometryErrorCode.RENDER_FAILED) from None
+    try:
+        dimensions = tuple(
+            derive_geometry_dimensions(recipe.quadrilateral, recipe.quarter_turn)
+            for recipe in context.selected
+        )
+    except InvalidValueError as error:
+        _map_geometry_validation_error(error)
+    except Exception:
+        raise ImageGeometryError(GeometryErrorCode.RENDER_FAILED) from None
     for recipe, expected_dimensions in zip(context.selected, dimensions, strict=True):
         _render_recipe(recipe, media, renderer, expected_dimensions)
 
@@ -252,7 +272,7 @@ def _revalidate_write_context(
         or uow.stored_artifacts.get(read.source.original_artifact_id) != read.stored
     ):
         _fail(DocumentRegionErrorCode.PERSISTED_DATA_INVALID)
-    readback = _reread_selected_state(command, uow)
+    readback = _reread_and_revalidate_selected_state(command, read, uow)
     _verify_absent_ids(command, uow)
     _verify_set_revision(command, read, readback)
     for member, recipe, current in zip(
@@ -261,8 +281,8 @@ def _revalidate_write_context(
         _verify_region_revision(member.recipe_selection, recipe, current)
 
 
-def _reread_selected_state(
-    command: ConfirmDocumentRegionsCommand, uow: UnitOfWork
+def _reread_and_revalidate_selected_state(
+    command: ConfirmDocumentRegionsCommand, read: _ReadContext, uow: UnitOfWork
 ) -> _WriteReadback:
     previous = (
         uow.document_region_sets.get(command.superseded_region_set_version_id)
@@ -278,6 +298,11 @@ def _reread_selected_state(
         )
         for member in command.members
     )
+    if previous != read.previous_set or any(
+        current != snapshot.persisted_recipe_at_read
+        for current, snapshot in zip(recipes, read.recipe_snapshots, strict=True)
+    ):
+        _fail(DocumentRegionErrorCode.PERSISTED_DATA_INVALID)
     return _WriteReadback(previous, latest_set, recipes)
 
 
@@ -346,7 +371,7 @@ def confirm_document_regions(
         read_cm = unit_of_work_factory.unit_of_work()
         with read_cm as read_uow:
             source, stored, previous = _load_read_context(command, read_uow)
-            selected = _resolve_recipe_selections(command, source, read_uow)
+            selected, recipe_snapshots = _resolve_recipe_selections(command, source, read_uow)
             _validate_complete_selected_set(selected)
     except (DocumentRegionsError, ImageGeometryError):
         raise
@@ -354,7 +379,7 @@ def confirm_document_regions(
         _map_controlled_failure(error)
     except Exception:
         _fail(DocumentRegionErrorCode.PERSISTENCE_FAILED)
-    context = _ReadContext(source, stored, previous, selected)
+    context = _ReadContext(source, stored, previous, selected, recipe_snapshots)
     _render_selected_set(context, decoder, renderer, storage)
     try:
         write_cm = unit_of_work_factory.unit_of_work()

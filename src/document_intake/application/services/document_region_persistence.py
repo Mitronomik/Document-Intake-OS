@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from typing import NoReturn
 
 from document_intake.application.dto.document_regions import (
@@ -9,6 +10,7 @@ from document_intake.application.dto.document_regions import (
     NewRecipeRevision,
 )
 from document_intake.application.ports.persistence import UnitOfWork
+from document_intake.application.services.image_geometry import ImageGeometryError
 from document_intake.domain.document_regions import (
     DocumentRegionErrorCode,
     DocumentRegionSetMember,
@@ -16,7 +18,8 @@ from document_intake.domain.document_regions import (
 )
 from document_intake.domain.entities.audit import AuditEvent
 from document_intake.domain.enums import AuditAction, AuditSubjectType, AuditValueClassification
-from document_intake.domain.image_geometry import ImageGeometryRecipe
+from document_intake.domain.errors import InvalidValueError
+from document_intake.domain.image_geometry import GeometryErrorCode, ImageGeometryRecipe
 from document_intake.domain.value_objects import AuditReasonCode, AuditValueSummary
 from document_intake.persistence.errors import PersistenceError, PersistenceErrorCode
 
@@ -27,8 +30,29 @@ class DocumentRegionsError(Exception):
         super().__init__(code.value)
 
 
+@dataclass(frozen=True, slots=True)
+class RecipeReadSnapshot:
+    selected_recipe: ImageGeometryRecipe
+    persisted_recipe_at_read: ImageGeometryRecipe | None
+
+
+@dataclass(frozen=True, slots=True)
+class WriteReadback:
+    previous_set: DocumentRegionSetVersion | None
+    latest_set: DocumentRegionSetVersion | None
+    recipes: tuple[ImageGeometryRecipe | None, ...]
+
+
 def fail(code: DocumentRegionErrorCode) -> NoReturn:
     raise DocumentRegionsError(code) from None
+
+
+def map_geometry_validation_error(error: InvalidValueError) -> NoReturn:
+    try:
+        code = GeometryErrorCode(str(error))
+    except ValueError:
+        code = GeometryErrorCode.RENDER_FAILED
+    raise ImageGeometryError(code) from None
 
 
 def map_controlled_failure(error: PersistenceError, *, late: bool = False) -> NoReturn:

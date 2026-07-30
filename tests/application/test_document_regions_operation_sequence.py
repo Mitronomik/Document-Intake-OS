@@ -1,5 +1,5 @@
 from document_intake.application.services import document_regions as service
-from tests.application import test_document_regions_service as support
+from tests.support import pr012_application as support
 
 EXPECTED_CONFIRM_DOCUMENT_REGIONS_TRACE = tuple(
     f"{index:02d}_{label}"
