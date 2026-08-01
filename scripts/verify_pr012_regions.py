@@ -2,24 +2,38 @@
 
 from __future__ import annotations
 
+import importlib
 import os
 import platform
-import sqlite3
 import subprocess
 import sys
 import tempfile
 from pathlib import Path
+from typing import TYPE_CHECKING, cast
+
+if TYPE_CHECKING:
+    from scripts.pr012_regions_verifier_support import VerifierEvidence
 
 from document_intake.persistence import database
-from document_intake.persistence.database import EncryptedDatabase
-from document_intake.persistence.errors import PersistenceError
-from document_intake.persistence.migrations import MIGRATIONS
+from document_intake.persistence.errors import PersistenceError, PersistenceErrorCode
 from document_intake.persistence.migrations.v0008_document_regions import MIGRATION
+
+support = importlib.import_module(
+    "scripts.pr012_regions_verifier_support" if __package__ else "pr012_regions_verifier_support"
+)
 
 _LABELS = (
     "PR012_VERIFY schema_version=8",
     f"PR012_VERIFY candidate_v0008_checksum={MIGRATION.checksum}",
-    "PR012_VERIFY encrypted_v7_to_v8=PASS",
+    "PR012_VERIFY populated_encrypted_v7_to_v8=PASS",
+    "PR012_VERIFY source_a_history=PASS",
+    "PR012_VERIFY source_b_isolation=PASS",
+    "PR012_VERIFY prepared_references=PASS",
+    "PR012_VERIFY repository_reopen=PASS",
+    "PR012_VERIFY second_lineage_service=PASS",
+    "PR012_VERIFY second_lineage_revision=PASS",
+    "PR012_VERIFY region_set_history=PASS",
+    "PR012_VERIFY audit_order=PASS",
     "PR012_VERIFY migration_history=PASS",
     "PR012_VERIFY foreign_keys=PASS",
     "PR012_VERIFY cipher_integrity=PASS",
@@ -31,6 +45,23 @@ _LABELS = (
 _UNSUPPORTED = ("PR012_VERIFY result=INCONCLUSIVE code=UNSUPPORTED_PLATFORM",)
 _PROBE_PATH = "DOCUMENT_INTAKE_PR012_PROBE_PATH"
 _PROBE_KEY = "DOCUMENT_INTAKE_PR012_PROBE_KEY"
+_PRIVACY_FORBIDDEN = (
+    "/tmp/",
+    "/private/",
+    "C:\\",
+    "\\Users\\",
+    "00000000-",
+    "SELECT",
+    "INSERT",
+    "UPDATE",
+    "DELETE",
+    "PRAGMA key",
+    "key=",
+    "verify-a.png",
+    "synthetic-image-marker",
+    "coordinate-marker",
+    "raw-exception-marker",
+)
 
 
 class _Key:
@@ -42,24 +73,16 @@ class _Key:
 
 
 def _unsupported_code() -> str | None:
-    return None if platform.system() == "Windows" else "UNSUPPORTED_PLATFORM"
+    return (
+        None
+        if platform.system() == "Windows" and platform.machine() == "AMD64"
+        else "UNSUPPORTED_PLATFORM"
+    )
 
 
 def _emit(lines: tuple[str, ...]) -> None:
     for line in lines:
         print(line)
-
-
-def _create_schema7(path: Path) -> None:
-    old_migrations = database.MIGRATIONS  # type: ignore[attr-defined]
-    old_version = database.CURRENT_SCHEMA_VERSION  # type: ignore[attr-defined]
-    try:
-        database.MIGRATIONS = MIGRATIONS[:7]  # type: ignore[attr-defined]
-        database.CURRENT_SCHEMA_VERSION = 7  # type: ignore[attr-defined]
-        EncryptedDatabase(path, _Key()).initialize()
-    finally:
-        database.MIGRATIONS = old_migrations  # type: ignore[attr-defined]
-        database.CURRENT_SCHEMA_VERSION = old_version  # type: ignore[attr-defined]
 
 
 def _wrong_key_probe() -> int | None:
@@ -71,8 +94,8 @@ def _wrong_key_probe() -> int | None:
         return 2
     try:
         connection = database._open_connection(Path(raw_path), _Key(bytes.fromhex(raw_key)))
-    except PersistenceError:
-        return 0
+    except PersistenceError as error:
+        return 0 if error.code is PersistenceErrorCode.DB_KEY_REJECTED else 2
     except Exception:
         return 2
     connection.close()
@@ -89,41 +112,21 @@ def _wrong_key_rejected(path: Path) -> bool:
         stdout=subprocess.DEVNULL,
         stderr=subprocess.DEVNULL,
         check=False,
+        timeout=60,
     )
     return completed.returncode == 0
 
 
-def _run_supported() -> bool:
+def _run_supported(root: Path | None = None) -> VerifierEvidence:
+    if root is not None:
+        return cast(
+            "VerifierEvidence",
+            support.run_populated_verification(root, _wrong_key_rejected),
+        )
     with tempfile.TemporaryDirectory(prefix="pr012-verify-") as temporary:
-        path = Path(temporary) / "state.db"
-        _create_schema7(path)
-        EncryptedDatabase(path, _Key()).initialize()
-        connection = database._open_connection(path, _Key())
-        try:
-            version = connection.execute("PRAGMA user_version").fetchone() == (8,)
-            history = connection.execute(
-                "SELECT version,name,checksum FROM schema_migrations ORDER BY version"
-            ).fetchall()
-            integrity = connection.execute("PRAGMA cipher_integrity_check").fetchall()
-            foreign_keys = connection.execute("PRAGMA foreign_key_check").fetchall() == []
-        finally:
-            connection.close()
-        wrong_key = _wrong_key_rejected(path)
-        try:
-            plain = sqlite3.connect(path)
-            plain.execute("SELECT count(*) FROM schema_migrations").fetchone()
-            sqlite_rejected = False
-        except sqlite3.DatabaseError:
-            sqlite_rejected = True
-        finally:
-            plain.close()
-        return (
-            version
-            and history[-1] == (8, MIGRATION.name, MIGRATION.checksum)
-            and foreign_keys
-            and not integrity
-            and wrong_key
-            and sqlite_rejected
+        return cast(
+            "VerifierEvidence",
+            support.run_populated_verification(Path(temporary), _wrong_key_rejected),
         )
 
 
@@ -132,10 +135,13 @@ def main() -> int:
         _emit(_UNSUPPORTED)
         return 2
     try:
-        passed = _run_supported()
+        evidence = _run_supported()
     except Exception:
-        passed = False
-    if not passed:
+        evidence = None
+    if evidence is None or not all(
+        type(getattr(evidence, field)) is bool and getattr(evidence, field)
+        for field in support.EVIDENCE_FIELDS
+    ):
         print("PR012_VERIFY result=FAIL")
         return 1
     _emit(_LABELS)

@@ -4,6 +4,8 @@ import importlib.metadata
 import json
 import platform
 import sqlite3
+import subprocess
+import sys
 from collections.abc import Iterator
 from contextlib import contextmanager
 from dataclasses import replace
@@ -11,6 +13,8 @@ from pathlib import Path
 from typing import Any
 
 import pytest
+from scripts import pr012_regions_verifier_support as pr012_support
+from scripts import verify_pr012_regions as pr012_verifier
 
 from document_intake.domain import (
     AuditAction,
@@ -545,3 +549,261 @@ def test_pr011_win_004_windows_prepared_artifact_commit_reopen_read(tmp_path: Pa
                 )
     with pytest.raises(sqlite3.DatabaseError):
         sqlite3.connect(path).execute("SELECT count(*) FROM prepared_image_artifacts").fetchone()
+
+
+def _pr012_scenario(tmp_path: Path) -> pr012_support.VerificationScenario:
+    scenario = pr012_support.VerificationScenario(tmp_path)
+    scenario.create_schema7()
+    return scenario
+
+
+def test_pr012_win_001_populated_encrypted_schema7_creation(tmp_path: Path) -> None:
+    scenario = _pr012_scenario(tmp_path)
+    fixture = scenario.fixture
+    scenario.assert_schema7()
+    assert scenario.encrypted_header()
+    connection = scenario.open_connection()
+    try:
+        _cipher_active(connection)
+        assert connection.execute("PRAGMA user_version").fetchone() == (7,)
+        assert scenario.schema_history(connection) == tuple(
+            (migration.version, migration.name, migration.checksum) for migration in MIGRATIONS[:7]
+        )
+        geometry = tuple(
+            connection.execute(
+                "SELECT recipe_version_id,source_file_id,superseded_recipe_version_id,revision "
+                "FROM image_geometry_recipes ORDER BY source_file_id,revision"
+            )
+        )
+        assert geometry == tuple(
+            (
+                str(recipe.recipe_version_id),
+                str(recipe.source_file_id),
+                None
+                if recipe.superseded_recipe_version_id is None
+                else str(recipe.superseded_recipe_version_id),
+                recipe.revision,
+            )
+            for recipe in fixture.recipes
+        )
+        prepared = tuple(
+            connection.execute(
+                "SELECT prepared_artifact_id,geometry_recipe_version_id,stored_artifact_id "
+                "FROM prepared_image_artifacts ORDER BY prepared_artifact_id"
+            )
+        )
+        assert prepared == tuple(
+            (
+                str(item.id),
+                str(item.geometry_recipe_version_id),
+                str(item.stored_artifact_id),
+            )
+            for item in sorted(fixture.prepared, key=lambda value: str(value.id))
+        )
+        assert connection.execute("PRAGMA foreign_key_check").fetchall() == []
+        assert connection.execute("PRAGMA cipher_integrity_check").fetchall() == []
+    finally:
+        connection.close()
+    assert scenario.plain_sqlite_rejected()
+
+
+def test_pr012_win_002_production_populated_encrypted_v7_to_v8_migration(
+    tmp_path: Path,
+) -> None:
+    scenario = _pr012_scenario(tmp_path)
+    fixture = scenario.fixture
+    scenario.migrate()
+    scenario.assert_integrity()
+    connection = scenario.open_connection()
+    try:
+        _cipher_active(connection)
+        assert scenario.schema_history(connection) == tuple(
+            (migration.version, migration.name, migration.checksum) for migration in MIGRATIONS
+        )
+        assert MIGRATIONS[7].checksum == pr012_support.MIGRATION.checksum
+        rows = tuple(
+            connection.execute(
+                "SELECT recipe_version_id,region_id,superseded_recipe_version_id,revision "
+                "FROM image_geometry_recipes ORDER BY source_file_id,revision"
+            )
+        )
+        assert rows == tuple(
+            (
+                str(recipe.recipe_version_id),
+                str(recipe.region_id),
+                None
+                if recipe.superseded_recipe_version_id is None
+                else str(recipe.superseded_recipe_version_id),
+                recipe.revision,
+            )
+            for recipe in fixture.recipes
+        )
+        prepared_refs = tuple(
+            connection.execute(
+                "SELECT prepared_artifact_id,geometry_recipe_version_id "
+                "FROM prepared_image_artifacts ORDER BY prepared_artifact_id"
+            )
+        )
+        assert prepared_refs == tuple(
+            (str(item.id), str(item.geometry_recipe_version_id))
+            for item in sorted(fixture.prepared, key=lambda value: str(value.id))
+        )
+        names = {row[0] for row in connection.execute("SELECT name FROM sqlite_master")}
+        assert "image_geometry_recipes_v0008_new" not in names
+        assert "audit_events_v0007" not in names
+        assert not {name for name in names if "v0008" in name}
+    finally:
+        connection.close()
+    scenario.assert_migrated_repositories()
+
+
+def test_pr012_win_003_encrypted_reopen_exact_repository_reads(tmp_path: Path) -> None:
+    scenario = _pr012_scenario(tmp_path)
+    fixture = scenario.fixture
+    scenario.migrate()
+    with scenario.database().unit_of_work() as unit:
+        assert (
+            tuple(
+                unit.image_geometry_recipes.get(recipe.recipe_version_id)
+                for recipe in fixture.recipes
+            )
+            == fixture.recipes
+        )
+        assert (
+            unit.image_geometry_recipes.list_by_region(
+                fixture.sources[0].id, fixture.source_a_recipes[0].region_id
+            )
+            == fixture.source_a_recipes
+        )
+        assert (
+            unit.image_geometry_recipes.list_by_region(
+                fixture.sources[1].id, fixture.source_b_recipes[0].region_id
+            )
+            == fixture.source_b_recipes
+        )
+        assert (
+            unit.image_geometry_recipes.list_by_region(
+                fixture.sources[0].id, fixture.source_b_recipes[0].region_id
+            )
+            == ()
+        )
+        assert (
+            unit.image_geometry_recipes.list_by_region(
+                fixture.sources[1].id, fixture.source_a_recipes[0].region_id
+            )
+            == ()
+        )
+        for expected in fixture.prepared:
+            assert unit.prepared_image_artifacts.get(expected.id) == expected
+            assert (
+                unit.prepared_image_artifacts.get_by_natural_key(
+                    expected.geometry_recipe_version_id,
+                    expected.pipeline_id,
+                    expected.pipeline_version,
+                    expected.output_contract_id,
+                    expected.output_contract_version,
+                )
+                == expected
+            )
+        connection = unit._connection()
+        _cipher_active(connection)
+        assert connection.execute("PRAGMA foreign_key_check").fetchall() == []
+        assert connection.execute("PRAGMA cipher_integrity_check").fetchall() == []
+
+
+def test_pr012_win_004_first_production_region_confirmation(tmp_path: Path) -> None:
+    scenario = _pr012_scenario(tmp_path)
+    fixture = scenario.fixture
+    scenario.migrate()
+    created_set = scenario.run_confirmation(1)
+    assert scenario.storage.publish_calls == 0
+    assert (scenario.last_uow_calls, scenario.last_commits, scenario.last_rollbacks) == (2, 1, 0)
+    with scenario.database().unit_of_work() as unit:
+        a_history = unit.image_geometry_recipes.list_by_region(
+            fixture.sources[0].id, fixture.source_a_recipes[0].region_id
+        )
+        c_history = unit.image_geometry_recipes.list_by_region(
+            fixture.sources[0].id, created_set.members[1].region_id
+        )
+        assert a_history == fixture.source_a_recipes
+        assert len(c_history) == 1
+        assert c_history[0].recipe_version_id == created_set.members[1].geometry_recipe_version_id
+        assert unit.document_region_sets.get(created_set.region_set_version_id) == created_set
+        assert unit.document_region_sets.list_by_source(fixture.sources[0].id) == (created_set,)
+        assert tuple(member.order_index for member in created_set.members) == (1, 2)
+        recipe_audits = unit.audit_events.list_for_subject(
+            AuditSubjectType.IMAGE_GEOMETRY_RECIPE, c_history[0].recipe_version_id
+        )
+        set_audits = unit.audit_events.list_for_subject(
+            AuditSubjectType.DOCUMENT_REGION_SET, created_set.region_set_version_id
+        )
+        assert tuple(event.action_code for event in (*recipe_audits, *set_audits)) == (
+            AuditAction.IMAGE_GEOMETRY_RECIPE_CREATED,
+            AuditAction.DOCUMENT_REGION_SET_CONFIRMED,
+        )
+        assert len(recipe_audits) == len(set_audits) == 1
+
+
+def test_pr012_win_005_second_confirmation_and_final_encrypted_reopen(
+    tmp_path: Path,
+) -> None:
+    scenario = _pr012_scenario(tmp_path)
+    fixture = scenario.fixture
+    scenario.migrate()
+    first = scenario.run_confirmation(1)
+    assert (scenario.last_uow_calls, scenario.last_commits, scenario.last_rollbacks) == (2, 1, 0)
+    second = scenario.run_confirmation(2)
+    assert (scenario.last_uow_calls, scenario.last_commits, scenario.last_rollbacks) == (2, 1, 0)
+    scenario.assert_product_state(2)
+    scenario.assert_integrity()
+    with scenario.database().unit_of_work() as unit:
+        assert (
+            unit.image_geometry_recipes.list_by_region(
+                fixture.sources[0].id, fixture.source_a_recipes[0].region_id
+            )
+            == fixture.source_a_recipes
+        )
+        c_history = unit.image_geometry_recipes.list_by_region(
+            fixture.sources[0].id, first.members[1].region_id
+        )
+        assert tuple(recipe.revision for recipe in c_history) == (1, 2)
+        assert c_history[1].superseded_recipe_version_id == c_history[0].recipe_version_id
+        assert unit.document_region_sets.list_by_source(fixture.sources[0].id) == (first, second)
+        assert unit.document_region_sets.get_latest_by_source(fixture.sources[0].id) == second
+        audit_rows = tuple(
+            unit._connection().execute(
+                "SELECT action_code,subject_id FROM audit_events "
+                "WHERE action_code IN (?,?) ORDER BY occurred_at_utc,event_id",
+                (
+                    AuditAction.IMAGE_GEOMETRY_RECIPE_CREATED.value,
+                    AuditAction.DOCUMENT_REGION_SET_CONFIRMED.value,
+                ),
+            )
+        )
+        assert audit_rows == (
+            (AuditAction.IMAGE_GEOMETRY_RECIPE_CREATED.value, str(c_history[0].recipe_version_id)),
+            (AuditAction.DOCUMENT_REGION_SET_CONFIRMED.value, str(first.region_set_version_id)),
+            (AuditAction.IMAGE_GEOMETRY_RECIPE_CREATED.value, str(c_history[1].recipe_version_id)),
+            (AuditAction.DOCUMENT_REGION_SET_CONFIRMED.value, str(second.region_set_version_id)),
+        )
+        for expected in fixture.prepared:
+            assert unit.prepared_image_artifacts.get(expected.id) == expected
+        assert unit._connection().execute("PRAGMA foreign_key_check").fetchall() == []
+        assert unit._connection().execute("PRAGMA cipher_integrity_check").fetchall() == []
+    assert scenario.storage.publish_calls == 0
+
+
+def test_pr012_win_006_populated_verifier_runtime_is_exact_and_private() -> None:
+    root = Path(__file__).resolve().parents[2]
+    completed = subprocess.run(
+        [sys.executable, "scripts/verify_pr012_regions.py"],
+        cwd=root,
+        capture_output=True,
+        text=True,
+        check=False,
+        timeout=120,
+    )
+    assert completed.returncode == 0
+    assert tuple(completed.stdout.splitlines()) == pr012_verifier._LABELS
+    assert completed.stderr == ""
+    assert not any(value in completed.stdout for value in pr012_verifier._PRIVACY_FORBIDDEN)
