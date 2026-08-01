@@ -36,16 +36,23 @@ class SqlCall:
 
 
 class RecordingConnection:
-    def __init__(self, connection: sqlite3.Connection) -> None:
+    def __init__(self, connection: sqlite3.Connection, *, fail_second_member: bool = False) -> None:
         self.connection = connection
         self.calls: list[SqlCall] = []
+        self.fail_second_member = fail_second_member
+        self.member_inserts = 0
 
     @property
     def in_transaction(self) -> bool:
         return self.connection.in_transaction
 
     def execute(self, sql: str, parameters: tuple[object, ...] = ()) -> sqlite3.Cursor:
-        self.calls.append(SqlCall(" ".join(sql.split()), tuple(parameters)))
+        normalized = " ".join(sql.split())
+        self.calls.append(SqlCall(normalized, tuple(parameters)))
+        if normalized == MEMBER_INSERT:
+            self.member_inserts += 1
+            if self.fail_second_member and self.member_inserts == 2:
+                raise sqlite3.IntegrityError("synthetic second member constraint")
         return self.connection.execute(sql, parameters)
 
     def __getattr__(self, name: str) -> Any:
@@ -66,14 +73,14 @@ def uow8():
     return c, u
 
 
-def recording_uow8():
+def recording_uow8(*, fail_second_member: bool = False):
     connection, prerequisite_uow = uow8()
     first = prerequisite_uow.image_geometry_recipes.get(entity_id(30))
     assert first is not None
     second = replace(first, recipe_version_id=entity_id(40), region_id=entity_id(40))
     prerequisite_uow.image_geometry_recipes.add(second)
     connection.commit()
-    recording = RecordingConnection(connection)
+    recording = RecordingConnection(connection, fail_second_member=fail_second_member)
     uow = SimpleNamespace(
         _connection=lambda: recording,
         _invalidate_if_transaction_lost=lambda: None,
@@ -134,6 +141,15 @@ def rows_for_set(connection: sqlite3.Connection, region_set_id) -> tuple[list[An
         (str(region_set_id),),
     ).fetchall()
     return parent, members
+
+
+def write_calls(recording: RecordingConnection) -> list[SqlCall]:
+    start = next(
+        index
+        for index, call in enumerate(recording.calls)
+        if call.sql == "SAVEPOINT repository_write"
+    )
+    return recording.calls[start:]
 
 
 def test_scoped_geometry_and_ordered_historical_set() -> None:
@@ -234,7 +250,7 @@ def test_two_member_add_stages_parent_then_members_in_domain_order_without_commi
 
     uow.document_region_sets.add(region_set)
 
-    assert recording.calls == [
+    assert write_calls(recording) == [
         SqlCall("SAVEPOINT repository_write", ()),
         SqlCall(PARENT_INSERT, parent_parameters(region_set)),
         SqlCall(MEMBER_INSERT, member_parameters(region_set, region_set.members[0])),
@@ -259,15 +275,8 @@ def test_two_member_add_stages_parent_then_members_in_domain_order_without_commi
 
 
 def test_second_member_failure_rolls_back_parent_and_first_member_without_commit() -> None:
-    connection, recording, uow, first, second = recording_uow8()
+    connection, recording, uow, first, second = recording_uow8(fail_second_member=True)
     invalid = two_member_set(64, first, second)
-    invalid = replace(
-        invalid,
-        members=(
-            invalid.members[0],
-            DocumentRegionSetMember(2, first.region_id, entity_id(99)),
-        ),
-    )
     connection.execute("BEGIN IMMEDIATE")
     recording.calls.clear()
 
@@ -275,7 +284,7 @@ def test_second_member_failure_rolls_back_parent_and_first_member_without_commit
         uow.document_region_sets.add(invalid)
 
     assert caught.value.code is PersistenceErrorCode.PERSISTENCE_CONSTRAINT
-    assert recording.calls == [
+    assert write_calls(recording) == [
         SqlCall("SAVEPOINT repository_write", ()),
         SqlCall(PARENT_INSERT, parent_parameters(invalid)),
         SqlCall(MEMBER_INSERT, member_parameters(invalid, invalid.members[0])),
@@ -313,7 +322,7 @@ def test_duplicate_parent_failure_attempts_no_memberships_and_preserves_outer_tr
         uow.document_region_sets.add(region_set)
 
     assert caught.value.code is PersistenceErrorCode.ENTITY_ALREADY_EXISTS
-    assert recording.calls == [
+    assert write_calls(recording) == [
         SqlCall("SAVEPOINT repository_write", ()),
         SqlCall(PARENT_INSERT, parent_parameters(region_set)),
         SqlCall("ROLLBACK TO SAVEPOINT repository_write", ()),

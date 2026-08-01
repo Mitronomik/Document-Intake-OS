@@ -33,6 +33,7 @@ class DocumentRegionSetRepo(_Repo):
         )
 
     def add(self, region_set: DocumentRegionSetVersion) -> None:
+        self._validate_add(region_set)
         payload = ser.document_region_set_to_json(region_set)
         with self._atomic_write():
             self._execute(
@@ -73,6 +74,28 @@ class DocumentRegionSetRepo(_Repo):
                     ),
                     duplicate_is_already_exists=True,
                 )
+
+    def _validate_add(self, region_set: DocumentRegionSetVersion) -> None:
+        if not isinstance(region_set, DocumentRegionSetVersion):
+            raise PersistenceError(PersistenceErrorCode.PERSISTED_DATA_INVALID)
+        if self.get(region_set.region_set_version_id) is not None:
+            return
+        latest = self.get_latest_by_source(region_set.source_file_id)
+        expected_revision = 1 if latest is None else latest.revision + 1
+        expected_predecessor = None if latest is None else latest.region_set_version_id
+        if (
+            region_set.revision != expected_revision
+            or region_set.superseded_region_set_version_id != expected_predecessor
+        ):
+            raise PersistenceError(PersistenceErrorCode.PERSISTED_DATA_INVALID)
+        for member in region_set.members:
+            recipe = self._uow.image_geometry_recipes.get(member.geometry_recipe_version_id)
+            if (
+                recipe is None
+                or recipe.source_file_id != region_set.source_file_id
+                or recipe.region_id != member.region_id
+            ):
+                raise PersistenceError(PersistenceErrorCode.PERSISTED_DATA_INVALID)
 
     def _deserialize_row(self, row: tuple[Any, ...]) -> DocumentRegionSetVersion:
         entity = cast(DocumentRegionSetVersion, self._deserialize(row[7]))
