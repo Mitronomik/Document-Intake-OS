@@ -6,7 +6,11 @@ import pytest
 
 from document_intake.persistence import serialization as ser
 from document_intake.persistence.database import IdentityRepo, PersonRepo
-from document_intake.persistence.errors import PersistenceError, PersistenceErrorCode
+from document_intake.persistence.errors import (
+    PersistenceError,
+    PersistenceErrorCode,
+    translate_driver_error,
+)
 from tests.persistence.test_repositories import (
     FakeUow,
     application,
@@ -19,6 +23,103 @@ from tests.persistence.test_repositories import (
     snapshot,
     terminal,
 )
+
+
+class IntegrityError(Exception):
+    def __init__(self, message: str, sqlite_errorcode: int = 1811) -> None:
+        self.sqlite_errorcode = sqlite_errorcode
+        super().__init__(message)
+
+
+CONTROLLED_DUPLICATE_MESSAGES = (
+    "audit_events duplicate",
+    "image_geometry_recipes_duplicate",
+    "prepared_image_artifacts duplicate",
+    "document_region_set_versions duplicate",
+    "document_region_set_members duplicate",
+)
+
+
+@pytest.mark.parametrize("message", CONTROLLED_DUPLICATE_MESSAGES)
+def test_controlled_duplicate_trigger_requires_explicit_duplicate_context(message: str) -> None:
+    duplicate = translate_driver_error(IntegrityError(message), duplicate_is_already_exists=True)
+    constraint = translate_driver_error(IntegrityError(message))
+
+    assert duplicate.code is PersistenceErrorCode.ENTITY_ALREADY_EXISTS
+    assert message not in str(duplicate)
+    assert message not in repr(duplicate)
+    assert constraint.code is PersistenceErrorCode.PERSISTENCE_CONSTRAINT
+
+
+def test_controlled_duplicate_trigger_matching_allows_only_case_and_outer_space() -> None:
+    translated = translate_driver_error(
+        IntegrityError("  DOCUMENT_REGION_SET_VERSIONS DUPLICATE  "),
+        duplicate_is_already_exists=True,
+    )
+    assert translated.code is PersistenceErrorCode.ENTITY_ALREADY_EXISTS
+
+
+@pytest.mark.parametrize(
+    "message",
+    [
+        "document_region_set_versions duplicate extra",
+        "prefix document_region_set_versions duplicate",
+        "document_region_set_versions  duplicate",
+        "document_region_set_versions_duplicate",
+        "arbitrary duplicate",
+        "duplicate",
+    ],
+)
+def test_controlled_duplicate_trigger_near_matches_remain_constraints(message: str) -> None:
+    translated = translate_driver_error(IntegrityError(message), duplicate_is_already_exists=True)
+    assert translated.code is PersistenceErrorCode.PERSISTENCE_CONSTRAINT
+
+
+@pytest.mark.parametrize(
+    "message",
+    [
+        "audit_events immutable",
+        "image_geometry_recipes_append_only",
+        "prepared_image_artifacts immutable",
+        "document_region_set_versions immutable",
+        "document_region_set_members immutable",
+        "ERR_STORED_ARTIFACT_IMMUTABLE",
+        "ERR_SNAPSHOT_IMMUTABLE",
+        "ERR_SNAPSHOT_ARTIFACT_IMMUTABLE",
+        "ERR_SNAPSHOT_ARTIFACT_ORDINAL",
+    ],
+)
+def test_non_duplicate_trigger_failures_remain_constraints(message: str) -> None:
+    translated = translate_driver_error(IntegrityError(message), duplicate_is_already_exists=True)
+    assert translated.code is PersistenceErrorCode.PERSISTENCE_CONSTRAINT
+
+
+@pytest.mark.parametrize("sqlite_errorcode", [1555, 2067])
+def test_native_duplicate_codes_remain_already_exists(sqlite_errorcode: int) -> None:
+    translated = translate_driver_error(
+        IntegrityError("synthetic constraint", sqlite_errorcode),
+        duplicate_is_already_exists=True,
+    )
+    assert translated.code is PersistenceErrorCode.ENTITY_ALREADY_EXISTS
+
+
+@pytest.mark.parametrize("sqlite_errorcode", [787, 1299, 275])
+def test_native_non_duplicate_constraint_codes_remain_constraints(
+    sqlite_errorcode: int,
+) -> None:
+    translated = translate_driver_error(
+        IntegrityError("synthetic constraint", sqlite_errorcode),
+        duplicate_is_already_exists=True,
+    )
+    assert translated.code is PersistenceErrorCode.PERSISTENCE_CONSTRAINT
+
+
+def test_unknown_driver_error_remains_unexpected_and_private() -> None:
+    raw_message = "synthetic raw driver detail"
+    translated = translate_driver_error(RuntimeError(raw_message))
+    assert translated.code is PersistenceErrorCode.PERSISTENCE_UNEXPECTED
+    assert raw_message not in str(translated)
+    assert raw_message not in repr(translated)
 
 
 def test_duplicate_and_constraint_failures_have_distinct_stable_codes() -> None:

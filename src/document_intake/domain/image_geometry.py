@@ -199,8 +199,11 @@ class ImageGeometryRecipe:
     quadrilateral: SourceQuadrilateral
     pipeline: GeometryPipelineVersion
     created_at: datetime
+    region_id: EntityId = None  # type: ignore[assignment]
 
     def __post_init__(self) -> None:
+        if self.region_id is None and self.revision == 1:
+            object.__setattr__(self, "region_id", self.recipe_version_id)
         for n in ("recipe_version_id", "source_file_id"):
             if not isinstance(getattr(self, n), EntityId):
                 raise InvalidValueError(f"image_geometry_recipe.{n}: invalid_type")
@@ -214,6 +217,7 @@ class ImageGeometryRecipe:
             raise InvalidValueError("image_geometry_recipe.revision: invalid_value")
         if (self.revision == 1) != (self.superseded_recipe_version_id is None):
             raise InvalidValueError("image_geometry_recipe.revision_chain: invalid_value")
+        self._validate_region_identity()
         if not isinstance(self.coordinate_space, GeometryCoordinateSpace):
             raise InvalidValueError("image_geometry_recipe.coordinate_space: invalid_type")
         if (
@@ -233,6 +237,17 @@ class ImageGeometryRecipe:
         derive_geometry_dimensions(self.quadrilateral, self.quarter_turn)
         if not isinstance(self.pipeline, GeometryPipelineVersion):
             raise InvalidValueError(GeometryErrorCode.INVALID_PIPELINE_VERSION.value)
+        self._normalize_created_at()
+
+    def _validate_region_identity(self) -> None:
+        if not isinstance(self.region_id, EntityId):
+            raise InvalidValueError("image_geometry_recipe.region_id: invalid_type")
+        root_is_invalid = self.revision == 1 and self.region_id != self.recipe_version_id
+        later_is_invalid = self.revision > 1 and self.region_id == self.recipe_version_id
+        if root_is_invalid or later_is_invalid:
+            raise InvalidValueError("image_geometry_recipe.region_id: invalid_value")
+
+    def _normalize_created_at(self) -> None:
         if (
             not isinstance(self.created_at, datetime)
             or self.created_at.tzinfo is None

@@ -26,6 +26,9 @@ from document_intake.persistence.migrations.v0004_source_file_import import (
 from document_intake.persistence.migrations.v0005_image_quality import MIGRATION as V0005_MIGRATION
 from document_intake.persistence.migrations.v0006_image_geometry import MIGRATION as V0006_MIGRATION
 from document_intake.persistence.migrations.v0007_prepared_jpeg import MIGRATION as V0007_MIGRATION
+from document_intake.persistence.migrations.v0008_document_regions import (
+    MIGRATION as V0008_MIGRATION,
+)
 
 
 def memory_connection() -> sqlite3.Connection:
@@ -80,7 +83,7 @@ def test_v0001_checksum_unchanged_and_v0002_checksum_stable() -> None:
 
 def test_clean_database_migrates_to_current_schema_and_preserves_v0002_history() -> None:
     connection = memory_connection()
-    assert connection.execute("PRAGMA user_version").fetchone()[0] == 7
+    assert connection.execute("PRAGMA user_version").fetchone()[0] == 8
     assert connection.execute(
         "SELECT version, name, checksum FROM schema_migrations ORDER BY version"
     ).fetchall() == [
@@ -91,6 +94,7 @@ def test_clean_database_migrates_to_current_schema_and_preserves_v0002_history()
         (5, V0005_MIGRATION.name, V0005_MIGRATION.checksum),
         (6, V0006_MIGRATION.name, V0006_MIGRATION.checksum),
         (7, V0007_MIGRATION.name, V0007_MIGRATION.checksum),
+        (8, V0008_MIGRATION.name, V0008_MIGRATION.checksum),
     ]
 
 
@@ -428,7 +432,7 @@ def test_v0001_to_v0002_preserves_populated_rows() -> None:
     assert MIGRATIONS[1].version == 2
     assert MIGRATIONS[1].checksum == V0002_MIGRATION.checksum
     database._apply_migrations(connection)
-    assert connection.execute("PRAGMA user_version").fetchone()[0] == 7
+    assert connection.execute("PRAGMA user_version").fetchone()[0] == 8
     assert connection.execute(
         "SELECT version, name, checksum FROM schema_migrations ORDER BY version"
     ).fetchall() == [
@@ -439,6 +443,7 @@ def test_v0001_to_v0002_preserves_populated_rows() -> None:
         (5, V0005_MIGRATION.name, V0005_MIGRATION.checksum),
         (6, V0006_MIGRATION.name, V0006_MIGRATION.checksum),
         (7, V0007_MIGRATION.name, V0007_MIGRATION.checksum),
+        (8, V0008_MIGRATION.name, V0008_MIGRATION.checksum),
     ]
     for table, rows in before.items():
         assert tuple(connection.execute(f"SELECT * FROM {table}").fetchall()) == rows

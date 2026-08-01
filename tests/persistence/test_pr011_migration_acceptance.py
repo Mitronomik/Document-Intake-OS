@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import sqlite3
 from dataclasses import dataclass, replace
 from pathlib import Path
@@ -10,7 +11,7 @@ import pytest
 from document_intake.domain.entities.audit import AuditEvent
 from document_intake.domain.enums import AuditAction, AuditSubjectType, VehicleRole
 from document_intake.domain.value_objects import AuditReasonCode
-from document_intake.persistence import database
+from document_intake.persistence import database, geometry_serialization
 from document_intake.persistence.database import EncryptedDatabase, SqlCipherUnitOfWork
 from document_intake.persistence.errors import PersistenceError, PersistenceErrorCode
 from document_intake.persistence.migrations import APPLICATION_ID, MIGRATIONS
@@ -86,6 +87,19 @@ def _snapshot(connection: sqlite3.Connection) -> dict[str, tuple[tuple[Any, ...]
 def _configure(monkeypatch: pytest.MonkeyPatch, version: int) -> None:
     monkeypatch.setattr(database, "_open_connection", open_sqlite)
     monkeypatch.setattr(database, "CURRENT_SCHEMA_VERSION", version)
+    monkeypatch.setattr(database, "MIGRATIONS", MIGRATIONS[:version])
+
+
+def _insert_schema6_geometry(connection: Any) -> None:
+    recipe = valid_geometry_recipe()
+    columns = geometry_serialization.image_geometry_recipe_columns(recipe)
+    legacy_columns = (columns[0], columns[1], *columns[3:])
+    payload = json.loads(geometry_serialization.image_geometry_recipe_to_json(recipe))
+    payload.pop("region_id")
+    connection.execute(
+        "INSERT INTO image_geometry_recipes VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+        (*legacy_columns, json.dumps(payload, sort_keys=True, separators=(",", ":"))),
+    )
 
 
 def _build_v6(path: Path, monkeypatch: pytest.MonkeyPatch) -> Fixture:
@@ -132,7 +146,7 @@ def _build_v6(path: Path, monkeypatch: pytest.MonkeyPatch) -> Fixture:
         unit.source_files.add(source)
         unit.upload_batches.update(batch.append_source_file_id(source.id))
         unit.image_quality_assessments.add(valid_quality_assessment())
-        unit.image_geometry_recipes.add(valid_geometry_recipe())
+        _insert_schema6_geometry(unit._connection())
         unit.audit_events.add(valid_audit_event())
         unit.commit()
 
@@ -190,7 +204,7 @@ def test_pr011_mig_003_migration_history_and_exact_checksum(
     history = connection.execute(
         "SELECT version,name,checksum FROM schema_migrations ORDER BY version"
     ).fetchall()
-    assert history == [(m.version, m.name, m.checksum) for m in MIGRATIONS]
+    assert history == [(m.version, m.name, m.checksum) for m in MIGRATIONS[:7]]
     assert (V0007.version, V0007.name, V0007.checksum) == (
         7,
         "prepared_jpeg_pr011",

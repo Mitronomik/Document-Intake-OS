@@ -1,5 +1,10 @@
 """Pure core domain public API for Document Intake OS."""
 
+from document_intake.domain.document_regions import (
+    DocumentRegionErrorCode,
+    DocumentRegionSetMember,
+    DocumentRegionSetVersion,
+)
 from document_intake.domain.entities import (
     Application,
     ApplicationSnapshot,
@@ -137,6 +142,9 @@ __all__ = [
     "Confidence",
     "CountryCode",
     "Document",
+    "DocumentRegionErrorCode",
+    "DocumentRegionSetMember",
+    "DocumentRegionSetVersion",
     "DocumentType",
     "DocumentWorkflowStatus",
     "DomainError",

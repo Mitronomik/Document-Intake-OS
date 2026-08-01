@@ -25,6 +25,9 @@ from document_intake.persistence.migrations.v0006_image_geometry import (
 from document_intake.persistence.migrations.v0007_prepared_jpeg import (
     MIGRATION as V0007_PREPARED_JPEG,
 )
+from document_intake.persistence.migrations.v0008_document_regions import (
+    MIGRATION as V0008_DOCUMENT_REGIONS,
+)
 
 REQUIRED_TABLES = {
     "schema_migrations",
@@ -43,6 +46,9 @@ REQUIRED_TABLES = {
     "application_validation_issues",
     "application_snapshots",
     "application_snapshot_artifact_refs",
+    "prepared_image_artifacts",
+    "document_region_set_versions",
+    "document_region_set_members",
     "stored_artifacts",
     "audit_events",
     "upload_batches",
@@ -83,13 +89,18 @@ def test_migration_1_creates_tables_metadata_user_version_and_application_id() -
         (V0005_IMAGE_QUALITY.version, V0005_IMAGE_QUALITY.name, V0005_IMAGE_QUALITY.checksum),
         (V0006_IMAGE_GEOMETRY.version, V0006_IMAGE_GEOMETRY.name, V0006_IMAGE_GEOMETRY.checksum),
         (V0007_PREPARED_JPEG.version, V0007_PREPARED_JPEG.name, V0007_PREPARED_JPEG.checksum),
+        (
+            V0008_DOCUMENT_REGIONS.version,
+            V0008_DOCUMENT_REGIONS.name,
+            V0008_DOCUMENT_REGIONS.checksum,
+        ),
     ]
 
 
 def test_initialize_migrations_are_idempotent() -> None:
     connection = apply()
     database._apply_migrations(connection)
-    assert connection.execute("SELECT count(*) FROM schema_migrations").fetchone()[0] == 7
+    assert connection.execute("SELECT count(*) FROM schema_migrations").fetchone()[0] == 8
 
 
 def test_applied_prefix_validates_and_future_migration_applies(
@@ -98,7 +109,7 @@ def test_applied_prefix_validates_and_future_migration_applies(
     connection = apply()
     future_statements = ("CREATE TABLE future_projection(id INTEGER PRIMARY KEY)",)
     future = Migration(
-        8,
+        9,
         "future_projection",
         future_statements,
         migration_checksum(future_statements),
@@ -114,15 +125,16 @@ def test_applied_prefix_validates_and_future_migration_applies(
             V0005_IMAGE_QUALITY,
             V0006_IMAGE_GEOMETRY,
             V0007_PREPARED_JPEG,
+            V0008_DOCUMENT_REGIONS,
             future,
         ),
     )
-    monkeypatch.setattr(database, "CURRENT_SCHEMA_VERSION", 8)
+    monkeypatch.setattr(database, "CURRENT_SCHEMA_VERSION", 9)
 
     database._validate_schema(connection)
     database._apply_migrations(connection)
 
-    assert connection.execute("PRAGMA user_version").fetchone()[0] == 8
+    assert connection.execute("PRAGMA user_version").fetchone()[0] == 9
     assert connection.execute(
         "SELECT version, name, checksum FROM schema_migrations ORDER BY version"
     ).fetchall() == [
@@ -133,6 +145,11 @@ def test_applied_prefix_validates_and_future_migration_applies(
         (V0005_IMAGE_QUALITY.version, V0005_IMAGE_QUALITY.name, V0005_IMAGE_QUALITY.checksum),
         (V0006_IMAGE_GEOMETRY.version, V0006_IMAGE_GEOMETRY.name, V0006_IMAGE_GEOMETRY.checksum),
         (V0007_PREPARED_JPEG.version, V0007_PREPARED_JPEG.name, V0007_PREPARED_JPEG.checksum),
+        (
+            V0008_DOCUMENT_REGIONS.version,
+            V0008_DOCUMENT_REGIONS.name,
+            V0008_DOCUMENT_REGIONS.checksum,
+        ),
         (future.version, future.name, future.checksum),
     ]
     assert connection.execute(
@@ -145,7 +162,7 @@ def test_applied_prefix_validates_and_future_migration_applies(
     [
         lambda c: c.execute(
             "INSERT INTO schema_migrations(version, name, checksum, applied_at_utc) "
-            "VALUES (8, 'extra', 'extra', '2026-07-19T00:00:00Z')"
+            "VALUES (9, 'extra', 'extra', '2026-07-19T00:00:00Z')"
         ),
         lambda c: c.execute("UPDATE schema_migrations SET name='reordered' WHERE version=1"),
         lambda c: (
@@ -446,15 +463,15 @@ def test_v0004_literal_metadata_and_all_prior_checksums_are_frozen() -> None:
     )
 
 
-def test_empty_database_and_upgrade_from_version_3_reach_exact_schema_7() -> None:
+def test_empty_database_and_upgrade_from_version_3_reach_exact_schema_8() -> None:
     empty = apply()
-    assert empty.execute("PRAGMA user_version").fetchone()[0] == 7
+    assert empty.execute("PRAGMA user_version").fetchone()[0] == 8
     upgraded = apply_through_v0003()
     database._apply_migrations(upgraded)
-    assert upgraded.execute("PRAGMA user_version").fetchone()[0] == 7
+    assert upgraded.execute("PRAGMA user_version").fetchone()[0] == 8
     assert upgraded.execute(
         "SELECT version, name, checksum FROM schema_migrations ORDER BY version DESC LIMIT 1"
-    ).fetchone() == (7, V0007_PREPARED_JPEG.name, V0007_PREPARED_JPEG.checksum)
+    ).fetchone() == (8, V0008_DOCUMENT_REGIONS.name, V0008_DOCUMENT_REGIONS.checksum)
 
 
 def test_v0004_column_constraints_foreign_keys_and_indexes() -> None:
@@ -671,6 +688,7 @@ def test_pr010_migration_metadata_checksum_and_columns() -> None:
     assert columns == [
         "recipe_version_id",
         "source_file_id",
+        "region_id",
         "superseded_recipe_version_id",
         "revision",
         "coordinate_space",

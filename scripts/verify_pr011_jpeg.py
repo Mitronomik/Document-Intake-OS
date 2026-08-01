@@ -57,7 +57,7 @@ from document_intake.storage.filesystem import ImmutableFilesystemStorage
 _CHECKSUM = "afad8ccc6de4ef81d73f137cbffa5a45fec1fdbb6940eabb0507cc9d6580a4a7"
 _NOW = datetime(2026, 7, 26, 12, tzinfo=UTC)
 _LABELS = (
-    "schema_version=7",
+    "schema_version=8",
     "byte_limit=1992294",
     "original_immutable=PASS",
     "geometry_replay=PASS",
@@ -176,9 +176,9 @@ def _run_production(root: Path) -> tuple[str, ...]:
     encoder = PillowPreparedJpegEncoder()
     factory = cast(UnitOfWorkFactory, db)
     statuses: list[str] = []
-    if CURRENT_SCHEMA_VERSION != 7 or MIGRATION.checksum != _CHECKSUM:
+    if CURRENT_SCHEMA_VERSION != 8 or MIGRATION.checksum != _CHECKSUM:
         raise RuntimeError from None
-    statuses.append("schema_version=7")
+    statuses.append("schema_version=8")
     statuses.append("byte_limit=1992294")
     source_path = root / "source.png"
     original = _png()

@@ -11,6 +11,7 @@ from document_intake.domain import (
     ApplicationSnapshot,
     AuditEvent,
     Document,
+    DocumentRegionSetVersion,
     FieldCandidate,
     FieldRef,
     IdentityDocument,
@@ -140,6 +141,19 @@ class ImageGeometryRecipeRepository(Protocol):
         self, source_file_id: EntityId, revision: int
     ) -> ImageGeometryRecipe | None: ...
     def list_by_source(self, source_file_id: EntityId) -> tuple[ImageGeometryRecipe, ...]: ...
+    def list_by_region(
+        self, source_file_id: EntityId, region_id: EntityId
+    ) -> tuple[ImageGeometryRecipe, ...]: ...
+    def get_latest_by_region(
+        self, source_file_id: EntityId, region_id: EntityId
+    ) -> ImageGeometryRecipe | None: ...
+
+
+class DocumentRegionSetRepository(Protocol):
+    def add(self, region_set: DocumentRegionSetVersion) -> None: ...
+    def get(self, region_set_version_id: EntityId) -> DocumentRegionSetVersion | None: ...
+    def list_by_source(self, source_file_id: EntityId) -> tuple[DocumentRegionSetVersion, ...]: ...
+    def get_latest_by_source(self, source_file_id: EntityId) -> DocumentRegionSetVersion | None: ...
 
 
 class ImageQualityAssessmentRepository(Protocol):
@@ -182,6 +196,7 @@ class UnitOfWork(Protocol):
     image_quality_assessments: ImageQualityAssessmentRepository
     image_geometry_recipes: ImageGeometryRecipeRepository
     prepared_image_artifacts: PreparedImageArtifactRepository
+    document_region_sets: DocumentRegionSetRepository
 
     def __enter__(self) -> Self: ...
     def __exit__(

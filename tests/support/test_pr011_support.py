@@ -95,7 +95,20 @@ def assert_populated_v6_fixture(u: SqlCipherUnitOfWork, fixture: pr011.Populated
             pr011.QualityIssueCode.LOW_RESOLUTION, pr011.QualityIssueSeverity.WARNING
         ),
     )
-    assert u.image_geometry_recipes.get(fixture.recipe.recipe_version_id) == fixture.recipe
+    payload = (
+        u._connection()
+        .execute(
+            "SELECT canonical_payload FROM image_geometry_recipes WHERE recipe_version_id=?",
+            (str(fixture.recipe.recipe_version_id),),
+        )
+        .fetchone()[0]
+    )
+    assert (
+        pr011.geometry_serialization.image_geometry_recipe_from_json_v7(
+            payload, fixture.recipe.region_id
+        )
+        == fixture.recipe
+    )
 
 
 def test_file_backed_populated_v6_survives_reopen(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):

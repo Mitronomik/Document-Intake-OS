@@ -24,6 +24,9 @@ from document_intake.persistence.migrations.v0006_image_geometry import (
 from document_intake.persistence.migrations.v0007_prepared_jpeg import (
     MIGRATION as V0007_PREPARED_JPEG,
 )
+from document_intake.persistence.migrations.v0008_document_regions import (
+    MIGRATION as V0008_DOCUMENT_REGIONS,
+)
 
 MIGRATIONS: tuple[Migration, ...] = (
     V0001_INITIAL,
@@ -33,8 +36,9 @@ MIGRATIONS: tuple[Migration, ...] = (
     V0005_IMAGE_QUALITY,
     V0006_IMAGE_GEOMETRY,
     V0007_PREPARED_JPEG,
+    V0008_DOCUMENT_REGIONS,
 )
-CURRENT_SCHEMA_VERSION = 7
+CURRENT_SCHEMA_VERSION = 8
 
 __all__ = [
     "APPLICATION_ID",

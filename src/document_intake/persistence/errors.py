@@ -39,6 +39,15 @@ class PersistenceError(Exception):
 
 
 _DUPLICATE_CONSTRAINT_CODES = frozenset({1555, 2067})
+_CONTROLLED_DUPLICATE_TRIGGER_MESSAGES = frozenset(
+    {
+        "audit_events duplicate",
+        "image_geometry_recipes_duplicate",
+        "prepared_image_artifacts duplicate",
+        "document_region_set_versions duplicate",
+        "document_region_set_members duplicate",
+    }
+)
 _INTEGRITY_CONSTRAINT_BASE_CODE = 19
 
 
@@ -55,8 +64,12 @@ def translate_driver_error(
     if is_integrity:
         is_duplicate = code in _DUPLICATE_CONSTRAINT_CODES
         if not is_duplicate and duplicate_is_already_exists:
-            normalized = str(error).casefold()
-            is_duplicate = "unique constraint" in normalized or "primary key" in normalized
+            normalized = str(error).strip().casefold()
+            is_duplicate = (
+                normalized in _CONTROLLED_DUPLICATE_TRIGGER_MESSAGES
+                or "unique constraint" in normalized
+                or "primary key" in normalized
+            )
         if is_duplicate and duplicate_is_already_exists:
             return PersistenceError(PersistenceErrorCode.ENTITY_ALREADY_EXISTS)
         return PersistenceError(PersistenceErrorCode.PERSISTENCE_CONSTRAINT)

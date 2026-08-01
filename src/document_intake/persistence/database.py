@@ -9,7 +9,7 @@ from contextlib import contextmanager
 from enum import Enum, auto
 from pathlib import Path
 from types import TracebackType
-from typing import Any, Literal, Self, TypeVar
+from typing import TYPE_CHECKING, Any, Literal, Self, TypeVar
 
 from document_intake.application.dto.storage import StoredArtifactRecord
 from document_intake.application.ports.persistence import DatabaseKeyProvider
@@ -29,6 +29,10 @@ from document_intake.persistence.migrations import (
 
 Connection = Any
 RepositoryT = TypeVar("RepositoryT")
+
+if TYPE_CHECKING:
+    from document_intake.persistence.repositories.document_regions import DocumentRegionSetRepo
+    from document_intake.persistence.repositories.image_geometry import ImageGeometryRecipeRepo
 
 
 def _load_sqlcipher3() -> Any:
@@ -203,8 +207,7 @@ def _apply_one_migration(conn: Connection, migration: Migration) -> None:
         conn.execute("BEGIN IMMEDIATE")
         if migration.version == 1:
             conn.execute(f"PRAGMA application_id = {APPLICATION_ID}")
-        for statement in migration.statements:
-            conn.execute(statement)
+        _execute_migration_body(conn, migration)
         if disabled and conn.execute("PRAGMA foreign_key_check").fetchall():
             raise PersistenceError(PersistenceErrorCode.MIGRATION_FAILED)
         conn.execute(
@@ -233,6 +236,14 @@ def _apply_one_migration(conn: Connection, migration: Migration) -> None:
             except Exception:
                 raise PersistenceError(PersistenceErrorCode.MIGRATION_FAILED) from None
         raise PersistenceError(PersistenceErrorCode.MIGRATION_FAILED) from None
+
+
+def _execute_migration_body(conn: Connection, migration: Migration) -> None:
+    for index, statement in enumerate(migration.statements):
+        conn.execute(statement)
+        if migration.transform_after_statement == index:
+            assert migration.transform is not None
+            migration.transform(conn)
 
 
 def _apply_migrations(conn: Connection) -> None:
@@ -1436,133 +1447,6 @@ class ImageQualityAssessmentRepo(_Repo):
         return entity
 
 
-class ImageGeometryRecipeRepo(_Repo):
-    _SELECT = "SELECT recipe_version_id, source_file_id, superseded_recipe_version_id, revision, coordinate_space, source_effective_width, source_effective_height, quarter_turn_clockwise, top_left_x, top_left_y, top_right_x, top_right_y, bottom_right_x, bottom_right_y, bottom_left_x, bottom_left_y, geometry_pipeline_id, geometry_pipeline_version, created_at_utc, canonical_payload FROM image_geometry_recipes"
-
-    def __init__(self, uow: SqlCipherUnitOfWork) -> None:
-        super().__init__(
-            uow,
-            "image_geometry_recipes",
-            ser.image_geometry_recipe_to_json,
-            ser.image_geometry_recipe_from_json,
-            lambda x: str(x.recipe_version_id),
-        )
-
-    def add(self, recipe: ImageGeometryRecipe) -> None:
-        if not isinstance(recipe, ImageGeometryRecipe):
-            raise PersistenceError(PersistenceErrorCode.PERSISTED_DATA_INVALID)
-        existing = self._list_all_validated()
-        latest = self._latest_from_validated(existing, recipe.source_file_id)
-        if latest is None:
-            if recipe.revision != 1 or recipe.superseded_recipe_version_id is not None:
-                raise PersistenceError(PersistenceErrorCode.PERSISTED_DATA_INVALID)
-        elif (
-            recipe.revision != latest.revision + 1
-            or recipe.superseded_recipe_version_id != latest.recipe_version_id
-        ):
-            raise PersistenceError(PersistenceErrorCode.PERSISTED_DATA_INVALID)
-        payload = ser.image_geometry_recipe_to_json(recipe)
-        self._execute(
-            "INSERT INTO image_geometry_recipes(recipe_version_id, source_file_id, superseded_recipe_version_id, revision, coordinate_space, source_effective_width, source_effective_height, quarter_turn_clockwise, top_left_x, top_left_y, top_right_x, top_right_y, bottom_right_x, bottom_right_y, bottom_left_x, bottom_left_y, geometry_pipeline_id, geometry_pipeline_version, created_at_utc, canonical_payload) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
-            (*ser.image_geometry_recipe_columns(recipe), payload),
-            duplicate_is_already_exists=True,
-        )
-
-    def get(self, recipe_version_id: EntityId) -> ImageGeometryRecipe | None:
-        return next(
-            (r for r in self._list_all_validated() if r.recipe_version_id == recipe_version_id),
-            None,
-        )
-
-    def get_latest_by_source(self, source_file_id: EntityId) -> ImageGeometryRecipe | None:
-        return self._latest_from_validated(self._list_all_validated(), source_file_id)
-
-    def get_by_source_revision(
-        self, source_file_id: EntityId, revision: int
-    ) -> ImageGeometryRecipe | None:
-        return next(
-            (
-                r
-                for r in self._list_all_validated()
-                if r.source_file_id == source_file_id and r.revision == revision
-            ),
-            None,
-        )
-
-    def list_by_source(self, source_file_id: EntityId) -> tuple[ImageGeometryRecipe, ...]:
-        return tuple(r for r in self._list_all_validated() if r.source_file_id == source_file_id)
-
-    def _list_all_validated(self) -> tuple[ImageGeometryRecipe, ...]:
-        rows = self._fetchall(
-            f"{self._SELECT} ORDER BY source_file_id, revision, created_at_utc, recipe_version_id"
-        )
-        recipes = tuple(self._from_projection(row) for row in rows)
-        self._validate_all_histories(recipes)
-        return tuple(
-            sorted(
-                recipes,
-                key=lambda r: (
-                    str(r.source_file_id),
-                    r.revision,
-                    r.created_at,
-                    str(r.recipe_version_id),
-                ),
-            )
-        )
-
-    def _from_projection(self, row: tuple[Any, ...]) -> ImageGeometryRecipe:
-        entity = self._deserialize(row[19])
-        if (
-            not isinstance(entity, ImageGeometryRecipe)
-            or ser.image_geometry_recipe_columns(entity) != tuple(row[:19])
-            or ser.image_geometry_recipe_to_json(entity) != row[19]
-        ):
-            raise PersistenceError(PersistenceErrorCode.PERSISTED_DATA_INVALID)
-        return entity
-
-    def _latest_from_validated(
-        self, recipes: tuple[ImageGeometryRecipe, ...], source_file_id: EntityId
-    ) -> ImageGeometryRecipe | None:
-        source_recipes = [r for r in recipes if r.source_file_id == source_file_id]
-        return (
-            None
-            if not source_recipes
-            else max(
-                source_recipes, key=lambda r: (r.revision, r.created_at, str(r.recipe_version_id))
-            )
-        )
-
-    def _validate_all_histories(self, recipes: tuple[ImageGeometryRecipe, ...]) -> None:
-        by_id: dict[EntityId, ImageGeometryRecipe] = {}
-        for recipe in recipes:
-            if recipe.recipe_version_id in by_id:
-                raise PersistenceError(PersistenceErrorCode.PERSISTED_DATA_INVALID)
-            by_id[recipe.recipe_version_id] = recipe
-        sources = sorted({r.source_file_id for r in recipes}, key=str)
-        for source_id in sources:
-            chain = sorted(
-                (r for r in recipes if r.source_file_id == source_id),
-                key=lambda r: (r.revision, r.created_at, str(r.recipe_version_id)),
-            )
-            seen_superseded: set[EntityId] = set()
-            for index, recipe in enumerate(chain, start=1):
-                if recipe.revision != index:
-                    raise PersistenceError(PersistenceErrorCode.PERSISTED_DATA_INVALID)
-                if index == 1:
-                    if recipe.superseded_recipe_version_id is not None:
-                        raise PersistenceError(PersistenceErrorCode.PERSISTED_DATA_INVALID)
-                    continue
-                previous = chain[index - 2]
-                if recipe.superseded_recipe_version_id != previous.recipe_version_id:
-                    raise PersistenceError(PersistenceErrorCode.PERSISTED_DATA_INVALID)
-                if recipe.superseded_recipe_version_id in seen_superseded:
-                    raise PersistenceError(PersistenceErrorCode.PERSISTED_DATA_INVALID)
-                seen_superseded.add(recipe.superseded_recipe_version_id)
-                superseded = by_id.get(recipe.superseded_recipe_version_id)
-                if superseded is None or superseded.source_file_id != recipe.source_file_id:
-                    raise PersistenceError(PersistenceErrorCode.PERSISTED_DATA_INVALID)
-
-
 class PreparedImageArtifactRepo(_Repo):
     _SELECT = "SELECT prepared_artifact_id,source_file_id,geometry_recipe_version_id,stored_artifact_id,pipeline_id,pipeline_version,output_contract_id,output_contract_version,media_type,color_space,width,height,byte_size,sha256,jpeg_quality,resize_percent,created_at_utc,created_by_id,created_by_kind,canonical_payload FROM prepared_image_artifacts"
 
@@ -1672,6 +1556,7 @@ class SqlCipherUnitOfWork:
         self._image_quality_assessments: ImageQualityAssessmentRepo | None = None
         self._image_geometry_recipes: ImageGeometryRecipeRepo | None = None
         self._prepared_image_artifacts: PreparedImageArtifactRepo | None = None
+        self._document_region_sets: DocumentRegionSetRepo | None = None
 
     def __repr__(self) -> str:
         return "SqlCipherUnitOfWork(<redacted>)"
@@ -1754,7 +1639,14 @@ class SqlCipherUnitOfWork:
     def prepared_image_artifacts(self) -> PreparedImageArtifactRepo:
         return self._repository(self._prepared_image_artifacts)
 
+    @property
+    def document_region_sets(self) -> DocumentRegionSetRepo:
+        return self._repository(self._document_region_sets)
+
     def _construct_repositories(self) -> None:
+        from document_intake.persistence.repositories.document_regions import DocumentRegionSetRepo
+        from document_intake.persistence.repositories.image_geometry import ImageGeometryRecipeRepo
+
         self._persons = PersonRepo(self)
         self._identity_documents = IdentityRepo(self)
         self._migration_documents = MigrationRepo(self)
@@ -1771,6 +1663,7 @@ class SqlCipherUnitOfWork:
         self._image_quality_assessments = ImageQualityAssessmentRepo(self)
         self._image_geometry_recipes = ImageGeometryRecipeRepo(self)
         self._prepared_image_artifacts = PreparedImageArtifactRepo(self)
+        self._document_region_sets = DocumentRegionSetRepo(self)
 
     def _invalidate(self) -> None:
         connection = self._conn

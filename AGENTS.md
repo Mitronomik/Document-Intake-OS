@@ -151,3 +151,7 @@ Each PR must:
 Before implementation report understanding, planned files, risks and test plan.
 
 After implementation report files changed, decisions, commands, exact test results, manual steps and limitations.
+
+## Automated architecture limits
+
+Run `python scripts/check_architecture_limits.py` before Ruff. New production modules are limited to 400 physical lines, functions and methods to 80 lines, classes to 300 lines, and cyclomatic complexity to 12. `config/architecture_limits.json` is a downward-only ratchet from the accepted base; do not increase a baseline.
