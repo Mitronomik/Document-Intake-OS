@@ -12,7 +12,7 @@ from document_intake.domain.document_regions import DocumentRegionErrorCode
 
 
 def validate_source_independent_command(command: ConfirmDocumentRegionsCommand) -> None:
-    if command.set_revision < 1:
+    if (command.set_revision == 1) != (command.superseded_region_set_version_id is None):
         fail(DocumentRegionErrorCode.REGION_SET_REVISION_CONFLICT)
 
 
@@ -53,13 +53,15 @@ def validate_new_revision_region_identity(
 ) -> None:
     for member in command.members:
         selection = member.recipe_selection
-        if not isinstance(selection, NewRecipeRevision):
-            continue
-        root = selection.recipe_revision == 1 and selection.superseded_recipe_version_id is None
-        later = selection.recipe_revision > 1 and selection.superseded_recipe_version_id is not None
-        root_alias = root and member.region_id == selection.recipe_version_id
-        if not (root_alias or (later and member.region_id != selection.recipe_version_id)):
-            fail(DocumentRegionErrorCode.REGION_IDENTITY_CONFLICT)
+        root_alias = False
+        if isinstance(selection, NewRecipeRevision):
+            root = selection.recipe_revision == 1 and selection.superseded_recipe_version_id is None
+            later = (
+                selection.recipe_revision > 1 and selection.superseded_recipe_version_id is not None
+            )
+            root_alias = root and member.region_id == selection.recipe_version_id
+            if not (root_alias or (later and member.region_id != selection.recipe_version_id)):
+                fail(DocumentRegionErrorCode.REGION_IDENTITY_CONFLICT)
         if member.region_id in created and not root_alias:
             fail(DocumentRegionErrorCode.REGION_IDENTITY_CONFLICT)
 

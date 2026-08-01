@@ -33,6 +33,7 @@ from document_intake.domain.image_geometry import (
 from document_intake.domain.image_geometry import (
     SourceQuadrilateral as SourceQuadrilateral,
 )
+from document_intake.domain.value_objects import EntityId
 from document_intake.persistence.errors import PersistenceError
 
 DocumentRegionsError = _persistence.DocumentRegionsError
@@ -198,7 +199,7 @@ def _revalidate_write_context(
 ) -> None:
     _reread_source_and_artifact(command, read, uow)
     readback = _reread_and_revalidate_selected_state(command, read, uow)
-    _verify_absent_ids(command, uow)
+    _verify_identity_preflight(command, uow)
     _verify_set_revision(command, read, readback)
     _verify_region_revisions(command, read, readback)
 
@@ -257,19 +258,69 @@ def _verify_set_revision(
             _persistence.fail(DocumentRegionErrorCode.PERSISTED_DATA_INVALID)
 
 
-def _verify_absent_ids(command: ConfirmDocumentRegionsCommand, uow: UnitOfWork) -> None:
-    if (
-        uow.document_region_sets.get(command.region_set_version_id) is not None
-        or uow.audit_events.get(command.region_set_audit_event_id) is not None
-    ):
-        _persistence.fail(DocumentRegionErrorCode.IDENTITY_CONFLICT)
+def _new_persistent_ids(command: ConfirmDocumentRegionsCommand) -> tuple[EntityId, ...]:
+    result = [command.region_set_version_id, command.region_set_audit_event_id]
     for member in command.members:
         selection = member.recipe_selection
-        if isinstance(selection, NewRecipeRevision) and (
-            uow.image_geometry_recipes.get(selection.recipe_version_id) is not None
-            or uow.audit_events.get(selection.recipe_audit_event_id) is not None
+        if isinstance(selection, NewRecipeRevision):
+            result.extend((selection.recipe_version_id, selection.recipe_audit_event_id))
+    return tuple(result)
+
+
+def _identity_records(
+    entity_id: EntityId,
+    uow: UnitOfWork,
+    checked: set[tuple[str, EntityId]],
+) -> tuple[tuple[str, object | None], ...]:
+    records = []
+    for namespace, repository in (
+        ("document_region_sets", uow.document_region_sets),
+        ("image_geometry_recipes", uow.image_geometry_recipes),
+        ("audit_events", uow.audit_events),
+    ):
+        key = (namespace, entity_id)
+        if key not in checked:
+            checked.add(key)
+            records.append((namespace, repository.get(entity_id)))
+    return tuple(records)
+
+
+def _permitted_lineage_root(
+    command: ConfirmDocumentRegionsCommand,
+    member: RegionSetMemberInput,
+    record: object,
+) -> bool:
+    selection = member.recipe_selection
+    permitted_selection = isinstance(selection, ExistingRecipeSelection) or (
+        isinstance(selection, NewRecipeRevision) and selection.recipe_revision > 1
+    )
+    return (
+        permitted_selection
+        and isinstance(record, ImageGeometryRecipe)
+        and record.source_file_id == command.source_file_id
+        and record.region_id == member.region_id
+        and record.recipe_version_id == member.region_id
+        and record.revision == 1
+        and record.superseded_recipe_version_id is None
+    )
+
+
+def _verify_identity_preflight(command: ConfirmDocumentRegionsCommand, uow: UnitOfWork) -> None:
+    checked: set[tuple[str, EntityId]] = set()
+    for entity_id in _new_persistent_ids(command):
+        if any(
+            record is not None for _namespace, record in _identity_records(entity_id, uow, checked)
         ):
             _persistence.fail(DocumentRegionErrorCode.IDENTITY_CONFLICT)
+    for member in command.members:
+        for namespace, record in _identity_records(member.region_id, uow, checked):
+            if record is None:
+                continue
+            if namespace == "image_geometry_recipes" and _permitted_lineage_root(
+                command, member, record
+            ):
+                continue
+            _persistence.fail(DocumentRegionErrorCode.REGION_IDENTITY_CONFLICT)
 
 
 def _verify_region_revision(

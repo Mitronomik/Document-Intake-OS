@@ -151,8 +151,10 @@ class Uow:
 class Factory:
     def __init__(self, *recipes):
         self.units = [Uow(recipes), Uow(recipes)]
+        self.calls = 0
 
     def unit_of_work(self):
+        self.calls += 1
         return self.units.pop(0)
 
 

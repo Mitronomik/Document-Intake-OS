@@ -74,27 +74,15 @@ def _two_existing_case():
     value = replace(
         command(first),
         members=(
-            RegionSetMemberInput(1, first.region_id, SimpleNamespace()),
-            RegionSetMemberInput(2, second.region_id, SimpleNamespace()),
-        ),
-    )
-    return (
-        replace(
-            value,
-            members=(
-                replace(
-                    value.members[0],
-                    recipe_selection=ExistingRecipeSelection(first.recipe_version_id),
-                ),
-                replace(
-                    value.members[1],
-                    recipe_selection=ExistingRecipeSelection(second.recipe_version_id),
-                ),
+            RegionSetMemberInput(
+                1, first.region_id, ExistingRecipeSelection(first.recipe_version_id)
+            ),
+            RegionSetMemberInput(
+                2, second.region_id, ExistingRecipeSelection(second.recipe_version_id)
             ),
         ),
-        first,
-        second,
     )
+    return value, first, second
 
 
 def _invoke(value, factory, *, storage=None, decoder=None, renderer=None):
@@ -330,11 +318,7 @@ def test_initial_missing_preceding_set_stops_before_media_and_write() -> None:
     )
 
     class CountingFactory(Factory):
-        calls = 0
-
-        def unit_of_work(self):
-            self.calls += 1
-            return super().unit_of_work()
+        pass
 
     factory = CountingFactory(root)
     read, write = factory.units

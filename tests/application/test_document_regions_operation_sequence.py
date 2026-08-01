@@ -253,6 +253,8 @@ def _record_helper(monkeypatch, module, name, recorder, operation):
 
 def _install_exact_observers(monkeypatch, recorder, factory, command, renderer):  # noqa: C901
     read, write = tuple(factory.units)
+    identity_trace: list[tuple[str, object]] = []
+    identity_active = False
     for name, operation in (
         (
             "validate_source_independent_command",
@@ -297,8 +299,8 @@ def _install_exact_observers(monkeypatch, recorder, factory, command, renderer):
     new_region_id = command.members[1].region_id
     original_get = read.image_geometry_recipes.get
 
-    def get_recipe(key):
-        result = original_get(key)
+    def get_recipe(key, *, _get=original_get):
+        result = _get(key)
         if key == existing_id:
             assert result is not None
             recorder.record(RegionOperation.LOAD_SELECTED_EXISTING_RECIPES)
@@ -352,7 +354,6 @@ def _install_exact_observers(monkeypatch, recorder, factory, command, renderer):
             "_reread_and_revalidate_selected_state",
             RegionOperation.REREAD_SET_RECIPES_PREDECESSORS_AND_LATEST,
         ),
-        ("_verify_absent_ids", RegionOperation.VERIFY_NEW_PERSISTENT_IDS_ABSENT),
         ("_verify_set_revision", RegionOperation.VERIFY_SET_REVISION_AND_IMMEDIATE_PREDECESSOR),
         (
             "_verify_region_revisions",
@@ -360,6 +361,31 @@ def _install_exact_observers(monkeypatch, recorder, factory, command, renderer):
         ),
     ):
         _record_helper(monkeypatch, service, name, recorder, operation)
+    for namespace, repository in (
+        ("document_region_sets", write.document_region_sets),
+        ("image_geometry_recipes", write.image_geometry_recipes),
+        ("audit_events", write.audit_events),
+    ):
+        original_get = repository.get
+
+        def identity_get(key, *, _namespace=namespace, _get=original_get):
+            if identity_active:
+                identity_trace.append((_namespace, key))
+            return _get(key)
+
+        repository.get = identity_get
+    original_identity_preflight = service._verify_identity_preflight
+
+    def identity_preflight(*args, **kwargs):
+        nonlocal identity_active
+        recorder.record(RegionOperation.VERIFY_NEW_PERSISTENT_IDS_ABSENT)
+        identity_active = True
+        try:
+            return original_identity_preflight(*args, **kwargs)
+        finally:
+            identity_active = False
+
+    monkeypatch.setattr(service, "_verify_identity_preflight", identity_preflight)
     for name, operation in (
         ("add_new_geometry_recipes", RegionOperation.ADD_NEW_GEOMETRY_RECIPES_IN_ORDER),
         ("add_recipe_audits", RegionOperation.ADD_RECIPE_AUDITS_IN_ORDER),
@@ -390,7 +416,7 @@ def _install_exact_observers(monkeypatch, recorder, factory, command, renderer):
         recorder,
         RegionOperation.CONSTRUCT_AND_RETURN_RESULT,
     )
-    return read, write, existing_id, new_region_id
+    return read, write, existing_id, new_region_id, identity_trace
 
 
 def _successful_exact_execution(monkeypatch):
@@ -399,7 +425,7 @@ def _successful_exact_execution(monkeypatch):
     storage = RecordingStorage(recorder, artifact, source.original_artifact_id, plaintext)
     decoder = RecordingDecoder(recorder)
     renderer = RecordingRenderer([], recorder)
-    read, write, existing_id, new_region_id = _install_exact_observers(
+    read, write, existing_id, new_region_id, identity_trace = _install_exact_observers(
         monkeypatch, recorder, factory, command, renderer
     )
     result = service.confirm_document_regions(
@@ -419,14 +445,25 @@ def _successful_exact_execution(monkeypatch):
         renderer,
         existing_id,
         new_region_id,
+        identity_trace,
         state,
     )
 
 
 def test_mixed_selection_exact_37_step_trace(monkeypatch) -> None:
-    recorder, result, read, write, storage, decoder, renderer, existing_id, new_region_id, state = (
-        _successful_exact_execution(monkeypatch)
-    )
+    (
+        recorder,
+        result,
+        read,
+        write,
+        storage,
+        decoder,
+        renderer,
+        existing_id,
+        new_region_id,
+        identity_trace,
+        state,
+    ) = _successful_exact_execution(monkeypatch)
     assert_exact_operation_trace(tuple(recorder.observed))
     assert len(recorder.observed) == len(set(EXPECTED_CONFIRM_DOCUMENT_REGIONS_TRACE)) == 37
     assert read.image_geometry_recipes.get_calls.count(existing_id) == 1
@@ -453,6 +490,20 @@ def test_mixed_selection_exact_37_step_trace(monkeypatch) -> None:
         for repo in write._repositories()
         for item in repo.add_calls
     )
+    candidates = (
+        result.region_set.region_set_version_id,
+        entity_id(78),
+        result.selected_recipes[1].recipe_version_id,
+        entity_id(47),
+        result.selected_recipes[0].region_id,
+        result.selected_recipes[1].region_id,
+    )
+    assert identity_trace == [
+        (namespace, candidate)
+        for candidate in candidates
+        for namespace in ("document_region_sets", "image_geometry_recipes", "audit_events")
+    ]
+    assert len(identity_trace) == len(set(identity_trace))
 
 
 def test_inapplicable_selection_reads_are_not_recorded() -> None:
