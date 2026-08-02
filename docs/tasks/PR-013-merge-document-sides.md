@@ -25,6 +25,13 @@ operator-confirmed sides. Layout is explicit `VERTICAL` or `HORIZONTAL`, and
 margin and gap are explicit. Originals, PR-010 recipes, PR-012 region sets, and
 all historical selections remain unchanged.
 
+PR-013 V1 is create-once and one-to-one. One `DocumentSideComposition` has
+exactly one `DocumentSideCompositionVersion`, and one
+`DocumentSideCompositionVersion` has exactly one
+`PreparedCompositionArtifact`. The version name is retained as an immutable
+persistence and possible future compatibility boundary, but it has no
+revision-chain semantics in V1.
+
 The future service reuses these accepted production boundaries exactly:
 
 - `UnitOfWorkFactory`
@@ -297,6 +304,9 @@ class DocumentSideCompositionVersion:
     composition_pipeline_id: str
     composition_pipeline_version: int
 
+    jpeg_pipeline_id: str
+    jpeg_pipeline_version: int
+
     output_contract_id: str
     output_contract_version: int
 
@@ -330,8 +340,19 @@ class PreparedCompositionArtifact:
     created_by: ActorRef
 ```
 
-The aggregate has no mutable current-version pointer. The prepared artifact
-uses exactly:
+The aggregate has no mutable current-version pointer. The immutable composition
+version uses exactly:
+
+```text
+composition_pipeline_id = DOCUMENT_SIDE_COMPOSITION_PIPELINE_ID
+composition_pipeline_version = DOCUMENT_SIDE_COMPOSITION_PIPELINE_VERSION
+jpeg_pipeline_id = PREPARED_JPEG_PIPELINE_ID
+jpeg_pipeline_version = PREPARED_JPEG_PIPELINE_VERSION
+output_contract_id = PREPARED_JPEG_OUTPUT_CONTRACT_ID
+output_contract_version = PREPARED_JPEG_OUTPUT_CONTRACT_VERSION
+```
+
+The prepared artifact uses exactly:
 
 ```text
 pipeline_id = PREPARED_JPEG_PIPELINE_ID
@@ -342,7 +363,60 @@ media_type = PreparedMediaType.JPEG
 color_space = ColorSpace.SRGB
 ```
 
-There is no update, replace, delete, set-latest, or mutable-current API.
+`PreparedCompositionArtifact` is a self-contained immutable projection and must
+agree with both `DocumentSideCompositionVersion` and `EncodedPreparedJpeg`:
+
+```text
+artifact.pipeline_id
+    == composition_version.jpeg_pipeline_id
+    == encoded.pipeline_id
+    == PREPARED_JPEG_PIPELINE_ID
+artifact.pipeline_version
+    == composition_version.jpeg_pipeline_version
+    == encoded.pipeline_version
+    == PREPARED_JPEG_PIPELINE_VERSION
+artifact.output_contract_id
+    == composition_version.output_contract_id
+    == encoded.output_contract_id
+    == PREPARED_JPEG_OUTPUT_CONTRACT_ID
+artifact.output_contract_version
+    == composition_version.output_contract_version
+    == encoded.output_contract_version
+    == PREPARED_JPEG_OUTPUT_CONTRACT_VERSION
+```
+
+Any disagreement before persistence returns `JPEG_ENCODING_FAILED`; a
+disagreement found while loading persisted records returns
+`PERSISTED_DATA_INVALID`.
+
+Changing side 1 identity, side 2 identity, side order, layout, outer margin,
+inter-side gap, composition pipeline identity, JPEG pipeline identity, or
+output-contract identity creates a completely new composition aggregate, new
+composition version, and new prepared artifact. The operation always requires
+new `composition_id`, `composition_version_id`, `prepared_artifact_id`,
+`stored_artifact_id`, and `audit_event_id`; it never reuses an existing
+`composition_id`.
+
+The V1 model contains no `revision`, `superseded_composition_version_id`,
+`latest_composition_version_id`, or `current_composition_version_id`. The V1
+repository exposes no `get_latest`, `set_latest`, `replace`, `update`,
+`supersede`, or `delete`. There is no revision sequence or latest-version query
+in V1.
+
+Future schema constraints are exact:
+
+```text
+DocumentSideComposition.id: PRIMARY KEY
+DocumentSideCompositionVersion.id: PRIMARY KEY
+DocumentSideCompositionVersion.composition_id:
+    FOREIGN KEY to DocumentSideComposition.id, UNIQUE, NOT NULL
+PreparedCompositionArtifact.id: PRIMARY KEY
+PreparedCompositionArtifact.composition_version_id:
+    FOREIGN KEY to DocumentSideCompositionVersion.id, UNIQUE, NOT NULL
+```
+
+They enforce one aggregate to exactly one version and one version to exactly
+one prepared artifact.
 
 ## 10. Exact ordered natural key and persistence port
 
@@ -364,6 +438,9 @@ inter_side_gap_px
 DOCUMENT_SIDE_COMPOSITION_PIPELINE_ID
 DOCUMENT_SIDE_COMPOSITION_PIPELINE_VERSION
 
+PREPARED_JPEG_PIPELINE_ID
+PREPARED_JPEG_PIPELINE_VERSION
+
 PREPARED_JPEG_OUTPUT_CONTRACT_ID
 PREPARED_JPEG_OUTPUT_CONTRACT_VERSION
 ```
@@ -372,11 +449,18 @@ This key is ordered. Swapping the sides creates a different key. An exact
 existing key returns `COMPOSITION_ALREADY_EXISTS` before encrypted publication,
 and no additional encrypted object is published.
 
+Before publication, all five supplied IDs and the complete key are checked. An
+existing `composition_id`, `composition_version_id`, `prepared_artifact_id`,
+`stored_artifact_id`, or `audit_event_id` returns `IDENTITY_CONFLICT`. Different
+supplied IDs with an existing ordered natural key return
+`COMPOSITION_ALREADY_EXISTS`. The preflight does not replace database unique
+constraints.
+
 The future `UnitOfWork` may gain exactly one repository named
 `document_side_compositions`. It supports create, read, and exact-natural-key
-lookup only. It supports no update, delete, replace, set-latest, or
-mutable-current operation. Canonical payload and projected fields must agree;
-in-scope corruption fails closed.
+lookup only. It supports no `get_latest`, `set_latest`, `replace`, `update`,
+`supersede`, `delete`, or mutable-current operation. Canonical payload and
+projected fields must agree; in-scope corruption fails closed.
 
 A future implementation may propose a forward-only
 `v0009_document_side_composition` migration from schema 8 to 9. This contract
@@ -416,33 +500,119 @@ resize percentage, paths, and image data are absent from the event.
 
 ## 12. Exact transaction and publication order
 
-1. Validate the command.
-2. Load both region-set versions.
-3. Load both region members.
-4. Load both geometry recipe versions.
-5. Load source files and original artifacts.
-6. Validate original integrity.
-7. Replay geometry independently.
-8. Create two fresh `UncompressedRgbRaster` values.
-9. Compose through `DocumentSideComposerPort`.
-10. Encode the final raster exactly once through `PreparedJpegEncoderPort`.
-11. Open the write Unit of Work.
-12. Re-read authoritative side references.
-13. Perform exact-natural-key preflight.
-14. Publish the encrypted final JPEG exactly once.
-15. Insert stored-artifact metadata.
-16. Insert the composition aggregate when absent.
-17. Insert the immutable composition version.
-18. Insert the prepared composition artifact.
-19. Insert the typed `AuditEvent`.
-20. Commit exactly once.
-21. Exit the Unit of Work.
-22. Return the result only after successful exit.
+### Read-phase snapshot and authoritative revalidation
 
-A late database conflict after filesystem publication rolls back all rows from
-the failed attempt. Only an unreferenced encrypted object remains. Existing
-read-only orphan reconciliation may report it, but the service never adopts or
-deletes it automatically and returns `PERSISTENCE_CONFLICT`.
+Before rendering, each side retains an immutable snapshot of its exact
+`DocumentRegionSetVersion`, selected `DocumentRegionSetMember`,
+`ImageGeometryRecipe`, `SourceFile`, and original `StoredArtifactRecord`. It
+preserves and validates:
+
+```text
+region_set_version.region_set_version_id == side.region_set_version_id
+region_set_version.source_file_id == side.source_file_id
+member.region_id == side.region_id
+member.geometry_recipe_version_id == side.geometry_recipe_version_id
+recipe.recipe_version_id == side.geometry_recipe_version_id
+recipe.source_file_id == side.source_file_id
+recipe.region_id == side.region_id
+source.id == side.source_file_id
+original.artifact_id == source.original_artifact_id
+original.artifact_kind is ArtifactKind.ORIGINAL
+original.plaintext_length == source.byte_size
+original.plaintext_sha256 == source.sha256.value
+```
+
+Shared sources, sets, or originals may deduplicate physical reads, but two
+explicit side-specific references are retained and validated; one side is never
+inferred from the other.
+
+After encoding, the write Unit of Work re-reads by exact identifier, for each
+side, the `DocumentRegionSetVersion`, exact selected
+`DocumentRegionSetMember`, `ImageGeometryRecipe`, `SourceFile`, and original
+`StoredArtifactRecord`. It compares every record with its read-phase snapshot,
+repeats every ownership and identity relationship, and repeats all original
+stored-metadata validation. A missing, changed, inconsistent, corrupt, or
+differently related record returns `PERSISTED_DATA_INVALID`; a repository
+access exception returns `PERSISTENCE_FAILED`. No second decode, geometry
+replay, composition, or JPEG encoding occurs in the write phase.
+
+### Exact storage publication
+
+The accepted `StoragePort` is called exactly as follows:
+
+```python
+record = storage.publish_bytes(
+    artifact_id=command.stored_artifact_id,
+    artifact_kind=ArtifactKind.PREPARED_JPEG,
+    plaintext=encoded.jpeg_bytes,
+    created_at=command.created_at,
+)
+```
+
+No new composition-specific kind is introduced, and the composition JPEG does
+not use `ArtifactKind.PREPARED_DOCUMENT` or `ArtifactKind.EXPORT_ARTIFACT`.
+Before any database row is added, validate:
+
+```python
+record.artifact_id == command.stored_artifact_id
+record.artifact_kind is ArtifactKind.PREPARED_JPEG
+record.object_generation == 1
+record.plaintext_length == encoded.byte_size
+record.plaintext_sha256 == encoded.sha256.value
+record.created_at == command.created_at
+```
+
+The returned `StoredArtifactRecord` constructor remains authoritative for
+`ciphertext_sha256`, `key_version`, `storage_format_version`, and timezone-aware
+`created_at`; PR-013 does not duplicate those checks. A publication exception
+or returned-record mismatch returns `STORAGE_PUBLICATION_FAILED`. The exact
+validated returned record is inserted directly with
+`uow.stored_artifacts.add(record)` and is not reconstructed or replaced with
+independently derived metadata.
+
+### Final authoritative order
+
+1. Validate command types, ranges, required values and pairwise record-ID distinctness.
+2. Open the read Unit of Work.
+3. Load the exact region-set version, selected member, geometry recipe, source file and original `StoredArtifactRecord` for each side.
+4. Validate every side relationship and original stored-metadata invariant.
+5. Close the read Unit of Work and retain immutable read snapshots only.
+6. Read and integrity-check the original encrypted bytes through `StoragePort`.
+7. Decode each required original independently.
+8. Replay each selected geometry recipe independently through the accepted PR-010 pipeline.
+9. Create two fresh `UncompressedRgbRaster` values.
+10. Compose the rasters through `DocumentSideComposerPort`.
+11. Encode the final composed raster exactly once through `PreparedJpegEncoderPort`.
+12. Validate `EncodedPreparedJpeg` identities and metadata.
+13. Open the write Unit of Work.
+14. Re-read both complete persisted side contexts by exact identifiers.
+15. Compare both write-phase contexts with the read-phase snapshots and repeat every relationship and stored-metadata invariant.
+16. Check all five supplied record identities for conflicts.
+17. Check the complete ordered natural key, including composition pipeline, JPEG pipeline and output-contract identities.
+18. Publish `encoded.jpeg_bytes` exactly once through `StoragePort.publish_bytes` using `ArtifactKind.PREPARED_JPEG`.
+19. Validate the returned `StoredArtifactRecord` against the command and encoded result.
+20. Construct the new `DocumentSideComposition` exactly once.
+21. Construct the one and only `DocumentSideCompositionVersion` for that aggregate.
+22. Construct the one and only `PreparedCompositionArtifact` for that version and validate cross-record pipeline/output identities.
+23. Construct the typed `AuditEvent`.
+24. Add the validated returned `StoredArtifactRecord`.
+25. Add the new composition aggregate.
+26. Add the immutable composition version.
+27. Add the prepared composition artifact.
+28. Add the typed audit event.
+29. Commit exactly once.
+30. Exit the write Unit of Work successfully.
+31. Return `CreateDocumentSideCompositionResult` only after successful Unit of Work exit.
+
+Failures before step 18 publish no output object. Any failure after physical
+publication succeeds but before SQLCipher commit completes may leave one
+unreferenced encrypted object, including returned-record mismatch, any insert
+failure, a natural-key race, or commit failure. The Unit of Work rolls back and
+leaves no partial rows; the service never adopts or deletes the object
+automatically; existing read-only orphan reconciliation may report it; and no
+path, hash, size, or image data is exposed. The appropriate result remains
+`STORAGE_PUBLICATION_FAILED`, `PERSISTENCE_CONFLICT`, `PERSISTENCE_FAILED`, or
+`COMMIT_FAILED`, rather than a single generic code.
 
 ## 13. Controlled failure contract
 
@@ -502,7 +672,7 @@ Synthetic-only tests must prove:
 - exact typed `AuditEvent` and absence of forbidden audit data;
 - exact immutable persistence fields, ordered natural-key uniqueness, and
   create/read/exact-key-only repository behavior;
-- the 22-step operation order, publication exactly once, rollback, and
+- the 31-step operation order, publication exactly once, rollback, and
   read-only orphan reconciliation;
 - no migration exists in this documentation PR and no production source file
   differs from the initial PR #33 head;

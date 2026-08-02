@@ -3432,6 +3432,8 @@ def test_pr013_composition_contract_is_exact() -> None:
         "inter_side_gap_px",
         "composition_pipeline_id",
         "composition_pipeline_version",
+        "jpeg_pipeline_id",
+        "jpeg_pipeline_version",
         "output_contract_id",
         "output_contract_version",
         "created_at",
@@ -3506,11 +3508,49 @@ def test_pr013_composition_contract_is_exact() -> None:
     ):
         assert marker in combined, marker
 
+    for marker in (
+        "PR-013 V1 is create-once and one-to-one",
+        "exactly one `DocumentSideCompositionVersion`",
+        "exactly one\n`PreparedCompositionArtifact`",
+        "new composition aggregate",
+        "no\nrevision-chain semantics in V1",
+        "DocumentSideCompositionVersion.composition_id:",
+        "PreparedCompositionArtifact.composition_version_id:",
+        "FOREIGN KEY to DocumentSideComposition.id, UNIQUE, NOT NULL",
+        "FOREIGN KEY to DocumentSideCompositionVersion.id, UNIQUE, NOT NULL",
+    ):
+        assert marker in combined, marker
+    for forbidden_field in (
+        "superseded_composition_version_id",
+        "latest_composition_version_id",
+        "current_composition_version_id",
+    ):
+        assert re.search(rf"^    {forbidden_field}:", combined, re.MULTILINE) is None
+    for forbidden_method in (
+        "get_latest",
+        "set_latest",
+        "replace",
+        "update",
+        "supersede",
+        "delete",
+    ):
+        assert re.search(rf"^\s*def {forbidden_method}\(", combined, re.MULTILINE) is None
+
     exact_order = _section(task, "## 12. Exact transaction and publication order")
-    for step in range(1, 23):
+    for step in range(1, 32):
         assert re.search(rf"^{step}\. ", exact_order, re.MULTILINE), step
-    assert "Encode the final raster exactly once through `PreparedJpegEncoderPort`" in exact_order
-    assert "Return the result only after successful exit" in exact_order
+    for marker in (
+        "Publish `encoded.jpeg_bytes` exactly once",
+        "ArtifactKind.PREPARED_JPEG",
+        "Validate the returned `StoredArtifactRecord`",
+        "Construct the new `DocumentSideComposition` exactly once",
+        "Construct the one and only `DocumentSideCompositionVersion`",
+        "Construct the one and only `PreparedCompositionArtifact`",
+        "Commit exactly once",
+        "Return `CreateDocumentSideCompositionResult` only after successful Unit of Work exit",
+    ):
+        assert marker in exact_order, marker
+    assert "insert the composition aggregate when absent" not in combined
 
     natural_key = _section(task, "## 10. Exact ordered natural key and persistence port")
     for marker in (
@@ -3524,10 +3564,63 @@ def test_pr013_composition_contract_is_exact() -> None:
         "side_2.geometry_recipe_version_id",
         "DOCUMENT_SIDE_COMPOSITION_PIPELINE_ID",
         "DOCUMENT_SIDE_COMPOSITION_PIPELINE_VERSION",
+        "PREPARED_JPEG_PIPELINE_ID",
+        "PREPARED_JPEG_PIPELINE_VERSION",
         "PREPARED_JPEG_OUTPUT_CONTRACT_ID",
         "PREPARED_JPEG_OUTPUT_CONTRACT_VERSION",
     ):
         assert marker in natural_key, marker
+
+    for marker in (
+        "artifact.pipeline_id",
+        "composition_version.jpeg_pipeline_id",
+        "encoded.pipeline_id",
+        "artifact.pipeline_version",
+        "composition_version.jpeg_pipeline_version",
+        "encoded.pipeline_version",
+        "artifact.output_contract_id",
+        "composition_version.output_contract_id",
+        "encoded.output_contract_id",
+        "JPEG_ENCODING_FAILED",
+        "PERSISTED_DATA_INVALID",
+    ):
+        assert marker in combined, marker
+
+    storage_contract = _section(task, "### Exact storage publication")
+    for marker in (
+        "StoragePort",
+        "storage.publish_bytes",
+        "artifact_kind=ArtifactKind.PREPARED_JPEG",
+        "plaintext=encoded.jpeg_bytes",
+        "created_at=command.created_at",
+        "record.object_generation == 1",
+        "record.plaintext_length == encoded.byte_size",
+        "record.plaintext_sha256 == encoded.sha256.value",
+        "uow.stored_artifacts.add(record)",
+        "STORAGE_PUBLICATION_FAILED",
+        "inserted directly",
+        "not reconstructed",
+    ):
+        assert marker in storage_contract, marker
+    assert "artifact_kind=ArtifactKind.PREPARED_DOCUMENT" not in storage_contract
+    assert "artifact_kind=ArtifactKind.EXPORT_ARTIFACT" not in storage_contract
+
+    revalidation = _section(task, "### Read-phase snapshot and authoritative revalidation")
+    for marker in (
+        "DocumentRegionSetVersion",
+        "DocumentRegionSetMember",
+        "ImageGeometryRecipe",
+        "SourceFile",
+        "StoredArtifactRecord",
+        "read-phase snapshot",
+        "PERSISTED_DATA_INVALID",
+        "PERSISTENCE_FAILED",
+        "ArtifactKind.ORIGINAL",
+        "source.original_artifact_id",
+        "source.byte_size",
+        "source.sha256.value",
+    ):
+        assert marker in revalidation, marker
 
     assert not (
         REPO_ROOT / "src/document_intake/persistence/migrations/v0009_document_side_composition.py"
@@ -3612,7 +3705,7 @@ def test_pr013_documentation_change_allowlist() -> None:
                 "git",
                 "diff",
                 "--name-only",
-                "b92a5e20c20b6b15017a4e8e9ca40e24578ca550",
+                "c21b430577b040e4740b435536afd935ac2dd477",
             ],
             cwd=REPO_ROOT,
             check=True,
