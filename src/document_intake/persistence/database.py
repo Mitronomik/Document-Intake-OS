@@ -32,6 +32,9 @@ RepositoryT = TypeVar("RepositoryT")
 
 if TYPE_CHECKING:
     from document_intake.persistence.repositories.document_regions import DocumentRegionSetRepo
+    from document_intake.persistence.repositories.document_side_compositions import (
+        DocumentSideCompositionRepo,
+    )
     from document_intake.persistence.repositories.image_geometry import ImageGeometryRecipeRepo
 
 
@@ -1557,6 +1560,7 @@ class SqlCipherUnitOfWork:
         self._image_geometry_recipes: ImageGeometryRecipeRepo | None = None
         self._prepared_image_artifacts: PreparedImageArtifactRepo | None = None
         self._document_region_sets: DocumentRegionSetRepo | None = None
+        self._document_side_compositions: DocumentSideCompositionRepo | None = None
 
     def __repr__(self) -> str:
         return "SqlCipherUnitOfWork(<redacted>)"
@@ -1643,8 +1647,15 @@ class SqlCipherUnitOfWork:
     def document_region_sets(self) -> DocumentRegionSetRepo:
         return self._repository(self._document_region_sets)
 
+    @property
+    def document_side_compositions(self) -> DocumentSideCompositionRepo:
+        return self._repository(self._document_side_compositions)
+
     def _construct_repositories(self) -> None:
         from document_intake.persistence.repositories.document_regions import DocumentRegionSetRepo
+        from document_intake.persistence.repositories.document_side_compositions import (
+            DocumentSideCompositionRepo,
+        )
         from document_intake.persistence.repositories.image_geometry import ImageGeometryRecipeRepo
 
         self._persons = PersonRepo(self)
@@ -1664,6 +1675,7 @@ class SqlCipherUnitOfWork:
         self._image_geometry_recipes = ImageGeometryRecipeRepo(self)
         self._prepared_image_artifacts = PreparedImageArtifactRepo(self)
         self._document_region_sets = DocumentRegionSetRepo(self)
+        self._document_side_compositions = DocumentSideCompositionRepo(self)
 
     def _invalidate(self) -> None:
         connection = self._conn

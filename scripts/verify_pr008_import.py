@@ -243,7 +243,7 @@ def _unsupported_code() -> str | None:
 
 
 def _render_status_lines(statuses: Mapping[str, bool]) -> tuple[str, ...]:
-    passed = CURRENT_SCHEMA_VERSION == 8 and all(statuses[name] for name in _CHECKS)
+    passed = len(MIGRATIONS) == CURRENT_SCHEMA_VERSION and all(statuses[name] for name in _CHECKS)
     return (
         f"PR008_VERIFY schema_version={CURRENT_SCHEMA_VERSION}",
         *(f"PR008_VERIFY {name}={'PASS' if statuses[name] else 'FAIL'}" for name in _CHECKS),
@@ -262,7 +262,10 @@ def _has_allowlisted_shape(lines: tuple[str, ...]) -> bool:
         return lines in tuple(
             (f"PR008_VERIFY result=INCONCLUSIVE code={code}",) for code in _INCONCLUSIVE_CODES
         ) or lines == ("PR008_VERIFY result=FAIL",)
-    if len(lines) != len(_CHECKS) + 2 or lines[0] != "PR008_VERIFY schema_version=8":
+    if (
+        len(lines) != len(_CHECKS) + 2
+        or lines[0] != f"PR008_VERIFY schema_version={CURRENT_SCHEMA_VERSION}"
+    ):
         return False
     for name, line in zip(_CHECKS, lines[1:-1], strict=True):
         if line not in {f"PR008_VERIFY {name}=PASS", f"PR008_VERIFY {name}=FAIL"}:
@@ -363,9 +366,11 @@ def _migration_chain_valid(
 ) -> bool:
     expected = (V0001, V0002, V0003, V0004, V0005, V0006, V0007, V0008)
     return (
-        current_schema_version == 8
-        and migrations == expected
-        and tuple(migration.checksum for migration in migrations) == _EXPECTED_MIGRATION_CHECKSUMS
+        current_schema_version == len(migrations)
+        and current_schema_version >= len(expected)
+        and migrations[: len(expected)] == expected
+        and tuple(migration.checksum for migration in migrations[: len(expected)])
+        == _EXPECTED_MIGRATION_CHECKSUMS
     )
 
 
@@ -824,7 +829,7 @@ def main() -> int:
     )
     lines = _render_status_lines(statuses)
     sys.stdout.write("\n".join(lines) + "\n")
-    passed = CURRENT_SCHEMA_VERSION == 8 and all(statuses.values())
+    passed = len(MIGRATIONS) == CURRENT_SCHEMA_VERSION and all(statuses.values())
     return 0 if passed else 1
 
 

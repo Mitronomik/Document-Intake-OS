@@ -1,8 +1,37 @@
 # PR-013 — Merge confirmed document sides
 
-**Status:** CONTRACT PROPOSED FOR HUMAN REVIEW
-**Production implementation:** UNAUTHORIZED
-**ADR:** [ADR-027](../decisions/ADR-027-document-side-composition-v1.md) (PROPOSED)
+**Status:** CONTRACT ACCEPTED
+**Production implementation:** AUTHORIZED AND IN REVIEW
+**Human acceptance:** NOT GRANTED
+**Merge:** NOT AUTHORIZED
+**ADR:** [ADR-027](../decisions/ADR-027-document-side-composition-v1.md) (ACCEPTED)
+
+The Product owner directly accepted ADR-027 and this contract and authorized
+implementation on 2026-08-02 without a separate lifecycle-only pull request.
+The implementation base is `bb25421b4b1630a45359a0b82f949e2b044eaafa`.
+Earlier proposal and unauthorized statements remain historical evidence only.
+
+## Implementation correction — complete lineage and acceptance evidence
+
+The current PR-013 candidate enforces complete side lineage in schema v0009.
+Four composite member foreign keys bind each side's region and geometry recipe
+to the selected PR-012 region-set version. The immutable
+`side_1 lineage guard` and `side_2 lineage guard` additionally require one
+joined source/set/region/recipe lineage, rejecting cross-set, cross-source,
+cross-region, cross-recipe, and independently valid but mismatched member
+combinations. The v0009 candidate checksum is
+`0b0e0637ba4aa3defb29e6e27c241f28d333ec3c8bb6e8751c6cc7acc1b24b49`;
+v0001 through v0008 remain unchanged and the frozen v0008 checksum remains
+`ff1d114954cf6a43cfe38ef8338a05b8bc11912fb51cd36dec2442d7ecee8f9b`.
+
+Acceptance evidence now covers populated schema 8-to-9 preservation,
+failed-v0009 rollback, production SQLCipher close/reopen, wrong-key rejection,
+ordinary SQLite rejection, and post-publication orphan evidence for returned
+storage-record mismatches, ordered insert failures, late uniqueness races, and
+commit failure. It proves rollback leaves no partial database rows and performs
+no automatic orphan adoption or deletion. ADR-027 remains ACCEPTED; PR-013
+remains AUTHORIZED AND IN REVIEW, with human acceptance NOT GRANTED and merge
+NOT AUTHORIZED.
 
 ## 1. Lifecycle, base, and authorization
 
@@ -716,8 +745,8 @@ AUTOMATIC QUALITY-BASED DOCUMENT BLOCKING: NOT ACTIVE
 AUTOMATIC PRODUCTION RETAKE_REQUIRED: NOT ACTIVE
 ```
 
-ADR-027 remains PROPOSED.
-The PR-013 contract remains PROPOSED FOR HUMAN REVIEW.
-PR-013 production implementation remains UNAUTHORIZED.
+The preceding proposal/authorization statements are historical evidence.
 
-MERGING THIS DOCUMENTATION PR DOES NOT BY ITSELF AUTHORIZE PR-013 PRODUCTION IMPLEMENTATION.
+Current state: ADR-027 is ACCEPTED; this contract is ACCEPTED; production
+implementation is AUTHORIZED AND IN REVIEW. Human acceptance is not granted,
+merge is not authorized, and PR-014 and later remain unauthorized.

@@ -135,6 +135,26 @@ def _rows(connection: Any) -> dict[str, tuple[tuple[Any, ...], ...]]:
     }
 
 
+_PR013_SCHEMA8_TABLES = (
+    "upload_batches",
+    "upload_batch_source_files",
+    "stored_artifacts",
+    "source_files",
+    "image_geometry_recipes",
+    "prepared_image_artifacts",
+    "document_region_set_versions",
+    "document_region_set_members",
+    "audit_events",
+)
+
+
+def _pr013_schema8_rows(connection: Any) -> dict[str, tuple[tuple[Any, ...], ...]]:
+    return {
+        table: tuple(connection.execute(f'SELECT * FROM "{table}" ORDER BY rowid').fetchall())
+        for table in _PR013_SCHEMA8_TABLES
+    }
+
+
 def _create_populated_encrypted_v6(
     path: Path, key: bytes
 ) -> dict[str, tuple[tuple[Any, ...], ...]]:
@@ -194,7 +214,7 @@ def _create_populated_encrypted_v6(
                 reopened_unit._connection().execute("PRAGMA cipher_integrity_check").fetchall()
                 == []
             )
-    assert persistence_database.CURRENT_SCHEMA_VERSION == 8
+    assert persistence_database.CURRENT_SCHEMA_VERSION == 9
     assert persistence_database._open_connection is production_open_connection
     reopened = persistence_database._open_connection(path, provider)
     expected = _rows(reopened)
@@ -414,7 +434,7 @@ def test_pr011_win_002_production_windows_sqlcipher_v6_to_v7_migration(
     path = tmp_path / "pr011-win-migration.db"
     key = b"m" * 32
     before = _create_populated_encrypted_v6(path, key)
-    assert persistence_database.CURRENT_SCHEMA_VERSION == 8
+    assert persistence_database.CURRENT_SCHEMA_VERSION == 9
     _migrate_encrypted_v7(path, key)
     connection = persistence_database._open_connection(path, Provider(key))
     assert connection.execute("PRAGMA user_version").fetchone() == (7,)
@@ -443,7 +463,7 @@ def test_pr011_win_003_windows_cipher_and_foreign_key_integrity_after_reopen(
     key = b"i" * 32
     wrong_key = b"j" * 32
     _create_populated_encrypted_v6(path, key)
-    assert persistence_database.CURRENT_SCHEMA_VERSION == 8
+    assert persistence_database.CURRENT_SCHEMA_VERSION == 9
     _migrate_encrypted_v7(path, key)
     raw = persistence_database._open_connection(path, Provider(key))
     assert not raw.in_transaction
@@ -489,7 +509,7 @@ def test_pr011_win_004_windows_prepared_artifact_commit_reopen_read(tmp_path: Pa
     path = tmp_path / "pr011-win-prepared.db"
     key = b"p" * 32
     _create_populated_encrypted_v6(path, key)
-    assert persistence_database.CURRENT_SCHEMA_VERSION == 8
+    assert persistence_database.CURRENT_SCHEMA_VERSION == 9
     _migrate_encrypted_v7(path, key)
     prepared = valid_prepared_artifact()
     stored = valid_prepared_stored_artifact()
@@ -807,3 +827,70 @@ def test_pr012_win_006_populated_verifier_runtime_is_exact_and_private() -> None
     assert tuple(completed.stdout.splitlines()) == pr012_verifier._LABELS
     assert completed.stderr == ""
     assert not any(value in completed.stdout for value in pr012_verifier._PRIVACY_FORBIDDEN)
+
+
+def test_pr013_production_sqlcipher_populated_v8_to_v9_reopen_and_key_boundaries(
+    tmp_path: Path,
+) -> None:
+    scenario = _pr012_scenario(tmp_path)
+    path = tmp_path / "state.db"
+    with _historical_schema(8):
+        scenario.database().initialize()
+        scenario.run_confirmation(1)
+        before_connection = scenario.open_connection()
+        try:
+            _cipher_active(before_connection)
+            assert before_connection.execute("PRAGMA user_version").fetchone() == (8,)
+            before = _pr013_schema8_rows(before_connection)
+            assert scenario.schema_history(before_connection) == tuple(
+                (migration.version, migration.name, migration.checksum)
+                for migration in MIGRATIONS[:8]
+            )
+            assert before_connection.execute("PRAGMA cipher_integrity_check").fetchall() == []
+            assert before_connection.execute("PRAGMA foreign_key_check").fetchall() == []
+        finally:
+            before_connection.close()
+
+    scenario.database().initialize()
+    migrated = scenario.open_connection()
+    try:
+        _cipher_active(migrated)
+        assert migrated.execute("PRAGMA user_version").fetchone() == (9,)
+        assert _pr013_schema8_rows(migrated) == before
+        assert scenario.schema_history(migrated) == tuple(
+            (migration.version, migration.name, migration.checksum) for migration in MIGRATIONS
+        )
+        foreign_keys = migrated.execute(
+            "PRAGMA foreign_key_list(document_side_composition_versions)"
+        ).fetchall()
+        composite_member_keys = {
+            row[0] for row in foreign_keys if row[2] == "document_region_set_members"
+        }
+        assert len(composite_member_keys) == 4
+        names = {row[0] for row in migrated.execute("SELECT name FROM sqlite_master")}
+        assert {
+            "document_side_composition_versions_side_1_lineage_guard",
+            "document_side_composition_versions_side_2_lineage_guard",
+        } <= names
+        assert migrated.execute("PRAGMA cipher_integrity_check").fetchall() == []
+        assert migrated.execute("PRAGMA foreign_key_check").fetchall() == []
+    finally:
+        migrated.close()
+
+    scenario.assert_product_state(1)
+    scenario.assert_integrity()
+    reopened = scenario.open_connection()
+    try:
+        assert _pr013_schema8_rows(reopened) == before
+        assert reopened.execute("PRAGMA cipher_integrity_check").fetchall() == []
+        assert reopened.execute("PRAGMA foreign_key_check").fetchall() == []
+    finally:
+        reopened.close()
+    with (
+        pytest.raises(PersistenceError) as rejected,
+        EncryptedDatabase(path, Provider(b"z" * 32)).unit_of_work(),
+    ):
+        pass
+    assert rejected.value.code is PersistenceErrorCode.DB_KEY_REJECTED
+    with pytest.raises(sqlite3.DatabaseError):
+        sqlite3.connect(path).execute("SELECT count(*) FROM schema_migrations").fetchone()

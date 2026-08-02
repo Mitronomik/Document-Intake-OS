@@ -12,6 +12,8 @@ from document_intake.domain import (
     AuditEvent,
     Document,
     DocumentRegionSetVersion,
+    DocumentSideComposition,
+    DocumentSideCompositionVersion,
     FieldCandidate,
     FieldRef,
     IdentityDocument,
@@ -20,6 +22,7 @@ from document_intake.domain import (
     MigrationDocument,
     OwnerRef,
     Person,
+    PreparedCompositionArtifact,
     PreparedImageArtifact,
     SourceFile,
     Terminal,
@@ -27,7 +30,7 @@ from document_intake.domain import (
     UploadBatch,
     Vehicle,
 )
-from document_intake.domain.enums import AuditSubjectType
+from document_intake.domain.enums import AuditSubjectType, DocumentSideCompositionLayout
 from document_intake.domain.value_objects import BatchNumber, EntityId, Sha256Digest
 
 
@@ -179,6 +182,43 @@ class PreparedImageArtifactRepository(Protocol):
     ) -> tuple[PreparedImageArtifact, ...]: ...
 
 
+class DocumentSideCompositionRepository(Protocol):
+    def add_composition(self, composition: DocumentSideComposition) -> None: ...
+    def add_version(self, version: DocumentSideCompositionVersion) -> None: ...
+    def add_artifact(self, artifact: PreparedCompositionArtifact) -> None: ...
+    def get_composition(self, composition_id: EntityId) -> DocumentSideComposition | None: ...
+    def get_version(
+        self, composition_version_id: EntityId
+    ) -> DocumentSideCompositionVersion | None: ...
+    def get_artifact(
+        self, prepared_artifact_id: EntityId
+    ) -> PreparedCompositionArtifact | None: ...
+    def get_artifact_by_composition_version(
+        self, composition_version_id: EntityId
+    ) -> PreparedCompositionArtifact | None: ...
+    def get_by_natural_key(
+        self,
+        *,
+        side_1_region_set_version_id: EntityId,
+        side_1_source_file_id: EntityId,
+        side_1_region_id: EntityId,
+        side_1_geometry_recipe_version_id: EntityId,
+        side_2_region_set_version_id: EntityId,
+        side_2_source_file_id: EntityId,
+        side_2_region_id: EntityId,
+        side_2_geometry_recipe_version_id: EntityId,
+        layout: DocumentSideCompositionLayout,
+        outer_margin_px: int,
+        inter_side_gap_px: int,
+        composition_pipeline_id: str,
+        composition_pipeline_version: int,
+        jpeg_pipeline_id: str,
+        jpeg_pipeline_version: int,
+        output_contract_id: str,
+        output_contract_version: int,
+    ) -> DocumentSideCompositionVersion | None: ...
+
+
 class UnitOfWork(Protocol):
     persons: PersonRepository
     identity_documents: IdentityDocumentRepository
@@ -197,6 +237,7 @@ class UnitOfWork(Protocol):
     image_geometry_recipes: ImageGeometryRecipeRepository
     prepared_image_artifacts: PreparedImageArtifactRepository
     document_region_sets: DocumentRegionSetRepository
+    document_side_compositions: DocumentSideCompositionRepository
 
     def __enter__(self) -> Self: ...
     def __exit__(

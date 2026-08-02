@@ -1,8 +1,14 @@
 # ADR-027 — Document-side composition V1
 
-**Status:** PROPOSED
-**Scope:** PR-013 contract proposal only
-**Authorization:** PRODUCTION IMPLEMENTATION UNAUTHORIZED
+**Status:** ACCEPTED
+**Scope:** PR-013 accepted contract and production implementation review
+**Authorization:** PRODUCTION IMPLEMENTATION AUTHORIZED AND IN REVIEW
+
+The Product owner directly accepted ADR-027 and the PR-013 contract and
+authorized production implementation on 2026-08-02 without a separate
+lifecycle-only pull request. PR-013 human acceptance is not granted and merge
+is not authorized. Statements below describing this ADR as proposed or
+implementation as unauthorized are preserved historical evidence from PR #33.
 
 ## Context and decision
 
@@ -27,8 +33,9 @@ It introduces exactly one new pure composition port. It does not introduce a
 second decoder, renderer, storage port, JPEG encoder, Unit of Work, or audit
 abstraction.
 
-This ADR remains proposed. It defines no production implementation and creates
-no migration.
+Historical PR #33 state: this ADR was proposed, defined no production
+implementation, and created no migration. The current authorized implementation
+creates candidate migration v0009 without changing the accepted contract.
 
 ## Exact side identity and validation
 
@@ -670,7 +677,8 @@ Real documents and personal data remain prohibited in Git, Codex, CI, logs,
 and reports. All runtime work remains local/offline. Originals and historical
 records remain immutable.
 
-ADR-027 remains PROPOSED. The PR-013 contract remains PROPOSED FOR HUMAN REVIEW.
-PR-013 production implementation remains UNAUTHORIZED.
+The preceding proposal/authorization statements are historical evidence.
 
-MERGING THIS DOCUMENTATION PR DOES NOT BY ITSELF AUTHORIZE PR-013 PRODUCTION IMPLEMENTATION.
+Current state: ADR-027 is ACCEPTED; the PR-013 contract is ACCEPTED; PR-013
+production implementation is AUTHORIZED AND IN REVIEW. Human acceptance is not
+granted and merge is not authorized. PR-014 and later remain unauthorized.

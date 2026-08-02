@@ -2519,7 +2519,7 @@ def test_pr009_implementation_stage_has_production_contract_symbols() -> None:
         encoding="utf-8"
     )
 
-    assert "CURRENT_SCHEMA_VERSION = 8" in migrations
+    assert "CURRENT_SCHEMA_VERSION = 9" in migrations
     for required in (
         "QualityAssessmentErrorCode",
         "IMAGE_QUALITY_ASSESSED",
@@ -3328,9 +3328,12 @@ def test_pr012_lifecycle_acceptance_and_pr013_contract_are_current() -> None:
         "Migrations v0001 through v0008 are frozen historical migrations",
     ):
         assert marker in lifecycle
-    assert "**Status:** PROPOSED" in adr
-    assert "**Status:** CONTRACT PROPOSED FOR HUMAN REVIEW" in task
-    assert "**Production implementation:** UNAUTHORIZED" in task
+    assert "**Status:** ACCEPTED" in adr
+    assert "**Status:** CONTRACT ACCEPTED" in task
+    assert "**Production implementation:** AUTHORIZED AND IN REVIEW" in task
+    assert "**Human acceptance:** NOT GRANTED" in task
+    assert "**Merge:** NOT AUTHORIZED" in task
+    assert "without a separate lifecycle-only pull request" in task
     for marker in (
         "PR-014 AND LATER: UNAUTHORIZED",
         "M3: IN PROGRESS",
@@ -3622,7 +3625,7 @@ def test_pr013_composition_contract_is_exact() -> None:
     ):
         assert marker in revalidation, marker
 
-    assert not (
+    assert (
         REPO_ROOT / "src/document_intake/persistence/migrations/v0009_document_side_composition.py"
     ).exists()
 
@@ -3641,35 +3644,29 @@ def test_authoritative_current_lifecycle_sections_are_unique_and_current() -> No
         "docs/decisions.md",
         "docs/open-questions.md",
     )
-    heading = (
-        "## Current lifecycle state — PR-012 closure and PR-013 contract proposal "
-        "(authoritative, 2026-08-02)"
-    )
+    heading = "## Current lifecycle state — PR-013 implementation (authoritative, 2026-08-02)"
     required = (
         "PR-012: COMPLETED AND HUMAN ACCEPTED",
         "ADR-026: ACCEPTED",
-        "PR-012 MERGE: COMPLETED THROUGH GITHUB PR #32",
-        "PR-012 MERGE COMMIT: 6a0f0df1e2d43e67395d4dee9415b6703181ab41",
-        "CURRENT SCHEMA VERSION: 8",
+        "PR-013 BASE: bb25421b4b1630a45359a0b82f949e2b044eaafa",
+        "CURRENT SCHEMA VERSION: 9",
         "MIGRATIONS V0001 THROUGH V0008: FROZEN",
-        "ADR-027: PROPOSED",
-        "PR-013 CONTRACT: PROPOSED FOR HUMAN REVIEW",
-        "PR-013 PRODUCTION IMPLEMENTATION: UNAUTHORIZED",
+        "MIGRATION V0009: CANDIDATE — NOT FROZEN UNTIL PR-013 MERGE",
+        "ADR-027: ACCEPTED",
+        "PR-013 CONTRACT: ACCEPTED",
+        "PR-013 PRODUCTION IMPLEMENTATION: AUTHORIZED AND IN REVIEW",
+        "PR-013 HUMAN ACCEPTANCE: NOT GRANTED",
+        "PR-013 MERGE: NOT AUTHORIZED",
         "PR-014 AND LATER: UNAUTHORIZED",
         "M3: IN PROGRESS",
         "GATE 2: NOT ACCEPTED",
         "Q-021: DEFERRED",
         "PRODUCTION PR-009 QUALITY POLICY: NOT ACTIVE",
-        "PRODUCTION POLICY_ID: NOT ASSIGNED",
-        "PRODUCTION POLICY_VERSION: NOT ASSIGNED",
-        "AUTOMATIC QUALITY-BASED DOCUMENT BLOCKING: NOT ACTIVE",
-        "AUTOMATIC PRODUCTION RETAKE_REQUIRED: NOT ACTIVE",
     )
     stale = (
-        "PR-012 PRODUCTION IMPLEMENTATION: AUTHORIZED AND IN REVIEW",
-        "PR-012 HUMAN ACCEPTANCE: NOT GRANTED",
-        "PR-012 MERGE: NOT AUTHORIZED",
-        "ADR-026: PROPOSED",
+        "ADR-027: PROPOSED",
+        "PR-013 CONTRACT: PROPOSED FOR HUMAN REVIEW",
+        "PR-013 PRODUCTION IMPLEMENTATION: UNAUTHORIZED",
     )
     for name in documents:
         text = (REPO_ROOT / name).read_text(encoding="utf-8")
@@ -3681,7 +3678,41 @@ def test_authoritative_current_lifecycle_sections_are_unique_and_current() -> No
             assert marker not in section, f"{name}: {marker}"
 
 
-def test_pr013_documentation_change_allowlist() -> None:
+def test_pr013_lineage_and_acceptance_correction_evidence_is_current() -> None:
+    task = (REPO_ROOT / "docs/tasks/PR-013-merge-document-sides.md").read_text(encoding="utf-8")
+    strategy = (REPO_ROOT / "docs/testing-strategy.md").read_text(encoding="utf-8")
+    migration = (
+        REPO_ROOT / "src/document_intake/persistence/migrations/v0009_document_side_composition.py"
+    ).read_text(encoding="utf-8")
+    checksum = "0b0e0637ba4aa3defb29e6e27c241f28d333ec3c8bb6e8751c6cc7acc1b24b49"
+    for marker in (
+        "complete side lineage",
+        "composite member foreign keys",
+        "side_1 lineage guard",
+        "side_2 lineage guard",
+        "populated schema 8-to-9",
+        "failed-v0009 rollback",
+        "wrong-key rejection",
+        "ordinary SQLite rejection",
+        "post-publication orphan evidence",
+    ):
+        assert marker in task or marker in strategy, marker
+    for marker in (
+        "side_1_region_set_version_id,side_1_region_id",
+        "side_1_region_set_version_id,side_1_geometry_recipe_version_id",
+        "side_2_region_set_version_id,side_2_region_id",
+        "side_2_region_set_version_id,side_2_geometry_recipe_version_id",
+        "document_side_composition_versions_side_1_lineage_guard",
+        "_SIDE_2_LINEAGE_GUARD",
+    ):
+        assert marker in migration, marker
+    assert checksum in task
+    assert "ADR-027 remains ACCEPTED" in task
+    assert "human acceptance NOT GRANTED" in task
+    assert "**Merge:** NOT AUTHORIZED" in task
+
+
+def test_pr013_production_change_scope() -> None:
     changed = subprocess.run(
         ["git", "diff", "--name-only", "6a0f0df1e2d43e67395d4dee9415b6703181ab41"],
         cwd=REPO_ROOT,
@@ -3690,33 +3721,19 @@ def test_pr013_documentation_change_allowlist() -> None:
         text=True,
     ).stdout.splitlines()
     assert changed
-    for name in changed:
-        assert (
-            name.startswith("docs/") and name.endswith(".md")
-        ) or name == "tests/test_documentation_baseline.py"
-        assert not name.startswith(
-            ("src/", "scripts/", ".github/workflows/", "spikes/", "resources/", "tests/fixtures/")
-        )
-        assert not name.endswith((".xls", ".xlsx", ".db", ".sqlite", ".pyc"))
-
-    correction_changed = set(
-        subprocess.run(
-            [
-                "git",
-                "diff",
-                "--name-only",
-                "c21b430577b040e4740b435536afd935ac2dd477",
-            ],
-            cwd=REPO_ROOT,
-            check=True,
-            capture_output=True,
-            text=True,
-        ).stdout.splitlines()
-    )
-    assert correction_changed == {
+    required = {
+        ".github/workflows/ci.yml",
         "docs/decisions/ADR-027-document-side-composition-v1.md",
         "docs/tasks/PR-013-merge-document-sides.md",
-        "tests/test_documentation_baseline.py",
+        "src/document_intake/domain/document_side_composition.py",
+        "src/document_intake/image_pipeline/document_side_composer.py",
+        "src/document_intake/persistence/migrations/v0009_document_side_composition.py",
+        "scripts/verify_pr013_composition.py",
     }
-    assert not any(name.startswith("src/") for name in correction_changed)
-    assert not any("/migrations/v0009" in name for name in correction_changed)
+    assert all((REPO_ROOT / name).is_file() for name in required)
+    for name in changed:
+        assert not name.endswith((".xls", ".xlsx", ".db", ".sqlite", ".pyc"))
+        assert not name.startswith(("spikes/", "resources/", "tests/fixtures/"))
+    assert not any(
+        f"/migrations/v{version:04d}_" in name for version in range(1, 9) for name in changed
+    )

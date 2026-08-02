@@ -60,6 +60,7 @@ def test_audit_enums_are_exact() -> None:
         AuditAction.IMAGE_GEOMETRY_RECIPE_CREATED,
         AuditAction.PREPARED_JPEG_CREATED,
         AuditAction.DOCUMENT_REGION_SET_CONFIRMED,
+        AuditAction.DOCUMENT_SIDE_COMPOSITION_CREATED,
     )
     assert tuple(AuditSubjectType) == (
         AuditSubjectType.PERSON,
@@ -75,6 +76,7 @@ def test_audit_enums_are_exact() -> None:
         AuditSubjectType.IMAGE_GEOMETRY_RECIPE,
         AuditSubjectType.PREPARED_IMAGE_ARTIFACT,
         AuditSubjectType.DOCUMENT_REGION_SET,
+        AuditSubjectType.DOCUMENT_SIDE_COMPOSITION,
     )
     assert tuple(AuditValueClassification) == (
         AuditValueClassification.ABSENT,

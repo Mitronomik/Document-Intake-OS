@@ -284,7 +284,7 @@ def test_populated_multi_revision_migration_preserves_exact_application_state() 
 
     assert connection.execute("PRAGMA user_version").fetchone() == (8,)
     assert history(connection) == [
-        (migration.version, migration.name, migration.checksum) for migration in MIGRATIONS
+        (migration.version, migration.name, migration.checksum) for migration in MIGRATIONS[:8]
     ]
     assert MIGRATIONS[7].name == "document_regions_pr012"
     assert (
@@ -399,7 +399,7 @@ def test_file_backed_sqlite_reopen_preserves_exact_migrated_reads(tmp_path: Path
     reopened.execute("PRAGMA foreign_keys=ON")
     assert reopened.execute("PRAGMA user_version").fetchone() == (8,)
     assert history(reopened) == [
-        (migration.version, migration.name, migration.checksum) for migration in MIGRATIONS
+        (migration.version, migration.name, migration.checksum) for migration in MIGRATIONS[:8]
     ]
     assert reopened.execute("PRAGMA foreign_keys").fetchone() == (1,)
     assert reopened.execute("PRAGMA foreign_key_check").fetchall() == []
