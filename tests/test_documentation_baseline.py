@@ -2570,6 +2570,21 @@ def _section(markdown: str, heading: str) -> str:
     return "\n".join(section)
 
 
+def _documented_dataclass_fields(markdown: str, class_name: str) -> tuple[str, ...]:
+    match = re.search(rf"^class {re.escape(class_name)}:\s*$", markdown, re.MULTILINE)
+    assert match is not None, f"Missing documented class: {class_name}"
+    fields: list[str] = []
+    for line in markdown[match.end() :].splitlines():
+        if not line.strip():
+            continue
+        if not line.startswith("    "):
+            break
+        field = re.match(r"^    ([a-z][a-z0-9_]*):", line)
+        if field is not None:
+            fields.append(field.group(1))
+    return tuple(fields)
+
+
 def test_pr010_contract_current_lifecycle_and_merge_evidence_are_section_scoped() -> None:
     progress = (REPO_ROOT / "docs/progress.md").read_text(encoding="utf-8")
     current = _section(
@@ -3333,26 +3348,187 @@ def test_pr013_composition_contract_is_exact() -> None:
     task = (REPO_ROOT / "docs/tasks/PR-013-merge-document-sides.md").read_text(encoding="utf-8")
     combined = adr + task
     for marker in (
-        "exactly two",
+        "PreparedJpegEncoderPort",
+        "encode_prepared_jpeg",
+        "UncompressedRgbRaster",
+        "EncodedPreparedJpeg",
+        "DocumentSideComposerPort",
+        "Image.Resampling.BICUBIC",
+        "PILLOW_DOCUMENT_SIDE_COMPOSITION_BICUBIC",
+        "DOCUMENT_SIDE_COMPOSITION_PIPELINE_VERSION",
+        "region_set_version_id",
+        "source_file_id",
+        "region_id",
+        "geometry_recipe_version_id",
+        "audit_event_id",
+        "AuditAction.DOCUMENT_SIDE_COMPOSITION_CREATED",
+        "AuditSubjectType.DOCUMENT_SIDE_COMPOSITION",
+        "PreparedCompositionArtifact",
+        "composition_version_id",
+        "stored_artifact_id",
+        "jpeg_quality",
+        "resize_percent",
+        "COMPOSITION_RENDER_FAILED",
         "VERTICAL`: side 1 is above side 2",
         "HORIZONTAL`: side 1 is left of side 2",
         "no hidden production default",
-        "0 <= value <= 256",
-        "neither side is upscaled",
-        "opaque white RGB",
-        "existing prepared JPEG is never",
-        "composition occurs before final JPEG compression",
-        "PreparedJpegEncoder",
+        "inclusive bounds `0..256`",
+        "No side is upscaled",
+        "opaque-white RGB",
+        "No prepared JPEG is composition input",
+        "No intermediate JPEG is created",
         "exactly once",
         "1,992,294",
         "v0009_document_side_composition",
-        "schema 8 to 9",
         "COMPOSITION_ALREADY_EXISTS",
         "PERSISTENCE_CONFLICT",
-        "not one atomic transaction",
-        "no automatic adoption or deletion",
+        "read-only orphan reconciliation",
     ):
         assert marker in combined, marker
+
+    side_fields = (
+        "region_set_version_id",
+        "source_file_id",
+        "region_id",
+        "geometry_recipe_version_id",
+    )
+    command_fields = (
+        "composition_id",
+        "composition_version_id",
+        "side_1",
+        "side_2",
+        "layout",
+        "outer_margin_px",
+        "inter_side_gap_px",
+        "prepared_artifact_id",
+        "stored_artifact_id",
+        "audit_event_id",
+        "created_at",
+        "actor",
+        "correlation_id",
+    )
+    assert _documented_dataclass_fields(task, "DocumentSideReference") == side_fields
+    assert (
+        _documented_dataclass_fields(task, "CreateDocumentSideCompositionCommand") == command_fields
+    )
+    assert _documented_dataclass_fields(task, "CreateDocumentSideCompositionResult") == (
+        "composition_version",
+        "artifact",
+    )
+    assert _documented_dataclass_fields(task, "DocumentSideComposition") == ("id",)
+    assert _documented_dataclass_fields(task, "DocumentSideCompositionVersion") == (
+        "id",
+        "composition_id",
+        "side_1_region_set_version_id",
+        "side_1_source_file_id",
+        "side_1_region_id",
+        "side_1_geometry_recipe_version_id",
+        "side_2_region_set_version_id",
+        "side_2_source_file_id",
+        "side_2_region_id",
+        "side_2_geometry_recipe_version_id",
+        "layout",
+        "outer_margin_px",
+        "inter_side_gap_px",
+        "composition_pipeline_id",
+        "composition_pipeline_version",
+        "output_contract_id",
+        "output_contract_version",
+        "created_at",
+        "created_by",
+        "correlation_id",
+    )
+    assert _documented_dataclass_fields(task, "PreparedCompositionArtifact") == (
+        "id",
+        "composition_version_id",
+        "stored_artifact_id",
+        "pipeline_id",
+        "pipeline_version",
+        "output_contract_id",
+        "output_contract_version",
+        "media_type",
+        "color_space",
+        "width",
+        "height",
+        "byte_size",
+        "sha256",
+        "jpeg_quality",
+        "resize_percent",
+        "created_at",
+        "created_by",
+    )
+
+    forbidden_command_fields = {
+        "composition_pipeline_id",
+        "composition_pipeline_version",
+        "output_contract_id",
+        "output_contract_version",
+        "raster_bytes",
+        "jpeg_bytes",
+        "source_path",
+        "storage_path",
+        "filename",
+        "sha256",
+        "width",
+        "height",
+        "jpeg_quality",
+        "resize_percent",
+    }
+    assert forbidden_command_fields.isdisjoint(command_fields)
+    assert re.search(r"\bPreparedJpegEncoder\b", combined) is None
+    assert re.search(r"^\s+geometry_recipe_id:", combined, re.MULTILINE) is None
+    assert re.search(r"^\s+geometry_recipe_version:", combined, re.MULTILINE) is None
+    assert "document_side_composition.created" not in combined
+    assert re.search(r"\boutcome\b", combined, re.IGNORECASE) is None
+    assert re.search(r"\bdetails\b", combined, re.IGNORECASE) is None
+
+    for marker in (
+        "target_width = min(side_1.width, side_2.width)",
+        "target_height = min(side_1.height, side_2.height)",
+        "(2 * numerator + denominator) // (2 * denominator)",
+        "Floating-point rounding is forbidden",
+        "Zero is not clamped to one",
+        "before final JPEG encoding",
+        "Side content, margins, and gap are scaled together",
+        "Final width and height come from `EncodedPreparedJpeg`",
+        "Final JPEG margins need not equal requested pixels",
+        "pipeline_id = PREPARED_JPEG_PIPELINE_ID",
+        "pipeline_version = PREPARED_JPEG_PIPELINE_VERSION",
+        "output_contract_id = PREPARED_JPEG_OUTPUT_CONTRACT_ID",
+        "output_contract_version = PREPARED_JPEG_OUTPUT_CONTRACT_VERSION",
+        "media_type = PreparedMediaType.JPEG",
+        "color_space = ColorSpace.SRGB",
+        "field_key=None",
+        "before=None",
+        "after=None",
+        "reason_code=None",
+        "correlation_id=command.correlation_id",
+    ):
+        assert marker in combined, marker
+
+    exact_order = _section(task, "## 12. Exact transaction and publication order")
+    for step in range(1, 23):
+        assert re.search(rf"^{step}\. ", exact_order, re.MULTILINE), step
+    assert "Encode the final raster exactly once through `PreparedJpegEncoderPort`" in exact_order
+    assert "Return the result only after successful exit" in exact_order
+
+    natural_key = _section(task, "## 10. Exact ordered natural key and persistence port")
+    for marker in (
+        "side_1.region_set_version_id",
+        "side_1.source_file_id",
+        "side_1.region_id",
+        "side_1.geometry_recipe_version_id",
+        "side_2.region_set_version_id",
+        "side_2.source_file_id",
+        "side_2.region_id",
+        "side_2.geometry_recipe_version_id",
+        "DOCUMENT_SIDE_COMPOSITION_PIPELINE_ID",
+        "DOCUMENT_SIDE_COMPOSITION_PIPELINE_VERSION",
+        "PREPARED_JPEG_OUTPUT_CONTRACT_ID",
+        "PREPARED_JPEG_OUTPUT_CONTRACT_VERSION",
+    ):
+        assert marker in natural_key, marker
+
     assert not (
         REPO_ROOT / "src/document_intake/persistence/migrations/v0009_document_side_composition.py"
     ).exists()
@@ -3429,3 +3605,25 @@ def test_pr013_documentation_change_allowlist() -> None:
             ("src/", "scripts/", ".github/workflows/", "spikes/", "resources/", "tests/fixtures/")
         )
         assert not name.endswith((".xls", ".xlsx", ".db", ".sqlite", ".pyc"))
+
+    correction_changed = set(
+        subprocess.run(
+            [
+                "git",
+                "diff",
+                "--name-only",
+                "b92a5e20c20b6b15017a4e8e9ca40e24578ca550",
+            ],
+            cwd=REPO_ROOT,
+            check=True,
+            capture_output=True,
+            text=True,
+        ).stdout.splitlines()
+    )
+    assert correction_changed == {
+        "docs/decisions/ADR-027-document-side-composition-v1.md",
+        "docs/tasks/PR-013-merge-document-sides.md",
+        "tests/test_documentation_baseline.py",
+    }
+    assert not any(name.startswith("src/") for name in correction_changed)
+    assert not any("/migrations/v0009" in name for name in correction_changed)

@@ -6,271 +6,524 @@
 
 ## 1. Lifecycle, base, and authorization
 
-PR-012 is completed and human accepted through PR #32 at merge commit
-`6a0f0df1e2d43e67395d4dee9415b6703181ab41`; schema 8 and migrations v0001
-through v0008 are frozen. This contract PR does not authorize production code.
+PR-012 is completed and human accepted through PR #32 at reviewed head
+`9a6af1b72a064c47c66989b1e7dbc78d72768957` and merge commit
+`6a0f0df1e2d43e67395d4dee9415b6703181ab41`. Schema version 8 is current;
+migrations v0001 through v0008 are frozen. This contract correction implements
+no production code and creates no migration.
+
 A future implementation may start only after a separate Product-owner decision
 accepts ADR-027, accepts this contract, explicitly authorizes PR-013, and names
-this documentation PR's actual merge commit as the exact implementation base.
-That commit must be fetched and verified identical immediately before branching;
-movement or a dirty tree requires stopping rather than rebasing.
+the documentation PR's actual merge commit as its exact base. M3 is IN PROGRESS;
+Gate 2 is NOT ACCEPTED; PR-014 and later are UNAUTHORIZED; Q-021 remains
+DEFERRED.
 
-M3 is IN PROGRESS; Gate 2 is NOT ACCEPTED; PR-014 and later are UNAUTHORIZED.
+## 2. Objective and accepted upstream boundaries
 
-## 2. Objective, scope, upstream contracts
+Create one immutable prepared JPEG from exactly two explicitly ordered,
+operator-confirmed sides. Layout is explicit `VERTICAL` or `HORIZONTAL`, and
+margin and gap are explicit. Originals, PR-010 recipes, PR-012 region sets, and
+all historical selections remain unchanged.
 
-Create exactly one immutable prepared JPEG for exactly two explicitly ordered,
-confirmed sides, using explicit `VERTICAL` or `HORIZONTAL` layout and explicit
-margin/gap. Reuse immutable original storage, PR-010 geometry replay, PR-012
-region identity and validation, PR-011 `PreparedJpegEncoder`, encrypted immutable
-publication, SQLCipher UoW, `AuditEvent`, and read-only orphan reconciliation.
-Originals, recipes, region sets, and selections remain unchanged.
+The future service reuses these accepted production boundaries exactly:
 
-Accepted upstream semantics—including `SOURCE_EFFECTIVE_PIXELS_V1`, geometry
-replay, `PreparedJpegPipelineVersion.V1`, RGB output, non-progressive 4:4:4,
-metadata removal, and `1_992_294` bytes—must not change.
+- `UnitOfWorkFactory`
+- `StoragePort`
+- `GeometryDecoderPort`
+- `GeometryRendererPort`
+- `PreparedJpegEncoderPort`
 
-## 3. Exact domain and application API
+The existing PR-011 encoder operation remains:
 
-Future identifiers extend current conventions without renaming accepted APIs:
+```python
+encode_prepared_jpeg(
+    raster: UncompressedRgbRaster,
+    *,
+    pipeline: PreparedJpegPipelineVersion,
+) -> EncodedPreparedJpeg
+```
 
-- `DocumentSideCompositionId`, `DocumentSideCompositionVersionId` value objects;
-- `DocumentSideCompositionLayout(str, Enum)` with exactly `VERTICAL`, `HORIZONTAL`;
-- immutable `DocumentSideReference(region_id, geometry_recipe_id,
-  geometry_recipe_version)`;
-- immutable `DocumentSideComposition`, `DocumentSideCompositionVersion`, and
-  `PreparedCompositionArtifact` entities;
-- `DocumentSideCompositionErrorCode` and `DocumentSideCompositionError`;
-- frozen `CreateDocumentSideCompositionCommand(composition_id,
-  composition_version_id, side_1, side_2, layout, outer_margin_px,
-  inter_side_gap_px, composition_pipeline_id, composition_pipeline_version,
-  output_contract_id, output_contract_version, prepared_artifact_id,
-  stored_artifact_id, actor, created_at, correlation_id)`;
-- frozen `CreateDocumentSideCompositionResult(composition_id,
-  composition_version_id, prepared_artifact_id, stored_artifact_id, layout,
-  created_at, correlation_id)` containing no bytes, hashes, filenames, or paths;
-- `CreateDocumentSideCompositionService.create(command:
-  CreateDocumentSideCompositionCommand) -> CreateDocumentSideCompositionResult`.
+PR-013 passes the final composed `UncompressedRgbRaster` to that operation
+exactly once. No prepared JPEG is composition input. No intermediate JPEG is created.
+The accepted encoder contract is unchanged, no additional JPEG encoder is
+introduced, and the composition component never performs final JPEG encoding.
 
-All public APIs are typed. IDs use existing UUID-backed conventions and are
-pairwise distinct where their roles require it. `created_at` is timezone-aware
-UTC. Commands are identifier-only and cannot accept raster/JPEG bytes or paths.
+PR-013 changes none of the accepted PR-011 constants, quality sequence, resize
+sequence, metadata rules, or the 1,992,294-byte limit.
 
-Required ports: existing `UnitOfWorkFactory`, source/stored-artifact, geometry,
-region-set/selection, and audit repositories; new
-`DocumentSideCompositionRepository`; existing immutable encrypted artifact
-reader/publisher; existing geometry transformer; a `DocumentSideComposer` that
-accepts only two `UncompressedRgbRaster` values and controlled layout settings;
-and existing `PreparedJpegEncoder` called once.
+## 3. Exact side reference and authoritative validation
 
-## 4. Validation and exact deterministic algorithm
+```python
+@dataclass(frozen=True, slots=True)
+class DocumentSideReference:
+    region_set_version_id: EntityId
+    source_file_id: EntityId
+    region_id: EntityId
+    geometry_recipe_version_id: EntityId
+```
 
-Validation occurs in this order: command type; exactly two sides; required
-ordered roles; pairwise ID types/distinctness; duplicate lineage; enum type;
-integer (not boolean) margin and gap in inclusive range 0..256; timezone-aware
-timestamp; controlled actor/correlation/pipeline/output identities. No values
-are inferred. Missing/invalid/unconfirmed authoritative data fails closed.
+The exact validation for each side is:
 
-Order is significant and never derived from filename, import order, source,
-region, recipe, classifier, or row order. `VERTICAL` means side 1 above side 2;
-`HORIZONTAL` means side 1 left of side 2. Q-006 remains unresolved: there is no
-hidden default and no terminal policy.
+1. `region_set_version_id` exists.
+2. The region set belongs to `source_file_id`.
+3. The region set is an immutable operator-confirmed PR-012 version.
+4. The set contains `region_id`.
+5. That member references exactly `geometry_recipe_version_id`.
+6. The geometry recipe version exists.
+7. The recipe belongs to the same `source_file_id`.
+8. The recipe belongs to the same `region_id`.
+9. The original encrypted artifact exists.
+10. Original artifact integrity validation succeeds.
 
-Decode each verified original and replay each selected accepted recipe
-independently to a fresh uncompressed RGB raster. Never decode a prepared JPEG,
-compose compressed JPEGs, create intermediate JPEGs, or use a prior candidate.
-Preserve aspect ratio and never upscale.
+The sides may use different source files; the same source file through different
+confirmed regions; or the same region-set version when both selected regions
+are members. Duplicate lineage is equality of `(source_file_id, region_id)` and
+is rejected.
 
-For vertical, `tw=min(w1,w2)`. A wider raster alone is resized to
-`(tw, half_up(h*tw/w))`; equal-width input is unchanged. Canvas is opaque white
-RGB `(tw+2m, h1'+h2'+g+2m)`. Paste side 1 at `(m,m)` and side 2 at
-`(m,m+h1'+g)`. For horizontal, `th=min(h1,h2)`; a taller raster alone becomes
-`(half_up(w*th/h),th)`. Canvas is `(w1'+w2'+g+2m, th+2m)`; paste side 1 at
-`(m,m)` and side 2 at `(m+w1'+g,m)`.
+Only explicit `side_1` and `side_2` define order. Region-set order, filename,
+import order, database order, classifier output, and identifier sorting never
+define composition order.
 
-For positive integer numerator `n` and denominator `d`, half-up is exactly
-`(2*n+d)//(2*d)`. It is the accepted PR-011 rule; no float rounding or second
-convention is allowed. Dimensions, white margins, gap, alignment, pixel
-positions, resampling configuration, and iteration order are fixed. Pass the
-one composed raster to the accepted encoder exactly once and validate its exact
-selected candidate. Output is RGB/sRGB-interpreted JPEG, no alpha/EXIF/ICC/XMP/
-IPTC/comment/name/path, non-progressive 4:4:4, and `<=1_992_294`; `1_992_295`
-is rejected. Unreachable size returns `SIZE_LIMIT_UNREACHABLE` and publishes
-nothing.
+## 4. Exact command and result
 
-## 5. Exact operation, transaction, and failure order
+```python
+@dataclass(frozen=True, slots=True)
+class CreateDocumentSideCompositionCommand:
+    composition_id: EntityId
+    composition_version_id: EntityId
+    side_1: DocumentSideReference
+    side_2: DocumentSideReference
+    layout: DocumentSideCompositionLayout
+    outer_margin_px: int
+    inter_side_gap_px: int
+    prepared_artifact_id: EntityId
+    stored_artifact_id: EntityId
+    audit_event_id: EntityId
+    created_at: datetime
+    actor: ActorRef
+    correlation_id: EntityId
 
-1. Source-independent command validation.
-2. Pairwise caller-supplied identity validation.
-3. Open read-only UoW.
-4. Load and validate both confirmed region selections and region sets.
-5. Load and validate both immutable geometry recipes and lineage membership.
-6. Load both source-file and original stored-artifact references.
-7. Exit read UoW without commit.
-8. Read/decrypt/hash-verify immutable original bytes.
-9. Decode and independently replay both recipes.
-10. Produce two fresh uncompressed RGB rasters.
-11. Deterministically normalize dimensions without upscaling.
-12. Compose on fresh opaque white RGB.
-13. Call final PR-011 encoder once.
-14. Validate the selected candidate and contract.
-15. Open one write UoW.
-16. Re-read and revalidate every authoritative region, recipe, source, and artifact.
-17. Recheck all caller IDs against authority.
-18. Preflight the ordered natural key.
-19. Publish the encrypted final JPEG exactly once.
-20. Insert stored-artifact metadata.
-21. Insert aggregate, version, and prepared composition artifact.
-22. Insert privacy-safe audit event.
-23. Commit exactly once.
-24. Exit successfully, then return the byte-free result.
 
-Steps 1–14 cannot publish or write. Read UoW never commits. Failure before
-publication creates no object; publication failure creates no rows; any later
-database failure rolls back all rows. The filesystem and SQLCipher transaction
-are not atomic. A late uniqueness/commit conflict leaves the encrypted object
-unreferenced for read-only orphan reconciliation only: never adopt or delete it
-automatically, and return privacy-safe `PERSISTENCE_CONFLICT`. No result is
-returned from inside the UoW.
+@dataclass(frozen=True, slots=True)
+class CreateDocumentSideCompositionResult:
+    composition_version: DocumentSideCompositionVersion
+    artifact: PreparedCompositionArtifact
+```
 
-## 6. Persistence, migration, and natural key
+`created_at` is required timezone-aware UTC. `correlation_id` and `layout` are
+required. `outer_margin_px` and `inter_side_gap_px` are integer but not boolean,
+with inclusive bounds `0..256`. The following record identifiers are pairwise
+distinct: `composition_id`, `composition_version_id`, `prepared_artifact_id`,
+`stored_artifact_id`, and `audit_event_id`.
 
-The immutable aggregate/version/artifact persist every field listed in ADR-027,
-including ordered region/recipe identities, explicit settings, fixed background
-contract, pipeline/output identities, encrypted stored-artifact reference,
-actor, UTC timestamp, and correlation ID. Canonical payload and projected
-columns must agree on read; inconsistency/corruption fails closed. Foreign keys
-bind accepted existing records. Repository exposes create/get/find-by-natural-key
-only; update/delete/replace/latest APIs are forbidden and database triggers
-reject mutation.
+The command does not accept caller-selected pipeline identities, caller-selected
+output-contract identities, raster bytes, JPEG bytes, source paths, storage
+paths, filenames, hashes, dimensions, JPEG quality, or resize percentage.
 
-Future migration name is exactly `v0009_document_side_composition`, forward-only
-schema 8→9, including immutable tables, FKs, ordered natural-key uniqueness,
-canonical validation, and mutation-rejection triggers. It must migrate populated
-encrypted schema-8 databases without changing any row. V0001–v0008 remain
-byte-for-byte unchanged. No migration is created here; future v0009 checksum is
-recorded/frozen only after implementation acceptance.
+The result contains only the two persisted immutable domain records. It contains
+no image or source bytes, filename, filesystem or managed storage path, or
+encryption material.
 
-Natural key: ordered side-1 region identity + recipe identity/version, ordered
-side-2 region identity + recipe identity/version, layout, margin, gap,
-composition pipeline identity/version, and output contract identity/version.
-Swapping sides changes the key. An existing exact key yields
-`COMPOSITION_ALREADY_EXISTS` before publication.
+## 5. Exact fixed pipeline identities
 
-## 7. Controlled error contract
+The four boundaries remain distinct:
 
-The exact codes and meanings are ADR-027's table and are mandatory:
-`COMPOSITION_INPUT_COUNT_INVALID`, `COMPOSITION_INPUT_DUPLICATE`,
-`COMPOSITION_ORDER_INVALID`, `COMPOSITION_LAYOUT_INVALID`,
-`COMPOSITION_MARGIN_INVALID`, `COMPOSITION_GAP_INVALID`, `REGION_NOT_FOUND`,
-`REGION_SET_NOT_FOUND`, `REGION_SELECTION_INVALID`,
-`GEOMETRY_RECIPE_NOT_FOUND`, `GEOMETRY_RECIPE_INVALID`,
-`SOURCE_FILE_NOT_FOUND`, `ORIGINAL_ARTIFACT_NOT_FOUND`, `ORIGINAL_BYTES_INVALID`,
-`SOURCE_DIMENSIONS_MISMATCH`, `GEOMETRY_RENDER_FAILED`,
-`COMPOSITION_RENDER_FAILED`, `JPEG_ENCODING_FAILED`, `SIZE_LIMIT_UNREACHABLE`,
-`IDENTITY_CONFLICT`, `COMPOSITION_ALREADY_EXISTS`,
-`STORAGE_PUBLICATION_FAILED`, `PERSISTENCE_CONFLICT`, `PERSISTENCE_FAILED`,
-`COMMIT_FAILED`, and `PERSISTED_DATA_INVALID`. Existing semantics are reused
-only when exact; no conflicting duplicate is permitted. Messages never contain
-raw exceptions or sensitive values.
+1. Each side is replayed through the accepted PR-010 geometry pipeline.
+2. Normalization/canvas work uses the PR-013 composition pipeline.
+3. Final encoding uses the accepted PR-011 JPEG pipeline.
+4. The result satisfies the accepted PR-011 output contract.
 
-## 8. Audit and privacy
+```text
+DOCUMENT_SIDE_COMPOSITION_PIPELINE_ID =
+PILLOW_DOCUMENT_SIDE_COMPOSITION_BICUBIC
 
-Use existing `AuditEvent` with action `document_side_composition.created`,
-object type `document_side_composition`, outcome `success`; details are limited
-to layout, side count 2, and controlled pipeline/output identities. Audit and
-composition rows share the one write UoW/commit.
+DOCUMENT_SIDE_COMPOSITION_PIPELINE_VERSION = 1
+```
 
-Commands/results/errors/logs/audit/verifier/tests exclude image/raster bytes,
-paths, filenames, hashes, coordinates, dimensions, byte size, quality, resize,
-layout pixel sizes, OCR/MRZ/document/personal values, keys, SQL, and exception
-text. Processing is offline/local. Originals and all history are immutable.
-Real documents and personal data are prohibited in Git, Codex, CI, logs, and
-reports.
+```python
+@dataclass(frozen=True, slots=True)
+class DocumentSideCompositionPipelineVersion:
+    pipeline_id: str = DOCUMENT_SIDE_COMPOSITION_PIPELINE_ID
+    version: int = DOCUMENT_SIDE_COMPOSITION_PIPELINE_VERSION
+```
 
-## 9. Expected future files (implementation PR only)
+Composition normalization uses exactly `Image.Resampling.BICUBIC`; there is no
+implicit or platform-dependent default. Composition identity belongs to the
+immutable composition version. Final JPEG pipeline and output-contract identity
+belong to the prepared composition artifact. The caller chooses none of them.
 
-Expected additions/edits are confined to existing layers: domain composition
-module and exports/errors; application composition DTO/ports/service; image
-pipeline composer; persistence repository/UoW/schema migration v0009; sanitized
-Windows verifier and CI wiring; focused unit/integration/migration/privacy tests;
-and lifecycle docs. No parallel storage, encoder, UoW, or audit architecture.
+Any Pillow or implementation change that changes deterministic output requires
+compatibility analysis, synthetic golden-file comparison, an explicit
+pipeline-version decision, and a version bump when compatibility is not
+preserved.
 
-## 10. Required future automated tests
+## 6. Pure composition port
 
-### Unit/domain/composition/output
+PR-013 proposes exactly one new port:
 
-Tests must prove exactly two inputs; duplicate rejection; significant order;
-invalid layout/margin/gap rejection; aware timestamps; pairwise IDs; byte/path-
-free DTOs; vertical/horizontal semantics; aspect preservation; no upscaling;
-exact normalization, white background, margins, gap and pixel placement;
-deterministic dimensions and byte-identical repeats; swapped-order output/key;
-one final encoder call; no prepared-JPEG input or intermediate JPEG; valid RGB
-JPEG; no alpha/EXIF/ICC/XMP/IPTC/name/path/comment; non-progressive 4:4:4;
-boundary acceptance at 1,992,294 and rejection at 1,992,295; controlled
-unreachable-size; and no publication after unsuccessful preparation.
+```python
+class DocumentSideComposerPort(Protocol):
+    def compose(
+        self,
+        *,
+        side_1: UncompressedRgbRaster,
+        side_2: UncompressedRgbRaster,
+        layout: DocumentSideCompositionLayout,
+        outer_margin_px: int,
+        inter_side_gap_px: int,
+        pipeline: DocumentSideCompositionPipelineVersion,
+    ) -> UncompressedRgbRaster: ...
+```
 
-### Integration/application/privacy
+The composer accepts uncompressed RGB rasters only and performs normalization
+and fresh canvas composition. It never reads storage, opens a Unit of Work,
+encodes JPEG, publishes an artifact, writes an audit event, or accesses a
+network.
 
-Tests must prove the 24-step order; read UoW no commit; write UoW one commit;
-authoritative revalidation/natural-key preflight before publication; no object
-on pre-publication DB failure; no rows on storage failure; rollback after
-publication; late conflict leaves only reconcilable encrypted orphan; no
-adoption/deletion; atomic audit+composition persistence; result only after UoW
-exit and contains no bytes/paths. Controlled errors, audit and logs are scanned
-for forbidden values. Verifier stdout uses an exact allowlist; stderr is empty
-on success and supported inconclusive outcomes.
+No second geometry decoder, geometry renderer, storage port, JPEG encoder, Unit
+of Work, or audit abstraction is permitted.
 
-### Migration/encryption
+## 7. Exact deterministic normalization
 
-Tests must prove schema 8→9 and populated encrypted migration; every schema-8
-row preserved; v0001–v0008 unchanged; v0009 checksum not frozen until accepted;
-immutable records and update/delete/replace rejection; natural-key uniqueness
-and ordered significance; canonical projection validation; FK integrity;
-encrypted close/reopen; wrong-key and ordinary SQLite rejection; corruption
-fails closed.
+- `VERTICAL`: side 1 is above side 2.
+- `HORIZONTAL`: side 1 is left of side 2.
 
-CI must run architecture limits, repository policy, lock check/sync, Ruff format
-and lint, exact workflow mypy, full pytest on Ubuntu and Windows, sanitized
-Windows verifier, and sdist/wheel builds without weakening existing jobs.
+There is no inferred layout and no hidden production default.
 
-## 11. Synthetic Windows verifier and manual smoke
+Integer half-up is exactly:
 
-The future verifier uses production SQLCipher and encrypted storage adapters and
-only deterministic generated geometric RGB images—no text, faces, documents,
-templates, or private evidence. It proves schema 9/v0009, encrypted storage,
-two-source and same-source/two-region cases, both layouts, determinism/order,
-RGB metadata-free size-compliant output, immutable originals/region/geometry
-history, persistence/audit, encrypted reopen, wrong-key/ordinary-SQLite
-rejection, rollback, orphan reconciliation, and privacy-safe output.
+```text
+(2 * numerator + denominator) // (2 * denominator)
+```
 
-Manual synthetic smoke repeats both layouts and both source arrangements,
-visually confirms exact colored geometric side order, margins/gap/white
-background, compares repeat hashes locally, checks originals/history unchanged,
-reopens encrypted persistence, exercises a controlled rollback/orphan case, and
-records only PASS/FAIL plus approved commit/run identifiers. No image or private
-report enters Git, Codex, CI, logs, or test reports.
+Floating-point rounding is forbidden.
 
-Physical Windows 11 x64 installation, packaged startup, installer/upgrade,
-installed-app offline verification, Excel/terminal/upload integration, and final
-workstation acceptance remain deferred.
+For `VERTICAL`:
 
-## 12. Non-goals and acceptance/reporting
+```text
+target_width = min(side_1.width, side_2.width)
+calculated_height =
+    half_up(original_height * target_width / original_width)
+```
 
-Non-goals are OCR, MRZ, barcode, detection/classification/inferred layout,
-terminal defaults, final/upload UI, person/vehicle cards, field verification,
-snapshots, Excel/adapters/templates/export packages, installer, backup/restore,
-Konversta/browser automation, cloud, telemetry/analytics, PR-009 quality-policy
-activation, Q-021 resolution, and PR-014+.
+Only a wider side is downscaled; the other is unchanged. No side is upscaled.
 
-Future acceptance requires all specified tests on the exact authorized head,
-successful package builds, privacy-policy pass, manual synthetic PASS and
-Product-owner review; it does not itself complete M3/Gate 2 or installed-Windows
-acceptance. The implementation report must name base/head/PR/merge state,
-schema/migration checksum, changed files, algorithm and persistence decisions,
-exact commands/counts/platform results/builds, manual steps, privacy evidence,
-limitations, orphan/atomicity behavior, working-tree/push/CI state, and next
-safe step. No success may be claimed without evidence.
+For `HORIZONTAL`:
+
+```text
+target_height = min(side_1.height, side_2.height)
+calculated_width =
+    half_up(original_width * target_height / original_height)
+```
+
+Only a taller side is downscaled; the other is unchanged. No side is upscaled.
+
+If any calculated normalized width or height is less than one pixel, return
+`COMPOSITION_RENDER_FAILED`. Zero is not clamped to one.
+
+All normalization uses exactly `Image.Resampling.BICUBIC`. The canvas is a
+fresh opaque-white RGB raster. For vertical composition:
+
+```text
+canvas_width = target_width + 2 * outer_margin_px
+canvas_height = normalized_side_1_height + normalized_side_2_height
+                + inter_side_gap_px + 2 * outer_margin_px
+side_1_origin = (outer_margin_px, outer_margin_px)
+side_2_origin = (
+    outer_margin_px,
+    outer_margin_px + normalized_side_1_height + inter_side_gap_px,
+)
+```
+
+For horizontal composition:
+
+```text
+canvas_width = normalized_side_1_width + normalized_side_2_width
+               + inter_side_gap_px + 2 * outer_margin_px
+canvas_height = target_height + 2 * outer_margin_px
+side_1_origin = (outer_margin_px, outer_margin_px)
+side_2_origin = (
+    outer_margin_px + normalized_side_1_width + inter_side_gap_px,
+    outer_margin_px,
+)
+```
+
+## 8. Margin, gap, and final JPEG semantics
+
+`outer_margin_px` and `inter_side_gap_px` apply exactly to the fresh
+uncompressed composition raster before final JPEG encoding.
+
+1. The composer creates the requested margin and gap exactly.
+2. The existing PR-011 encoder may resize the entire raster below 100%.
+3. Side content, margins, and gap are scaled together.
+4. Final width and height come from `EncodedPreparedJpeg`.
+5. Final `resize_percent` records the PR-011 encoder decision.
+6. Pure composer tests assert exact pre-encoder margin and gap pixels.
+7. End-to-end JPEG tests assert proportional whole-image resizing.
+8. Final JPEG margins need not equal requested pixels when
+   `resize_percent < 100`.
+
+Final dimensions, byte size, SHA-256, `jpeg_quality`, and `resize_percent` are
+persisted on `PreparedCompositionArtifact` consistently with PR-011. They are
+never placed in logs, audit events, or verifier stdout.
+
+## 9. Exact immutable domain records
+
+```python
+@dataclass(frozen=True, slots=True)
+class DocumentSideComposition:
+    id: EntityId
+
+
+@dataclass(frozen=True, slots=True)
+class DocumentSideCompositionVersion:
+    id: EntityId
+    composition_id: EntityId
+
+    side_1_region_set_version_id: EntityId
+    side_1_source_file_id: EntityId
+    side_1_region_id: EntityId
+    side_1_geometry_recipe_version_id: EntityId
+
+    side_2_region_set_version_id: EntityId
+    side_2_source_file_id: EntityId
+    side_2_region_id: EntityId
+    side_2_geometry_recipe_version_id: EntityId
+
+    layout: DocumentSideCompositionLayout
+    outer_margin_px: int
+    inter_side_gap_px: int
+
+    composition_pipeline_id: str
+    composition_pipeline_version: int
+
+    output_contract_id: str
+    output_contract_version: int
+
+    created_at: datetime
+    created_by: ActorRef
+    correlation_id: EntityId
+
+
+@dataclass(frozen=True, slots=True)
+class PreparedCompositionArtifact:
+    id: EntityId
+    composition_version_id: EntityId
+    stored_artifact_id: EntityId
+
+    pipeline_id: str
+    pipeline_version: int
+    output_contract_id: str
+    output_contract_version: int
+
+    media_type: PreparedMediaType
+    color_space: ColorSpace
+
+    width: int
+    height: int
+    byte_size: int
+    sha256: Sha256Digest
+    jpeg_quality: int
+    resize_percent: int
+
+    created_at: datetime
+    created_by: ActorRef
+```
+
+The aggregate has no mutable current-version pointer. The prepared artifact
+uses exactly:
+
+```text
+pipeline_id = PREPARED_JPEG_PIPELINE_ID
+pipeline_version = PREPARED_JPEG_PIPELINE_VERSION
+output_contract_id = PREPARED_JPEG_OUTPUT_CONTRACT_ID
+output_contract_version = PREPARED_JPEG_OUTPUT_CONTRACT_VERSION
+media_type = PreparedMediaType.JPEG
+color_space = ColorSpace.SRGB
+```
+
+There is no update, replace, delete, set-latest, or mutable-current API.
+
+## 10. Exact ordered natural key and persistence port
+
+```text
+side_1.region_set_version_id
+side_1.source_file_id
+side_1.region_id
+side_1.geometry_recipe_version_id
+
+side_2.region_set_version_id
+side_2.source_file_id
+side_2.region_id
+side_2.geometry_recipe_version_id
+
+layout
+outer_margin_px
+inter_side_gap_px
+
+DOCUMENT_SIDE_COMPOSITION_PIPELINE_ID
+DOCUMENT_SIDE_COMPOSITION_PIPELINE_VERSION
+
+PREPARED_JPEG_OUTPUT_CONTRACT_ID
+PREPARED_JPEG_OUTPUT_CONTRACT_VERSION
+```
+
+This key is ordered. Swapping the sides creates a different key. An exact
+existing key returns `COMPOSITION_ALREADY_EXISTS` before encrypted publication,
+and no additional encrypted object is published.
+
+The future `UnitOfWork` may gain exactly one repository named
+`document_side_compositions`. It supports create, read, and exact-natural-key
+lookup only. It supports no update, delete, replace, set-latest, or
+mutable-current operation. Canonical payload and projected fields must agree;
+in-scope corruption fails closed.
+
+A future implementation may propose a forward-only
+`v0009_document_side_composition` migration from schema 8 to 9. This contract
+correction creates no migration and does not modify frozen migrations v0001
+through v0008.
+
+## 11. Exact typed audit
+
+Future production enums would add:
+
+```python
+AuditAction.DOCUMENT_SIDE_COMPOSITION_CREATED
+AuditSubjectType.DOCUMENT_SIDE_COMPOSITION
+```
+
+The future event is exactly:
+
+```python
+AuditEvent(
+    event_id=command.audit_event_id,
+    occurred_at=command.created_at,
+    actor=command.actor,
+    action_code=AuditAction.DOCUMENT_SIDE_COMPOSITION_CREATED,
+    subject_type=AuditSubjectType.DOCUMENT_SIDE_COMPOSITION,
+    subject_id=command.composition_id,
+    field_key=None,
+    before=None,
+    after=None,
+    reason_code=None,
+    correlation_id=command.correlation_id,
+)
+```
+
+No alternate audit model, arbitrary dictionary, string action code, or string
+subject type is permitted. Layout, dimensions, margins, gaps, hashes, quality,
+resize percentage, paths, and image data are absent from the event.
+
+## 12. Exact transaction and publication order
+
+1. Validate the command.
+2. Load both region-set versions.
+3. Load both region members.
+4. Load both geometry recipe versions.
+5. Load source files and original artifacts.
+6. Validate original integrity.
+7. Replay geometry independently.
+8. Create two fresh `UncompressedRgbRaster` values.
+9. Compose through `DocumentSideComposerPort`.
+10. Encode the final raster exactly once through `PreparedJpegEncoderPort`.
+11. Open the write Unit of Work.
+12. Re-read authoritative side references.
+13. Perform exact-natural-key preflight.
+14. Publish the encrypted final JPEG exactly once.
+15. Insert stored-artifact metadata.
+16. Insert the composition aggregate when absent.
+17. Insert the immutable composition version.
+18. Insert the prepared composition artifact.
+19. Insert the typed `AuditEvent`.
+20. Commit exactly once.
+21. Exit the Unit of Work.
+22. Return the result only after successful exit.
+
+A late database conflict after filesystem publication rolls back all rows from
+the failed attempt. Only an unreferenced encrypted object remains. Existing
+read-only orphan reconciliation may report it, but the service never adopts or
+deletes it automatically and returns `PERSISTENCE_CONFLICT`.
+
+## 13. Controlled failure contract
+
+The future service uses the exact controlled codes below and privacy-safe
+generic messages:
+
+```text
+COMPOSITION_INPUT_COUNT_INVALID
+COMPOSITION_INPUT_DUPLICATE
+COMPOSITION_ORDER_INVALID
+COMPOSITION_LAYOUT_INVALID
+COMPOSITION_MARGIN_INVALID
+COMPOSITION_GAP_INVALID
+REGION_NOT_FOUND
+REGION_SET_NOT_FOUND
+REGION_SELECTION_INVALID
+GEOMETRY_RECIPE_NOT_FOUND
+GEOMETRY_RECIPE_INVALID
+SOURCE_FILE_NOT_FOUND
+ORIGINAL_ARTIFACT_NOT_FOUND
+ORIGINAL_BYTES_INVALID
+SOURCE_DIMENSIONS_MISMATCH
+GEOMETRY_RENDER_FAILED
+COMPOSITION_RENDER_FAILED
+JPEG_ENCODING_FAILED
+SIZE_LIMIT_UNREACHABLE
+IDENTITY_CONFLICT
+COMPOSITION_ALREADY_EXISTS
+STORAGE_PUBLICATION_FAILED
+PERSISTENCE_CONFLICT
+PERSISTENCE_FAILED
+COMMIT_FAILED
+PERSISTED_DATA_INVALID
+```
+
+No failure leaks bytes, paths, filenames, hashes, coordinates, dimensions,
+quality, resize percentage, OCR/MRZ, personal data, keys, SQL, or raw exception
+text.
+
+## 14. Required future tests
+
+Synthetic-only tests must prove:
+
+- exact command and result fields and byte/path-free application DTOs;
+- each side's region-set/member/recipe/source/original validation;
+- two-source, same-source/two-region, and same-set/two-region cases;
+- duplicate `(source_file_id, region_id)` rejection and explicit side order;
+- both layouts, exact integer half-up calculation, no upscaling, and exact
+  `Image.Resampling.BICUBIC` normalization;
+- `COMPOSITION_RENDER_FAILED` when a calculated dimension is below one, without
+  clamping;
+- exact pre-encoder margin/gap pixels and proportional whole-raster resizing;
+- one `PreparedJpegEncoderPort.encode_prepared_jpeg` call and no prepared or
+  intermediate JPEG input;
+- final metadata copied from `EncodedPreparedJpeg`, including `jpeg_quality` and
+  `resize_percent`;
+- exact typed `AuditEvent` and absence of forbidden audit data;
+- exact immutable persistence fields, ordered natural-key uniqueness, and
+  create/read/exact-key-only repository behavior;
+- the 22-step operation order, publication exactly once, rollback, and
+  read-only orphan reconciliation;
+- no migration exists in this documentation PR and no production source file
+  differs from the initial PR #33 head;
+- full accepted PR-010, PR-011, and PR-012 regression coverage remains intact.
+
+Pure composer tests inspect the uncompressed raster. End-to-end JPEG tests
+inspect `EncodedPreparedJpeg` metadata and prove whole-image scaling when
+`resize_percent < 100`.
+
+## 15. Non-goals and privacy
+
+This proposal does not implement domain classes, DTOs, ports, application
+services, a composer, persistence, schema version 9, audit enum values, UI,
+OCR/MRZ/barcode, side detection, document classification, terminal defaults,
+snapshot/export/Excel work, installer, backup/restore, Konversta/browser
+automation, cloud processing, telemetry, analytics, Q-021, or PR-014 and later.
+
+Real documents, personal data, terminal templates, private reports, local paths,
+keys, and private databases remain prohibited in Git, Codex, CI, logs, and
+reports. Runtime composition remains offline and originals/history remain
+immutable.
 
 ## Authoritative lifecycle boundary
 
@@ -292,5 +545,9 @@ PRODUCTION POLICY_VERSION: NOT ASSIGNED
 AUTOMATIC QUALITY-BASED DOCUMENT BLOCKING: NOT ACTIVE
 AUTOMATIC PRODUCTION RETAKE_REQUIRED: NOT ACTIVE
 ```
+
+ADR-027 remains PROPOSED.
+The PR-013 contract remains PROPOSED FOR HUMAN REVIEW.
+PR-013 production implementation remains UNAUTHORIZED.
 
 MERGING THIS DOCUMENTATION PR DOES NOT BY ITSELF AUTHORIZE PR-013 PRODUCTION IMPLEMENTATION.
