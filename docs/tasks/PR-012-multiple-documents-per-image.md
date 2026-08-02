@@ -2,6 +2,8 @@
 
 ## Status
 
+Current lifecycle closure is recorded append-only in [PR-012-D1](../decisions/PR-012-D1-lifecycle-acceptance.md): PR-012 is completed and human accepted. The following block preserves the historical review-authorization status and is not current authority.
+
 ```text
 ADR-026: ACCEPTED
 PR-012 CONTRACT: ACCEPTED
@@ -411,9 +413,9 @@ PR-012 production implementation does not include:
 
 Using synthetic files only: import one image with two rectangles; confirm two manual regions; load ordered set; verify independent lineages; prepare each through unchanged PR-011; verify separate JPEGs neither containing the other region; revise one while retaining the other's ID; read historical set/recipes; reopen encrypted DB and repeat queries; verify byte-identical originals. Physical real-photo verification remains outside Git, Codex, and CI.
 
-## Authorization boundary
+## Historical review authorization boundary
 
-ADR-026 and the PR-012 contract are accepted.
+This section is historical evidence and does not define current lifecycle status. ADR-026 and the PR-012 contract are accepted.
 
 PR-012 production implementation is authorized and remains in review.
 
@@ -443,3 +445,8 @@ PRODUCTION PR-009 QUALITY POLICY: NOT ACTIVE
 AUTOMATIC PR-009 QUALITY BLOCKING: NOT ACTIVE
 AUTOMATIC PRODUCTION RETAKE_REQUIRED: NOT ACTIVE
 ```
+
+
+## Current lifecycle closure (authoritative, 2026-08-01)
+
+PR-012 is COMPLETED AND HUMAN ACCEPTED through GitHub PR #32 at reviewed head `9a6af1b72a064c47c66989b1e7dbc78d72768957` and merge commit `6a0f0df1e2d43e67395d4dee9415b6703181ab41`. See [PR-012-D1](../decisions/PR-012-D1-lifecycle-acceptance.md). Schema version 8 is current; migrations v0001 through v0008 are frozen. ADR-027 and the PR-013 contract are proposed; PR-013 production implementation and PR-014 and later are unauthorized. M3 remains in progress and Gate 2 is not accepted.

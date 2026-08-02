@@ -8,6 +8,8 @@ Product-owner acceptance date: 2026-07-28
 
 Accepted implementation base: `e326ff30c9ab83615c97579c02e480e2497838ab`
 
+Current lifecycle closure is recorded append-only in [PR-012-D1](PR-012-D1-lifecycle-acceptance.md): PR-012 is completed and human accepted. The following fenced block is the historical implementation-review authorization snapshot preserved as evidence.
+
 ```text
 PR-012 CONTRACT: ACCEPTED
 PR-012 PRODUCTION IMPLEMENTATION: AUTHORIZED AND IN REVIEW
@@ -145,9 +147,9 @@ PR-012 preserves `prepare_geometry_recipe_as_jpeg`, which continues to accept on
 
 PR-012 creates and confirms region identities and geometry recipes. It neither creates nor classifies final `Document` records. Document type, country, side, owner, and template classification remain later manual-workflow scope. The product rule that each confirmed region becomes a separate logical document is completed only when later classification binds the region to a `Document`. PR-012 invents no document types.
 
-## Decision and authorization
+## Historical decision and review authorization snapshot
 
-The Product owner accepted this model and authorized the PR-012 production implementation for
+This section is historical evidence and does not define current lifecycle status. The Product owner accepted this model and authorized the PR-012 production implementation for
 review. Human acceptance and merge authorization remain separate and have not been granted.
 
 ```text
@@ -164,3 +166,8 @@ PRODUCTION PR-009 QUALITY POLICY: NOT ACTIVE
 AUTOMATIC PR-009 QUALITY BLOCKING: NOT ACTIVE
 AUTOMATIC PRODUCTION RETAKE_REQUIRED: NOT ACTIVE
 ```
+
+
+## Current lifecycle closure (authoritative, 2026-08-01)
+
+PR-012 is COMPLETED AND HUMAN ACCEPTED through GitHub PR #32 at reviewed head `9a6af1b72a064c47c66989b1e7dbc78d72768957` and merge commit `6a0f0df1e2d43e67395d4dee9415b6703181ab41`. See [PR-012-D1](PR-012-D1-lifecycle-acceptance.md). ADR-026 and the PR-012 contract are accepted; schema version 8 is current and migrations v0001 through v0008 are frozen. ADR-027 and the PR-013 contract are proposed; PR-013 production implementation and PR-014 and later are unauthorized. M3 remains in progress and Gate 2 is not accepted.

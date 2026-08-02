@@ -1,7 +1,7 @@
 # Progress
 
 **Обновлено:** 2026-07-28
-**Статус:** ADR-026: ACCEPTED; PR-012 CONTRACT: ACCEPTED; PR-012 PRODUCTION IMPLEMENTATION: AUTHORIZED AND IN REVIEW; PR-012 HUMAN ACCEPTANCE: NOT GRANTED; PR-012 MERGE: NOT AUTHORIZED; PR-013 AND LATER: UNAUTHORIZED; GATE 2: NOT ACCEPTED; M3: IN PROGRESS
+**Статус:** PR-012: COMPLETED AND HUMAN ACCEPTED; ADR-026: ACCEPTED; schema 8; migrations v0001–v0008 frozen; ADR-027: PROPOSED; PR-013 CONTRACT: PROPOSED FOR HUMAN REVIEW; PR-013 PRODUCTION IMPLEMENTATION: UNAUTHORIZED; PR-014 AND LATER: UNAUTHORIZED; GATE 2: NOT ACCEPTED; M3: IN PROGRESS
 
 ## Завершено
 
@@ -74,7 +74,7 @@ PR-S001/PR-S001-F1/PR-S001-F2/PR-S001-F3/PR-S001-F4 use fictional synthetic data
 
 ## Следующий безопасный шаг
 
-Continue PR-012 correction and executable evidence completion on its authorized review branch. PR-012 human acceptance has not been granted, merge remains unauthorized, and PR-013 and later remain unauthorized. Gate 2 remains not accepted, M3 remains in progress, Q-021 remains deferred, and no active PR-009 production quality policy exists.
+After this documentation PR is reviewed and merged, obtain a separate Product-owner decision on ADR-027 and the PR-013 contract. PR-013 production implementation and PR-014 and later remain unauthorized. Gate 2 remains not accepted, M3 remains in progress, Q-021 remains deferred, and no active PR-009 production quality policy exists.
 
 ## Historical lifecycle snapshot — Current PR-010 geometry contract staging — 2026-07-23
 
@@ -255,9 +255,9 @@ PR-011 is merged and human accepted under [PR-011-D3](decisions/PR-011-D3-lifecy
 Q-021: DEFERRED. PRODUCTION PR-009 QUALITY POLICY: NOT ACTIVE. PRODUCTION `policy_id`: NOT ASSIGNED. PRODUCTION `policy_version`: NOT ASSIGNED. AUTOMATIC PR-009 QUALITY BLOCKING: NOT ACTIVE. AUTOMATIC PRODUCTION `RETAKE_REQUIRED`: NOT ACTIVE. Real documents and personal data remain prohibited in Git, Codex, and CI.
 
 
-## Current lifecycle state — PR-012 production review (authoritative, 2026-07-28)
+## Historical lifecycle snapshot — PR-012 production review before acceptance — 2026-07-28
 
-This is the single authoritative current lifecycle section. All earlier lifecycle snapshots are historical and do not define current status.
+This preserved section is historical and does not define current lifecycle status.
 
 ```text
 ADR-026: ACCEPTED
@@ -271,3 +271,33 @@ M3: IN PROGRESS
 ```
 
 Implementation base: `e326ff30c9ab83615c97579c02e480e2497838ab`. Earlier lifecycle sections remain historical.
+
+## Current lifecycle state — PR-012 closure and PR-013 contract proposal (authoritative, 2026-08-02)
+
+This is the single authoritative current lifecycle section in this document. All earlier lifecycle snapshots are explicitly historical evidence and do not define current authorization.
+
+```text
+PR-012: COMPLETED AND HUMAN ACCEPTED
+ADR-026: ACCEPTED
+PR-012 CONTRACT: ACCEPTED
+PR-012 MERGE: COMPLETED THROUGH GITHUB PR #32
+PR-012 REVIEWED HEAD: 9a6af1b72a064c47c66989b1e7dbc78d72768957
+PR-012 MERGE COMMIT: 6a0f0df1e2d43e67395d4dee9415b6703181ab41
+PR-012 EXACT-HEAD CI: CI #203 / run 30698992893 / SUCCESS
+CURRENT SCHEMA VERSION: 8
+MIGRATIONS V0001 THROUGH V0008: FROZEN
+ADR-027: PROPOSED
+PR-013 CONTRACT: PROPOSED FOR HUMAN REVIEW
+PR-013 PRODUCTION IMPLEMENTATION: UNAUTHORIZED
+PR-014 AND LATER: UNAUTHORIZED
+M3: IN PROGRESS
+GATE 2: NOT ACCEPTED
+Q-021: DEFERRED
+PRODUCTION PR-009 QUALITY POLICY: NOT ACTIVE
+PRODUCTION POLICY_ID: NOT ASSIGNED
+PRODUCTION POLICY_VERSION: NOT ASSIGNED
+AUTOMATIC QUALITY-BASED DOCUMENT BLOCKING: NOT ACTIVE
+AUTOMATIC PRODUCTION RETAKE_REQUIRED: NOT ACTIVE
+```
+
+The v0008 frozen checksum is `ff1d114954cf6a43cfe38ef8338a05b8bc11912fb51cd36dec2442d7ecee8f9b`. PR-008 through PR-012 are completed and human accepted (with their recorded limitations/risks). PR-013 is the final planned production slice of M3, but this proposed contract does not authorize it. Real documents and personal data remain prohibited in Git, Codex, CI, logs, and test reports. Physical Windows 11 installed-application, packaging, Excel, terminal-template, terminal-upload, and final workstation acceptance remain deferred. The next safe step after this documentation PR is reviewed and merged is a separate Product-owner decision accepting ADR-027 and the PR-013 contract, authorizing implementation, and naming this PR's merge commit as its exact base.
