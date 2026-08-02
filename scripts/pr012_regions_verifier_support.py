@@ -738,7 +738,7 @@ class VerificationScenario:
     def assert_integrity(self) -> None:
         connection = self.open_connection()
         try:
-            assert connection.execute("PRAGMA user_version").fetchone() == (8,)
+            assert connection.execute("PRAGMA user_version").fetchone() == (9,)
             assert self.schema_history(connection) == tuple(
                 (item.version, item.name, item.checksum) for item in MIGRATIONS
             )

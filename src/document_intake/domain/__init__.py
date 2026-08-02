@@ -5,6 +5,16 @@ from document_intake.domain.document_regions import (
     DocumentRegionSetMember,
     DocumentRegionSetVersion,
 )
+from document_intake.domain.document_side_composition import (
+    DOCUMENT_SIDE_COMPOSITION_PIPELINE_ID,
+    DOCUMENT_SIDE_COMPOSITION_PIPELINE_VERSION,
+    DocumentSideComposition,
+    DocumentSideCompositionError,
+    DocumentSideCompositionErrorCode,
+    DocumentSideCompositionPipelineVersion,
+    DocumentSideCompositionVersion,
+    PreparedCompositionArtifact,
+)
 from document_intake.domain.entities import (
     Application,
     ApplicationSnapshot,
@@ -31,6 +41,7 @@ from document_intake.domain.enums import (
     AuditValueClassification,
     CandidateSourceType,
     ColorSpace,
+    DocumentSideCompositionLayout,
     DocumentType,
     DocumentWorkflowStatus,
     ImportWarningCode,
@@ -117,6 +128,8 @@ from document_intake.domain.value_objects import (
 
 __all__ = [
     "CRITICAL_FIELD_KEYS",
+    "DOCUMENT_SIDE_COMPOSITION_PIPELINE_ID",
+    "DOCUMENT_SIDE_COMPOSITION_PIPELINE_VERSION",
     "JPEG_QUALITY_SEQUENCE",
     "JPEG_RESIZE_PERCENT_SEQUENCE",
     "MAX_PREPARED_JPEG_BYTES",
@@ -145,6 +158,12 @@ __all__ = [
     "DocumentRegionErrorCode",
     "DocumentRegionSetMember",
     "DocumentRegionSetVersion",
+    "DocumentSideComposition",
+    "DocumentSideCompositionError",
+    "DocumentSideCompositionErrorCode",
+    "DocumentSideCompositionLayout",
+    "DocumentSideCompositionPipelineVersion",
+    "DocumentSideCompositionVersion",
     "DocumentType",
     "DocumentWorkflowStatus",
     "DomainError",
@@ -176,6 +195,7 @@ __all__ = [
     "ParticipantAssignment",
     "PerceptualHash",
     "Person",
+    "PreparedCompositionArtifact",
     "PreparedImageArtifact",
     "PreparedJpegError",
     "PreparedJpegErrorCode",

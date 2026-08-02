@@ -23,7 +23,7 @@ support = importlib.import_module(
 )
 
 _LABELS = (
-    "PR012_VERIFY schema_version=8",
+    "PR012_VERIFY schema_version=9",
     f"PR012_VERIFY candidate_v0008_checksum={MIGRATION.checksum}",
     "PR012_VERIFY populated_encrypted_v7_to_v8=PASS",
     "PR012_VERIFY source_a_history=PASS",

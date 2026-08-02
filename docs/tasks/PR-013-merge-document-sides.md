@@ -1,8 +1,15 @@
 # PR-013 — Merge confirmed document sides
 
-**Status:** CONTRACT PROPOSED FOR HUMAN REVIEW
-**Production implementation:** UNAUTHORIZED
-**ADR:** [ADR-027](../decisions/ADR-027-document-side-composition-v1.md) (PROPOSED)
+**Status:** CONTRACT ACCEPTED
+**Production implementation:** AUTHORIZED AND IN REVIEW
+**Human acceptance:** NOT GRANTED
+**Merge:** NOT AUTHORIZED
+**ADR:** [ADR-027](../decisions/ADR-027-document-side-composition-v1.md) (ACCEPTED)
+
+The Product owner directly accepted ADR-027 and this contract and authorized
+implementation on 2026-08-02 without a separate lifecycle-only pull request.
+The implementation base is `bb25421b4b1630a45359a0b82f949e2b044eaafa`.
+Earlier proposal and unauthorized statements remain historical evidence only.
 
 ## 1. Lifecycle, base, and authorization
 
@@ -716,8 +723,8 @@ AUTOMATIC QUALITY-BASED DOCUMENT BLOCKING: NOT ACTIVE
 AUTOMATIC PRODUCTION RETAKE_REQUIRED: NOT ACTIVE
 ```
 
-ADR-027 remains PROPOSED.
-The PR-013 contract remains PROPOSED FOR HUMAN REVIEW.
-PR-013 production implementation remains UNAUTHORIZED.
+The preceding proposal/authorization statements are historical evidence.
 
-MERGING THIS DOCUMENTATION PR DOES NOT BY ITSELF AUTHORIZE PR-013 PRODUCTION IMPLEMENTATION.
+Current state: ADR-027 is ACCEPTED; this contract is ACCEPTED; production
+implementation is AUTHORIZED AND IN REVIEW. Human acceptance is not granted,
+merge is not authorized, and PR-014 and later remain unauthorized.

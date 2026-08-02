@@ -28,6 +28,9 @@ from document_intake.persistence.migrations.v0007_prepared_jpeg import (
 from document_intake.persistence.migrations.v0008_document_regions import (
     MIGRATION as V0008_DOCUMENT_REGIONS,
 )
+from document_intake.persistence.migrations.v0009_document_side_composition import (
+    MIGRATION as V0009_DOCUMENT_SIDE_COMPOSITION,
+)
 
 REQUIRED_TABLES = {
     "schema_migrations",
@@ -94,13 +97,18 @@ def test_migration_1_creates_tables_metadata_user_version_and_application_id() -
             V0008_DOCUMENT_REGIONS.name,
             V0008_DOCUMENT_REGIONS.checksum,
         ),
+        (
+            V0009_DOCUMENT_SIDE_COMPOSITION.version,
+            V0009_DOCUMENT_SIDE_COMPOSITION.name,
+            V0009_DOCUMENT_SIDE_COMPOSITION.checksum,
+        ),
     ]
 
 
 def test_initialize_migrations_are_idempotent() -> None:
     connection = apply()
     database._apply_migrations(connection)
-    assert connection.execute("SELECT count(*) FROM schema_migrations").fetchone()[0] == 8
+    assert connection.execute("SELECT count(*) FROM schema_migrations").fetchone()[0] == 9
 
 
 def test_applied_prefix_validates_and_future_migration_applies(
@@ -109,7 +117,7 @@ def test_applied_prefix_validates_and_future_migration_applies(
     connection = apply()
     future_statements = ("CREATE TABLE future_projection(id INTEGER PRIMARY KEY)",)
     future = Migration(
-        9,
+        10,
         "future_projection",
         future_statements,
         migration_checksum(future_statements),
@@ -126,15 +134,16 @@ def test_applied_prefix_validates_and_future_migration_applies(
             V0006_IMAGE_GEOMETRY,
             V0007_PREPARED_JPEG,
             V0008_DOCUMENT_REGIONS,
+            V0009_DOCUMENT_SIDE_COMPOSITION,
             future,
         ),
     )
-    monkeypatch.setattr(database, "CURRENT_SCHEMA_VERSION", 9)
+    monkeypatch.setattr(database, "CURRENT_SCHEMA_VERSION", 10)
 
     database._validate_schema(connection)
     database._apply_migrations(connection)
 
-    assert connection.execute("PRAGMA user_version").fetchone()[0] == 9
+    assert connection.execute("PRAGMA user_version").fetchone()[0] == 10
     assert connection.execute(
         "SELECT version, name, checksum FROM schema_migrations ORDER BY version"
     ).fetchall() == [
@@ -150,6 +159,11 @@ def test_applied_prefix_validates_and_future_migration_applies(
             V0008_DOCUMENT_REGIONS.name,
             V0008_DOCUMENT_REGIONS.checksum,
         ),
+        (
+            V0009_DOCUMENT_SIDE_COMPOSITION.version,
+            V0009_DOCUMENT_SIDE_COMPOSITION.name,
+            V0009_DOCUMENT_SIDE_COMPOSITION.checksum,
+        ),
         (future.version, future.name, future.checksum),
     ]
     assert connection.execute(
@@ -162,7 +176,7 @@ def test_applied_prefix_validates_and_future_migration_applies(
     [
         lambda c: c.execute(
             "INSERT INTO schema_migrations(version, name, checksum, applied_at_utc) "
-            "VALUES (9, 'extra', 'extra', '2026-07-19T00:00:00Z')"
+            "VALUES (10, 'extra', 'extra', '2026-07-19T00:00:00Z')"
         ),
         lambda c: c.execute("UPDATE schema_migrations SET name='reordered' WHERE version=1"),
         lambda c: (
@@ -463,15 +477,19 @@ def test_v0004_literal_metadata_and_all_prior_checksums_are_frozen() -> None:
     )
 
 
-def test_empty_database_and_upgrade_from_version_3_reach_exact_schema_8() -> None:
+def test_empty_database_and_upgrade_from_version_3_reach_exact_schema_9() -> None:
     empty = apply()
-    assert empty.execute("PRAGMA user_version").fetchone()[0] == 8
+    assert empty.execute("PRAGMA user_version").fetchone()[0] == 9
     upgraded = apply_through_v0003()
     database._apply_migrations(upgraded)
-    assert upgraded.execute("PRAGMA user_version").fetchone()[0] == 8
+    assert upgraded.execute("PRAGMA user_version").fetchone()[0] == 9
     assert upgraded.execute(
         "SELECT version, name, checksum FROM schema_migrations ORDER BY version DESC LIMIT 1"
-    ).fetchone() == (8, V0008_DOCUMENT_REGIONS.name, V0008_DOCUMENT_REGIONS.checksum)
+    ).fetchone() == (
+        9,
+        V0009_DOCUMENT_SIDE_COMPOSITION.name,
+        V0009_DOCUMENT_SIDE_COMPOSITION.checksum,
+    )
 
 
 def test_v0004_column_constraints_foreign_keys_and_indexes() -> None:

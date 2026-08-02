@@ -15,9 +15,9 @@ def _passing_run() -> verifier._Run:
 
 def test_pr009_historical_prefix_accepts_v0008_and_future_migrations(monkeypatch) -> None:  # type: ignore[no-untyped-def]
     assert verifier._historical_migration_prefix_valid()
-    future = replace(verifier.MIGRATIONS[-1], version=9, name="synthetic_future")
+    future = replace(verifier.MIGRATIONS[-1], version=10, name="synthetic_future")
     monkeypatch.setattr(verifier, "MIGRATIONS", (*verifier.MIGRATIONS, future))
-    monkeypatch.setattr(verifier, "CURRENT_SCHEMA_VERSION", 9)
+    monkeypatch.setattr(verifier, "CURRENT_SCHEMA_VERSION", 10)
     assert verifier._historical_migration_prefix_valid()
 
 
@@ -40,11 +40,11 @@ def test_pr009_historical_prefix_rejects_missing_migration(monkeypatch) -> None:
 
 
 def test_pr009_output_tracks_current_schema_and_remains_allowlisted(monkeypatch, capsys) -> None:  # type: ignore[no-untyped-def]
-    future = replace(verifier.MIGRATIONS[-1], version=9, name="synthetic_future")
+    future = replace(verifier.MIGRATIONS[-1], version=10, name="synthetic_future")
     monkeypatch.setattr(verifier, "MIGRATIONS", (*verifier.MIGRATIONS, future))
-    monkeypatch.setattr(verifier, "CURRENT_SCHEMA_VERSION", 9)
+    monkeypatch.setattr(verifier, "CURRENT_SCHEMA_VERSION", 10)
     lines = verifier._render(_passing_run().statuses)
-    assert lines[0] == "PR009_VERIFY schema_version=9"
+    assert lines[0] == "PR009_VERIFY schema_version=10"
     assert verifier._has_allowlisted_shape(lines)
     assert capsys.readouterr().err == ""
 

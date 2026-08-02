@@ -238,9 +238,9 @@ PR-011 is merged and human accepted under [PR-011-D3](decisions/PR-011-D3-lifecy
 
 Q-021: DEFERRED. PRODUCTION PR-009 QUALITY POLICY: NOT ACTIVE. PRODUCTION `policy_id`: NOT ASSIGNED. PRODUCTION `policy_version`: NOT ASSIGNED. AUTOMATIC PR-009 QUALITY BLOCKING: NOT ACTIVE. AUTOMATIC PRODUCTION `RETAKE_REQUIRED`: NOT ACTIVE. Real documents and personal data remain prohibited in Git, Codex, and CI.
 
-## Current lifecycle state — PR-012 closure and PR-013 contract proposal (authoritative, 2026-08-02)
+## Historical lifecycle state — PR-012 closure and PR-013 contract proposal (2026-08-02)
 
-This is the single authoritative current lifecycle section in this document. All earlier lifecycle snapshots are explicitly historical evidence and do not define current authorization.
+This section is preserved as historical evidence and does not define current authorization.
 
 ```text
 PR-012: COMPLETED AND HUMAN ACCEPTED
@@ -267,3 +267,30 @@ AUTOMATIC PRODUCTION RETAKE_REQUIRED: NOT ACTIVE
 ```
 
 The v0008 frozen checksum is `ff1d114954cf6a43cfe38ef8338a05b8bc11912fb51cd36dec2442d7ecee8f9b`. PR-008 through PR-012 are completed and human accepted (with their recorded limitations/risks). PR-013 is the final planned production slice of M3, but this proposed contract does not authorize it. Real documents and personal data remain prohibited in Git, Codex, CI, logs, and test reports. Physical Windows 11 installed-application, packaging, Excel, terminal-template, terminal-upload, and final workstation acceptance remain deferred. The next safe step after this documentation PR is reviewed and merged is a separate Product-owner decision accepting ADR-027 and the PR-013 contract, authorizing implementation, and naming this PR's merge commit as its exact base.
+
+
+## Current lifecycle state — PR-013 implementation (authoritative, 2026-08-02)
+
+All earlier lifecycle sections are historical evidence. The Product owner directly accepted ADR-027 and the PR-013 contract and authorized implementation without a separate lifecycle-only pull request.
+
+```text
+PR-012: COMPLETED AND HUMAN ACCEPTED
+ADR-026: ACCEPTED
+PR-012 CONTRACT: ACCEPTED
+PR-013 BASE: bb25421b4b1630a45359a0b82f949e2b044eaafa
+ADR-027: ACCEPTED
+PR-013 CONTRACT: ACCEPTED
+PR-013 PRODUCTION IMPLEMENTATION: AUTHORIZED AND IN REVIEW
+PR-013 HUMAN ACCEPTANCE: NOT GRANTED
+PR-013 MERGE: NOT AUTHORIZED
+CURRENT SCHEMA VERSION: 9
+MIGRATIONS V0001 THROUGH V0008: FROZEN
+MIGRATION V0009: CANDIDATE — NOT FROZEN UNTIL PR-013 MERGE
+PR-014 AND LATER: UNAUTHORIZED
+M3: IN PROGRESS
+GATE 2: NOT ACCEPTED
+Q-021: DEFERRED
+PRODUCTION PR-009 QUALITY POLICY: NOT ACTIVE
+```
+
+PR-013 implements exactly two explicitly ordered confirmed region references, deterministic vertical or horizontal BICUBIC composition on a fresh opaque-white RGB raster, one final PR-011 JPEG encode, immutable encrypted storage and schema-9 persistence, complete write-phase revalidation, and a typed privacy-safe audit event. The v0008 frozen checksum remains `ff1d114954cf6a43cfe38ef8338a05b8bc11912fb51cd36dec2442d7ecee8f9b`; the v0009 candidate checksum is `001795f9da8289fd9f06b1a4758e9153c34c2176867c30cb3c06a56bffaeb902`. No human acceptance or merge authorization is claimed.
