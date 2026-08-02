@@ -50,7 +50,7 @@ PR-006: COMPLETED AND HUMAN ACCEPTED. PR-007: COMPLETED AND HUMAN ACCEPTED. PR-0
 
 ## Authorization boundary
 
-ADR-026 and the PR-012 contract are accepted. PR-012 production implementation is authorized and remains in review. PR-012 human acceptance has not been granted, and merge remains unauthorized. PR-013 and later remain unauthorized. Gate 2 is not accepted, and M3 remains in progress.
+ADR-026 and the PR-012 contract are accepted. PR-012 is completed and human accepted through GitHub PR #32. ADR-027 and the PR-013 contract are proposed; PR-013 production implementation and PR-014 and later remain unauthorized. Gate 2 is not accepted, and M3 remains in progress.
 
 ## Риски
 
@@ -58,7 +58,7 @@ ADR-026 and the PR-012 contract are accepted. PR-012 production implementation i
 
 ## Продолжение
 
-The next safe activity is continued PR-012 correction, executable evidence completion, and Product-owner review preparation. Do not merge PR-012 and do not begin PR-013 or later work. The local Q-021 calibration remains complete with accepted negative evidence; no production policy was selected.
+The next safe activity after this documentation PR is reviewed and merged is a separate Product-owner decision on ADR-027 and the PR-013 contract. Do not begin PR-013 production implementation or PR-014 and later work. The local Q-021 calibration remains complete with accepted negative evidence; no production policy was selected.
 
 PR-S001-F1, PR-S001-F2, PR-S001-F3 and PR-S001-F4 are completed. PR-S001/PR-S001-F1/PR-S001-F2/PR-S001-F3/PR-S001-F4 use fictional synthetic data only, may evaluate candidate packages and prototypes, must not create production database/storage APIs, and must not use real documents or personal data. PR-006 is COMPLETED AND HUMAN ACCEPTED through PR #17. Q-017 remains deferred. The sensitive-data/private-contour gate remains open, and real documents and personal data remain prohibited in Git, Codex and CI.
 
@@ -221,9 +221,9 @@ PR-011 is merged and human accepted under [PR-011-D3](decisions/PR-011-D3-lifecy
 Q-021: DEFERRED. PRODUCTION PR-009 QUALITY POLICY: NOT ACTIVE. PRODUCTION `policy_id`: NOT ASSIGNED. PRODUCTION `policy_version`: NOT ASSIGNED. AUTOMATIC PR-009 QUALITY BLOCKING: NOT ACTIVE. AUTOMATIC PRODUCTION `RETAKE_REQUIRED`: NOT ACTIVE. Real documents and personal data remain prohibited in Git, Codex, and CI.
 
 
-## Current lifecycle state — PR-012 production review (authoritative, 2026-07-28)
+## Historical lifecycle snapshot — PR-012 production review before acceptance — 2026-07-28
 
-This is the single authoritative current lifecycle section. All earlier lifecycle snapshots are historical and do not define current status.
+This preserved section is historical and does not define current lifecycle status.
 
 ```text
 ADR-026: ACCEPTED
@@ -237,3 +237,33 @@ M3: IN PROGRESS
 ```
 
 Implementation base: `e326ff30c9ab83615c97579c02e480e2497838ab`. Earlier lifecycle sections remain historical.
+
+## Current lifecycle state — PR-012 closure and PR-013 contract proposal (authoritative, 2026-08-02)
+
+This is the single authoritative current lifecycle section in this document. All earlier lifecycle snapshots are explicitly historical evidence and do not define current authorization.
+
+```text
+PR-012: COMPLETED AND HUMAN ACCEPTED
+ADR-026: ACCEPTED
+PR-012 CONTRACT: ACCEPTED
+PR-012 MERGE: COMPLETED THROUGH GITHUB PR #32
+PR-012 REVIEWED HEAD: 9a6af1b72a064c47c66989b1e7dbc78d72768957
+PR-012 MERGE COMMIT: 6a0f0df1e2d43e67395d4dee9415b6703181ab41
+PR-012 EXACT-HEAD CI: CI #203 / run 30698992893 / SUCCESS
+CURRENT SCHEMA VERSION: 8
+MIGRATIONS V0001 THROUGH V0008: FROZEN
+ADR-027: PROPOSED
+PR-013 CONTRACT: PROPOSED FOR HUMAN REVIEW
+PR-013 PRODUCTION IMPLEMENTATION: UNAUTHORIZED
+PR-014 AND LATER: UNAUTHORIZED
+M3: IN PROGRESS
+GATE 2: NOT ACCEPTED
+Q-021: DEFERRED
+PRODUCTION PR-009 QUALITY POLICY: NOT ACTIVE
+PRODUCTION POLICY_ID: NOT ASSIGNED
+PRODUCTION POLICY_VERSION: NOT ASSIGNED
+AUTOMATIC QUALITY-BASED DOCUMENT BLOCKING: NOT ACTIVE
+AUTOMATIC PRODUCTION RETAKE_REQUIRED: NOT ACTIVE
+```
+
+The v0008 frozen checksum is `ff1d114954cf6a43cfe38ef8338a05b8bc11912fb51cd36dec2442d7ecee8f9b`. PR-008 through PR-012 are completed and human accepted (with their recorded limitations/risks). PR-013 is the final planned production slice of M3, but this proposed contract does not authorize it. Real documents and personal data remain prohibited in Git, Codex, CI, logs, and test reports. Physical Windows 11 installed-application, packaging, Excel, terminal-template, terminal-upload, and final workstation acceptance remain deferred. The next safe step after this documentation PR is reviewed and merged is a separate Product-owner decision accepting ADR-027 and the PR-013 contract, authorizing implementation, and naming this PR's merge commit as its exact base.
