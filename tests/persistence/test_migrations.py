@@ -880,3 +880,28 @@ def test_file_backed_v6_to_v7_migration_survives_real_close_and_reopen(tmp_path)
     assert third.execute("PRAGMA foreign_key_check").fetchall() == []
     assert third.execute("PRAGMA integrity_check").fetchone()[0] == "ok"
     third.close()
+
+
+def test_v0009_candidate_checksum_and_complete_lineage_constraints() -> None:
+    assert (
+        V0009_DOCUMENT_SIDE_COMPOSITION.checksum
+        == "0b0e0637ba4aa3defb29e6e27c241f28d333ec3c8bb6e8751c6cc7acc1b24b49"
+    )
+    version_schema = V0009_DOCUMENT_SIDE_COMPOSITION.statements[10]
+    for marker in (
+        "FOREIGN KEY(side_1_region_set_version_id,side_1_region_id)",
+        "FOREIGN KEY(side_1_region_set_version_id,side_1_geometry_recipe_version_id)",
+        "FOREIGN KEY(side_2_region_set_version_id,side_2_region_id)",
+        "FOREIGN KEY(side_2_region_set_version_id,side_2_geometry_recipe_version_id)",
+        "REFERENCES document_region_set_members(region_set_version_id,region_id)",
+        "REFERENCES document_region_set_members(region_set_version_id,geometry_recipe_version_id)",
+    ):
+        assert marker in version_schema
+    assert any(
+        "document_side_composition_versions_side_1_lineage_guard" in statement
+        for statement in V0009_DOCUMENT_SIDE_COMPOSITION.statements
+    )
+    assert any(
+        "document_side_composition_versions_side_2_lineage_guard" in statement
+        for statement in V0009_DOCUMENT_SIDE_COMPOSITION.statements
+    )

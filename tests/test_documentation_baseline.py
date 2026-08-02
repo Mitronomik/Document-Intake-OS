@@ -3678,6 +3678,40 @@ def test_authoritative_current_lifecycle_sections_are_unique_and_current() -> No
             assert marker not in section, f"{name}: {marker}"
 
 
+def test_pr013_lineage_and_acceptance_correction_evidence_is_current() -> None:
+    task = (REPO_ROOT / "docs/tasks/PR-013-merge-document-sides.md").read_text(encoding="utf-8")
+    strategy = (REPO_ROOT / "docs/testing-strategy.md").read_text(encoding="utf-8")
+    migration = (
+        REPO_ROOT / "src/document_intake/persistence/migrations/v0009_document_side_composition.py"
+    ).read_text(encoding="utf-8")
+    checksum = "0b0e0637ba4aa3defb29e6e27c241f28d333ec3c8bb6e8751c6cc7acc1b24b49"
+    for marker in (
+        "complete side lineage",
+        "composite member foreign keys",
+        "side_1 lineage guard",
+        "side_2 lineage guard",
+        "populated schema 8-to-9",
+        "failed-v0009 rollback",
+        "wrong-key rejection",
+        "ordinary SQLite rejection",
+        "post-publication orphan evidence",
+    ):
+        assert marker in task or marker in strategy, marker
+    for marker in (
+        "side_1_region_set_version_id,side_1_region_id",
+        "side_1_region_set_version_id,side_1_geometry_recipe_version_id",
+        "side_2_region_set_version_id,side_2_region_id",
+        "side_2_region_set_version_id,side_2_geometry_recipe_version_id",
+        "document_side_composition_versions_side_1_lineage_guard",
+        "_SIDE_2_LINEAGE_GUARD",
+    ):
+        assert marker in migration, marker
+    assert checksum in task
+    assert "ADR-027 remains ACCEPTED" in task
+    assert "human acceptance NOT GRANTED" in task
+    assert "**Merge:** NOT AUTHORIZED" in task
+
+
 def test_pr013_production_change_scope() -> None:
     changed = subprocess.run(
         ["git", "diff", "--name-only", "6a0f0df1e2d43e67395d4dee9415b6703181ab41"],

@@ -1,3 +1,5 @@
+import pytest
+
 from document_intake.application.services.document_side_composition import (
     create_document_side_composition,
 )
@@ -8,15 +10,20 @@ from tests.support.pr013_application import (
     Factory,
     Renderer,
     Storage,
+    Variant,
     command,
 )
 
 
-def test_explicit_side_order_is_preserved() -> None:
-    calls = []
-    factory = Factory(calls)
+@pytest.mark.parametrize("variant", ("different_sources", "same_source", "same_region_set"))
+def test_explicit_swapped_side_order_is_preserved_for_every_valid_variant(
+    variant: Variant,
+) -> None:
+    calls: list[str] = []
+    factory = Factory(calls, variant=variant)
+    selected = command(variant=variant, swapped=True)
     result = create_document_side_composition(
-        command(swapped=True),
+        selected,
         decoder=Decoder(calls),
         renderer=Renderer(calls),
         composer=Composer(calls),
@@ -24,11 +31,23 @@ def test_explicit_side_order_is_preserved() -> None:
         storage=Storage(calls),
         unit_of_work_factory=factory,
     )
+    version = result.composition_version
     assert (
-        result.composition_version.side_1_source_file_id
-        == command(swapped=True).side_1.source_file_id
+        version.side_1_region_set_version_id,
+        version.side_1_source_file_id,
+        version.side_1_region_id,
+    ) == (
+        selected.side_1.region_set_version_id,
+        selected.side_1.source_file_id,
+        selected.side_1.region_id,
     )
     assert (
-        result.composition_version.side_2_source_file_id
-        == command(swapped=True).side_2.source_file_id
+        version.side_2_region_set_version_id,
+        version.side_2_source_file_id,
+        version.side_2_region_id,
+    ) == (
+        selected.side_2.region_set_version_id,
+        selected.side_2.source_file_id,
+        selected.side_2.region_id,
     )
+    assert factory.used[1].commits == 1
